@@ -1,0 +1,590 @@
+[
+            {
+                "equip_set_id": 1,
+                "equip_set": "Chainmail",
+                "rarity": 1,
+                "set_ability_bonus": 0,
+                "thumbnail": "assets/img/equiments/sets/Ores.png",
+                "equips": [
+                    {
+                        "equip_id": 1,
+                        "equip": "Chainmail Headgear",
+                        "armor_part_id": 1,
+                        "physical_armor": 0,
+                        "elemental_armor": {
+                            "elemental_id": 0,
+                            "protection": 0
+                        },
+                        "ability_id": 0
+                    },
+                    {
+                        "equip_id": 2,
+                        "equip": "Chainmail Vest",
+                        "armor_part_id": 2,
+                        "physical_armor": 0,
+                        "elemental_armor": {
+                            "elemental_id": 0,
+                            "protection": 0
+                        },
+                        "ability_id": 0
+                    },
+                    {
+                        "equip_id": 3,
+                        "equip": "Chainmail Trousers",
+                        "armor_part_id": 3,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 0,
+                            "protection": 0
+                        },
+                        "ability_id": 0
+                    }
+                ]
+            },
+            {
+                "equip_set_id": 2,
+                "equip_set": "Leather",
+                "rarity": 1,
+                "set_ability_bonus": 0,
+                "thumbnail": "assets/img/equiments/sets/Ores.png",
+                "equips": [
+                    {
+                        "equip_id": 1,
+                        "equip": "Leather Headgear",
+                        "armor_part_id": 1,
+                        "physical_armor": 0,
+                        "elemental_armor": {
+                            "elemental_id": 0,
+                            "protection": 0
+                        },
+                        "ability_id": 0
+                    },
+                    {
+                        "equip_id": 2,
+                        "equip": "Leather Mail",
+                        "armor_part_id": 2,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 0,
+                            "protection": 0
+                        },
+                        "ability_id": 0
+                    },
+                    {
+                        "equip_id": 3,
+                        "equip": "Leather Trousers",
+                        "armor_part_id": 3,
+                        "physical_armor": 0,
+                        "elemental_armor": {
+                            "elemental_id": 0,
+                            "protection": 0
+                        },
+                        "ability_id": 0
+                    }
+                ]
+            },
+            {
+                "equip_set_id": 3,
+                "equip_set": "Ore",
+                "rarity": 2,
+                "set_ability_bonus": 0,
+                "thumbnail": "assets/img/equiments/sets/Ores.png",
+                "equips": [
+                    {
+                        "equip_id": 1,
+                        "equip": "Alloy Helm",
+                        "armor_part_id": 1,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 0,
+                            "protection": 0
+                        },
+                        "ability_id": 0
+                    },
+                    {
+                        "equip_id": 2,
+                        "equip": "Alloy Mail",
+                        "armor_part_id": 2,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 0,
+                            "protection": 0
+                        },
+                        "ability_id": 0
+                    },
+                    {
+                        "equip_id": 3,
+                        "equip": "Alloy Greaves",
+                        "armor_part_id": 3,
+                        "physical_armor": 0,
+                        "elemental_armor": {
+                            "elemental_id": 0,
+                            "protection": 0
+                        },
+                        "ability_id": 1
+                    }
+                ]
+            },
+            {
+                "equip_set_id": 4,
+                "equip_set": "Monster Bone",
+                "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+                "rarity": 2,
+                "set_ability_bonus": 0,
+                "equips": [
+                    {
+                        "equip_id": 1,
+                        "equip": "Bone Helm",
+                        "armor_part_id": 1,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 0,
+                            "protection": 0
+                        },
+                        "ability_id": 0
+                    },
+                    {
+                        "equip_id": 2,
+                        "equip": "Bone Mail",
+                        "armor_part_id": 2,
+                        "physical_armor": 0,
+                        "elemental_armor": {
+                            "elemental_id": 0,
+                            "protection": 0
+                        },
+                        "ability_id": 2
+                    },
+                    {
+                        "equip_id": 3,
+                        "equip": "Bone Greaves",
+                        "armor_part_id": 3,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 0,
+                            "protection": 0
+                        },
+                        "ability_id": 0
+                    }
+                ]
+            },
+            {
+                "equip_set_id": 5,
+                "equip_set": "Great Jagras",
+                "thumbnail": "assets/img/equiments/sets/Great_Jagras.png",
+                "rarity": 3,
+                "set_ability_bonus": 0,
+                "equips": [
+                    {
+                        "equip_id": 1,
+                        "equip": "Jagras Helm",
+                        "armor_part_id": 1,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 2,
+                            "protection": 1
+                        },
+                        "ability_id": 3
+                    },
+                    {
+                        "equip_id": 2,
+                        "equip": "Jagras Mail",
+                        "armor_part_id": 2,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 2,
+                            "protection": 1
+                        },
+                        "ability_id": 4
+                    },
+                    {
+                        "equip_id": 3,
+                        "equip": "Jagras Greaves",
+                        "armor_part_id": 3,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 2,
+                            "protection": 1
+                        },
+                        "ability_id": 0
+                    }
+                ]
+            },
+            {
+                "equip_set_id": 6,
+                "equip_set": "Tobi-Kadachi",
+                "thumbnail": "assets/img/equiments/sets/Tobi-Kadachi.png",
+                "rarity": 3,
+                "set_ability_bonus": 0,
+                "equips": [
+                    {
+                        "equip_id": 1,
+                        "equip": "Kadachi Helm",
+                        "armor_part_id": 1,
+                        "physical_armor": 0,
+                        "elemental_armor": {
+                            "elemental_id": 3,
+                            "protection": 2
+                        },
+                        "ability_id": 5
+                    },
+                    {
+                        "equip_id": 2,
+                        "equip": "Kadachi Mail",
+                        "armor_part_id": 2,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 3,
+                            "protection": 1
+                        },
+                        "ability_id": 6
+                    },
+                    {
+                        "equip_id": 3,
+                        "equip": "Kadachi Greaves",
+                        "armor_part_id": 3,
+                        "physical_armor": 0,
+                        "elemental_armor": {
+                            "elemental_id": 3,
+                            "protection": 1
+                        },
+                        "ability_id": 7
+                    }
+                ]
+            },
+            {
+                "equip_set_id": 7,
+                "equip_set": "Anjanath",
+                "thumbnail": "assets/img/equiments/sets/Anjanath.png",
+                "rarity": 3,
+                "set_ability_bonus": 0,
+                "equips": [
+                    {
+                        "equip_id": 1,
+                        "equip": "Anja Helm",
+                        "armor_part_id": 1,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 1,
+                            "protection": 1
+                        },
+                        "ability_id": 8
+                    },
+                    {
+                        "equip_id": 2,
+                        "equip": "Anja Mail",
+                        "armor_part_id": 2,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 1,
+                            "protection": 1
+                        },
+                        "ability_id": 9
+                    },
+                    {
+                        "equip_id": 3,
+                        "equip": "Anja Greaves",
+                        "armor_part_id": 3,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 1,
+                            "protection": 2
+                        },
+                        "ability_id": 0
+                    }
+                ]
+            },
+            {
+                "equip_set_id": 8,
+                "equip_set": "Rathalos",
+                "thumbnail": "assets/img/equiments/sets/Rathalos.png",
+                "rarity": 4,
+                "set_ability_bonus": 10,
+                "equips": [
+                    {
+                        "equip_id": 1,
+                        "equip": "Rathalos Helm",
+                        "armor_part_id": 1,
+                        "physical_armor": 2,
+                        "elemental_armor": {
+                            "elemental_id": 1,
+                            "protection": 1
+                        },
+                        "ability_id": 0
+                    },
+                    {
+                        "equip_id": 2,
+                        "equip": "Rathalos Mail",
+                        "armor_part_id": 2,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 1,
+                            "protection": 1
+                        },
+                        "ability_id": 11
+                    },
+                    {
+                        "equip_id": 3,
+                        "equip": "Rathalos Greaves",
+                        "armor_part_id": 3,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 1,
+                            "protection": 1
+                        },
+                        "ability_id": 12
+                    }
+                ]
+            },
+            {
+                "equip_set_id": 9,
+                "equip_set": "Azure Rathalos",
+                "thumbnail": "assets/img/equiments/sets/Azure_Rathalos.png",
+                "rarity": 4,
+                "set_ability_bonus": 14,
+                "equips": [
+                    {
+                        "equip_id": 1,
+                        "equip": "Rath Soul Helm",
+                        "armor_part_id": 1,
+                        "physical_armor": 2,
+                        "elemental_armor": {
+                            "elemental_id": 1,
+                            "protection": 1
+                        },
+                        "ability_id": 13
+                    },
+                    {
+                        "equip_id": 2,
+                        "equip": "Rath Soul Mail",
+                        "armor_part_id": 2,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 1,
+                            "protection": 1
+                        },
+                        "ability_id": 0
+                    },
+                    {
+                        "equip_id": 3,
+                        "equip": "Rath Soul Greaves",
+                        "armor_part_id": 3,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 1,
+                            "protection": 1
+                        },
+                        "ability_id": 15
+                    }
+                ]
+            },
+            {
+                "equip_set_id": 10,
+                "equip_set": "Barroth",
+                "thumbnail": "assets/img/equiments/sets/barroth.png",
+                "rarity": 3,
+                "set_ability_bonus": 0,
+                "equips": [
+                    {
+                        "equip_id": 1,
+                        "equip": "Barroth Helm",
+                        "armor_part_id": 1,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 2,
+                            "protection": 1
+                        },
+                        "ability_id": 16
+                    },
+                    {
+                        "equip_id": 2,
+                        "equip": "Barroth Mail",
+                        "armor_part_id": 2,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 2,
+                            "protection": 1
+                        },
+                        "ability_id": 0
+                    },
+                    {
+                        "equip_id": 3,
+                        "equip": "Barroth Greaves",
+                        "armor_part_id": 3,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 2,
+                            "protection": 1
+                        },
+                        "ability_id": 17
+                    }
+                ]
+            },
+            {
+                "equip_set_id": 11,
+                "equip_set": "Pukei-Pukei",
+                "thumbnail": "assets/img/equiments/sets/pukei-pukei.png",
+                "rarity": 3,
+                "set_ability_bonus": 0,
+                "equips": [
+                    {
+                        "equip_id": 1,
+                        "equip": "Pukei Helm",
+                        "armor_part_id": 1,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 2,
+                            "protection": 1
+                        },
+                        "ability_id": 18
+                    },
+                    {
+                        "equip_id": 2,
+                        "equip": "Pukei Mail",
+                        "armor_part_id": 2,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 2,
+                            "protection": 1
+                        },
+                        "ability_id": 19
+                    },
+                    {
+                        "equip_id": 3,
+                        "equip": "Pukei Greaves",
+                        "armor_part_id": 3,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 2,
+                            "protection": 1
+                        },
+                        "ability_id": 1
+                    }
+                ]
+            },
+            {
+                "equip_set_id": 12,
+                "equip_set": "Jyuratodus",
+                "thumbnail": "assets/img/equiments/sets/jyuratodus.png",
+                "rarity": 3,
+                "set_ability_bonus": 0,
+                "equips": [
+                    {
+                        "equip_id": 1,
+                        "equip": "Jyura Helm",
+                        "armor_part_id": 1,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 2,
+                            "protection": 1
+                        },
+                        "ability_id": 20
+                    },
+                    {
+                        "equip_id": 2,
+                        "equip": "Jyura Mail",
+                        "armor_part_id": 2,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 2,
+                            "protection": 1
+                        },
+                        "ability_id": 21
+                    },
+                    {
+                        "equip_id": 3,
+                        "equip": "Jyura Greaves",
+                        "armor_part_id": 3,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 2,
+                            "protection": 2
+                        },
+                        "ability_id": 0
+                    }
+                ]
+            },
+            {
+                "equip_set_id": 13,
+                "equip_set": "Diablos",
+                "thumbnail": "assets/img/equiments/sets/diablos.png",
+                "rarity": 4,
+                "set_ability_bonus": 23,
+                "equips": [
+                    {
+                        "equip_id": 1,
+                        "equip": "Diablos Helm",
+                        "armor_part_id": 1,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 1,
+                            "protection": 1
+                        },
+                        "ability_id": 22
+                    },
+                    {
+                        "equip_id": 2,
+                        "equip": "Diablos Mail",
+                        "armor_part_id": 2,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 1,
+                            "protection": 1
+                        },
+                        "ability_id": 2
+                    },
+                    {
+                        "equip_id": 3,
+                        "equip": "Diablos Greaves",
+                        "armor_part_id": 3,
+                        "physical_armor": 2,
+                        "elemental_armor": {
+                            "elemental_id": 1,
+                            "protection": 1
+                        },
+                        "ability_id": 0
+                    }
+                ]
+            },
+            {
+                "equip_set_id": 14,
+                "equip_set": "Black Diablos",
+                "thumbnail": "assets/img/equiments/sets/Black_Diablos.png",
+                "rarity": 4,
+                "set_ability_bonus": 24,
+                "equips": [
+                    {
+                        "equip_id": 1,
+                        "equip": "Diablos Nero Helm",
+                        "armor_part_id": 1,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 1,
+                            "protection": 1
+                        },
+                        "ability_id": 0
+                    },
+                    {
+                        "equip_id": 2,
+                        "equip": "Diablos Nero Mail",
+                        "armor_part_id": 2,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 1,
+                            "protection": 1
+                        },
+                        "ability_id": 25
+                    },
+                    {
+                        "equip_id": 3,
+                        "equip": "Diablos Nero Greaves",
+                        "armor_part_id": 3,
+                        "physical_armor": 2,
+                        "elemental_armor": {
+                            "elemental_id": 1,
+                            "protection": 1
+                        },
+                        "ability_id": 26
+                    }
+                ]
+            } 
+]

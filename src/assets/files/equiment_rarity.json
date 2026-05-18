@@ -1,0 +1,234 @@
+[
+    {
+        "type_id": 1,
+        "type": "Armor",
+        "rarity_list": [
+            {
+                "equipment_rarity": 1,
+                "list": [
+                    {
+                        "id": 1,
+                        "name": "Helm",
+                        "thumbnail": "assets/img/equiments/armors/HelmR1.png"
+                    },
+                    {
+                        "id": 2,
+                        "name": "Mail",
+                        "thumbnail": "assets/img/equiments/armors/MailR1.png"
+                    },
+                    {
+                        "id": 3,
+                        "name": "Greaves",
+                        "thumbnail": "assets/img/equiments/armors/GreavesR1.png"
+                    }
+                ]
+            },
+            {
+                "equipment_rarity": 2,
+                "list": [
+                    {
+                        "id": 1,
+                        "name": "Helm",
+                        "thumbnail": "assets/img/equiments/armors/HelmR2.png"
+                    },
+                    {
+                        "id": 2,
+                        "name": "Mail",
+                        "thumbnail": "assets/img/equiments/armors/MailR2.png"
+                    },
+                    {
+                        "id": 3,
+                        "name": "Greaves",
+                        "thumbnail": "assets/img/equiments/armors/GreavesR2.png"
+                    }
+                ]
+            },
+            {
+                "equipment_rarity": 3,
+                "list": [
+                    {
+                        "id": 1,
+                        "name": "Helm",
+                        "thumbnail": "assets/img/equiments/armors/HelmR3.png"
+                    },
+                    {
+                        "id": 2,
+                        "name": "Mail",
+                        "thumbnail": "assets/img/equiments/armors/MailR3.png"
+                    },
+                    {
+                        "id": 3,
+                        "name": "Greaves",
+                        "thumbnail": "assets/img/equiments/armors/GreavesR3.png"
+                    }
+                ]
+            },
+            {
+                "equipment_rarity": 4,
+                "list": [
+                    {
+                        "id": 1,
+                        "name": "Helm",
+                        "thumbnail": "assets/img/equiments/armors/HelmR4.png"
+                    },
+                    {
+                        "id": 2,
+                        "name": "Mail",
+                        "thumbnail": "assets/img/equiments/armors/MailR4.png"
+                    },
+                    {
+                        "id": 3,
+                        "name": "Greaves",
+                        "thumbnail": "assets/img/equiments/armors/GreavesR4.png"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "type_id": 2,
+        "type": "Weapon",
+        "rarity_list": [
+            {
+                "equipment_rarity": 1,
+                "list": [
+                    {
+                        "id": 1,
+                        "name": "Greatsword",
+                        "thumbnail": "assets/img/equiments/weapons/greatswordR1.png"
+                    },
+                    {
+                        "id": 2,
+                        "name": "Bow",
+                        "thumbnail": "assets/img/equiments/weapons/bowR1.png"
+                    },
+                    {
+                        "id": 3,
+                        "name": "Dual Blades",
+                        "thumbnail": "assets/img/equiments/weapons/dual-bladeR1.png"
+                    },
+                    {
+                        "id": 4,
+                        "name": "Sword & Shield",
+                        "thumbnail": "assets/img/equiments/weapons/sword-shieldR1.png"
+                    },
+                    {
+                        "id": 5,
+                        "name": "Hammer",
+                        "thumbnail": "assets/img/equiments/weapons/hammerR1.png"
+                    },
+                    {
+                        "id": 6,
+                        "name": "Charge Blade",
+                        "thumbnail": "assets/img/equiments/weapons/charge_bladeR1.png"
+                    }
+                ]
+            },
+            {
+                "equipment_rarity": 2,
+                "list": [
+                    {
+                        "id": 1,
+                        "name": "Greatsword",
+                        "thumbnail": "assets/img/equiments/weapons/greatswordR2.png"
+                    },
+                    {
+                        "id": 2,
+                        "name": "Bow",
+                        "thumbnail": "assets/img/equiments/weapons/bowR2.png"
+                    },
+                    {
+                        "id": 3,
+                        "name": "Dual Blades",
+                        "thumbnail": "assets/img/equiments/weapons/dual-bladeR2.png"
+                    },
+                    {
+                        "id": 4,
+                        "name": "Sword & Shield",
+                        "thumbnail": "assets/img/equiments/weapons/sword-shieldR2.png"
+                    },
+                    {
+                        "id": 5,
+                        "name": "Hammer",
+                        "thumbnail": "assets/img/equiments/weapons/hammerR2.png"
+                    },
+                    {
+                        "id": 6,
+                        "name": "Charge Blade",
+                        "thumbnail": "assets/img/equiments/weapons/charge_bladeR2.png"
+                    }
+                ]
+            },
+            {
+                "equipment_rarity": 3,
+                "list": [
+                    {
+                        "id": 1,
+                        "name": "Greatsword",
+                        "thumbnail": "assets/img/equiments/weapons/greatswordR3.png"
+                    },
+                    {
+                        "id": 2,
+                        "name": "Bow",
+                        "thumbnail": "assets/img/equiments/weapons/bowR3.png"
+                    },
+                    {
+                        "id": 3,
+                        "name": "Dual Blades",
+                        "thumbnail": "assets/img/equiments/weapons/dual-bladeR3.png"
+                    },
+                    {
+                        "id": 4,
+                        "name": "Sword & Shield",
+                        "thumbnail": "assets/img/equiments/weapons/sword-shieldR3.png"
+                    },
+                    {
+                        "id": 5,
+                        "name": "Hammer",
+                        "thumbnail": "assets/img/equiments/weapons/hammerR3.png"
+                    },
+                    {
+                        "id": 6,
+                        "name": "Charge Blade",
+                        "thumbnail": "assets/img/equiments/weapons/charge_bladeR3.png"
+                    }
+                ]
+            },
+            {
+                "equipment_rarity": 4,
+                "list": [
+                    {
+                        "id": 1,
+                        "name": "Greatsword",
+                        "thumbnail": "assets/img/equiments/weapons/greatswordR4.png"
+                    },
+                    {
+                        "id": 2,
+                        "name": "Bow",
+                        "thumbnail": "assets/img/equiments/weapons/bowR4.png"
+                    },
+                    {
+                        "id": 3,
+                        "name": "Dual Blades",
+                        "thumbnail": "assets/img/equiments/weapons/dual-bladeR4.png"
+                    },
+                    {
+                        "id": 4,
+                        "name": "Sword & Shield",
+                        "thumbnail": "assets/img/equiments/weapons/sword-shieldR4.png"
+                    },
+                    {
+                        "id": 5,
+                        "name": "Hammer",
+                        "thumbnail": "assets/img/equiments/weapons/hammerR4.png"
+                    },
+                    {
+                        "id": 6,
+                        "name": "Charge Blade",
+                        "thumbnail": "assets/img/equiments/weapons/charge_bladeR4.png"
+                    }
+                ]
+            }
+        ]
+    }
+]

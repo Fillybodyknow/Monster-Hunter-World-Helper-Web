@@ -1,0 +1,3730 @@
+[
+    {
+        "monster_id": 1,
+        "monster_name": "Great Jagras",
+        "thumbnail": "assets/img/Great_Jagras_Icon.webp",
+        "special_attack_card": [
+            "Forward Roll",
+            "Jagras Spit",
+            "Retreat Swing"
+        ],
+        "dialog_hunting_phase": [30],
+        "quest": [
+            {
+                "quest_id": 1,
+                "quest_type": "Assigned Quest",
+                "difficulty_level": 1,
+                "time_limit": 35,
+                "scoutfly_level": [2, 5],
+                "starting_point": [1]
+            },
+            {
+                "quest_id": 2,
+                "quest_type": "Investigation Quest",
+                "difficulty_level": 2,
+                "time_limit": 30,
+                "scoutfly_level": [3, 6],
+                "starting_point": [2,3,4,5]
+            },
+            {
+                "quest_id": 3,
+                "quest_type": "Tempered Investigation Quest",
+                "difficulty_level": 3,
+                "time_limit": 30,
+                "scoutfly_level": [4, 7],
+                "starting_point": [2,3,4,5]
+            }
+        ],
+        "quest_dialogs": [
+            {
+                "dialog_id": 1,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 1 ขวด",
+                "subtitle": "ชายฝั่งใกล้แคมป์ตะวันตกเฉียงใต้โอบอุ้มแสงอาทิตย์ที่ลอยอยู่เบื้องบน แสงสว่างสะท้อนจากแอ่งน้ำตื้นๆ ที่ Kestodon และ Aptonoth ดื่มกิน ข้างหน้าคุณมองเห็นทางเข้าสู่ป่าโบราณ ซึ่งเกิดจากกิ่งไม้หนาโค้งเรียงกันเป็นประตูคล้ายกับปากอ้ากว้าง... เสียงจากโลกที่อยู่ข้างหลังค่อยๆ เลือนหายไปจนเหลือแต่ความเงียบงัน ขณะที่คุณก้าวเข้ามาใต้เรือนใบสีเขียวสด รู้สึกถึงความสงบอันแสนสั้นที่ถูกทำลายไปอย่างรวดเร็ว เมื่อ Scoutflies ตื่นตัวและพากันมารวมตัวรอบรอยเท้ายักษ์ที่ฝังอยู่ในดิน.",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "title": "ตาม Scoutflies ไป!",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "PathToDialog": 21
+                    }
+                ]
+            },
+            {
+                "dialog_id": 2,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 2 ขวด",
+                "subtitle": "Great Jagras ได้หลุดออกมา สัปดาห์ที่ผ่านมาได้มีหลักฐานมากมาย ศพนับสิบที่ถูกฉีกออกอย่างบ้าคลั่งและถูกทิ้งไว้เพียงครึ่งซากที่ถูกกินไป นี่จะเป็นการล่าที่ทดสอบแม้กระทั่งนักติดตามที่มีประสบการณ์ คุณได้ยินเรื่องราวของ Jagras ที่สามารถกินนักล่าในคำเดียว นั่นจะต้องไม่ใช่คุณแน่.",
+                "consequences": "นักล่าทุกคนได้รับ 1 Great Jagras Claw.",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เริ่มต้นเส้นทางทันที?",
+                        "consequences": "ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "PathToDialog": 27
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "อยู่ต่อและขุดหาข้อมูลจากซากศพ?",
+                        "consequences": "ทิ้ง Time card 1 ใบ นักล่าทุกคนได้รับ 1 Monster Bone Medium.",
+                        "PathToDialog": 25
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "",
+                        "title": "วิ่งไปยังที่ที่ Monster ถูกพบครั้งสุดท้าย!",
+                        "consequences": "ทิ้ง Time card 5 ใบ",
+                        "PathToDialog": 30
+                    }
+                ]
+            },
+            {
+                "dialog_id": 3,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 1 ขวด",
+                "subtitle": "ผู้ดูแลที่ยืนอยู่ข้างรอยเท้าหันมามองคุณพร้อมประเมินสถานการณ์ 'คุณควรระวังให้ดีถ้าจะไล่ล่ามัน' เธอกล่าว พร้อมกับเกาใต้คางไปด้วย 'มันดุร้ายแม้ตามปกติแล้วมันไม่เป็นยังงี้ แต่ถ้าคุณยืนยันที่จะติดตามมัน, ก็ไปตามเส้นทางนั้น...' เธอชี้ไปยังทางดินที่นำเข้าไปในป่า 'มันยังหิวอยู่ โชคดีนะ!' เมื่อเตือนเสร็จแล้ว เธอก็หายตัวไปในป่า.",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ทำตามคำแนะนำของเธอ และค่อยๆ เดินหน้าไป",
+                        "consequences": "ได้รับและเปิดเผยโทเค็นรอยเท้า 1 อัน แล้วเลือกว่าจะเก็บหรือทิ้ง",
+                        "PathToDialog": 26
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ด้วยรอยเท้ามากมาย ไม่มีเวลาที่จะเสีย!",
+                        "consequences": "ได้รับโทเค็นรอยเท้า 2 อัน",
+                        "PathToDialog": 16
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "",
+                        "title": "วิ่งไปยังที่ที่ Monster ถูกพบครั้งสุดท้าย!",
+                        "consequences": "ทิ้ง Time card 5 ใบ",
+                        "PathToDialog": 30
+                    }
+                ]
+            },
+            {
+                "dialog_id": 4,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 2 ขวด",
+                "subtitle": "ชายหาดกางออกอยู่เบื้องหน้าคุณ เป็นพื้นที่กว้างขวางของทรายที่ยังไม่ได้แตะต้อง ทะเลซัดเข้ามาบนชายฝั่ง ทิ้งฟองน้ำที่ระยิบระยับเป็นเครื่องหมายของแต่ละคลื่น ป่าขึ้นสูงอยู่ข้างหลังคุณ เป็นความทรงจำที่หนักแน่น แต่คุณอาจจะต้องถอยกลับเข้าไปในอ้อมแขนของมันที่เต็มไปด้วยเฟิร์น และทิ้งฉากอันสวยงามนี้ไป  คุณจะทำอย่างไร...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เดินไปตามชายหาด",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "PathToDialog": 22
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "กลับเข้าไปในป่า ไปยังแคมป์ที่คุณมองเห็นระหว่างต้นไม้",
+                        "consequences": "ทิ้ง Time card 1 ใบ",
+                        "PathToDialog": 9
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "",
+                        "title": "วิ่งไปยังที่ที่ Monster ถูกพบครั้งสุดท้าย!",
+                        "consequences": "ทิ้ง Time card 5 ใบ",
+                        "PathToDialog": 30
+                    }
+                ]
+            },
+            {
+                "dialog_id": 5,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 1 ขวด",
+                "subtitle": "เสียงฟ้าร้องของน้ำเกือบทำให้จิตใจของคุณหลุดลอยไปขณะที่คุณสำรวจพื้นที่ใกล้เคียง Great Jagras กำลังออกล่า และคุณกำลังตามรอยมัน ลำน้ำที่อยู่ด้านล่างไหลซัดเข้าสู่ป่า และใบไม้หนาทึบของต้นไม้บดบังเส้นทางของสัตว์ที่คุณกำลังตามหา.",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ตามรอยเท้าที่คุณสามารถพบได้",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 2 อัน",
+                        "PathToDialog": 13
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "สืบสวนพื้นที่",
+                        "consequences": "ทิ้ง Time card 2 ใบ นักล่าทุกคนได้รับ 1 Piercing Claw และ 1 Monster Bone Large",
+                        "PathToDialog": 24
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "",
+                        "title": "เดินลงตามลำน้ำไปยังที่ที่ Great Jagrasถูกพบครั้งสุดท้าย",
+                        "consequences": "ทิ้ง Time card 1 ใบ",
+                        "PathToDialog": 14
+                    },
+                    {
+                        "action_id": 4,
+                        "required_dialog": "",
+                        "title": "วิ่งไปยังที่ที่ Monster ถูกพบครั้งสุดท้าย!",
+                        "consequences": "ทิ้ง Time card 5 ใบ",
+                        "PathToDialog": 30
+                    }
+                ]
+            },
+            {
+                "dialog_id": 6,
+                "title": "",
+                "subtitle": "ทันทีที่คุณกำลังจะหมดกำลังใจ คุณพบกับกองอุจจาระของ Great Jagrasที่ทิ้งไว้ในเส้นทางของเหยื่อ มันอาจเป็นภาพที่น่าสะอิดสะเอียน แต่กลับเติมเต็มใจคุณด้วยความหวังเมื่อคุณมุ่งหน้าไปยังพื้นที่โล่งข้างหน้า.",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ไม่มีเวลาหันหลังกลับ",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 3 อัน",
+                        "PathToDialog": 18
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "รอเดี๋ยว ฟัง... มีอะไรอยู่ข้างหลังเราไหม?",
+                        "consequences": "",
+                        "PathToDialog": 30
+                    }
+                ]
+            },
+            {
+                "dialog_id": 7,
+                "title": "",
+                "subtitle": "แสงที่กระพริบสร้างเงาอันน่าสยดสยองบนผนัง เป็นแอ่งความมืดที่เต้นรำและให้ความรู้สึกถึงนักล่าที่ดุร้าย คุณย่ำฝุ่นและบดกระดูกเล็กๆ เผยให้เห็นโลหะและอัญมณีที่ระยิบระยับ...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ค้นหาถ้ำ",
+                        "consequences": "ทิ้ง Time card 1 ใบ นักล่าทุกคนทอยลูกเต๋า \n 1-2 ได้รับ 1 Dragonite ore \n 3-4 ได้รับ 1 Fucium ore \n 5-6 ได้รับ 1 Ancient Bone",
+                        "PathToDialog": 11
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "หันหลังกลับจากสถานที่ชั่วร้ายนี้",
+                        "consequences": "",
+                        "PathToDialog": 30
+                    }
+                ]
+            },
+            {
+                "dialog_id": 8,
+                "title": "",
+                "subtitle": "คุณเคยผ่านทางนี้มาก่อนหรือเปล่า? ทุกอย่างดูคุ้นเคย แต่แล้ว...ป่าก็ดูคุ้นเคยอยู่เสมอ คุณเริ่มรู้สึกว่าหลงทางแน่ๆ สักพักคุณก็เห็นถ้ำแห่งหนึ่ง ซึ่งมีบางอย่างในหินข้างนอกที่ระยิบระยับอยู่ท่ามกลางแสงแดด คุณกำลังจะใช้จอบของคุณ เมื่อคุณเห็นรอยเท้า บางส่วนถูกฝังอยู่ในฝุ่น.",
+                "consequences": "ทิ้ง Time card 1 ใบ",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ขุดแร่แล้วเข้าไปในถ้ำ",
+                        "consequences": "ทิ้งโทเค็นรอยเท้า 1 อัน นักล่าทุกคนทอยลูกเต๋า \n 1-2 ได้รับ 1 Dragonite ore \n 3-4 ได้รับ 1 Fucium ore \n 5-6 ได้รับ 1 Firecell ore",
+                        "PathToDialog": 7
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ตามรอยเท้าที่คุณเห็น และหวังว่ามันจะยังสดใหม่",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "PathToDialog": 6
+                    }
+                ]
+            },
+            {
+                "dialog_id": 9,
+                "title": "",
+                "subtitle": "กลุ่มพาลิโก้รวมตัวกันที่ขอบแคมป์เมื่อคุณเดินเข้าใกล้ ส่งเสียงเหมียวอย่างสนใจ สัตว์เหล่านั้นรีบกลับไปฝึกซ้อมหลบหลีกและวิ่งไปรอบๆ ที่แคมป์ในขณะที่คุณใช้เวลาสักครู่ในการพักผ่อน การล่าต้องดำเนินต่อไป แต่สำหรับช่วงเวลาสั้นๆ การได้อยู่ท่ามกลางพาลิโก้เป็นการรักษาความเหนื่อยล้าจากอันตรายในงานของคุณ.",
+                "consequences": "ทิ้ง Time card 2 ใบ",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ขอความช่วยเหลือจากพวกเขา",
+                        "consequences": "นักล่าทุกคนที่ไม่มีการ์ดพาลิโก้ให้จั่วการ์ดพาลิโก้ นักล่าสามารถใช้การ์ดนี้ในระหว่าง Hunting phase ครั้งถัดไป และหลังจากนั้นจะต้องทิ้งการ์ดไป",
+                        "PathToDialog": 29
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ขอความแนะนำจากพวกเขา",
+                        "consequences": "ได้รับและเปิดเผยโทเค็นรอยเท้า 4 อัน จากนั้นเลือกว่าจะเก็บหรือทิ้ง",
+                        "PathToDialog": 19
+                    }
+                ]
+            },
+            {
+                "dialog_id": 10,
+                "title": "",
+                "subtitle": "คุณได้แอบเดินผ่านป่าไปอย่างซับซ้อนและระมัดระวัง... จนมาถึงถ้ำเดิมที่คุณเคยมาเยือนหลายครั้งแล้ว ถึงอย่างนั้น บางที อาจยังมีแร่บางอย่างที่รอการค้นพบ.",
+                "consequences": "ทำการทอยเต๋า(ทอยครั้งเดียวเต๋าเดียว)",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ถ้าได้ 1-4 แร่ทั้งหมดถูกขุดไปหมดแล้ว ถึงเวลาที่ต้องรีบไป",
+                        "consequences": "",
+                        "PathToDialog": 18
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ถ้าได้ 5-6 ยังมีแร่เหลืออยู่",
+                        "consequences": "นักล่าทุกคนได้รับ Carbalite ore 1 อัน และ Machalite ore 1 อัน",
+                        "PathToDialog": 7
+                    }
+                ]
+            },
+            {
+                "dialog_id": 11,
+                "title": "",
+                "subtitle": "บางสิ่งขนาดใหญ่มากได้ผ่านทางนี้ไปอย่างชัดเจน รอยตามฝาผนังใหม่ๆ ปกคลุมไปทั่วจากการที่มันบีบตัวผ่านทางเดินแคบๆ นี้ ถ้ำนี้เป็นเขาวงกต คุณสามารถวิ่งไปข้างหน้าโดยไม่คิด หรือหยุดเพื่อหาจุดที่มั่นคงในการประเมินเส้นทาง.",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เดินหน้าต่อไป!",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 2 อัน",
+                        "PathToDialog": 30
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "เดินหน้าด้วยความระมัดระวัง",
+                        "consequences": "ทิ้ง Time card 1 ใบ เปิดเผยโทเค็นรอยเท้าจากกลุ่มสูงสุด 3 อัน",
+                        "PathToDialog": 18
+                    }
+                ]
+            },
+            {
+                "dialog_id": 12,
+                "title": "",
+                "subtitle": "รู้สึกมึนหัวและหายใจแรง คุณพิงกับเปลือกไม้ของต้นไม้ใหญ่ แขนของคุณปวด เสียวชาเริ่มไหลไปถึงไหล่ หากแค่มีวิธีบรรเทาคอแห้งของคุณ...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "บังคับตัวเองให้เดินต่อไป",
+                        "consequences": "นักล่าทุกคนต้องรับความเสียหาย 2 หน่วย",
+                        "PathToDialog": 6
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "นักล่าสามารถเลือกตัวเลือกนี้ได้ก็ต่อเมื่อมี ยารักษา อย่างน้อย 1 ขวด",
+                        "title": "ดื่มยาจากเสบียง",
+                        "consequences": "ทิ้งยารักษา 1 ขวด",
+                        "PathToDialog": 6
+                    }
+                ]
+            },
+            {
+                "dialog_id": 13,
+                "title": "",
+                "subtitle": "ฉันสามารถช่วยอะไรคุณได้บ้าง? ชายตัวเล็กกล่าวเมื่อคุณเดินผ่านเขา คุณน่าจะรู้ตัวว่าเขาคือพ่อค้าตั้งแต่แรก เขายิ้มและชี้ไปที่กระเป๋าที่แบกอยู่หลัง ‘ฉันมีทุกอย่างที่คุณต้องการอยู่ที่นี่!’ คุณแน่ใจว่าเขามี แต่คุณก็รู้ดีว่าจะต้องจ่ายราคา...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "ผู้เล่นสามารถทิ้งทรัพยากรใดก็ได้สามชิ้น และเพิ่มยารักษา 1 ขวดลงในกลุ่ม หรือรับโทเค็นรอยเท้า 1 อัน หากพวกเขาทำเช่นนั้น ทิ้ง Time card 1 ใบ",
+                        "PathToDialog": 10
+                    }
+                ]
+            },
+            {
+                "dialog_id": 14,
+                "title": "",
+                "subtitle": "เหยื่อของคุณใกล้เข้ามาแล้ว... เร่งฝีเท้าหน่อย! เสียงหนึ่งดังขึ้นจากที่ใดที่หนึ่งในป่าหนา คุณไม่สามารถหาตำแหน่งของเสียงได้ แต่ก็ไม่ผิด มันคือเสียงที่ถูกต้อง Great Jagras ใกล้เข้ามา และคุณกำลังตามมันทัน มันจะไม่ใช้เวลานานในการจับมัน... แต่ใครกันที่กำลังพูดกับคุณ?",
+                "consequences": "นักล่าทุกคนได้รับ 1 Great Jagras Claw.",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "สืบสวนเสียงนั้น",
+                        "consequences": "",
+                        "PathToDialog": 13
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "ผู้เล่นสามารถเลือกตัวเลือกนี้ได้ก็ต่อเมื่อมี Great Jagras Hide อย่างน้อย 1 ชิ้นในคลัง",
+                        "title": "มองข้ามมันไปและค้นหาต่อในรังของสัตว์นั้น",
+                        "consequences": "ทิ้ง Time card 2 ใบ ได้รับ Great Jagras Mane 1 เส้นลงในกลุ่ม",
+                        "PathToDialog": 24
+                    }
+                ]
+            },
+            {
+                "dialog_id": 15,
+                "title": "",
+                "subtitle": "แสงเริ่มมืดลงแล้ว ดวงอาทิตย์กำลังตกไปหลังต้นไม้สูงที่ขอบฟ้า หากคุณตั้งใจจะดำเนินการล่าต่อ คุณจะต้องเร่งเดินไปข้างหน้า หรือคุณสามารถตั้งแคมป์เพื่อพักผ่อนในตอนเย็นและเริ่มต้นใหม่ในวันพรุ่งนี้.",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เราไม่สามารถเสียเวลาได้ รีบไล่ตามต่อไป!",
+                        "consequences": "สับการ์ด The Rushed Advance(Time card ที่เป็นนาฬิกาแดง) ลงในกอง Time Card",
+                        "PathToDialog": 30
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ตั้งแคมป์พักผ่อนในคืนนี้",
+                        "consequences": "ทิ้ง Time card 2 ใบ ทุกคนรักษาเต็มที่",
+                        "PathToDialog": 19
+                    }
+                ]
+            },
+            {
+                "dialog_id": 16,
+                "title": "",
+                "subtitle": "เสียงคำรามดังสะท้อนไปทั่วอากาศ ดังก้องในป่าลึก สัตว์ร้ายอยู่ใกล้แล้ว กระเป๋าที่ถูกทิ้งอยู่บนพื้นกลางทาง มีสายสะพายขาดหลุดไป แต่นี่จะเป็นกับดักหรือไม่?",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ตรวจสอบกระเป๋า",
+                        "consequences": "ทำการทอยเต๋า(ทอยครั้งเดียวเต๋าเดียว) \n 1-2 ไม่มีอะไรเกิดขึ้น! \n 3-4 เอากระเป๋าก่อนที่มันจะมาถึง! ได้รับยารักษา 1 ขวด \n 5-6 ฉวยแร่ที่อยู่บนพื้น! ทุกคนได้รับ 1 Carbalite ore และ 1 Machalite ore",
+                        "PathToDialog": 27
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ทิ้งมันไปและสำรวจช่องว่างในต้นไม้",
+                        "consequences": "",
+                        "PathToDialog": 29
+                    }
+                ]
+            },
+            {
+                "dialog_id": 17,
+                "title": "",
+                "subtitle": "อีกหนึ่ง Great Jagras ที่ตายลง มันถูกโจมตีจากด้านบน... สัตว์นักล่ายักษ์จากอากาศฉีกมันเป็นชิ้นๆ คุณมองขึ้นไปบนท้องฟ้าอย่างระมัดระวัง หวังว่าคุณจะไม่ถูกโจมตีโดยไม่ทันตั้งตัวเหมือนที่เกิดกับ Great Jagras แต่ร่างของมันยังสมบูรณ์ คุณต้องการหนังของมัน... และเกล็ดเหล่านั้นด้วย.",
+                "consequences": "นักล่าทุกคนได้รับ 1 Great Jagras Hide.",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "จะเก็บเกล็ดอย่างระมัดระวังหรือไม่?",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ 1 Great Jagras Scale.",
+                        "PathToDialog": 6
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ร่องรอยกำลังจะหายไป!",
+                        "consequences": "",
+                        "PathToDialog": 28
+                    }
+                ]
+            },
+            {
+                "dialog_id": 18,
+                "title": "",
+                "subtitle": "คุณออกมาสู่แสงแดดจ้า แม่น้ำที่ไหลเร็วอยู่ข้าง ๆ ส่งเสียงพล่าน ฝีเท้าสดใหม่ปรากฏบนดินโคลน เป็นทางที่พาคุณไปข้างหน้า",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ตามรอยเท้า",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "PathToDialog": 28
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "หยุดเพื่อพิจารณารอยเท้าอย่างใกล้ชิด",
+                        "consequences": "ทิ้ง Time card 2 ใบ ทิ้งโทเค็นรอยเท้า 1 อัน",
+                        "PathToDialog": 15
+                    }
+                ]
+            },
+            {
+                "dialog_id": 19,
+                "title": "",
+                "subtitle": "รุ่งอรุณใหม่ส่องแสงเหนือป่าโบราณ เผยให้เห็นรอยเท้าสดในหยดน้ำค้างยามเช้า เหยื่อของคุณอยู่ใกล้แค่เอื้อม แต่ในชั่วขณะหนึ่ง คุณสงสัยว่าคุณเป็นผู้ล่าหรือถูกล่า...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "หากกลุ่มมีโทเคนรอยเท้า 4 อันหรือน้อยกว่า ให้รับโทเคนรอยเท้าเพิ่ม 1 อัน",
+                        "PathToDialog": 30
+                    }
+                ]
+            },
+            {
+                "dialog_id": 20,
+                "title": "",
+                "subtitle": "อยู่ชั่วขณะหนึ่ง ขณะที่คุณเดินผ่านป่า คุณเชื่อว่า Great Jagras จับคุณได้แล้ว จนกระทั่งเห็นสัตว์ร้ายขนาดใหญ่ยังคงนิ่งแม้คุณจะเดินเข้าไปใกล้ มันตายแล้ว ดูเหมือนจะตายเพราะความชรา ดวงตามันขุ่นมัวจากต้อกระจก เกล็ดไม่เปล่งประกายสดใสเหมือนเดิม คุณมาก่อนสัตว์นักล่าอื่นๆ ศพยังไม่ถูกแตะต้อง แต่มันคงไม่อยู่ได้นาน",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ขุดค้นร่างกายของมัน",
+                        "consequences": "ทิ้ง Time card 2 ใบ นักล่าทุกคนจะได้รับ 1 Great Jagras Scale หากกลุ่มมีอย่างน้อย 1 Great Jagras Mane ทุกคนจะได้รับ Great Jagras Mane เพิ่มเติม 1 ชิ้น",
+                        "PathToDialog": 15
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "กลับไปที่เส้นทาง และมุ่งหน้าไปยังค่ายที่สามารถมองเห็นได้ระหว่างต้นไม้",
+                        "consequences": "",
+                        "PathToDialog": 9
+                    }
+                ]
+            },
+            {
+                "dialog_id": 21,
+                "title": "",
+                "subtitle": "คุณเดินตามเส้นทางที่ใช้กันบ่อย รอยขีดข่วนและรอยกัดที่ดินและตามต้นไม้เปิดเผยถึงสัตว์ร้ายที่มักจะผ่านทางนี้ กระดูกของสัตว์ร้ายที่ถูกกัดจนสะอาดจากเนื้อถูกทิ้งไว้ข้างทาง.",
+                "consequences": "นักล่าทุกคนได้รับ 1 Monster Bone medium",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "รีบตามรอยเท้าตามเส้นทาง?",
+                        "consequences": "ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "PathToDialog": 23
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "หยุดเพื่อค้นหากระดูกอื่นใกล้ๆ?",
+                        "consequences": "ทิ้ง Time card 1 ใบ ทุกคนได้รับ 1 Quality Bone และ 1 Monster Bone Small.",
+                        "PathToDialog": 23
+                    }
+                ]
+            },
+            {
+                "dialog_id": 22,
+                "title": "",
+                "subtitle": "ซาก Kestodon สองตัวถูกฆ่าทิ้งไว้ใต้แสงแดดที่ร้อนระอุ เนื้อของพวกมันเริ่มเน่าเสียไปแล้ว คุณมีเวลาแค่ไม่กี่ชั่วโมงก่อนที่สิ่งที่สามารถใช้ประโยชน์ได้จากซากจะถูกทำลายโดยสัตว์ป่าที่จะมาหากิน.",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เน้นการสางขยะ",
+                        "consequences": "ทิ้ง Time card 1 ใบ ผู้ล่าทุกคนจะได้รับ 1 Piercing Claw และ 1 Monster Hardbone.",
+                        "PathToDialog": 25
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ลืมศพนั้นไป เน้นการติดตาม",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "PathToDialog": 20
+                    }
+                ]
+            },
+            {
+                "dialog_id": 23,
+                "title": "",
+                "subtitle": "ต้นไม้ข้างหน้าเป็นต้นไม้เก่ามาก และมีกิ่งก้านที่หนาแน่น การฟันผ่านคงจะต้องใช้แรงมากทีเดียว แต่ก็ยังมีเส้นทางที่เต็มไปด้วยแร่ที่นำไปสู่ปากถ้ำขนาดใหญ่ที่อยู่ห่างออกไป อาจจะลองค้นหาที่นั่น หวังว่าจะเจอรังของเหยื่อ...",
+                "consequences": "ทิ้ง Time card 1 ใบ นักล่าทุกคนได้รับ 1 Carbalite ore และ 1 Machalite ore.",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ฟันทางผ่านป่าไปข้างหน้า",
+                        "consequences": "ทิ้ง Time card 1 ใบ",
+                        "PathToDialog": 12
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ย้อนกลับไปที่ปากถ้ำ",
+                        "consequences": "ทิ้ง Time card 2 ใบ",
+                        "PathToDialog": 7
+                    }
+                ]
+            },
+            {
+                "dialog_id": 24,
+                "title": "",
+                "subtitle": "หลังจากการสำรวจพื้นที่มาครึ่งชั่วโมง คุณสะดุดเจอสิ่งแปลกประหลาด รูปทรงแปลกๆ ถูกห่อหุ้มด้วยสีเขียว คุณพยายามดึงมอสและเถาวัลย์ที่เกาะอยู่รอบๆ รูปปั้นหินแปลกๆ จนคุณรู้ว่าแท้จริงแล้วมันคือหินศพโบราณที่ถูกลืมไปนานแล้ว",
+                "consequences": "ทิ้ง Time card 1 ใบ",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "สาบานว่าจะล้างแค้นให้วิญญาณเหล่านั้น",
+                        "consequences": "ทิ้ง Time card 1 ใบ สับการ์ด Jagras Slayer(Time card ที่เป็นนาฬิกาแดง) ลงในกอง Time Card",
+                        "PathToDialog": 27
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ก้มศีรษะด้วยความเคารพ... และรีบไปต่อ",
+                        "consequences": "สับการ์ด Unavenged(Time card ที่เป็นนาฬิกาแดง) ลงในกอง Time Card",
+                        "PathToDialog": 26
+                    }
+                ]
+            },
+            {
+                "dialog_id": 25,
+                "title": "",
+                "subtitle": "พุ่มไม้ใกล้ๆ มีศพอีกหนึ่งตัว ศพของ Aptonoth อีกตัวหนึ่ง แต่การตรวจสอบมันอาจคุ้มค่า เพราะการค้นหาข้อมูลเกี่ยวกับ Great Jagras อาจมีคุณค่ามหาศาลในภายหลัง.",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ใช้เวลาในการทำความสะอาดกระดูกเพื่อที่คุณจะได้ของ",
+                        "consequences": "ทิ้ง Time card 2 ใบ นักล่าทุกคนได้รับ 1 Monster Bone Large และ 1 Great Jagras Scale",
+                        "PathToDialog": 27
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "เราคงใช้เวลาอยู่ที่นี่มากพอแล้ว.",
+                        "consequences": "",
+                        "PathToDialog": 8
+                    }
+                ]
+            },
+            {
+                "dialog_id": 26,
+                "title": "",
+                "subtitle": "กลุ่มกระดูกขนาดมหึมา เนื้อที่แห้งกรัง และฟันที่แตกกระจายต้อนรับคุณเมื่อคุณก้าวออกจากวงของต้นไม้ ที่นี่คือสถานที่ที่สัตว์ยักษ์มาสิ้นชีวิต; สุสานของมอนสเตอร์ ใกล้ๆ นั้นมีซากศพใหม่ จากรอยที่คอ ดูเหมือนว่าจะเป็นเหยื่อของ Great Jagras อีกตัวหนึ่ง อย่างไรก็ตาม คุณกำลังตามรอยมันอยู่ และจากที่คุณรู้เกี่ยวกับเส้นทางของสัตว์ร้ายตัวนี้ มีทางลัดที่ควรจะพาคุณไปถึงมันทันที...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ใช้เวลาทำความสะอาดซากศพ.",
+                        "consequences": "ทิ้ง Time card 2 ใบ นักล่าทุกคนได้รับ 1 Monster Keenbone",
+                        "PathToDialog": 29
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ตามทางลัด.",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 2 อัน",
+                        "PathToDialog": 28
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "ผู้เล่นสามารถเลือกตัวเลือกนี้ได้หากพวกเขามีอย่างน้อย 1 Great Jagras Hide ในคลังเก็บของ",
+                        "title": "อะไร นั่นมันเป็นกองขนที่ไม่เป็นระเบียบหรอ?",
+                        "consequences": "",
+                        "PathToDialog": 17
+                    }
+                ]
+            },
+            {
+                "dialog_id": 27,
+                "title": "",
+                "subtitle": "เจ้า Jagras ตัวเล็กกระโดดออกมาจากพุ่มไม้ ล้อมรอบและขย้ำคุณด้วยความหิวโหยอย่างหมดหวัง คุณถูกพวกมันล้อมจนเกือบจะถูกลากลงไป แต่การฝึกฝนของคุณทำให้คุณผ่านพ้นไปได้ ขับไล่พวกมันออกไปและให้คุณมีเวลาหายใจ แต่พวกมันกำลังจะโจมตีอีกครั้ง...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ต่อสู้กับฝูงพวกมัน",
+                        "consequences": "ทิ้ง Time card 2 ใบ นักล่าทุกคนได้รับความเสียหาย 1 แต้ม แล้วได้รับ 1 Sharp Claw",
+                        "PathToDialog": 12
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "หนีผ่านป่ารก",
+                        "consequences": "ทิ้ง Time card 1 ใบ",
+                        "PathToDialog": 29
+                    }
+                ]
+            },
+            {
+                "dialog_id": 28,
+                "title": "",
+                "subtitle": "เสียงกรีดร้องดังขึ้นในอากาศ ข้างหน้า กระเป๋าผ้าที่เต็มไปด้วยเลือดถูกทิ้งไว้บนพื้น—ดูเหมือนว่าจะมีบางสิ่งตามทันนักวิจัยภาคสนามคนหนึ่งเข้าให้แล้ว คุณคงไม่สามารถทิ้งพวกเขาไว้ตามลำพังได้ใช่ไหม?",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ไม่, เราทำไม่ได้. ทิ้งการล่าหมด เพื่อช่วยชีวิตพวกเขา!",
+                        "consequences": "สับการ์ด Researcher's Favour(Time card ที่เป็นนาฬิกาแดง) ลงในกอง Time Card",
+                        "PathToDialog": 15
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ใช่, เราทำได้. ค้นหากระเป๋าผ้า แล้วมุ่งไปยังที่ปลอดภัย.",
+                        "consequences": "นักล่าทุกคนได้รับ 1 Coral Crystal, แล้วเพิ่มยารักษา 1 ขวดลงกลุ่ม",
+                        "PathToDialog": 19
+                    }
+                ]
+            },
+            {
+                "dialog_id": 29,
+                "title": "",
+                "subtitle": "ซากศพที่คุณเจอนั้นเก่ามากจนไม่น่าเชื่อ. เก่ากว่ามนุษย์, คุณมั่นใจ. สัตว์ที่ถูกลืมไปนาน แต่ยังคงมีความยิ่งใหญ่แม้ในความตาย. คุณเริ่มหายใจไม่ออกเมื่อคุณนึกถึงการต่อสู้ที่สัตว์ตัวนี้ต้องเผชิญ.",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เคารพและเก็บกระดูกก่อนที่จะจากไป.",
+                        "consequences": "ทิ้ง Time card 1 ใบ นักล่าทุกคนได้รับ 1 Ancient Bone.",
+                        "PathToDialog": 6
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ทิ้งฉากที่เงียบสงบนี้ไว้โดยไม่ถูกรบกวน.",
+                        "consequences": "ทิ้ง Time card 1 ใบ สับการ์ด Ancient Guardian(Time card ที่เป็นนาฬิกาแดง) ลงในกอง Time Card",
+                        "PathToDialog": 18
+                    }
+                ]
+            },
+            {
+                "dialog_id": 30,
+                "title": "",
+                "subtitle": "เสียงคำรามที่ดังสนั่นเป็นสัญญาณเตือนเพียงอย่างเดียว ก่อนที่คุณจะพบว่าตัวเองอยู่ตรงหน้ากับเหยื่อ! ตอนนี้คือเวลาที่คุณต้องสู้กับศัตรูที่น่าสะพรึงกลัวนี้.",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "",
+                        "consequences": "เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "PathToDialog": 0
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "monster_id": 2,
+        "monster_name": "Tobi-Kadachi",
+        "thumbnail": "assets/img/Tobi_Kadachi_Icon.webp",
+        "special_attack_card": [
+            "Front Flip Slam",
+            "Leap Quick Bite",
+            "Gliding Tail Cleave"
+        ],
+        "dialog_hunting_phase": [35,34],
+        "quest": [
+            {
+                "quest_id": 1,
+                "quest_type": "Assigned Quest",
+                "difficulty_level": 1,
+                "time_limit": 35,
+                "scoutfly_level": [2, 5],
+                "starting_point": [1]
+            },
+            {
+                "quest_id": 2,
+                "quest_type": "Investigation Quest",
+                "difficulty_level": 2,
+                "time_limit": 35,
+                "scoutfly_level": [3, 6],
+                "starting_point": [2,3,4,5]
+            },
+            {
+                "quest_id": 3,
+                "quest_type": "Tempered Investigation Quest",
+                "difficulty_level": 3,
+                "time_limit": 35,
+                "scoutfly_level": [4, 7],
+                "starting_point": [2,3,4,5]
+            }
+        ],
+        "quest_dialogs": [
+            {
+                "dialog_id": 1,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 1 ขวด",
+                "subtitle": "เสมือนมาพร้อมกับกลิ่นโอโซนที่ไม่อาจผิดพลาดได้ Tobi-Kadachi พุ่งทะยานผ่านต้นไม้ โฉบลงมาใกล้พื้นดินเพื่อค้นหาเหยื่อ ความหิวโหยของมันเป็นตำนาน เช่นเดียวกับไฟฟ้าสถิตที่พุ่งผ่านขนของมัน คุณพร้อมที่จะล่ามัน หรืออย่างน้อยก็เท่าที่จะพร้อมได้ สัตว์ร้ายกำลังรออยู่ และคุณก็อยู่บนรอยทางของมันแล้ว.",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "title": "มุ่งหน้าเข้าสู่ป่าทึบ",
+                        "consequences": "ทิ้ง Time card 1 ใบ นักล่าทุกคนได้รับ Dragonvein Crystal 1 ชิ้น และ Dragonite ore 1 ชิ้น",
+                        "PathToDialog": 12
+                    },
+                    {
+                        "action_id": 2,
+                        "title": "รีบไปยังจุดที่พบเหยื่อครั้งสุดท้าย!",
+                        "consequences": "ทิ้ง Time card 6 ใบ",
+                        "PathToDialog": 34
+                    }
+                ]
+            },
+            {
+                "dialog_id": 2,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 2 ขวด",
+                "subtitle": "บนกิ่งไม้ มีบางอย่างกำลังซุ่มอยู่ คุณมั่นใจว่านั่นคือ Tobi-Kadachi คุณปีนขึ้นไปบนต้นไม้และสิ่งที่คาดไว้ก็เป็นจริง รัง...และมันยังอุ่นอยู่ สิ่งมีชีวิตที่สร้างรังนี้ยังอยู่ใกล้ๆ",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "นักล่าจะเลือกตัวเลือกนี้ได้ก็ต่อเมื่อทำภารกิจ Tobi-Kadachi Assigned Quest สำเร็จแล้ว",
+                        "title": "รออยู่ที่รังให้ Tobi-Kadachi กลับมา!",
+                        "consequences": "ทิ้ง Time card 6 ใบ",
+                        "PathToDialog": 34
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "สัตว์ร้ายได้พุ่งผ่านมาทางนี้...",
+                        "consequences": "นักล่าทุกคนได้รับ Tobi-Kadachi Pelt 1 ชิ้น",
+                        "PathToDialog": 18
+                    }
+                ]
+            },
+            {
+                "dialog_id": 3,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 1 ขวด",
+                "subtitle": "Tobi-Kadachi เป็นสัตว์ที่กล้าหาญและอันตราย มันบุกโจมตีค่าย ทำให้นักล่าหลายคนเสียชีวิตหรือได้รับบาดเจ็บ คุณจำเป็นต้องหยุดมันให้ได้ ก่อนที่คณะสำรวจจะถูกขับไล่ออกจากป่าอย่างสิ้นเชิง ความพินาศที่เหลือจากการรุกรานของมันคือสิ่งที่คุณกำลังยืนอยู่... ซากปรักหักพัง",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "มุ่งหน้าไปยังจุดที่เห็นสัตว์ร้ายครั้งสุดท้าย.",
+                        "consequences": "",
+                        "PathToDialog": 10
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ทำให้ดีที่สุด. ค้นหาทรัพยากร!",
+                        "consequences": "ทิ้ง Time card 1 ใบ นักล่าทุกคนได้รับ 1 Monster Bone Small และ 1 Monster Hardbone.",
+                        "PathToDialog": 25
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "",
+                        "title": "เร่งไปยังจุดที่เห็นเหยือของคุณครั้งสุดท้าย!",
+                        "consequences": "ทิ้ง Time card 6 ใบ",
+                        "PathToDialog": 34
+                    }
+                ]
+            },
+            {
+                "dialog_id": 4,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 2 ขวด",
+                "subtitle": "เสียงของน้ำตกพาคุณมาที่นี่ เสียงกระหึ่มของน้ำที่ตกลงมากระทบอย่างต่อเนื่องนั้นฟังดูสงบ แต่คุณเคยได้ยินว่าผู้ที่ว่ายน้ำเก่งอาจพบของมีค่าในสระน้ำเบื้องล่างได้ ขณะที่คุณกำลังจ้องมองน้ำที่หมุนวน คุณได้กลิ่นโอโซนแผ่ซ่านมาพร้อมสายลม และเสียงปีกที่กระพืออย่างรุนแรง Tobi-Kadachi อยู่ใกล้ๆ และคุณต้องโค่นมันลงให้ได้",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ดำน้ำลงไปที่น้ำตก",
+                        "consequences": "ทิ้ง Time card 2 ใบ นักล่าทุกคนทอยลูกเต๋าตามตารางด้านล่างนี้:\n1-2 รับ 1 Ancient Bone\n3-4 รับ 1 Warm Pelt\n5-6 รับ 1 Coral Crystal",
+                        "PathToDialog": 11
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ทิ้งมันไว้แล้วถอยกลับไปที่ถ้ำ",
+                        "consequences": "ทิ้ง Time card 1 ใบ",
+                        "PathToDialog": 36
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "",
+                        "title": "รีบไปยังจุดที่พบเป้าหมายครั้งสุดท้าย!",
+                        "consequences": "ทิ้ง Time card 6 ใบ",
+                        "PathToDialog": 34
+                    }
+                ]
+            },
+            {
+                "dialog_id": 5,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 1 ขวด",
+                "subtitle": "คุณได้พักฟื้นและฟื้นตัวจากความเหน็ดเหนื่อยจากการล่าครั้งก่อน และตอนนี้ก็มีการล่าครั้งใหม่รออยู่ คุณได้ยินข่าวว่า Tobi-Kadachi กำลังถูกล่า แต่ตอนนี้มันกลายเป็นเป้าหมายของคุณแล้ว มันทิ้งร่องรอยเอาไว้มากมายว่ามันเคยมาที่นี่... ก้อนหินที่ถูกเตะกระจายไปทั่วพื้นดิน ถึงเวลาที่จะออกติดตามแล้ว",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ติดตาม Scoutflies",
+                        "consequences": "ทิ้ง Time card 2 ใบ ได้รับโทเค็นรอยเท้า 4 อัน",
+                        "PathToDialog": 8
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "ผู้เล่นสามารถเลือกตัวเลือกนี้ได้หากพวกเขามี Tobi-Kadachi Membrane อย่างน้อย 1 ชิ้นในอินเวนทอรี่",
+                        "title": "นี่ไม่ใช่ก้อนหิน—ฉันจำมันได้จากที่เคยเห็นก่อนหน้านี้ เก็บชิ้นส่วนที่ทิ้งไว้ แล้วตามรอยที่หลงเหลือไปยังสุสาน",
+                        "consequences": "ได้รับโทเค็นรอยเท้า 3 อัน และนักล่าได้รับ Tobi-Kadachi Membrane 1 ชิ้น",
+                        "PathToDialog": 25
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "",
+                        "title": "เร่งรีบไปยังจุดที่เคยเห็นเหยื่อของคุณ!",
+                        "consequences": "ทิ้ง Time card 6 ใบ",
+                        "PathToDialog": 34
+                    }
+                ]
+            },
+            {
+                "dialog_id": 6,
+                "title": "",
+                "subtitle": "กองหินที่แตกละเอียดกระจัดกระจายอยู่ทั่วพื้น อาจจะตกจากนักล่าที่บินได้ หรือถูกทิ้งโดยคนงานเหมืองที่ไม่รู้ว่าเจออะไร...แร่ที่เปล่งประกายอยู่ท่ามกลางเศษหิน มันคือสิ่งที่คุณสามารถเก็บไปได้!",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เก็บหินขึ้นมา?",
+                        "consequences": "ทิ้ง Time card 1 ใบ นักล่าทุกคนทอยลูกเต๋าตามตารางด้านล่างนี้:\n1-2 รับ 1 Dragonite ore\n3-4 รับ 1 Dragonvein Crystal\n5-6 รับ 1 Coral Crystal",
+                        "PathToDialog": 26
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "หยุดเพื่อตรวจสอบสิ่งแวดล้อมรอบตัว",
+                        "consequences": "ทิ้งโทเคนรอยเท้า 1 อัน หรือ ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "PathToDialog": 35
+                    }
+                ]
+            },
+            {
+                "dialog_id": 7,
+                "title": "",
+                "subtitle": "มันคือรัง. ใหญ่กว่าที่คุณเคยเห็นมาก่อน แต่คุณยากที่จะบอกได้ว่าเจ้าสัตว์ยังมาเยือนที่นี่หรือไม่ มันเป็นสถานที่แปลกๆ กระแสไฟฟ้ายังคงลอยอยู่ในอากาศ ทำให้ผมของคุณยกขึ้นจากผิวหนัง ถึงเวลาที่จะเดินหน้าต่อไปหรือยัง?",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "อยู่บนเส้นทางต่อไป",
+                        "consequences": "ทิ้ง Time card 2 ใบ ได้รับโทเค็นรอยเท้า 2 อัน",
+                        "PathToDialog": 35
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "ผู้เล่นสามารถเลือกตัวเลือกนี้ได้หากพวกเขามี Electrode อย่างน้อย 1 ชิ้นในอินเวนทอรี่",
+                        "title": "อิเล็กโทรดที่ซ่อนอยู่ตอบสนองกับอิเล็กโทรดในครอบครองของคุณ ส่งเสียงฟู่ฟ่าจนทำให้หาตำแหน่งของมันได้ง่าย",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 1 อัน แต่ละนักล่าได้รับ Tobi-Kadachi Electrode 1 ชิ้น.",
+                        "PathToDialog": 17
+                    }
+                ]
+            },
+            {
+                "dialog_id": 8,
+                "title": "",
+                "subtitle": "มันเป็นการเดินทางที่ยาวนาน แต่คุณกลับมาถึงรังแล้ว สัตว์ประหลาดนั้นจะต้องกลับมาอีกแน่ๆ สิ่งที่คุณต้องทำคือรอ หรือคุณสามารถตรวจสอบซากที่มันทิ้งไว้ที่นี่ การเรียนรู้วิธีที่มันล่าและฆ่าคือข้อมูลสำคัญ โดยเฉพาะหากคุณจะต้องจัดการกับมัน",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เก็บซากและออกเดินทางต่อไป!",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 2 อัน แต่ละนักล่าได้รับ 1 Monster Bone small หรือ 1 Monster Bone large.",
+                        "PathToDialog": 6
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "ผู้เล่นสามารถเลือกตัวเลือกนี้ได้หากพวกเขามี Tobi-Kadachi Electrode อย่างน้อย 1 ชิ้นในอินเวนทอรี่",
+                        "title": "มันมาที่นี่เพื่อที่จะตาย ดูจากชิ้นส่วนที่กระจายอยู่ทั่วพื้น.",
+                        "consequences": "ทิ้ง Time card 3 ใบ ทิ้งโทเค็นรอยเท้าทั้งหมด แต่ละนักล่าได้รับ 1 Tobi-Kadachi Claw, 1 Tobi-Kadachi Scale, 1 Electro Sac, และ 1 Thunder Sac.",
+                        "PathToDialog": 35
+                    }
+                ]
+            },
+            {
+                "dialog_id": 9,
+                "title": "",
+                "subtitle": "กิ่งไม้ข้างบนคุณหักเป็นชิ้น ๆ ซึ่งเป็นรอยที่คุณจำได้ว่าเป็นหลักฐานการผ่านมาของ Tobi-Kadachi มันผ่านมาแล้ว และไม่นานมานี้ คุณกำลังกระชั้นเข้ามาแล้ว.",
+                "consequences": "นักล่าทุกคนได้รับ 1 Monster Keenbone",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ปีนขึ้นไปยังตำแหน่งใหม่",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 2 อัน",
+                        "PathToDialog": 2
+                    }
+                ]
+            },
+            {
+                "dialog_id": 10,
+                "title": "",
+                "subtitle": "กลับสู่เส้นทางอีกครั้ง ขณะเดินทางผ่านป่า คุณพบร่างไร้ชีวิตอีกหนึ่งศพ อีกหนึ่งเหยื่อจากความโกรธของ Tobi-Kadachi คุณสามารถเห็นลวดลายที่เป็นเอกลักษณ์ของรอยไหม้รอบคอของผู้ตาย—เศษซากจากไฟฟ้าสถิตที่เกิดจากขนของสัตว์ประหลาดตัวนั้น",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ค้นหาของจากกระเป๋าของศพ",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับยารักษา 1 ขวด",
+                        "PathToDialog": 29
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ให้ความสำคัญกับการติดตามร่องรอย.",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 2 อัน",
+                        "PathToDialog": 22
+                    }
+                ]
+            },
+            {
+                "dialog_id": 11,
+                "title": "",
+                "subtitle": "เสียงคำรามที่น่ากลัวหยุดยั้งความก้าวหน้าของคุณ มันเป็นเสียงที่คุ้นเคย ห้าวและเต็มไปด้วยความโกรธเกรี้ยวของนักล่า แต่ดูเหมือนมันจะไม่ใช่เสียงของ Tobi-Kadachi...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "หลบซ่อนในกองกระดูก!",
+                        "consequences": "ทิ้ง Time card 1 ใบ นักล่าทุกคนได้รับ Quality Bone 1 ชิ้น หรือ Monster Bone large 1 ชิ้น.",
+                        "PathToDialog": 35
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ตามล่าตามเสียงนั้น!",
+                        "consequences": "",
+                        "PathToDialog": 17
+                    }
+                ]
+            },
+            {
+                "dialog_id": 12,
+                "title": "",
+                "subtitle": "ต้นไม้ล้อมรอบคุณจนแทบจะไม่มีที่ว่าง ป่าในที่นี่หนาทึบจนแสงแทบจะไม่สามารถทะลุผ่านกิ่งใบได้ หลังจากการเดินทางผ่านพงหญ้าอย่างยากลำบาก คุณก็เดินมาถึงถ้ำเล็กๆ แร่สะท้อนแสงในความมืด เป็นทรัพยากรล้ำค่า หากคุณสามารถครอบครองมันได้",
+                "consequences": "นักล่าทุกคนได้รับ Carbalite ore 1 ชิ้น และ Fucium ore 1 ชิ้น",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "คุณมีพอแล้ว ติดตามรอยเท้า",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "PathToDialog": 23
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "หยุดเพื่อขุดแร่เพิ่มเติม",
+                        "consequences": "ทิ้ง Time card 1 ใบ นักล่าทุกคนได้รับ Machalite ore 1 ชิ้น และ Firecell Stone 1 ชิ้น.",
+                        "PathToDialog": 16
+                    }
+                ]
+            },
+            {
+                "dialog_id": 13,
+                "title": "",
+                "subtitle": "เสียงเหล่านั้นคืออะไร? มันมาจากที่ไหนสักแห่งข้างหน้าคุณ, แหล่งที่มาถูกบังด้วยต้นไม้ อาจจะเป็น Tobi-Kadachi ก็ได้, แต่คุณไม่มั่นใจ มันกำลังเข้ามาใกล้เรื่อยๆ ใกล้ขึ้นเรื่อยๆ",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "รอและดูว่าจะเกิดอะไรขึ้น",
+                        "consequences": "ทิ้ง Time card 2 ใบ แต่ละนักล่าได้รับ Tobi-Kadachi Scale 1 ชิ้น",
+                        "PathToDialog": 34
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ถอยกลับ เราไม่พร้อม",
+                        "consequences": "",
+                        "PathToDialog": 32
+                    }
+                ]
+            },
+            {
+                "dialog_id": 14,
+                "title": "",
+                "subtitle": "คุณกังวลว่าคุณใช้เวลาไปมากเกินไปในการตรวจสอบพุ่มไม้และกอหญ้า เพราะ Tobi-Kadachi ได้ทิ้งระยะห่างออกไปมากขึ้นแล้ว คุณต้องเดินหน้าต่อไปหากไม่อยากสูญเสียเหยื่อล่าทั้งหมด",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เราไม่สามารถเสียเวลาได้ รีบไล่ตามต่อไป!",
+                        "consequences": "สับการ์ด Time Waster ลงในกอง Time card",
+                        "PathToDialog": 34
+                    }
+                ]
+            },
+            {
+                "dialog_id": 15,
+                "title": "",
+                "subtitle": "คุณตามรอยคู่แข่งไป แต่ไม่นานก็เห็นได้ชัดว่าคุณจะไม่สามารถจับพวกเขาได้ คุณพบกระเป๋าที่ทิ้งไว้ในกองกระดูก และน้ำยาสมุนไพรที่ดื่มไปแค่ครึ่งขวดข้างๆ คุณเก็บทั้งสองสิ่งแล้วเติมน้ำลงไปในขวด",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "ทิ้ง Time card 2 ใบ ได้รับยารักษา 1 ขวด แต่ละนักล่าได้รับ 1 Monster Bone small.",
+                        "PathToDialog": 11
+                    }
+                ]
+            },
+            {
+                "dialog_id": 16,
+                "title": "",
+                "subtitle": "การขุดเจาะมันยากลำบาก แต่คุณมั่นใจว่ามันจะคุ้มค่า แร่ธาตุที่คุณกำลังค้นหานั้นหายาก และหลายสิ่งที่คุณพบเป็นฟอสซิล แต่... เดี๋ยวนะ อะไรนั่น? คุณเงยหน้าขึ้นทันที เสียงแปลกๆ ดังก้องมาจากส่วนลึกของถ้ำ...",
+                "consequences": "ทิ้ง Time card 1 ใบ",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ดำเนินการขุดต่อ",
+                        "consequences": "ทิ้ง Time card 1 ใบ แต่ละนักล่าได้รับ 1 Boulder Bone และ 1 Monster Hardbone.",
+                        "PathToDialog": 14
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ตรวจสอบเสียงนั้น.",
+                        "consequences": "",
+                        "PathToDialog": 21
+                    }
+                ]
+            },
+            {
+                "dialog_id": 17,
+                "title": "",
+                "subtitle": "ข้างหน้าคุณเห็นเงาของสัตว์ประหลาดสองตัวกำลังต่อสู้กัน!",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "รอดูว่าอะไรจะเกิดขึ้น?",
+                        "consequences": "",
+                        "PathToDialog": 34
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "วิ่งเข้าไปในการต่อสู้นั้น!",
+                        "consequences": "สับการ์ด Turf War ลงในกอง Time card. แต่ละนักล่าได้รับ 1 Boulder Bone.",
+                        "PathToDialog": 35
+                    }
+                ]
+            },
+            {
+                "dialog_id": 18,
+                "title": "",
+                "subtitle": "โดยปกติแล้ว ร่องรอยของ Tobi-Kadachi จะไม่ชัดเจน—กิ่งไม้ที่หักเล็กน้อย, หญ้าที่ถูกบดทับ—แต่ในกรณีนี้ สัตว์ร้ายได้ทำลายทุกอย่างอย่างรุนแรง เส้นขอบป่าถูกทำลายจนย่อยยับ นี่เป็นกับดักหรือสัตว์ร้ายกำลังพยายามล่อคุณไปจากบางสิ่ง?",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "กลับไปตรวจสอบรังอีกครั้ง",
+                        "consequences": "ทิ้ง Time card 1 ใบ",
+                        "PathToDialog": 30
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "เดินหน้าต่อไป มันคงไม่หนีไปไกล!",
+                        "consequences": "ทิ้ง Time card 1 ใบ ทิ้งโทเค็นรอยเท้า 2 อัน",
+                        "PathToDialog": 20
+                    }
+                ]
+            },
+            {
+                "dialog_id": 19,
+                "title": "",
+                "subtitle": "เมื่อถึงเวลาที่คุณพร้อมจะดำเนินการล่าต่อ คุณก็พบว่าเส้นทางนั้นดูเย็นยะเยือก มันยากที่จะหามันเจออีก แต่คุณต้องพยายาม",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ลองหามันอีกครั้ง",
+                        "consequences": "ทิ้งโทเคนรอยเท้าทั้งหมด. แต่ละนักล่าได้รับ Wingdrake Hide 1 ชิ้น.",
+                        "PathToDialog": 14
+                    }
+                ]
+            },
+            {
+                "dialog_id": 20,
+                "title": "",
+                "subtitle": "เส้นทางใหม่; Tobi-Kadachi พยายามหลอกให้คุณหลุดจากรอยตาม แต่คุณเห็นผ่านแผนของมันได้ทันเวลา มันเป็นสัตว์ที่หลบหลีกได้ดีจริงๆ และคุณต้องใช้สติให้ดี คุณเผชิญหน้ากับเส้นทางแยกอีกครั้ง...คุณจะไปทางไหนดี?",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เดินไปตามเส้นทางมืดที่เต็มไปด้วยแมลง",
+                        "consequences": "ทิ้ง Time card 1 ใบ",
+                        "PathToDialog": 32
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ยังคงเดินตามเส้นทางเดิม",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "PathToDialog": 28
+                    }
+                ]
+            },
+            {
+                "dialog_id": 21,
+                "title": "",
+                "subtitle": "ร่างของนักวิจัยอยู่ข้างหน้า คุณหวังว่าการตายของเขาคงจะรวดเร็วและไร้ความเจ็บปวด... หากคุณได้พบกับฝีมือของมอนสเตอร์ มันอาจจะไม่จบลงแบบนั้น ดูเหมือนว่านักวิจัยผู้โชคร้ายจะไม่ใช่เหยื่อของ Tobi-Kadachi นี่อาจเป็นทางเลือกที่ผิด",
+                "consequences": "นักล่าทุกคนได้รับ 1 Monster Bone medium",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ค้นตัวร่างของเขา",
+                        "consequences": "ทิ้ง Time card 2 ใบ ทำการทอยเต๋า\n1-2 ได้รับยารักษา 1 ขวด\n3-4 ได้รับ 1 Ancient Bone\n5-6 ได้รับ 1 Wingdrake Hide",
+                        "PathToDialog": 23
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ย้อนกลับไป",
+                        "consequences": "ทิ้ง Time card 1 ใบ",
+                        "PathToDialog": 16
+                    }
+                ]
+            },
+            {
+                "dialog_id": 22,
+                "title": "",
+                "subtitle": "เสียงฟ้าคำรามของน้ำที่ตกลงสู่แอ่งน้ำด้านล่าง ดังก้องไม่หยุด ฟองขาวพุ่งกระจายเหมือนเมฆที่ลอยอยู่เหนือศีรษะ คุณจ้องมองลงไป แน่ใจว่าคุณเห็นอะไรบางอย่างวิบวับขึ้นมาจากน้ำที่อยู่ด้านล่างของน้ำตก",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "กระโดดลงไป",
+                        "consequences": "ทิ้ง Time card 2 ใบ แต่ละนักล่าทอยลูกเต๋าตามตารางนี้\n1-2 รับ 1 Dragonvein Crystal\n3-4 รับ 1 Electro Sac\n5-6 รับ 1 Firecell Stone",
+                        "PathToDialog": 35
+                    }
+                ]
+            },
+            {
+                "dialog_id": 23,
+                "title": "",
+                "subtitle": "รอยเท้าของ Tobi-Kadachi ชัดเจนจากต้นไม้และหญ้าที่ถูกทำลาย คุณต้องรีบตามรอยมันเพื่อไม่ให้มันหนีหายไปไกลเกินไป แต่มีซากกระดูกกระจายอยู่ตามเส้นทาง มันอาจจะเป็นเหยื่อของ Tobi-Kadachi? น่าจะคุ้มค่าที่จะตรวจสอบ... คุณไม่เคยรู้หรอกว่าจะเจออะไร",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "รีบตามรอยเท้าต่อไป?",
+                        "consequences": "ทิ้ง Time card 1 ใบ ทิ้งโทเค็นรอยเท้า 1 อัน",
+                        "PathToDialog": 9
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "หยุดค้นหากระดูกที่อยู่ใกล้ๆ?",
+                        "consequences": "ทิ้ง Time card 1 ใบ แต่ละนักล่าได้รับ 1 Quality Bone และ 1 Monster Bone small.",
+                        "PathToDialog": 14
+                    }
+                ]
+            },
+            {
+                "dialog_id": 24,
+                "title": "",
+                "subtitle": "คุณเกือบจะตกใจเมื่อเห็นนักล่าคู่แข่งก้าวออกมาจากเงามืด เกือบจะ แต่คุณสังเกตเห็นพวกเขาก่อนที่จะเข้าไปในห้องนั้นแล้ว จึงสามารถพยักหน้ากลับไปอย่างมั่นใจ คุณแลกเปลี่ยนเรื่องราวจากเส้นทางการล่า และพวกเขาเสนอบทเรียนที่มีประโยชน์เกี่ยวกับตำแหน่งของ Tobi-Kadachi หากคุณเชื่อพวกเขาน่ะนะ...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เชื่อใจคู่แข่งของคุณ",
+                        "consequences": "",
+                        "PathToDialog": 27
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "อย่าเชื่อใจคู่แข่งของคุณ",
+                        "consequences": "",
+                        "PathToDialog": 7
+                    }
+                ]
+            },
+            {
+                "dialog_id": 25,
+                "title": "",
+                "subtitle": "ศพเต็มไปหมด ทุกหนทุกแห่ง Tobi-Kadachi ลงมือโจมตีเหยื่อที่นี่เหมือนกับคลื่นยักษ์ พัดทิ้งการต่อต้านทั้งหมดไปอย่างหยามเหยียด เหลือเพียงเลือดและกระดูกที่เตือนให้คุณรู้ว่ามันเกิดอะไรขึ้น",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ใช้เวลาเก็บซากสัตว์.",
+                        "consequences": "ทิ้งการ์ดเวลา 1 ใบ. แต่ละนักล่าทอยลูกเต๋าตามตารางนี้:\n1-2 ได้รับ 1 Quality Bone\n3-4 ได้รับ 1 Ancient Bone\n5-6 ได้รับ 1 Boulder Bone",
+                        "PathToDialog": 33
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ที่นี่มีกลิ่นของความตาย รีบไปต่อ.",
+                        "consequences": "",
+                        "PathToDialog": 10
+                    }
+                ]
+            },
+            {
+                "dialog_id": 26,
+                "title": "",
+                "subtitle": "มีเสียงแปลกๆ มาจากพุ่มไม้ใกล้ๆ คุณหยิบอาวุธขึ้นและเตรียมตัวพร้อมสู้... จนกระทั่ง Palico ตัวป่ากระเซอะกระเซิงออกมาและยกจมูกขึ้นอย่างสับสน มันยื่นมือออกมา รอยยิ้มคล้ายแมวกระจายบนใบหน้ามัน",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "แลกเปลี่ยนกับมัน.",
+                        "consequences": "ทิ้ง Time card 1 ใบ คุณสามารถเลือกทิ้งยารักษา 1 ขวด เพื่อสับการ์ด Palico Assistant เข้าในกอง Time card",
+                        "PathToDialog": 35
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "เมินมันไป. การล่าต้องดำเนินต่อ!",
+                        "consequences": "ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "PathToDialog": 32
+                    }
+                ]
+            },
+            {
+                "dialog_id": 27,
+                "title": "",
+                "subtitle": "คุณรู้ดีว่าพวกเขามีท่าทางกระตือรือร้นเกินไปที่จะให้คำแนะนำ คุณน่าจะเชื่อสัญชาตญาณของตัวเองตั้งแต่แรก พื้นห้องหินยุบลงทันทีที่คุณก้าวเข้าไปในนั้น ดึงคุณตกลงไปในหลุม คุณสามารถปีนขึ้นมาได้ไม่ยาก แต่ในตอนนั้น นักล่าผู้นั้นจะหนีไปไกลแล้ว และพวกเขาก็มีเหยื่อของคุณในสายตา... พร้อมกับเกือบทุก potion ในกระเป๋าของพวกเขา!",
+                "consequences": "ทิ้งยารักษาทั้งหมด เหลือไว้ 1 ขวด",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ล่าตามนักล่าคู่อริ!",
+                        "consequences": "",
+                        "PathToDialog": 15
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "สิ่งที่เกิดขึ้นแล้วก็เกิดขึ้นไป.",
+                        "consequences": "",
+                        "PathToDialog": 11
+                    }
+                ]
+            },
+            {
+                "dialog_id": 28,
+                "title": "",
+                "subtitle": "รอยเท้ากำลังเริ่มเย็นลงแล้ว อาจจะเป็นเพราะคุณควรจะเลือกเส้นทางอื่นตั้งแต่แรก",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "ถ้านักล่ามีโทเคนรอยเท้าน้อยกว่า 3 อัน ให้สับ Aimless Wandering ลงในกอง Time card",
+                        "PathToDialog": 26
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ไม่ ไม่ใช่แบบนั้น นี่คือเส้นทางที่ถูกต้อง. เดินหน้าต่อไป.",
+                        "consequences": "ทิ้ง Time card 1 ใบ เปิดเผยโทเค็นรอยเท้า 1 อัน",
+                        "PathToDialog": 19
+                    }
+                ]
+            },
+            {
+                "dialog_id": 29,
+                "title": "",
+                "subtitle": "ผืนดินเปิดออกใต้เท้าคุณ เผยให้เห็นช่องว่างมืดที่เป็นถ้ำ คุณอาจเลือกที่จะมองข้ามมันไปและมุ่งมั่นในการล่าตัว Tobi-Kadachi แต่อัญมณีที่เป็นแร่ในความมืดดึงดูดให้คุณสงสัยว่าบางทีอาจจะคุ้มค่ากว่าที่จะลองเป็นนักขุดแร่สักพักแทนการเป็นนักล่า",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เข้าไปในถ้ำและเริ่มขุดแร่",
+                        "consequences": "ทิ้ง Time card 1 ใบ นักล่าทุกคนได้รับ 1 Carbalite ore. นักล่าสามารถทิ้ง time card เพิ่มอีก 2 ใบ เพื่อรับ 1 Machalite ore, 1 Fucium ore, และ 1 Dragonite ore.",
+                        "PathToDialog": 13
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ค้นหารอยเท้าต่อไป",
+                        "consequences": "ทิ้ง Time card 3 ใบ ได้รับและเปิดเผยโทเค็นรอยเท้า 2 อัน",
+                        "PathToDialog": 22
+                    }
+                ]
+            },
+            {
+                "dialog_id": 30,
+                "title": "",
+                "subtitle": "เวลาผ่านไปนาน ความเงียบสงัดยาวนานเกินไป และไม่มีสัญญาณหรือเสียงใดๆ ของสิ่งมีชีวิต ความไม่อดทนเริ่มครอบงำคุณ - อาจจะไม่มีสัตว์ตัวนั้นกลับมาอีกแล้ว ในขณะที่คุณเริ่มมองไปรอบๆ ด้วยความผิดหวัง สายตาของคุณสะดุดไปที่บางอย่าง และคุณก็รู้ว่าที่นี่อาจจะไม่ใช่การเสียเวลาอย่างที่คิด!",
+                "consequences": "นักล่าทุกคนได้รับ 1 Electro Sac และ 1 Warm Pelt.",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ตอนนี้มันเป็นทางตัน. กลับไปที่รอยทางเก่า.",
+                        "consequences": "ทิ้ง Time card 2 ใบ",
+                        "PathToDialog": 20
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "สำรวจบริเวณที่คุณพบขนสัตว์ที่ถูกทิ้งไว้เพื่อค้นหาผลลัพธ์เพิ่มเติม.",
+                        "consequences": "ทิ้ง Time card 3 ใบ",
+                        "PathToDialog": 28
+                    }
+                ]
+            },
+            {
+                "dialog_id": 31,
+                "title": "",
+                "subtitle": "หลังจากการเดินทางที่เหนื่อยล้าผ่านป่า คุณมาถึงก้อนหินที่ยื่นออกมาจากพื้นดินและท้องฟ้า ซึ่งขวางทางคุณไว้ มีรอยแยกแคบๆ ที่สามารถเข้าไปได้ ที่นั่นมีถ้ำขนาดเล็กที่มีเส้นทางย่อยๆ หลายทาง ซึ่งก็ดีเพราะตัวถ้ำเองกลับว่างเปล่า",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ออกจากถ้ำทางทิศตะวันตก.",
+                        "consequences": "ทิ้ง Time card 1 ใบ",
+                        "PathToDialog": 24
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ออกจากถ้ำทางทิศตะวันออก.",
+                        "consequences": "",
+                        "PathToDialog": 7
+                    }
+                ]
+            },
+            {
+                "dialog_id": 32,
+                "title": "",
+                "subtitle": "ที่นี่มืดมาก ต้นไม้ยิ่งขยายไปข้างหน้า คุณรู้สึกไม่สบายใจเพราะไม่สามารถเห็นทางข้างหน้าได้ชัดเจน จากนั้นคุณถูกขว้างตกจากเท้าเมื่อ Jagras ปรากฏตัวออกมาจากทางซ้าย การเจ็บปวดที่คุณรู้สึกบอกคุณว่าคุณได้รับบาดเจ็บจากกรงเล็บของมันที่ฝังอยู่ในไหล่ของคุณ",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "หยิบกรงเล็บมาและป้องกันตัวเอง.",
+                        "consequences": "นักล่าทุกคนได้รับความเสียหาย 3 หน่วย สับการ์ด Jagras Slayer ลงในกอง Time Card",
+                        "PathToDialog": 34
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "ผู้เล่นสามารถเลือกตัวเลือกนี้ได้หากการ์ด Unavenged ยังไม่ได้ถูกสับลงในกอง Time Card",
+                        "title": "หนี!",
+                        "consequences": "สับการ์ด Unavenged ลงในกอง Time Card",
+                        "PathToDialog": 6
+                    }
+                ]
+            },
+            {
+                "dialog_id": 33,
+                "title": "",
+                "subtitle": "ที่นี่มีศพมากมายจนแม้ว่าคุณจะทำงานหนักมาหลายชั่วโมง แต่คุณก็ยังเริ่มต้นได้แค่เพียงเล็กน้อย แขนของคุณปวดจากความพยายาม และดวงอาทิตย์เริ่มตกต่ำลงไปเรื่อยๆ",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ขุดต่อไป",
+                        "consequences": "หากมี time card ที่ทิ้งไปน้อยกว่า 2 ใบ ให้ทิ้ง time card เพิ่ม 1 ใบ",
+                        "PathToDialog": 25
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "พอแล้ว ไปตามหารอยเท้าต่อ",
+                        "consequences": "หากมี time card ที่ทิ้งไป 2 ใบพอดี",
+                        "PathToDialog": 19
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "",
+                        "title": "ไปต่อเถอะ!",
+                        "consequences": "หากมี time card ที่ทิ้งไป 3 ใบหรือมากกว่า",
+                        "PathToDialog": 10
+                    }
+                ]
+            },
+            {
+                "dialog_id": 34,
+                "title": "",
+                "subtitle": "อากาศเต็มไปด้วยเสียงคลื่นแม่เหล็กไฟฟ้าที่มีการแผ่กระจาย เมื่อคุณพบว่าตัวเองยืนอยู่ต่อหน้าศัตรูที่คุณไล่ตามมา! ตอนนี้คือเวลาที่คุณจะต้องต่อสู้กับศัตรูที่น่ากลัวนี้",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "",
+                        "consequences": "ได้รับโทเค็นรอยเท้า 2 อัน เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "PathToDialog": 0
+                    }
+                ]
+            },
+            {
+                "dialog_id": 35,
+                "title": "",
+                "subtitle": "บางอย่างผิดปกติ เสียงจากป่าหายไปและถูกแทนที่ด้วยเสียงมึนตึง เสียงที่เหมือนกับแมลงหรือ...ไฟฟ้าสถิต คุณก้มตัวหลบทันเวลาเมื่อ Tobi-Kadachi โฉบมาด้วยความเร็วและเกือบจะทำให้หัวของคุณหลุดออกจากร่าง คุณได้เดินเข้าไปในกับดักของมันแล้ว ถึงเวลาต่อสู้!",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "",
+                        "consequences": "ทิ้ง Time card 1 ใบ เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "PathToDialog": 0
+                    }
+                ]
+            },
+            {
+                "dialog_id": 36,
+                "title": "",
+                "subtitle": "ผืนดินเปิดออกใต้เท้าคุณ เผยให้เห็นช่องว่างมืดที่เป็นถ้ำ คุณอาจเลือกที่จะมองข้ามมันไปและมุ่งมั่นในการล่าตัว Tobi-Kadachi แต่อัญมณีที่เป็นแร่ในความมืดดึงดูดให้คุณสงสัยว่าบางทีอาจจะคุ้มค่ากว่าที่จะลองเป็นนักขุดแร่สักพักแทนการเป็นนักล่า",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เข้าไปในถ้ำและเริ่มขุดแร่",
+                        "consequences": "ทิ้ง Time card 1 ใบ นักล่าทุกคนได้รับ 1 Carbalite ore. นักล่าสามารถทิ้ง time card เพิ่มอีก 2 ใบ เพื่อรับ 1 Machalite ore, 1 Fucium ore, และ 1 Dragonite ore.",
+                        "PathToDialog": 31
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ค้นหารอยเท้าต่อไป",
+                        "consequences": "ทิ้ง Time card 3 ใบ ได้รับและเปิดเผยโทเค็นรอยเท้า 2 อัน",
+                        "PathToDialog": 22
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "monster_id": 3,
+        "monster_name": "Anjanath",
+        "thumbnail": "assets/img/Anjanath_Icon.webp",
+        "special_attack_card": [
+            "Crushing Charge",
+            "Deadly Bludgeon",
+            "Right Flame Spray"
+        ],
+        "dialog_hunting_phase": [29,30,31],
+        "quest": [
+            {
+                "quest_id": 1,
+                "quest_type": "Assigned Quest",
+                "difficulty_level": 1,
+                "time_limit": 35,
+                "scoutfly_level": [2, 5],
+                "starting_point": [1]
+            },
+            {
+                "quest_id": 2,
+                "quest_type": "Investigation Quest",
+                "difficulty_level": 2,
+                "time_limit": 35,
+                "scoutfly_level": [3, 6],
+                "starting_point": [2,3,4,5]
+            },
+            {
+                "quest_id": 3,
+                "quest_type": "Tempered Investigation Quest",
+                "difficulty_level": 3,
+                "time_limit": 35,
+                "scoutfly_level": [4, 7],
+                "starting_point": [2,3,4,5]
+            }
+        ],
+        "quest_dialogs": [
+            {
+                "dialog_id": 1,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 1 ขวด",
+                "subtitle": "Anjanath อยู่ใกล้กับค่ายขนาดนี้เลยเหรอ? มันอาจจะช่วยคุณประหยัดเวลาเดินทางได้ แต่มันก็เป็นภัยใกล้ตัวที่ต้องรีบจัดการ สัตว์ร้ายตัวนี้จะไม่ปล่อยให้ใครรอดไปง่าย ๆ แล้วคุณจะรออะไร? การล่าเริ่มขึ้นแล้ว!\nป่าใกล้ค่ายนี้ชุ่มไปด้วยความอุดมสมบูรณ์ของ Aptonoth ซึ่งเป็นอาหารโปรดของ Anjanath คุณสังเกตเห็นซากกระดูก Aptonoth ถูกแทะจนเหลือแต่โครง นี่อาจเป็นจุดเริ่มต้นของเส้นทางล่าก็เป็นได้... แต่มีเสียงลือว่า Anjanath เคยปรากฏตัวในหุบเขาใกล้เคียง ความรู้สึกนักล่าของคุณบอกอะไร?",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "title": "ตามรอยกระดูกและเดินทางไปยังบ่อ",
+                        "consequences": "ทิ้ง 1 time card นักล่าทุกคนได้รับ 1 Monster Hardbone",
+                        "PathToDialog": 12
+                    },
+                    {
+                        "action_id": 2,
+                        "title": "เร่งรุดไปยังจุดที่มันถูกพบล่าสุด!",
+                        "consequences": "ทิ้ง 7 time cards",
+                        "PathToDialog": 29
+                    }
+                ]
+            },
+            {
+                "dialog_id": 2,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 2 ขวด",
+                "subtitle": "การเดินทางมุ่งสู่ค่ายเป็นอะไรที่หนักหน่วงมาก คุณต้องฝ่าป่าแน่นขนัดไปท่ามกลางฝูงแมลงที่พยายามจะกัดกินคุณทุกขณะ หลังจากใช้เวลาหลายชั่วโมงในการฟันพืชพรรณออกจากทางเดิน ในที่สุดคุณก็ออกมาสู่ริมฝั่งทะเลสาบ และที่นั่น คุณพบศพอืดบวมขนาดใหญ่ แมลงวันบินหึ่งรอบ ๆ เนื้อที่เริ่มเน่าเสีย จากร่องรอยการกัดแทะบนตัวมัน บ่งบอกว่าผู้ล่าคือ Anjanath คุณถ่มน้ำลายออกมาหลังจากที่รสชาติของเน่าเปื่อยเริ่มคืบคลานเข้ามาในลำคอ แล้วก็เตรียมตัวให้พร้อมสำหรับการล่า",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เมินศพนี้ไปเสีย คุณได้เรียนรู้ทุกอย่างที่ทำได้แล้ว มองหาหลักฐานอื่น ๆ ต่อไป",
+                        "consequences": "",
+                        "PathToDialog": 17
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ขุดลงในซากศพ",
+                        "consequences": "นักล่าทุกคนได้รับ 1 Monster Keenbone และ 1 Quality Bone",
+                        "PathToDialog": 21
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "เลือกตัวเลือกนี้ได้หากผู้เล่นมีอย่างน้อย 1 Anjanath Fang ในคลัง",
+                        "title": "ประเมินขนาดซากศพและตามรอยต่อ!",
+                        "consequences": "ทิ้ง 1 time card นักล่าทุกคนได้รับ 1 Anjanath Fang และรับ 1 track token",
+                        "PathToDialog": 22
+                    },
+                    {
+                        "action_id": 4,
+                        "required_dialog": "",
+                        "title": "เร่งรุดไปยังจุดที่เห็นเหยื่อล่าสุด!",
+                        "consequences": "ทิ้ง 7 time cards",
+                        "PathToDialog": 29
+                    }
+                ]
+            },
+            {
+                "dialog_id": 3,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 1 ขวด",
+                "subtitle": "กลิ่นเหม็นของหนองน้ำลอยคลุ้งไปทั่วทุกหนแห่ง ราวกับว่ามันซึมลึกเข้ามาในจมูกของคุณ พื้นดินใต้เท้าของคุณนุ่มยวบยาบ ดูดรองเท้าลงไปใต้ผิวดิน ขณะที่คุณพยายามดันต้นอ้อออกไปเพื่อหาพื้นที่ปลอดภัยให้ก้าวไปต่อ มันเป็นสถานที่ที่แปลกสำหรับการล่า Anjanath แต่ข่าวลือบอกว่ามีตัวหนึ่งถูกพบอยู่แถวนี้ และคุณก็เชื่อในแหล่งข่าวของคุณ ดังนั้นคุณจึงมาอยู่ที่นี่ พยายามไม่ให้จมลึกเกินไปในบึงโคลน ขณะตามล่าร่องรอยของ Anjanath...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "อยู่ต่อและค้นหารอบ ๆ",
+                        "consequences": "ทิ้ง 2 time cards นักล่าทุกคนได้รับ 1 Potion และ 1 Monster Hardbone",
+                        "PathToDialog": 18
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "มองหารอยเท้า",
+                        "consequences": "ได้รับ 3 track tokens ทิ้ง 2 time cards",
+                        "PathToDialog": 22
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "",
+                        "title": "เร่งรุดไปยังจุดที่เห็นเหยื่อล่าสุด!",
+                        "consequences": "ทิ้ง 7 time cards",
+                        "PathToDialog": 34
+                    }
+                ]
+            },
+            {
+                "dialog_id": 4,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 2 ขวด",
+                "subtitle": "คุณอยู่ในถ้ำ ถูกล้อมรอบด้วยหินแกรนิตและควอตซ์ กลิ่นเหม็นของ Anjanath ไม่อาจเลี่ยงได้ ขนไหม้ เนื้อเน่า และฟันที่หักกระจัดกระจายอยู่บนพื้นทราย กลิ่นของการล่าและความตายอยู่ทุกหนแห่ง",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ตามรอยสัตว์ประหลาดออกจากถ้ำ",
+                        "consequences": "สับการ์ด Aimless Wandering เข้าไปยังกอง Time card",
+                        "PathToDialog": 18
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "มุ่งหน้าลึกเข้าไปในถ้ำ",
+                        "consequences": "ทิ้ง 1 time card ได้รับ 2 track tokens",
+                        "PathToDialog": 6
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "ผู้เล่นสามารถเลือกตัวเลือกนี้ได้ก็ต่อเมื่อมี Anjanath Fang อย่างน้อย 1 อันในคลัง",
+                        "title": "นำเขี้ยวมาแล้วเดินหน้าต่อไป!",
+                        "consequences": "ทิ้ง 1 time card นักล่าทุกคนได้รับ 1 Anjanath Tail",
+                        "PathToDialog": 20
+                    },
+                    {
+                        "action_id": 4,
+                        "required_dialog": "",
+                        "title": "เร่งรุดไปยังจุดที่เห็นเหยื่อล่าสุด!",
+                        "consequences": "ทิ้ง 7 time cards",
+                        "PathToDialog": 29
+                    }
+                ]
+            },
+            {
+                "dialog_id": 5,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 1 ขวด",
+                "subtitle": "มีการต่อสู้ที่โหดร้ายเกิดขึ้นที่นี่ เลือดกระจายอยู่ทุกที่พร้อมกับซากฟันที่หักและเนื้อที่ฉีกขาด เส้นทางหนึ่งนำเข้าสู่ป่า มี Anjanath ที่บาดเจ็บวิ่งหนีไป คุณจะต้องเร่งมือหากต้องการจับมัน แต่จงระวัง... Anjanath ที่บาดเจ็บนั้นอันตรายถึงตาย",
+                "consequences": "นักล่าทุกคนได้รับ 1 Anjanath Nosebone",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ทุกสิ่งที่นี่ดูคุ้นเคย",
+                        "consequences": "",
+                        "PathToDialog": 4
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ไปยังทุ่งโล่ง!",
+                        "consequences": "",
+                        "PathToDialog": 22
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "ผู้เล่นสามารถเลือกตัวเลือกนี้ได้ก็ต่อเมื่อมี Anjanath Pelt อย่างน้อย 1 อันในคลัง",
+                        "title": "เก็บหางมาเป็นของตัวเอง",
+                        "consequences": "ทิ้ง 1 time card นักล่าทุกคนได้รับ 1 Anjanath Tail",
+                        "PathToDialog": 8
+                    },
+                    {
+                        "action_id": 4,
+                        "required_dialog": "",
+                        "title": "เร่งรุดไปยังจุดที่เห็นเหยื่อล่าสุด!",
+                        "consequences": "ทิ้ง 7 time cards",
+                        "PathToDialog": 29
+                    }
+                ]
+            },
+            {
+                "dialog_id": 6,
+                "title": "",
+                "subtitle": "เสียงแหลมของ Rathalos ดังก้องไปรอบ ๆ คุณ สาม สี่ ห้าตัว? แล้วก็มีเสียงอื่น ๆ ตามมาจากข้างหลัง! ที่นี่เต็มไปด้วย Rathalos นี่คือรัง... และคุณบังเอิญเข้ามาอยู่ใจกลางพอดี Anjanath อาจจะเคยมาที่นี่ แต่มันไม่อยู่นาน เพราะถ้ามันยังอยู่ มันคงไม่รอดชีวิต...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "หนีก่อนที่ Rathalos จะได้กลิ่นของคุณ รีบหนีจากที่นี่!",
+                        "consequences": "นักล่าทุกคนได้รับ 1 Anjanath Fang",
+                        "PathToDialog": 28
+                    }
+                ]
+            },
+            {
+                "dialog_id": 7,
+                "title": "",
+                "subtitle": "ป่าค่อย ๆ ถอยห่างออกไปเล็กน้อย เปิดโอกาสให้คุณได้หยุดพักและพยายามหาทิศทาง แรงกดดันจากการตามล่าอย่างต่อเนื่องทำให้คุณหลงทาง... แต่ร่องรอยของเหย้ายังคงชัดเจน คุณจะต้องรู้ไหมว่าคุณอยู่ที่ไหนจริง ๆ?",
+                "consequences": "ทิ้ง 1 time card",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ตามรอยต่อไป คุณสามารถหาทิศทางได้ทีหลัง",
+                        "consequences": "รับ 1 track token",
+                        "PathToDialog": 8
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "หยุดเพื่อหาทิศทาง",
+                        "consequences": "ทิ้ง 2 time card เปิดเผยและทิ้ง track token เท่าใดก็ได้",
+                        "PathToDialog": 8
+                    }
+                ]
+            },
+            {
+                "dialog_id": 8,
+                "title": "",
+                "subtitle": "แสงแดดทำให้ตาคุณพร่ามัว แต่มันก็ยากที่จะปิดตาลง หลังจากที่คุณลากตัวเองออกจากถ้ำนั้น ความรู้สึกเหมือนกับว่าคุณอาจจะไม่มีโอกาสได้เห็นแสงอาทิตย์อีกเลย แต่พอแล้วกับความรู้สึกอ่อนไหวแบบนั้น ยังมี Anjanath ที่ต้องตามล่า ถึงเวลาที่ต้องทำหน้าที่ต่อไป",
+                "consequences": "รับ 1 track token.",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "คุณเดินลุยต่อไป",
+                        "consequences": "ทิ้ง 1 time card",
+                        "PathToDialog": 14
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "ผู้เล่นสามารถเลือกตัวเลือกนี้ได้หากอยู่ใน Assigned Quest",
+                        "title": "ที่ไหนสักแห่งใกล้ ๆ คุณได้ยินเสียงคำรามแหบแห้ง...",
+                        "consequences": "",
+                        "PathToDialog": 30
+                    }
+                ]
+            },
+            {
+                "dialog_id": 9,
+                "title": "",
+                "subtitle": "การปีนออกจากหลุมเป็นงานที่หนักหนา หลายครั้งที่มือของคุณลื่น และปะการังที่หยาบขูดผิวหนังและเกราะของคุณ แต่ทีละน้อย คุณก็เข้าใกล้แสงสว่างที่สะท้อนอยู่ด้านบนของถ้ำ ในที่สุด หลังจากชั่วโมงของการดิ้นรนอย่างหนัก คุณดึงตัวเองขึ้นมาบนขอบได้สำเร็จ แล้วกลิ้งลงไปนอนบนพื้นป่าอย่างโล่งอก",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ปีนขึ้นไปยังตำแหน่งใหม่",
+                        "consequences": "นักล่าทุกคนได้รับความเสียหาย 2 หน่วย",
+                        "PathToDialog": 8
+                    }
+                ]
+            },
+            {
+                "dialog_id": 10,
+                "title": "",
+                "subtitle": "ด้วยความมุ่งมั่นที่เต็มเปี่ยม คุณพบว่าตัวเองยืนอยู่ต่อหน้ากำแพงหินที่มีชั้นหินควอตซ์และคริสตัลซ้อนกันอย่างงดงาม หินแข็งและตั้งตรง แต่มีช่องว่างใกล้ๆ ที่นำไปสู่ความมืด มันคืออะไรที่ซ่อนอยู่ในเงามืด?",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "คุณจะกระโดดลงไปในหลุมที่ผนังนั้นไหม?",
+                        "consequences": "",
+                        "PathToDialog": 24
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "อยู่ในแสงสว่างต่อไป.",
+                        "consequences": "ทิ้ง 1 time card.",
+                        "PathToDialog": 26
+                    }
+                ]
+            },
+            {
+                "dialog_id": 11,
+                "title": "",
+                "subtitle": "ผืนดินใต้เท้าของคุณสะเทือนจนทำให้คุณตกลงไปในความมืด! คุณรู้สึกเหมือนกับการถูกพัดพาไปในอากาศ ก่อนจะตกลงสู่พื้นอย่างแรง ลมหายใจหายไปในทันทีเมื่อคุณกระแทกกับพื้น",
+                "consequences": "นักล่าทุกคนได้รับความเสียหาย 2 หน่วย หลักจากนักล่าทุกคนได้รับความเสียหายแล้ว ทำการทอยลูกเต๋า",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "หากลูกเต๋าหมายเลขออกมาเป็น 1-2",
+                        "title": "คุณจะพบว่าตัวเองอยู่ในถ้ำที่มีทางเข้ากว้างซึ่งเปิดไปยังป่าด้านนอก",
+                        "consequences": "",
+                        "PathToDialog": 27
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "หากลูกเต๋าหมายเลขออกมาเป็น 3-4",
+                        "title": "คุณพบว่าตัวเองอยู่ในห้องที่เคยมีการขุดแร่ในอดีต",
+                        "consequences": "ทิ้ง 1 time card.",
+                        "PathToDialog": 16
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "หากลูกเต๋าหมายเลขออกมาเป็น 5-6",
+                        "title": "คุณพบว่าตัวเองหลงอยู่ในความมืด ลองสำรวจเส้นทาง",
+                        "consequences": "ทิ้ง 1 time card.",
+                        "PathToDialog": 10
+                    }
+                ]
+            },
+            {
+                "dialog_id": 12,
+                "title": "",
+                "subtitle": "กลิ่นเนื้อที่เน่าเปื่อยและเลือดโชยเข้ามาก่อนที่คุณจะก้าวไปถึงพื้นที่รอบๆ สระน้ำ คุณรู้สึกได้ทันทีว่า Anjanath เคยอยู่ที่นี่ แต่ตอนนี้มันไม่ได้อยู่ที่นี่แล้ว ร่างของ Jagras ตัวเล็กๆ นอนอยู่ในที่โล่ง ลำคอของมันถูกฉีกออก อวัยวะภายในหายไปเกือบหมด นี่แสดงว่า Anjanath ได้ทานมื้อหนักไปแล้ว และตอนนี้มันคงเคลื่อนไหวช้าลง การล่ากำลังจะเริ่มขึ้น!",
+                "consequences": "รับ 1 track token นักล่าทุกคนได้รับ 1 Monster Keenbone และ 1 Quality Bone",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "มองหารอยเท้าเพิ่มเติม",
+                        "consequences": "",
+                        "PathToDialog": 17
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "มองหาซากของสัตว์เพิ่มเติม",
+                        "consequences": "",
+                        "PathToDialog": 21
+                    }
+                ]
+            },
+            {
+                "dialog_id": 13,
+                "title": "",
+                "subtitle": "ทางเข้าถ้ำลื่นกว่าที่คิด...เปียกชุ่มไปด้วยน้ำฝน เมือก และเลือด เมื่อเห็นดังนั้นคุณจึงตะโกนด้วยความตกใจและพยายามประคองตัวให้มั่นคง แต่ก็ลื่นไถลถอยหลังไปตกจากหน้าผา ลงสู่โคลนที่หนาทึบในบึง",
+                "consequences": "ทิ้ง 1 time card นักล่าทุกคนได้รับความเสียหาย 2 หน่วย",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "มองหาลูกรอยเท้าเพิ่มเติม",
+                        "consequences": "",
+                        "PathToDialog": 17
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ปีนขึ้นไปบนก้อนหินและมองหาซากสัตว์เพิ่มเติม",
+                        "consequences": "",
+                        "PathToDialog": 21
+                    }
+                ]
+            },
+            {
+                "dialog_id": 14,
+                "title": "",
+                "subtitle": "การเลือกที่จะเดินหน้าต่อไป ท่ามกลางฝุ่นและแสงแดดร้อนระอุ ดูเหมือนจะเป็นทางเลือกที่ถูกต้อง ข้างหน้า คุณได้ยินเสียงคำรามที่ไม่ผิดเพี้ยนของสัตว์ร้ายที่คุณตามหา ความกลัวและความตื่นเต้นไหลเวียนไปตามสันหลังของคุณ คุณดึงอาวุธออกมาและเตรียมตัวให้พร้อม การต่อสู้ใกล้เข้ามาแล้ว",
+                "consequences": "ทิ้ง 1 time card.",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "หากจำนวน time card ที่วางข้างๆ กองการ์ด เท่ากับหรือน้อยกว่าจำนวน track tokens ทิ้งการ์ดเหล่านั้น แล้วเลือกตัวเลือกนี้",
+                        "title": "",
+                        "consequences": "",
+                        "PathToDialog": 31
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "หากจำนวน time card ที่วางข้างๆ กองการ์ด มากกว่าจำนวน track tokens ทิ้งการ์ดเหล่านั้น แล้วเลือกตัวเลือกนี้",
+                        "title": "",
+                        "consequences": "",
+                        "PathToDialog": 30
+                    }
+                ]
+            },
+            {
+                "dialog_id": 15,
+                "title": "",
+                "subtitle": "คุณอยู่ที่ไหนกันแน่? คุณรู้สึกไม่แน่ใจ คุณเคยคิดว่าคุณรู้จักพื้นที่ในป่าแห่งนี้ดี แต่ทุกอย่างดูเหมือนจะผิดไปในทิศทางที่ไม่สามารถบอกได้อย่างชัดเจน รากไม้ทำให้คุณสะดุด และต้นไม้ยืนสูงลิบขึ้นมาเหมือนจะล้อมรอบคุณ คุณหลงทางแล้ว",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "หยุดพักผ่อน",
+                        "consequences": "แต่ละนักล่าสามารถฟื้นฟูพลังชีวิต 2 หน่วย ทิ้ง 1 track token และหากมี track token น้อยกว่า 3 อัน ให้สับการ์ด Aimless Wandering ลงในกอง Time card",
+                        "PathToDialog": 23
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ถึงเวลาหาทางออกจากที่นี่แล้ว",
+                        "consequences": "ทิ้ง 1 time card",
+                        "PathToDialog": 9
+                    }
+                ]
+            },
+            {
+                "dialog_id": 16,
+                "title": "",
+                "subtitle": "ยังคงมีแร่บางชนิดเหลืออยู่ที่นี่ คุณคิดว่า แต่มันจะต้องใช้เวลามากในการขุดมันออกมา คุณอยากใช้เวลาไปกับการขุดหินแข็ง หรือจะติดตามเหยื่อของคุณผ่านทางเดินหินนี้?",
+                "consequences": "ทิ้ง Time card 1 ใบ",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "อยากขุด!",
+                        "consequences": "ทิ้ง 2 time cards แต่ละนักล่าสามารถได้รับ 1 Fucium ore และ 1 Dragonite ore",
+                        "PathToDialog": 28
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "สำรวจต่อไปยังทางเดินที่ลึกลงไป",
+                        "consequences": "ทิ้ง 1 time card",
+                        "PathToDialog": 20
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "",
+                        "title": "สำรวจผ่านทางเดินด้านตะวันออก",
+                        "consequences": "ทิ้ง 1 time card",
+                        "PathToDialog": 10
+                    }
+                ]
+            },
+            {
+                "dialog_id": 17,
+                "title": "",
+                "subtitle": "Anjanath เดินทางมาทางนี้ รอยเท้าของมันเบียดกันแน่น แสดงให้เห็นว่ามันเคลื่อนที่ช้าลง หลังจากทานอาหารจนอิ่มหนำ มันไม่ยากเลยที่จะตามรอยมันไป",
+                "consequences": "ทิ้ง 1 time card และทอยลูกเต๋าตามนี้:",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "1-2",
+                        "title": "",
+                        "consequences": "ได้รับ 2 track tokens",
+                        "PathToDialog": 11
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "3-4",
+                        "title": "",
+                        "consequences": "ได้รับหรือเปิดเผย 1 track token",
+                        "PathToDialog": 19
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "5-6",
+                        "title": "",
+                        "consequences": "ได้รับ 2 track tokens",
+                        "PathToDialog": 19
+                    }
+                ]
+            },
+            {
+                "dialog_id": 18,
+                "title": "",
+                "subtitle": "คุณปีนขึ้นไปบนแหล่งหินที่โผล่ขึ้นมา ดีใจที่หลุดพ้นจากโคลนและน้ำสกปรกของหนองน้ำ มันกว้างกว่าที่คุณคิดจากที่มองจากด้านล่าง ข้างหน้าเป็นช่องทางเปิดในหิน—ถ้ำที่ยาวเข้าไปในความมืด กลิ่นของขนที่เปียกและปัสสาวะลอยออกมาจากเงามืด...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เดินลึกเข้าไปในรัง",
+                        "consequences": "ทิ้ง 1 time card แต่ละนักล่าได้รับความเสียหาย 2 หน่วย และได้รับ 1 Anjanath Pelt",
+                        "PathToDialog": 26
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ออกไปทางช่องทางทิศตะวันออก",
+                        "consequences": "",
+                        "PathToDialog": 22
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "ผู้เล่นสามารถเลือกตัวเลือกนี้ได้เฉพาะหากพวกเขามี Anjanath Fang อย่างน้อย 11 อันในคลัง",
+                        "title": "ประเมินสถานการณ์และตามรอย!",
+                        "consequences": "ทิ้ง 1 time card ได้รับ 1 track token แต่ละนักล่าได้รับ 1 Anjanath Fang",
+                        "PathToDialog": 13
+                    }
+                ]
+            },
+            {
+                "dialog_id": 19,
+                "title": "",
+                "subtitle": "คุณก้าวออกมาจากป่าที่หนาแน่นและยืนอยู่ท่ามกลางทิวทัศน์กว้างใหญ่ของทุ่งหญ้า ที่ราบอันกว้างขวางทอดยาวไปสุดสายตา ท้องฟ้ากว้างและแสงแดดที่จ้าแสบตาหลังจากความมืดมิดของป่า คุณยังไม่เห็น Anjanath แต่ที่กว้างใหญ่นี้ไม่สามารถซ่อนมันได้ หากมันมาทางนี้...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ออกเดินทางข้ามทุ่งกว้างไปข้างหน้า",
+                        "consequences": "",
+                        "PathToDialog": 25
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "คุณเริ่มรู้สึกเหนื่อยล้า หาที่หลบพักในถ้ำใกล้ๆ ที่มีขวานทิ้งไว้ข้างนอก",
+                        "consequences": "ทิ้ง 1 time card",
+                        "PathToDialog": 16
+                    }
+                ]
+            },
+            {
+                "dialog_id": 20,
+                "title": "",
+                "subtitle": "การสั่นสะเทือนรุนแรงที่เกิดขึ้นทำให้คุณไม่ทันตั้งตัว ก่อนที่แผ่นดินจะเปิดออกใต้เท้าคุณ ส่งให้คุณตกลงไปในห้องใหม่อย่างไม่คาดคิด เมื่อคุณจุดตะเกียงและส่องไปทั่วห้อง ปะการังสีน้ำเงินอ่อนปรากฏตัวล้อมรอบคุณ มันมีความน่าดึงดูดและบางเบาราวกับการหยอกล้อจากธรรมชาติ คุณสัมผัสไปที่ผนังหินที่เปราะบาง แม้มันจะดูสวยงาม แต่มันก็ยังทำให้คุณรู้สึกติดอยู่ในที่แห่งนี้ คุณต้องหาทางออก...",
+                "consequences": "แต่ละนักล่าได้รับ 1 Coral Crystal และ 1 Dragonvein Crystal",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "พยายามปีนขึ้นไปออกจากที่นี่ผ่านช่องแสง",
+                        "consequences": "ทิ้ง Time card 3 ใบ",
+                        "PathToDialog": 9
+                    }
+                ]
+            },
+            {
+                "dialog_id": 21,
+                "title": "",
+                "subtitle": "Jagras ไม่ใช่ศพเดียวที่พบในที่นี้ ป่ารอบๆ เต็มไปด้วยซากของสัตว์ที่ถูกฆ่า จนถึงถ้ำหนึ่งที่อาจเป็นรังของสัตว์บางชนิด Anjanath ไม่ได้สนใจแม้กระทั่งการกิน มันฆ่าเพื่อความสนุก ความรู้สึกบางอย่างที่เหมือนกับความกลัวเริ่มแทรกซึมในท้องของคุณ มันไม่ใช่สัตว์ที่ฆ่าด้วยเหตุผลเดียว แต่มันฆ่าเพราะมันต้องการ... ฆ่า",
+                "consequences": "ทิ้ง 1 time card",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "แต่ละนักล่าทอยลูกเต๋าตามตารางนี้:\n1-2 ได้รับ 1 Boulder Bone\n3-4 ได้รับ 1 Warm Pelt\n5-6 ได้รับ 1 Potion",
+                        "PathToDialog": 19
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "ผู้เล่นสามารถเลือกตัวเลือกนี้ได้หากพวกเขามี Anjanath Scale อย่างน้อย 1 อัน",
+                        "title": "ลงไปในถ้ำ",
+                        "consequences": "ได้รับ 1 track token. ทุกนักล่าได้รับ 1 Anjanath Fang.",
+                        "PathToDialog": 10
+                    }
+                ]
+            },
+            {
+                "dialog_id": 22,
+                "title": "",
+                "subtitle": "คุณเริ่มออกเดินทันที พยายามหาทางที่สัตว์ร้ายตัวนั้นเดินผ่านในป่า ด้วยประสบการณ์ที่มีมายาวนาน คุณรู้ดีว่าต้องทำอย่างไร และไม่นานนัก คุณก็พบรอยเท้าของมัน ที่ทิ้งไว้เป็นซากศพของเหยื่อมัน",
+                "consequences": "แต่ละนักล่าได้รับ 1 Monster Bone large",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "คุณตัดสินใจติดตามซากศพเหล่านั้นและปีนขึ้นไปยังหุบเขา",
+                        "consequences": "ทิ้ง Time card 1 ใบ ทุกคนได้รับ 1 Flame Sac.",
+                        "PathToDialog": 7
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "คุณเลือกที่จะกลับไปที่รอยเท้า",
+                        "consequences": "",
+                        "PathToDialog": 19
+                    }
+                ]
+            },
+            {
+                "dialog_id": 23,
+                "title": "",
+                "subtitle": "คุณเริ่มรู้สึกหลงทาง ป่าไม้รอบตัวแออัดจนแทบไม่สามารถแยกแยะอะไรได้ เส้นทางที่เคยชัดเจนหายไปจากสายตา คุณต้องพยายามยกมือผลักกิ่งไม้และใบไม้ที่ทิ่มแทงใบหน้าและมือ ขณะที่เสียงนกรอบๆ ยังคงดังตลอดเวลา ราวกับเยาะเย้ยให้กับความพยายามที่ไม่ประสบผลสำเร็จ",
+                "consequences": "ทิ้ง 3 Time cards",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "",
+                        "PathToDialog": 29
+                    }
+                ]
+            },
+            {
+                "dialog_id": 24,
+                "title": "",
+                "subtitle": "คุณบีบตัวผ่านช่องแคบๆ เข้าไปในความมืดเย็นและแห้งของถ้ำ น้ำเลือดจากปลายนิ้วที่ถูกขีดข่วนเมื่อคุณยัดตัวผ่านรอยแตกในกำแพงหินที่แคบกว่าที่คิดไว้ คุณสูดหายใจลึกๆ รู้สึกว่าตัวเองเกือบจะปลอดภัยแล้ว...\nแต่ในขณะเดียวกัน...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "นักล่าทุกคนได้รับความเสียหาย 2 หน่วย",
+                        "PathToDialog": 20
+                    }
+                ]
+            },
+            {
+                "dialog_id": 25,
+                "title": "",
+                "subtitle": "ความร้อนและความว่างเปล่าของทุ่งหญ้าทำให้การข้ามไปนั้นกลายเป็นงานที่เหนื่อยยาก พื้นดินใต้เท้าคุณแห้งกรัง แตกเป็นรอยแยกจากแสงแดด การกดดันจากแสงแดดที่สาดส่องมาจากข้างหลังนั้นเป็นภาระที่คุณไม่สามารถปัดทิ้งไปได้ ความเหนื่อยล้าฝังลึกไปในกระดูกของคุณ ต่อไปจะทำอย่างไร?",
+                "consequences": "ทิ้ง 1 time card และ 1 potion หากนักล่าไม่สามารถทิ้ง potion ได้, นักล่าทุกคนจะได้รับความเสียหาย 2 หน่วย",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ไม่ใช่การเลือกที่ง่าย แต่เป็นการเลือกที่ถูกต้อง คุณตัดสินใจหันหลังกลับ",
+                        "consequences": "ทิ้ง 3 time cards",
+                        "PathToDialog": 27
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "คุณมาไกลขนาดนี้แล้ว จะถอยกลับไม่ได้",
+                        "consequences": "ทิ้ง 1 time cards",
+                        "PathToDialog": 14
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "นักล่าสามารถเลือกตัวเลือกนี้ได้ก็ต่อเมื่อพวกเขาทำภารกิจ the Anjanath assigned quest แล้ว",
+                        "title": "สัญชาตญาณของคุณบอกว่าคุณใกล้จะถึงอะไรบางอย่างที่ยิ่งใหญ่แล้ว มันอาจจะดูไม่ชัดเจน แต่คุณรู้สึกได้ว่าคุณใกล้เข้ามาแล้ว",
+                        "consequences": "ทิ้ง 1 time cards นักล่าทุกคนได้รับ 1 Wingdrake Hide และ 1 Firecell Stone",
+                        "PathToDialog": 7
+                    }
+                ]
+            },
+            {
+                "dialog_id": 26,
+                "title": "",
+                "subtitle": "คุณพบเส้นทางใหม่ในป่าทึบ เส้นทางนี้อาจจะเกิดจากการเดินทางของ Anjanath ที่ร่างใหญ่ของมันผลักใบไม้ไปข้างๆ จนกลายเป็นเส้นทางใหม่ หรือมันอาจจะเป็นงานของสิ่งมีชีวิตตัวอื่นที่ทำให้คุณหลงทางออกไปจากจุดหมายของคุณ?",
+                "consequences": "รับ 2 track token",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ตามเส้นทางทางทิศตะวันตกเฉียงใต้",
+                        "consequences": "ทิ้ง Time card 1 ใบ เปิดเผยโทเค็นรอยเท้า 1 อัน",
+                        "PathToDialog": 27
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ตามรอยเท้า",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "PathToDialog": 15
+                    }
+                ]
+            },
+            {
+                "dialog_id": 27,
+                "title": "",
+                "subtitle": "การเดินทางข้ามทุ่งหญ้าทำให้คุณรู้สึกอ่อนล้าอย่างยิ่ง ความเจ็บปวดในร่างกายไม่หายไปไหน การยกอาวุธขึ้นมามีพลังเหลือน้อยเต็มที คุณสะดุดล้มจนเจอพื้นที่โล่งขนาดเล็กที่ขอบป่า มันเปิดกว้าง; ป้องกันได้ง่าย...เกือบจะเรียกได้ว่าเป็นสถานที่ปลอดภัยที่สุดในที่แห่งนี้",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ตั้งแคมป์และฟื้นฟูร่างกาย",
+                        "consequences": "ทิ้ง 2 time cards นักล่าทุกคนได้รับการฟื้นฟู 2 แต้ม",
+                        "PathToDialog": 28
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ความเหนื่อยล้าไม่ใช่ข้ออ้าง ไม่มีเวลาให้เสีย คุณตัดสินใจเดินหน้าต่อไป",
+                        "consequences": "",
+                        "PathToDialog": 10
+                    }
+                ]
+            },
+            {
+                "dialog_id": 28,
+                "title": "",
+                "subtitle": "การจุดไฟแคมป์เป็นความคิดที่ดี; ความอบอุ่นของมันแทรกซึมไปถึงผิวหนัง ช่วยบรรเทาความเจ็บปวดจากการเดินทางได้บ้าง ไฟและการพักผ่อนคงไม่เพียงพอที่จะรักษาความเหนื่อยล้าของคุณ แต่ก็เป็นจุดเริ่มต้นที่ดีมาก",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "คุณสามารถฟื้นฟูได้บ้าง แต่การพักผ่อนสั้นๆ ก็ช่วยได้แค่ในระดับหนึ่ง",
+                        "consequences": "ทิ้ง 1 time card. ทิ้ง 1 potion หากผู้เล่นไม่สามารถทิ้ง potion ได้ ให้สับการ์ด the Exhaustion เข้าไปในกอง Time card",
+                        "PathToDialog": 15
+                    }
+                ]
+            },
+            {
+                "dialog_id": 29,
+                "title": "",
+                "subtitle": "เสียงกรีดร้องของนกค่อยๆ เงียบลง ทิ้งไว้เพียงความเงียบที่แผ่ขยายทั่วบริเวณ จากนั้นเสียงคำรามอันดังสั่นสะเทือนก็แตกหักความเงียบนั้นจนหัวคุณสั่นตามไปด้วย อันจานัท! มันปรากฏตัวในทันที จ้องมาที่คุณด้วยกรามที่แหลมคม มันงับเข้ามาใกล้เพียงไม่กี่นิ้ว ขณะเดียวกัน มันวิ่งออกจากความมืดของป่า... เป้าหมายที่คุณตามหามานานอยู่ตรงหน้าแล้ว!",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "",
+                        "consequences": "เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "PathToDialog": 0
+                    }
+                ]
+            },
+            {
+                "dialog_id": 30,
+                "title": "",
+                "subtitle": "เสียงคำรามใกล้กว่าที่คุณคิด... ใกล้มาก! มันอยู่ข้างหลังคุณ! คุณไม่ได้เป็นฝ่ายล่า แต่มันกลับเป็นฝ่ายล่าคุณ และตอนนี้มันเริ่มลงมือแล้ว มันพุ่งเข้ามาอย่างรวดเร็ว พร้อมกับการขยับคออย่างรุนแรงหวังที่จะทำให้คุณล้มลงไป ไม่มีเวลาตั้งตัวแล้ว การต่อสู้เริ่มต้นขึ้น!",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "",
+                        "consequences": "เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "PathToDialog": 0
+                    }
+                ]
+            },
+            {
+                "dialog_id": 31,
+                "title": "",
+                "subtitle": "Anjanath เดินย่ำไปบนพื้นดินข้างหน้า มันตัวใหญ่จนทำให้ฝุ่นฟุ้งกระจายจากผืนดินแห้ง ครีบที่โดดเด่นบนหัวของมันยื่นออกมา กลิ่นของเนื้อไหม้และกำมะถันอบอวลในอากาศ ร่างกายคุณเกร็งแน่น ข้อมือจับอาวุธแน่น รอยรัดเกราะกดลงบนผิวหนังอย่างรู้สึก เวลานี้ถึงเวลาต่อสู้แล้ว!",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "",
+                        "consequences": "ทิ้ง 2 time cards. ได้รับ 4 track token. เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "PathToDialog": 0
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "monster_id": 4,
+        "monster_name": "Rathalos",
+        "thumbnail": "assets/img/rathalos_Icon.png",
+        "special_attack_card": [
+            "Stunning Spin",
+            "Molten Bite",
+            "Charging Swoop"
+        ],
+        "dialog_hunting_phase": [32,33,34,35],
+        "quest": [
+            {
+                "quest_id": 1,
+                "quest_type": "Assigned Quest",
+                "difficulty_level": 1,
+                "time_limit": 40,
+                "scoutfly_level": [2, 5],
+                "starting_point": [1]
+            },
+            {
+                "quest_id": 2,
+                "quest_type": "Investigation Quest",
+                "difficulty_level": 2,
+                "time_limit": 40,
+                "scoutfly_level": [3, 6],
+                "starting_point": [2,3,4,5]
+            },
+            {
+                "quest_id": 3,
+                "quest_type": "Tempered Investigation Quest",
+                "difficulty_level": 4,
+                "time_limit": 45,
+                "scoutfly_level": [4, 7],
+                "starting_point": [2,3,4,5]
+            }
+        ],
+        "quest_dialogs": [
+            {
+                "dialog_id": 1,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 1 ขวด",
+                "subtitle": "พวกคุณจะยังไม่ใช่นักล่าตัวจริง จนกว่าจะโค่น Rathalos ลงได้\nเหล่า Wyvern ยักษ์บินโฉบผ่านป่าใหญ่ โจมตีเหยื่อของพวกมันด้วยปีกที่รุนแรงและกรงเล็บที่แหลมคม การที่จะพิสูจน์คุณค่าของพวกคุณ ต้องโค่นราชันแห่งป่าผู้ครองบัลลังก์เพลิงนี้ลงให้ได้ แต่มันจะไม่ง่ายเลย\nแล้วพวกคุณมีแผนจะล่าสัตว์ร้ายตัวนี้ยังไง? มีสองทางเลือก...ไล่ตามรอยมันข้ามป่าและโจมตีโดยไม่ให้มันทันตั้งตัว หรือวางกับดักแล้วรอให้มันมาติดเอง?",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "title": "ค้นหาร่องรอยมัน",
+                        "consequences": "นักล่าแต่ละคนได้รับ Ancient Bone 1 ชิ้น และรับ Track Token 1 อัน ทิ้ง 1 Time card",
+                        "PathToDialog": 11
+                    },
+                    {
+                        "action_id": 2,
+                        "title": "วางกับดัก",
+                        "consequences": "ทิ้ง Time card 8 ใบ",
+                        "PathToDialog": 32
+                    }
+                ]
+            },
+            {
+                "dialog_id": 2,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 2 ขวด",
+                "subtitle": "ร่างไร้ชีวิตของ Rathalos ขวางทางอยู่ ซี่โครงของมันโผล่พ้นออกมา แต่โชคดีที่ Inferno Sac ยังอยู่ในสภาพสมบูรณ์ อะไรเป็นสาเหตุให้มันตาย? เสียงกรีดร้องแหลมเสียดแทงเหนือหัวคุณให้คำตอบ อีกตัวหนึ่ง! Rathalos ที่อายุน้อยกว่า แข็งแกร่งกว่า ใหญ่กว่า และอันตรายยิ่งกว่า การล่าเริ่มต้นอีกครั้ง!\nพวกคุณต้องเคลื่อนไหวอย่างรวดเร็วหากต้องการไล่ตาม Rathalos ทัน แต่ Inferno Sac ก็มีค่าควรแก่การเก็บเกี่ยว จะเลือกทำอย่างไร?",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เก็บเกี่ยวจากซากของ Rathalos",
+                        "consequences": "นักล่าแต่ละคนได้รับ Inferno Sac 1 ชิ้น ทิ้ง Time card 1 ใบ",
+                        "PathToDialog": 1
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "มุ่งหน้าต่ออย่างรวดเร็ว ไม่มีเวลาจะเสียไปมากกว่านี้แล้ว!",
+                        "consequences": "รับ Track Token 1 อัน สับไพ่ Rathalos Slayer เข้าไปในกอง Time card",
+                        "PathToDialog": 17
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "",
+                        "title": "วางกับดัก",
+                        "consequences": "ทิ้ง Time card 8 ใบ",
+                        "PathToDialog": 32
+                    }
+                ]
+            },
+            {
+                "dialog_id": 3,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 1 ขวด",
+                "subtitle": "ที่นี่ดูเป็นสถานที่แปลกๆ ที่ Rathalos จะทำรัง แต่นั่นคือสิ่งที่พวกคุณกำลังเผชิญ รังนี้เพิ่งถูกทิ้งไปไม่นาน สัตว์ร้ายน่าจะอยู่แถวๆ นี้ คุณตรวจสอบคมอาวุธ ปรับเกราะให้แน่น และเตรียมพร้อมสำหรับการไล่ล่า คุณจะสละเวลาสืบสวนรังนี้เพื่อหาเบาะแสการเคลื่อนไหวของ Rathalos หรือจะไล่ตามมันทันที หวังพึ่งสัญชาตญาณของคุณ?",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ตรวจสอบรัง แน่นอนว่าต้องมีบางอย่างที่นี่แน่ๆ",
+                        "consequences": "นักล่าแต่ละคนได้รับ Rathalos Wing 1 ชิ้น",
+                        "PathToDialog": 2
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "เริ่มไล่ล่าทันที!",
+                        "consequences": "นักล่าแต่ละคนได้รับ Rathalos Medulla 1 ชิ้น รับ Track Token 1 อัน",
+                        "PathToDialog": 6
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "",
+                        "title": "วางกับดัก",
+                        "consequences": "ทิ้ง Time card 8 ใบ",
+                        "PathToDialog": 32
+                    }
+                ]
+            },
+            {
+                "dialog_id": 4,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 2 ขวด",
+                "subtitle": "สิ่งที่เกิดขึ้นที่นี่ต้องโหดร้ายมากแน่ๆ พวกคุณมั่นใจว่าสอง Rathalos สู้กัน ร่องรอยขนที่พันกันติดอยู่บนต้นไม้ และเศษอวัยวะกระจัดกระจายเต็มพื้นดิน แต่มีตัวใดรอดหรือทั้งสองตายไปแล้ว? คุณยังไม่แน่ใจ แต่มีร่องรอยของทางเดินปรากฏให้เห็นอยู่ใกล้ๆ...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ตามรอยก่อนที่มันจะจางหายไป",
+                        "consequences": "รับ Track Token 1 อัน ทิ้ง Time card 1 ใบ",
+                        "PathToDialog": 13
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ค้นหาบริเวณนี้ก่อน",
+                        "consequences": "นักล่าแต่ละคนได้รับ Rathalos Tail 1 ชิ้น",
+                        "PathToDialog": 23
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "",
+                        "title": "วางกับดัก",
+                        "consequences": "ทิ้ง Time card 8 ใบ",
+                        "PathToDialog": 32
+                    }
+                ]
+            },
+            {
+                "dialog_id": 5,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 1 ขวด",
+                "subtitle": "ป่ายังคงมีควันลอยอยู่จากลมหายใจของ Rathalos พื้นดินถูกเผาจนหมดชีวิต เหลือเพียงความดำมืดจากไฟ การตามล่ามันไม่ควรจะยากเกินไป มันเพิ่งอยู่ที่นี่ไม่นานนี้เอง ไปล่ากันเลย!",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "สำรวจบริเวณรอบๆ นี้",
+                        "consequences": "นักล่าแต่ละคนได้รับ Inferno Sac 1 ชิ้น",
+                        "PathToDialog": 4
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ตามรอย",
+                        "consequences": "นักล่าแต่ละคนได้รับ Warm Pelt 1 ชิ้น",
+                        "PathToDialog": 22
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "",
+                        "title": "วางกับดัก",
+                        "consequences": "ทิ้ง Time card 8 ใบ",
+                        "PathToDialog": 32
+                    }
+                ]
+            },
+            {
+                "dialog_id": 6,
+                "title": "",
+                "subtitle": "สัตว์ร้ายอยู่ข้างหน้าพวกคุณ แต่คุณกำลังตามมันทันทีละนิด มันรู้ตัวหรือไม่ว่ากำลังถูกตามล่า? คุณยังไม่แน่ใจ แต่ร่องรอยของมันชัดเจนพอให้ตามต่อได้",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "นักล่าแต่ละคนได้รับ Rathalos Carapace 1 ชิ้น",
+                        "PathToDialog": 17
+                    }
+                ]
+            },
+            {
+                "dialog_id": 7,
+                "title": "",
+                "subtitle": "ในที่สุด หลังจากการเดินทางผ่านป่าที่ดูเหมือนไม่มีที่สิ้นสุด คุณสังเกตเห็นร่องรอยพืชพรรณที่หักและแตกในแนวป่าด้านบนทันที นั่นคือจุดที่ Rathalos พุ่งลงโจมตีเหยื่อของมัน สัตว์ร้ายกลับมาแล้ว และการล่าก็เริ่มขึ้นอีกครั้ง!",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "รับ Track Token 1 อัน",
+                        "PathToDialog": 24
+                    }
+                ]
+            },
+            {
+                "dialog_id": 8,
+                "title": "",
+                "subtitle": "เกล็ดที่คุณสะสมมาแสดงให้เห็นว่า Rathalos บาดเจ็บ มันถูกฉีกออกในระหว่างการต่อสู้ที่ดุเดือด เลือดหยดเป็นจุดๆ กระจายไปทั่วพื้นดิน บนใบไม้และดิน โคตรเหยื่อที่บาดเจ็บ มันเหมือนดาบสองคม; มันอาจไม่สู้ได้นาน แต่จะสู้ดุเดือดยิ่งขึ้น...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ตามรอยเลือด ทำการทอยลูกเต๋า\nถ้าผลออกมาเป็น 1-3 เลือก choose นี้",
+                        "consequences": "รับ Track Tokens 2 อัน ทิ้ง 1 Time card",
+                        "PathToDialog": 21
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ถ้าผลออกมาเป็น 4-6 เลือก choose นี้",
+                        "consequences": "ลดค่าเลือดของ Rathalos ตามจำนวนที่ทอยได้",
+                        "PathToDialog": 30
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "",
+                        "title": "ค้นหาบริเวณนี้",
+                        "consequences": "นักล่าแต่ละคนได้รับ Quality Bone 1 ชิ้น และ Monster Bone Small 1 ชิ้น",
+                        "PathToDialog": 21
+                    }
+                ]
+            },
+            {
+                "dialog_id": 9,
+                "title": "",
+                "subtitle": "การเดินทางของคุณดำเนินต่อไป คุณมุ่งหน้าไปลึกเข้าไปในป่า พืชพรรณหนาขึ้น ต้นไม้เก่าแก่และใหญ่โตขึ้นเรื่อยๆ คุณเดินลึกเข้าไปในเงามืด ความเหนื่อยล้าสะสมในแขนขา ความเย็นเริ่มแผ่ซ่านลงในอก แล้วจู่ๆ คุณสะดุดกับรอยแยกในพื้นดิน ขณะที่แสงแดดลอดผ่านต้นไม้หนาทึบและสะท้อนลงบนแร่เหล็กที่เปิดเผยให้เห็นช่วงเวลาแห่งความงามท่ามกลางความยากลำบากของการล่า",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "นักล่าแต่ละคนได้รับ Fucium Ore 1 ชิ้น และรับ Track Token 1 อัน",
+                        "PathToDialog": 20
+                    }
+                ]
+            },
+            {
+                "dialog_id": 10,
+                "title": "",
+                "subtitle": "ยามเย็นเริ่มมืดลงขณะที่คุณเดินลงสู่พื้นป่า อากาศหนาวและอึดอัดขึ้นที่นี่ แต่คุณรู้สึกโล่งใจที่ไม่ต้องเผชิญกับสายตาคมของ Rathalos ภายใต้พืชพรรณของต้นไม้ บางสิ่งดึงดูดความสนใจของคุณขณะที่คุณไต่ลงมา เกาะกิ่งก้านที่สูงอยู่ คุ้มค่าที่จะใช้เวลาเก็บมันมาหรือไม่?",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เพิกเฉยไปเถอะ Rathalos คือเป้าหมายของคุณ",
+                        "consequences": "รับ Track Token 1 อัน",
+                        "PathToDialog": 9
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "มันคุ้มค่าที่จะเก็บมา",
+                        "consequences": "นักล่าแต่ละคนได้รับ Wingdrake Hide 1 ชิ้น",
+                        "PathToDialog": 31
+                    }
+                ]
+            },
+            {
+                "dialog_id": 11,
+                "title": "",
+                "subtitle": "การตามล่า Rathalos ไม่ใช่เรื่องง่าย มันร่วงลงสู่ป่า ก่อนที่จะโผบินขึ้นไป การตามรอยของมันต้องใช้ทั้งความชาญฉลาดและความรู้ลึกเกี่ยวกับสัตว์ร้ายตัวนี้ หลังจากที่คุณตรวจสอบต้นไม้ด้วยความระมัดระวัง คุณรู้สึกว่าคุณเข้าใกล้มันขึ้นเรื่อยๆ หลายครั้งคุณได้ยินเสียงปีกอันทรงพลังเปิดกว้างเหนือหัวคุณ แต่ยังไม่เห็นเหยื่อของคุณ\nคุณจะ:",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ยังคงตามล่า Rathalos ต่อไปในป่า",
+                        "consequences": "รับ Track Tokens 2 อัน ทิ้ง 1 Time card",
+                        "PathToDialog": 16
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ขึ้นไปบนหน้าผา หวังว่าจะพบรัง",
+                        "consequences": "นักล่าแต่ละคนได้รับ Carbalite Ore 1 ชิ้น รับ Track Token 1 อัน ทิ้ง 1 Time card",
+                        "PathToDialog": 25
+                    }
+                ]
+            },
+            {
+                "dialog_id": 12,
+                "title": "",
+                "subtitle": "ไม่ว่าเหยื่อที่ Rathalos ลงโจมตีที่ขอบป่าจะเป็นอะไร มันก็สู้กลับอย่างดุเดือด มันฉีกหางของเหยื่อออกมาและพ่นเลือดไปทั่วต้นไม้ ใบไม้ลื่นไปด้วยเลือดสีดำ การต่อสู้เกิดขึ้นเมื่อหลายชั่วโมงก่อน Rathalos หลบหนีจากเหยื่อที่โกรธแค้น แต่หางของมันยังคงตกอยู่ที่นี่",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "นักล่าแต่ละคนได้รับ Rathalos Tail 1 ชิ้น รับ Track Token 1 อัน",
+                        "PathToDialog": 21
+                    }
+                ]
+            },
+            {
+                "dialog_id": 13,
+                "title": "",
+                "subtitle": "อีกศพหนึ่งของ Rathalos ตัวนี้เล็กมาก เป็นเพียงลูก Rathalos เท่านั้น สัตว์ร้ายที่คุณกำลังตามล่านั้นโหดเหี้ยมและอันตรายอย่างยิ่ง มันคงกำจัดคู่แข่งที่เป็นไปได้ทั้งหมดเพื่อทำให้สถานที่แห่งนี้กลายเป็นอาณาจักรของมัน คุณตรวจสอบศพของ Rathalos ตัวเล็ก",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "การขโมยทรัพยากรจากศพของสัตว์เล็กเช่นนี้รู้สึกไม่ถูกต้อง แต่ก็ยังสามารถให้ผลประโยชน์ได้",
+                        "consequences": "นักล่าแต่ละคนได้รับ Rathalos Marrow 1 ชิ้น สับการ์ด Fumbled Carving ลงในกอง Time card",
+                        "PathToDialog": 29
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "ตัวเลือกนี้สามารถเลือกได้เมื่อผู้ล่าแต่ละคนมี Rathalos Marrow อย่างน้อย 1 ชิ้นในกระเป๋า",
+                        "title": "คุณไม่จำเป็นต้องเพิ่มความทุกข์ทรมานให้กับฉากนี้ ปล่อยให้ภาพนี้อยู่เบื้องหลังคุณ",
+                        "consequences": "รับ Track Token 1 อัน",
+                        "PathToDialog": 15
+                    }
+                ]
+            },
+            {
+                "dialog_id": 14,
+                "title": "",
+                "subtitle": "แสงแดดยามเย็นสาดส่องผ่านใบไม้ลงมาที่ใบหน้าของคุณ แต่ยังไม่มีร่องรอยของ Rathalos คุณรู้สึกหงุดหงิด มันหลบหนีคุณไปได้ยาวนานกว่าที่ควรจะเป็น แม้ว่าจะบาดเจ็บก็ตาม คุณจะต้องกดดันต่อไป คุณจะจับมันได้",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "มุ่งหน้าไปลึกขึ้นในป่า บางทีมันอาจจะหลบอยู่ที่นั่น",
+                        "consequences": "รับ Track Token 1 อัน ทิ้ง 1 time card",
+                        "PathToDialog": 15
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ยังคงตามเส้นทางที่คุณกำลังเดินอยู่",
+                        "consequences": "",
+                        "PathToDialog": 18
+                    }
+                ]
+            },
+            {
+                "dialog_id": 15,
+                "title": "",
+                "subtitle": "วันเวลาผ่านไป และคุณยิ่งรู้สึกหงุดหงิดมากขึ้น ไม่มี Rathalos สักที คุณพยายามปลอบใจตัวเองว่า สัตว์ร้ายนั้นต้องปรากฏตัวออกมา มันบาดเจ็บอย่างหนัก มันต้องการอาหารเพื่อฟื้นฟูพลังและรักษาตัวเอง คุณบอกตัวเองให้เดินหน้าต่อไป",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "สับการ์ด Recovery ลงในกอง Time card",
+                        "PathToDialog": 7
+                    }
+                ]
+            },
+            {
+                "dialog_id": 16,
+                "title": "",
+                "subtitle": "ป่าแห่งนี้ชัดเจนว่าเป็นที่ล่าของ Rathalos คุณพบกระดูกและเนื้อที่ถูกทิ้งอยู่ตามกิ่งไม้ และในหลายๆ จุดมีซากเหยื่อที่ถูกกินไปครึ่งหนึ่งจากมื้อล่าสุด",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ติดตามเหยื่อของคุณในป่า",
+                        "consequences": "รับ Track Token 1 อัน",
+                        "PathToDialog": 12
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ตรวจสอบเหยื่อที่ถูกกินไปใกล้ๆ",
+                        "consequences": "นักล่าแต่ละคนได้รับ Rathalos Scale 1 ชิ้น ทิ้ง 2 Time card",
+                        "PathToDialog": 29
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "ตัวเลือกนี้สามารถเลือกได้เมื่อผู้ล่าแต่ละคนมี Rathalos Scale อย่างน้อย 1 ชิ้นในกระเป๋า",
+                        "title": "นี่...เป็น Rathalos Scale เพิ่มอีกหรือ? คุณจำมันได้ทุกที่",
+                        "consequences": "ทิ้ง 1 Time card",
+                        "PathToDialog": 8
+                    }
+                ]
+            },
+            {
+                "dialog_id": 17,
+                "title": "",
+                "subtitle": "การตามล่าตามรอยของสัตว์พาคุณมาถึงขอบของทะเลสาบเล็กๆ มันดำน้ำลงไปเพื่อดื่มน้ำ แต่คุณอยู่ไกลเกินไปที่จะใช้โอกาสนี้ได้ แทนที่จะรีบทำอะไร คุณมองดู Rathalos ที่บินขึ้นกลับไปในอากาศ แล้วสงสัยว่าการค้นหาผ่านทรายที่ริมทะเลสาบอาจจะค้นพบสิ่งที่มีค่า หรือจะถึงเวลาที่จะกลับเข้าไปในป่า?",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "สำรวจชายหาดเล็กๆ",
+                        "consequences": "นักล่าแต่ละคนได้รับ Coral Crystal 1 ชิ้น และ Rathalos Shell 1 ชิ้น",
+                        "PathToDialog": 22
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "กลับลงไปในป่าอีกครั้ง",
+                        "consequences": "นักล่าแต่ละคนได้รับ Warm Pelt 1 ชิ้น รับ Track Token 1 อัน",
+                        "PathToDialog": 13
+                    }
+                ]
+            },
+            {
+                "dialog_id": 18,
+                "title": "",
+                "subtitle": "คุณใกล้จะถึงแล้ว คุณมั่นใจได้ การเคลื่อนไหวในต้นไม้คือสัญญาณที่คุณรอคอย อย่าปล่อยให้มันหลุดมือไป!",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "ทิ้ง Time card 1 ใบ",
+                        "PathToDialog": 35
+                    }
+                ]
+            },
+            {
+                "dialog_id": 19,
+                "title": "",
+                "subtitle": "รังของ Rathalos อยู่ข้างหน้า! มันว่างเปล่า แต่... ถ้าคุณสามารถขึ้นไปถึงที่นั่นได้... คุณมั่นใจว่ามันจะมีสิ่งที่ช่วยให้คุณจับเหยื่อได้ มันเป็นการปีนผาหินสั้นๆ อะไรอาจจะผิดพลาดได้ล่ะ?",
+                "consequences": "ทอยลูกเต๋า",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "หากทอยได้ 1-3",
+                        "consequences": "นักล่าทุกคนได้รับความเสียหาย 2 หน่วยจากการตกลงมาและต้องปีนกลับขึ้นไป ทิ้ง 2 Time card",
+                        "PathToDialog": 28
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "หากทอยได้ 4-6",
+                        "consequences": "นักล่าได้รับ Track Token 3 อัน จากการปีนขึ้นไปโดยไม่มีการบาดเจ็บ ทิ้ง 1 Time card",
+                        "PathToDialog": 28
+                    }
+                ]
+            },
+            {
+                "dialog_id": 20,
+                "title": "",
+                "subtitle": "ความเงียบสงบของป่าถึงขีดสุด ไม่มีเสียงอะไรเลย... นอกจากกลิ่นเนื้อเน่าเปื่อยที่ลอยมาจากที่ใกล้ๆ และแล้ว, ข้างบนคุณ, คุณได้ยินอะไรบางอย่าง!",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "Rathalos!",
+                        "consequences": "รับ Track Token 1 อัน",
+                        "PathToDialog": 32
+                    }
+                ]
+            },
+            {
+                "dialog_id": 21,
+                "title": "",
+                "subtitle": "ความก้าวหน้าของคุณหยุดชะงัก คุณใกล้จะถึงแล้ว แต่ตอนนี้ดูเหมือนว่า Rathalos จะหลบหนีจากการโจมตีของเหยื่อที่มันตั้งใจจะล่า ไม่มีการพบเห็นและไม่มีหลักฐานใดๆ ที่พบเลย คุณจะไม่ถอยกลับ แต่คุณไม่สามารถป้องกันตัวเองจากความรู้สึกผิดหวังได้",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "",
+                        "PathToDialog": 15
+                    }
+                ]
+            },
+            {
+                "dialog_id": 22,
+                "title": "",
+                "subtitle": "ยอดเขามีร่องรอยของกิจกรรม Rathalos เต็มไปหมด อย่างน้อยมีสัตว์ตัวหนึ่งที่มาที่นี่เป็นประจำ แม้มันจะไม่ใช้ที่นี่เป็นรังแล้ว แต่หากคุณต้องการจับมัน คุณต้องไปต่อ แต่ก็อาจจะคุ้มค่าที่จะตั้งแคมป์ที่นี่ เพราะ Rathalos อาจกลับมา และคุณก็อาจใช้เวลานี้ในการพักฟื้น",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ละเลยความเหนื่อยล้าในร่างกายและออกล่าต่อ",
+                        "consequences": "ได้รับ Track Token 1 อัน",
+                        "PathToDialog": 10
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "พักแรมที่นี่ในคืนนี้",
+                        "consequences": "นักล่าทุกคนฟื้นฟู 2 Health ทิ้ง 1 time card สับการ์ด Wake Up! เข้าในกอง Time card",
+                        "PathToDialog": 29
+                    }
+                ]
+            },
+            {
+                "dialog_id": 23,
+                "title": "",
+                "subtitle": "มีร่องรอยของการต่อสู้ที่ชัดเจนในเส้นทางนี้ หากคุณเป็นผู้ตัดสิน เห็นได้ชัดว่า ผู้ที่มุ่งหน้ามาที่นี่น่าจะเป็นฝ่ายที่รอดจากการต่อสู้ แต่ก็ยังต้องบอกว่าเป็นแค่คำบอกเล่า เพราะมีคราบเลือดเป็นทางยาวไปถึงกลางป่า",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "สำรวจพื้นที่",
+                        "consequences": "รับ 1 track token. ทิ้ง 1 time card",
+                        "PathToDialog": 19
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ติดตามการล่าสัตว์ร้ายต่อไป",
+                        "consequences": "นักล่าทุกคนได้รับ 1 Rathalos Tail.",
+                        "PathToDialog": 14
+                    }
+                ]
+            },
+            {
+                "dialog_id": 24,
+                "title": "",
+                "subtitle": "คุณสามารถได้ยินมันแล้ว สัตว์ร้ายอยู่ใกล้จนคุณมั่นใจว่าคุณสามารถได้กลิ่นลมหายใจเหม็นของมัน คุณผลักกิ่งไม้ข้างหน้า เตรียมพร้อมที่จะเห็นเหยื่อที่คุณตามล่ามานาน...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "มันอยู่ข้างหน้า คุณมั่นใจ\nซ่อนตัวและเดินอย่างระมัดระวัง",
+                        "consequences": "ได้รับ 1 track token",
+                        "PathToDialog": 33
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "ตัวเลือกนี้สามารถเลือกได้หากนักล่ามี 1 Rathalos Plate ในครอบครอง",
+                        "title": "ร่องรอยของแผ่นเกราะยังคงอยู่...ตามเส้นทางนี้ต่อไป",
+                        "consequences": "",
+                        "PathToDialog": 34
+                    }
+                ]
+            },
+            {
+                "dialog_id": 25,
+                "title": "",
+                "subtitle": "การปีนขึ้นไปบนหน้าผานั้นเป็นกระบวนการที่ยากลำบากและเต็มไปด้วยความเหนื่อยล้า นกและแมลงต่างบินรอบตัวคุณ แต่เมื่อคุณถึงจุดสูงสุด คุณก็สามารถมองเห็นป่าที่ขยายออกไปข้างล่าง—มันเหมือนกับสิ่งมีชีวิตที่หายใจได้ คุณสามารถเห็นได้ว่า Rathalos เลือกเหยื่ออย่างไร ตอนนี้เป็นเวลาที่ต้องเริ่มตามรอยมันไปยังที่อยู่ของมัน",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ปีนขึ้นไปต่อ ยังมีรังอยู่ข้างบน",
+                        "consequences": "ทิ้ง 2 time card รับ 1 track token",
+                        "PathToDialog": 28
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "มีรังอีกแห่งหนึ่งอยู่ทางซ้ายของคุณ",
+                        "consequences": "นักล่าทุกคนจะได้รับ 1 Rathalos Webbing ทิ้ง 1 time card",
+                        "PathToDialog": 19
+                    }
+                ]
+            },
+            {
+                "dialog_id": 26,
+                "title": "",
+                "subtitle": "คุณเดินทางลึกเข้าไปในป่า พิจารณาอากาศและพื้นดินเพื่อหาสัญญาณของ Rathalos แต่ดูเหมือนมันจะหลบหลีกคุณไปแล้ว อย่างน้อยก็ในขณะนี้",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "อาจจะเป็นการดีหากหามุมมองใหม่สำหรับการล่า",
+                        "consequences": "",
+                        "PathToDialog": 22
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ยังคงเดินต่อไปตามเส้นทางในป่า",
+                        "consequences": "ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "PathToDialog": 7
+                    }
+                ]
+            },
+            {
+                "dialog_id": 27,
+                "title": "",
+                "subtitle": "การปีนลงจากหน้าผาในยามเช้านั้นให้ผลตอบแทนที่เกินคาด; ความสว่างจากแสงแดดยามเช้าส่องผ่านไปยังรอยแร่ Machalite ที่คุณอาจพลาดไปหากเสี่ยงเดินทางในความมืด",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "นักล่าทุกคนจะได้รับ 1 Machalite ore",
+                        "PathToDialog": 12
+                    }
+                ]
+            },
+            {
+                "dialog_id": 28,
+                "title": "",
+                "subtitle": "รัง Rathalos เก่า ไม่มีสัตว์มีชีวิตอาศัยอยู่ที่นี่มานานแล้ว แต่เศษซากที่กระจายอยู่บนยอดหน้าผาอาจมีสิ่งของที่มีค่าให้เก็บเกี่ยว",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "แต่ละนักล่าจะได้รับ 1 Boulder Bone",
+                        "PathToDialog": 22
+                    }
+                ]
+            },
+            {
+                "dialog_id": 29,
+                "title": "",
+                "subtitle": "ได้รับความสดชื่นจากการหยุดพักชั่วขณะในการล่า คุณเตรียมตัวพร้อมสำหรับขั้นตอนถัดไปของการตามล่า",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "ได้รับ 1 track token",
+                        "PathToDialog": 27
+                    }
+                ]
+            },
+            {
+                "dialog_id": 30,
+                "title": "",
+                "subtitle": "Rathalos กรีดร้องและบินวนเหนือหัวคุณ มันกำลังเฝ้ามองคุณหรือมันเห็นเหยื่ออื่นที่อยู่ลึกเข้าไปในป่า? คุณไม่สามารถบอกได้ แต่เพื่อความปลอดภัย คุณจึงหลบกลับเข้าไปในที่กำบังของต้นไม้ขณะที่มังกรยักษ์ข่วนฟ้าเหนือหัว",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "หนามแหลมตกลงมาเหมือนฝนพิษจากบนฟ้า ถูกกระตุ้นโดยเปลือกไม้หนา",
+                        "consequences": "แต่ละนักล่าได้รับ 1 Rathalos Wingtalon ได้รับ 1 track token",
+                        "PathToDialog": 10
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "บางสิ่งตกลงมาใกล้คุณจากกรงเล็บของมัน คุณวิ่งไปจับมันไว้",
+                        "consequences": "แต่ละนักล่าได้รับ 1 Dragonvein Crystal",
+                        "PathToDialog": 26
+                    }
+                ]
+            },
+            {
+                "dialog_id": 31,
+                "title": "",
+                "subtitle": "เหยื่ออีกตัวของ Rathalos หรือเปล่า? คุณไม่แน่ใจ แต่คุณรู้ว่าคุณใกล้แล้ว คุณสามารถรู้สึกได้ถึงอะดรีนาลีนที่เพิ่มขึ้นในท้องของคุณ แต่แล้วคุณก็ต้องเผชิญหน้ากับสิ่งที่ไม่คาดคิด... กองมูลขนาดใหญ่ของ Rathalos คุณจะหยุดและดูสิ่งที่ Rathalos กินเมื่อไม่นานมานี้ไหม?",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "นักล่าคนไหนจะหยุดเพื่อคุ้ยเขี่ยมูลสัตว์กันล่ะ?",
+                        "consequences": "ได้รับ 1 track token",
+                        "PathToDialog": 32
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ข้อมูลทุกชิ้นอาจมีประโยชน์!",
+                        "consequences": "แต่ละนักล่า ทอยลูกเต๋าตามตารางต่อไปนี้:\n1-2 ได้รับ 1 Dragonite ore\n3-4 ได้รับ 1 Firecell Stone\n5-6 ได้รับ 1 Rathalos Shell\nทิ้ง 1 Time card",
+                        "PathToDialog": 20
+                    }
+                ]
+            },
+            {
+                "dialog_id": 32,
+                "title": "",
+                "subtitle": "เสียงคำรามที่ดังสนั่นท้องฟ้าข้างบนคุณ, ดวงอาทิตย์ถูกบังชั่วขณะด้วยปีกขนาดใหญ่ที่เหยียดออกของ Rathalos คุณก้มตัวหลบเมื่อ Rathalos โฉบลงมา พยายามจับคุณด้วยกรงเล็บของมัน มันคำรามอีกครั้งด้วยความเจ็บปวดและหงุดหงิด\nคุณเตรียมอาวุธของคุณ ตอนนี้ถึงเวลาต่อสู้แล้ว",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "",
+                        "consequences": "ทิ้ง Time card 2 ใบ เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "PathToDialog": 0
+                    }
+                ]
+            },
+            {
+                "dialog_id": 33,
+                "title": "",
+                "subtitle": "มันอยู่ที่นั่น! Rathalos สัตว์ร้ายกำลังนั่งอยู่เหนือเหยื่อของมัน ปีกขนาดใหญ่โค้งห่อหุ้มศพและปกป้องมันจากนักล่าตัวอื่น มันสูดอากาศแล้วคำรามด้วยความโกรธเมื่อรู้สึกถึงการมีอยู่ของคุณ คุณตอบกลับด้วยเสียงคำรามของตัวเอง การต่อสู้เริ่มต้นขึ้น!",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "",
+                        "consequences": "ได้รับ 2 track token เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "PathToDialog": 0
+                    }
+                ]
+            },
+            {
+                "dialog_id": 34,
+                "title": "",
+                "subtitle": "มีเสียงคำรามของความโกรธดังขึ้นข้างหน้า ในที่สุด Rathalos สัตว์ร้ายที่คุณได้รับมอบหมายให้ล่ามาอยู่ในลานโล่ง คุณพุ่งเข้าไปหามัน ความสุขของการล่าดังก้องในกล้ามเนื้อของคุณ!",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "",
+                        "consequences": "เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "PathToDialog": 0
+                    }
+                ]
+            },
+            {
+                "dialog_id": 35,
+                "title": "",
+                "subtitle": "ลมอัดกระทบใบหน้าของคุณ และเสียงปีกขนาดมหึมาทำให้คุณหูอื้อ ก่อนที่มันจะถูกแทนที่ด้วยเสียงกรีดร้องอันโกรธเกรี้ยว Rathalos เข้ามาหาคุณแล้ว! ความน่าทึ่งของร่างกายของมันยังคงทำให้คุณหอบหายใจ คุณสลัดตัวเองออกจากความตกใจ ด่าผ่านลมหายใจ และพุ่งตัวเข้าไปหามัน!",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "",
+                        "consequences": "นักล่าทุกคนได้รับความเสียหาย 1 หน่วย เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "PathToDialog": 0
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "monster_id": 5,
+        "monster_name": "Azure Rathalos",
+        "thumbnail": "assets/img/azure_rathalos_Icon.png",
+        "special_attack_card": [
+            "Fire Spin",
+            "Fireball",
+            "Talon Dive"
+        ],
+        "dialog_hunting_phase": [31,32,33,34],
+        "quest": [
+            {
+                "quest_id": 1,
+                "quest_type": "Assigned Quest",
+                "difficulty_level": 1,
+                "time_limit": 40,
+                "scoutfly_level": [2, 5],
+                "starting_point": [1]
+            },
+            {
+                "quest_id": 2,
+                "quest_type": "Investigation Quest",
+                "difficulty_level": 2,
+                "time_limit": 40,
+                "scoutfly_level": [3, 6],
+                "starting_point": [2,3,4,5]
+            },
+            {
+                "quest_id": 3,
+                "quest_type": "Tempered Investigation Quest",
+                "difficulty_level": 4,
+                "time_limit": 45,
+                "scoutfly_level": [4, 7],
+                "starting_point": [2,3,4,5]
+            }
+        ],
+        "quest_dialogs": [
+            {
+                "dialog_id": 1,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 1 ขวด",
+                "subtitle": "ป่าลึกกลายเป็นดินแดนล่าของ Azure Rathalos สัตว์ร้ายที่รวดเร็วและคล่องแคล่วกว่าเผ่าพันธุ์ญาติของมัน มันเลี้ยวลัดผ่านยอดไม้ บินโฉบลงมาจากท้องฟ้าพร้อมกับคอยติดตามเหยื่อจากเบื้องบน ด้วยความอดทนที่รอจนถึงวินาทีสุดท้าย แล้วพุ่งลงมาอย่างสายฟ้าฟาดจากเมฆพายุ\n\nไม่มีอะไรจะหนีพ้นจากกรงเล็บของ Azure Rathalos หรือความหิวโหยไม่รู้จบของมัน และตอนนี้ คุณคือผู้ล่า...ใครสักคนต้องจัดการมัน คุณคิดเช่นนั้น ขอให้โชคดี!\n\nคุณจะตามล่ามันด้วยวิธีใด? มีสองทางเลือก...คุณสามารถติดตามรอยมันผ่านป่าและเข้าจู่โจมอย่างไม่ให้ทันตั้งตัว หรือคุณจะซ่อนตัวและดักมันด้วยกับดักที่เตรียมไว้?",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เวลาน้อยลงทุกที – ออกเดินทางเดี๋ยวนี้!",
+                        "consequences": "นักล่าทุกคนได้รับ Ancient Bone 1 ชิ้น ได้รับ track token 1 ชิ้น ทิ้ง 1 time card",
+                        "PathToDialog": 24
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ระมัดระวังและวางกับดัก",
+                        "consequences": "ทิ้ง Time card 8 ใบ",
+                        "PathToDialog": 31
+                    }
+                ]
+            },
+            {
+                "dialog_id": 2,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 2 ขวด",
+                "subtitle": "เบื้องหน้าของคุณมีร่างไร้ชีวิตของ Rathalos นอนขวางอยู่ ซี่โครงของมันเผยออกสู่สายลม แต่โชคดีที่ถุง Inferno Sac ยังคงอยู่ในสภาพสมบูรณ์ อะไรกันที่ทำแบบนี้? แล้วเสียงกรีดร้องแหลมคมจากด้านบนก็ตอบคำถามของคุณ... Azure Rathalos! ความเร็วของมันทำให้ Rathalos ตัวนี้หมดสติ ไร้พลังจะตอบโต้ ขณะที่ศัตรูโหดร้ายได้ฟันเปิดรอยแผลลึกทิ้งไว้บนร่าง กรีดเนื้อของมันขณะยังมีชีวิต\n\nคุณต้องรีบเคลื่อนที่หากหวังจะไล่ตาม Azure Rathalos ทัน แต่ Inferno Sac ก็มีค่าพอที่จะหยุดเก็บ...แล้วจะทำอย่างไร?",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ค้นหาของจากศพของ Azure Rathalos",
+                        "consequences": "นักล่าทุกคนได้รับ Inferno Sac 1 ชิ้น ทิ้ง 1 time card",
+                        "PathToDialog": 1
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "รีบเดินหน้าต่อไป ไม่มีเวลามากแล้ว!",
+                        "consequences": "ได้รับ track token 1 ชิ้น",
+                        "PathToDialog": 29
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "",
+                        "title": "ระมัดระวังและวางกับดัก",
+                        "consequences": "ทิ้ง Time card 8 ใบ",
+                        "PathToDialog": 31
+                    }
+                ]
+            },
+            {
+                "dialog_id": 3,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 1 ขวด",
+                "subtitle": "Azure Rathalos กำลังออกล่า พ่อค้าและนักเดินทางหายตัวไปเป็นระยะ หรือไม่ก็พบเพียงซากของสิ่งมีชีวิตที่ถูกย่อยบางส่วน และเช่นเคย คุณอยู่บนรอยทางของมัน\n\nคุณได้บังเอิญเจอที่ซึ่งเคยเป็นรังของมันมาก่อน แต่ตอนนี้ไม่ใช่อีกแล้ว มันใช้เวลานานที่นี่ ตั้งแต่เป็นลูกอ่อนจนเติบโตเป็นผู้ใหญ่ หรืออย่างน้อยก็ดูเหมือนจะเป็นเช่นนั้น แต่คุณมีเวลาพอจะสืบสวนรังนี้เพื่อหาเบาะแสของพฤติกรรม Azure Rathalos หรือไม่? หรือควรรีบไล่ตามมันทันทีโดยหวังว่าลางสังหรณ์ของคุณจะถูกต้อง?",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "สำรวจรัง",
+                        "consequences": "นักล่าทุกคนได้รับ Azure Rathalos Wingtalon 1 ชิ้น และ Azure Rathalos Shell 1 ชิ้น ทิ้ง 2 time card",
+                        "PathToDialog": 2
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "เริ่มออกไล่ล่า!",
+                        "consequences": "ได้รับ Track Token 1 อัน",
+                        "PathToDialog": 22
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "",
+                        "title": "ระมัดระวังและวางกับดัก",
+                        "consequences": "ทิ้ง Time card 8 ใบ",
+                        "PathToDialog": 31
+                    }
+                ]
+            },
+            {
+                "dialog_id": 4,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 2 ขวด",
+                "subtitle": "Azure Rathalos ที่คุณถูกส่งมาเพื่อจัดการได้รับบาดเจ็บอย่างหนักที่นี่ คุณไม่แน่ใจว่ามันไปสู้กับอะไรมา อาจจะเป็น Azure Rathalos ตัวอื่นหรือไม่ก็ Anjanath แต่ดูเหมือนว่ามันถูกเล่นงานอย่างหนัก มีเกล็ดฝังลึกลงในดินอ่อนเป็นระยะถึงหกนิ้ว และมีหางที่ขาดของ Azure Rathalos ยังคงกระตุกอยู่บนพื้นหญ้า นักล่าบางคนอาจจะรีบวิ่งตามรอยมันไปในตอนนี้ด้วยความอยากจับมัน แต่คุณไม่ใช่คนไร้เดียงสาแบบนั้น Azure Rathalos ที่บาดเจ็บอาจจะอันตรายยิ่งกว่าตัวที่สมบูรณ์เสียอีก เดินหน้าอย่างระมัดระวัง",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เราไม่มีเวลาให้เสียเปล่า!",
+                        "consequences": "ได้รับ Track Token 1 อัน",
+                        "PathToDialog": 7
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "เก็บทรัพยากรก่อนที่จะรีบเร่งไปข้างหน้าโดยไม่ทันคิด",
+                        "consequences": "ทิ้ง 1 Time card นักล่าทุกคนได้รับ Azure Rathalos tail 1 ชิ้น",
+                        "PathToDialog": 12
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "",
+                        "title": "ระมัดระวังและวางกับดัก",
+                        "consequences": "ทิ้ง Time card 8 ใบ",
+                        "PathToDialog": 31
+                    }
+                ]
+            },
+            {
+                "dialog_id": 5,
+                "title": "หากเริ่มการผจญภัยที่นี้, ได้รับยา 1 ขวด",
+                "subtitle": "กลิ่นเนื้อที่ถูกเผา นั่นคือสิ่งที่คุณได้กลิ่น มันชวนให้นึกถึงครัวของ felyne ที่คุณเคยได้ยินมา แต่สิ่งนี้ไม่ใช่เนื้อย่างพอสุกและเสิร์ฟพร้อมสลัด แต่มันคือเนื้อที่ไหม้เกรียมเกาะอยู่บนโครงกระดูกที่ถูก Azure Rathalos โจมตีอย่างรุนแรง สัตว์ร้ายไม่อยู่ที่นี่แล้ว แต่คงไม่ได้ไปไกล...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ล่าหาเบาะแสใกล้ ๆ กับศพ",
+                        "consequences": "นักล่าทุกคนได้รับ Inferno Sac 1 ชิ้น",
+                        "PathToDialog": 4
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ตามรอยต่อไป",
+                        "consequences": "นักล่าทุกคนได้รับ Warm Pelt 1 ชิ้น สับการ์ด Turf War ลงในกอง Time card.",
+                        "PathToDialog": 10
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "",
+                        "title": "ระมัดระวังและวางกับดัก",
+                        "consequences": "ทิ้ง Time card 8 ใบ",
+                        "PathToDialog": 31
+                    }
+                ]
+            },
+            {
+                "dialog_id": 6,
+                "title": "",
+                "subtitle": "นั่นมันหรือเปล่า? ผ้าม่านของต้นไม้ที่อยู่ตรงหน้าคุณสั่นไหวเหมือนผิวน้ำที่ถูกปลาตัวใหญ่พุ่งผ่าน คุณค่อย ๆ หมอบลง ไม่แน่ใจว่า Azure Rathalos กำลังจะโจมตีคุณในอีกไม่กี่วินาที หรือเพียงแค่ลมที่พัดผ่านหลอกตาคุณ",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "เลือกได้เมื่อมีนักล่าสวมเกราะ Azure Rathalos อย่างน้อย 1 ชิ้น",
+                        "title": "เป็นเพียงสายลม สำรวจพื้นที่รอบ ๆ",
+                        "consequences": "ได้รับ token รอยติดตาม 1 ชิ้น ทิ้ง 1 time card",
+                        "PathToDialog": 30
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "อยู่เฉย ๆ ไม่เสี่ยงดีกว่า",
+                        "consequences": "ทิ้ง 1 time card",
+                        "PathToDialog": 34
+                    }
+                ]
+            },
+            {
+                "dialog_id": 7,
+                "title": "",
+                "subtitle": "ชิ้นส่วนของ Rathalos ที่ตายแล้ว ถูกทิ้งไว้โดย Azure Rathalos ที่อิ่มหนำสำราญ ขณะบินผ่านป่า การทิ้งซากของเหยื่อไปตามต้นไม้ทำให้การติดตามมันง่ายขึ้น แม้ว่าการเหยียบไปในเนื้อที่บดละเอียดอาจไม่ใช่ประสบการณ์ที่คุณชอบที่สุด...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เก็บส่วนที่มีค่า",
+                        "consequences": "นักล่าทุกคนได้รับ Azure Rathalos Marrow 1 ชิ้น",
+                        "PathToDialog": 23
+                    },
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เมินซากและตามรอยต่อไป",
+                        "consequences": "ได้รับ track token 1 ชิ้น",
+                        "PathToDialog": 9
+                    }
+                ]
+            },
+            {
+                "dialog_id": 8,
+                "title": "",
+                "subtitle": "คุณเดินทางต่อไปในป่า สังเกตอากาศและพื้นปกคลุมด้วยต้นสนเพื่อหาสัญญาณของ Azure Rathalos แต่ดูเหมือนมันจะหลบหลีกคุณไปได้ อย่างน้อยก็ในตอนนี้...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เดินทางต่อไปตามเส้นทางนี้",
+                        "consequences": "",
+                        "PathToDialog": 10
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "เบี่ยงไปในทิศทางใหม่ทั้งหมด",
+                        "consequences": "ได้รับ track token 1 ชิ้น",
+                        "PathToDialog": 13
+                    }
+                ]
+            },
+            {
+                "dialog_id": 9,
+                "title": "",
+                "subtitle": "คุณรู้สึกหมดแรง และ Azure Rathalos ยังคงอยู่ที่นั่น คุณได้ยินเสียงมันหลายครั้งแล้ว มันคำรามด้วยความโกรธเกรี้ยว ปีกของมันทำให้ยอดต้นไม้สั่นไหว คุณแทบจะเชื่อว่ามันกำลังล้อคุณ แต่บางทีอาจเป็นแค่ความบ้าคลั่งของการล่าเริ่มเข้ามากระทบจิตใจคุณ น่าจะเป็นแบบนั้น",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "นักล่าทุกคนได้รับ Azure Rathalos Tail 1 ชิ้น track token 1 ชิ้น",
+                        "PathToDialog": 13
+                    }
+                ]
+            },
+            {
+                "dialog_id": 10,
+                "title": "",
+                "subtitle": "ความเหนื่อยล้าเริ่มสะสม เป้ที่อยู่บนหลัง เกราะและอาวุธ กำลังทิ่มแทงไปที่เนื้อหนังของคุณในแบบที่ไม่เคยเป็นมาก่อนในตอนเช้า แหล่งโล่งที่คุณพบตัวเองอยู่ดูเหมือนจะปลอดภัยสำหรับป่านี้ คุณอาจจะตั้งแคมป์ที่นี่ แต่รอยตามมันยังคงเรียกร้องคุณ...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เมินความเหนื่อยล้าในกระดูกของคุณและยังคงล่า",
+                        "consequences": "ได้รับ track token 1 ชิ้น",
+                        "PathToDialog": 28
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "เลือกได้เฉพาะเมื่อนักล่ามี Azure Rathalos Tail อย่างน้อย 1 ชิ้นในคลังของพวกเขา",
+                        "title": "หาที่พักสำหรับคืนนี้",
+                        "consequences": "นักล่าทุกคนฟื้นฟู 2 หน่วยชีวิต ทิ้ง time card 1 ใบ",
+                        "PathToDialog": 23
+                    }
+                ]
+            },
+            {
+                "dialog_id": 11,
+                "title": "",
+                "subtitle": "ซากศพหนึ่งนอนอยู่ข้างหน้า ถูกทำลายจนย่อยยับแทบจะไม่สามารถบอกได้เลยว่าสิ่งมีชีวิตนั้นเคยเป็นอะไร แต่คุณสามารถเห็นรอยเขี้ยวของ Azure Rathalos บนเนื้อที่ถูกบดขยี้ และการบวมของการหายใจไฟ อาจจะมีเบาะแสบางอย่างที่คุณสามารถค้นพบจากซากเนื้อนี้",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ตรวจสอบเหยื่อที่ถูกกลืนกินให้ละเอียด",
+                        "consequences": "นักล่าทุกคนได้รับ Azure Rathalos scale 1 ชิ้น ทิ้ง time card 2 ใบ",
+                        "PathToDialog": 23
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "เลือกได้เฉพาะเมื่อนักล่ามี Azure Rathalos scale อย่างน้อย 1 ชิ้นในคลังของพวกเขา",
+                        "title": "เรารู้แล้วว่าใครฆ่ามัน - เดินหน้าต่อไป",
+                        "consequences": "ทิ้ง time card 1 ใบ",
+                        "PathToDialog": 30
+                    }
+                ]
+            },
+            {
+                "dialog_id": 12,
+                "title": "",
+                "subtitle": "Azure Rathalos ที่ได้รับบาดเจ็บ บินมาทางนี้แน่นอน มันไม่เร็วและคล่องแคล่วเหมือนเมื่อก่อน แต่ยังคงมีชีวิตอยู่ นั่นหมายความว่าคุณต้องตามมันไปต่อ",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เดินต่อไปตามเส้นทางนี้",
+                        "consequences": "ทิ้ง time card 1 ใบ นักล่าทุกคนได้รับ Azure Rathalos tail 1 ชิ้น",
+                        "PathToDialog": 17
+                    }
+                ]
+            },
+            {
+                "dialog_id": 13,
+                "title": "",
+                "subtitle": "ในที่สุด หลังจากการเดินทางที่ดูเหมือนจะไม่สิ้นสุดผ่านป่า คุณเห็นใบไม้ที่แตกหักในผืนป่าที่คุณจำได้ทันที นี่คือลำต้นที่ Azure Rathalos ทุ่มตัวลงไปสู่เหยื่อของมัน สัตว์ร้ายกลับมาแล้ว การล่ากลับมาเริ่มต้นใหม่อีกครั้ง!",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "ได้รับ track token 1 ชิ้น",
+                        "PathToDialog": 18
+                    }
+                ]
+            },
+            {
+                "dialog_id": 14,
+                "title": "",
+                "subtitle": "การปีนลงจากหน้าผาในตอนเช้า ถือเป็นการลงแรงที่คุ้มค่า เพราะแสงจากดวงอาทิตย์ใหม่ทำให้เห็นแร่ Machalite ที่คุณอาจจะพลาดไปหากคุณเสี่ยงเดินทางในความมืด",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "นักล่าทุกคนได้รับ Machalite ore 1 ชิ้น",
+                        "PathToDialog": 9
+                    }
+                ]
+            },
+            {
+                "dialog_id": 15,
+                "title": "",
+                "subtitle": "รังของ Azure Rathalos แน่นอนว่าไม่มีใครอยู่แล้ว ถูกทิ้งร้างไปแล้ว แต่มีอะไรบางอย่างในนั้นใช่ไหม? มันอาจจะเป็นกุญแจในการจับสัตว์ร้ายตัวนี้ เพียงแค่ต้องปีนขึ้นไปนิดหน่อย ไม่ยากเกินไปหรอก",
+                "consequences": "ทอยลูกเต๋า",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "หากทอยได้ 1-3 เลือกตัวเลือกนี้",
+                        "title": "นักล่าจะลื่นล้มและต้องปีนขึ้นใหม่",
+                        "consequences": "นักล่าทุกคนได้รับความเสียหาย 2 หน่วย ทิ้ง time card 2 ใบ",
+                        "PathToDialog": 21
+                    },
+                    {
+                        "action_id": 1,
+                        "required_dialog": "หากทอยได้ 4-6 เลือกตัวเลือกนี้",
+                        "title": "นักล่าจะปีนขึ้นไปได้โดยไม่บาดเจ็บ",
+                        "consequences": "ได้ track token 3 ชิ้น ทิ้ง time card 1 ใบ",
+                        "PathToDialog": 21
+                    }
+                ]
+            },
+            {
+                "dialog_id": 16,
+                "title": "",
+                "subtitle": "Azure Rathalos เป็นเป้าหมายที่ยากลำบาก มันเคลื่อนไหวตลอดเวลา หลบผ่านต้นไม้ก่อนที่คุณจะมีเวลาเตรียมอาวุธ แม้จะได้ยินเสียงปีกขนาดมหึมาหลายครั้ง แต่คุณยังไม่เห็นสัตว์ร้ายตัวนั้นจริงๆ",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เดินหน้าต่อเพื่อไล่ตาม Azure Rathalos ในป่า",
+                        "consequences": "ได้ track token 2 ชิ้น ทิ้ง time card 1 ใบ",
+                        "PathToDialog": 11
+                    }
+                ]
+            },
+            {
+                "dialog_id": 17,
+                "title": "",
+                "subtitle": "ยังไม่มีร่องรอยของ Azure Rathalos คุณส่ายหัวทั้งในความหงุดหงิดและความทึ่ง การที่จะจับมันให้ได้ถึงขนาดนี้ แม้จะบาดเจ็บจนเสียเลือดไปมาก ก็ถือเป็นความสามารถที่น่าทึ่ง และมันจะทำให้การต่อสู้กับมันยิ่งอันตรายมากขึ้น หากคุณสามารถจับมันได้",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เลือกเส้นทางใหม่ที่คุณพบ เส้นทางนี้เริ่มเย็นลง",
+                        "consequences": "ได้ track token 1 ชิ้น ทิ้ง time card 1 ใบ สับ Recovery card ลงในกอง time deck",
+                        "PathToDialog": 11
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ยังคงตามเส้นทางเดิม",
+                        "consequences": "",
+                        "PathToDialog": 6
+                    }
+                ]
+            },
+            {
+                "dialog_id": 18,
+                "title": "",
+                "subtitle": "คุณได้ยินมันแล้ว สัตว์ร้ายตัวนั้นใกล้แค่เอื้อม จนคุณมั่นใจว่าคุณสามารถได้กลิ่นลมหายใจเหม็นๆ ของมัน คุณผลักกิ่งไม้ไปข้างหน้า หวังว่าจะได้เห็นสิ่งที่คุณตามล่าอย่างยาวนาน...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "คุณพร้อมสำหรับการต่อสู้หรือยัง?",
+                        "consequences": "ได้ track token 1 ชิ้น",
+                        "PathToDialog": 32
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "ตัวเลือกนี้สามารถเลือกได้หากนักล่ามี Azure Rathalos plate อย่างน้อย 1 ชิ้นใน inventory",
+                        "title": "มีบางอย่างไม่ค่อยถูกต้อง ยืนหยัดที่ตำแหน่งนี้",
+                        "consequences": "",
+                        "PathToDialog": 33
+                    }
+                ]
+            },
+            {
+                "dialog_id": 19,
+                "title": "",
+                "subtitle": "มันใกล้เข้ามาแล้ว คุณรู้ดี คุณได้ไล่ล่ามันผ่านป่าแห่งนี้ สลับกันได้เปรียบและเสียเปรียบ แต่ตอนนี้... มันใกล้แล้ว ใกล้มาก",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "ได้ track token 1 ชิ้น",
+                        "PathToDialog": 31
+                    }
+                ]
+            },
+            {
+                "dialog_id": 20,
+                "title": "",
+                "subtitle": "มีแร่ที่เปิดเผยอยู่ ก้อนผลึกที่เปล่งประกายสะท้อนแสงแดดยามเย็น มันไม่ใช่ Azure Rathalos แต่ก็อย่างน้อยก็เป็นอะไรบางอย่างที่ทำให้คุณมั่นใจได้ว่า การออกสำรวจครั้งนี้ไม่ได้สูญเปล่า ได้เวลาเริ่มขุดแล้ว",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "แต่ละนักล่าได้รับ Fucium ore 1 ชิ้น ได้ track token 1 ชิ้น",
+                        "PathToDialog": 19
+                    }
+                ]
+            },
+            {
+                "dialog_id": 21,
+                "title": "",
+                "subtitle": "การเดินทางขึ้นยอดเขานั้นเหนื่อยล้า และเมื่อคุณถึงที่นั่น... ไม่มี Azure Rathalos ไม่เห็นแม้แต่ร่องรอยที่แสดงว่ามันเคยมาแถวนี้เมื่อไม่นานมานี้ อย่างน้อยยังมีแสงสว่างให้สอดส่องไปรอบๆ",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "แต่ละนักล่าได้รับ Boulder Bone 1 ชิ้น",
+                        "PathToDialog": 10
+                    }
+                ]
+            },
+            {
+                "dialog_id": 22,
+                "title": "",
+                "subtitle": "สัตว์ร้ายได้รับบาดเจ็บหรือเปล่า? หรือมันแค่ไม่สนใจว่ามีคนไล่ตาม? ไม่ว่าอย่างไรก็ตาม ร่องรอยที่มันทิ้งไว้ให้คุณตามนั้นชัดเจนจนแมวตาบอดยังสามารถติดตามได้",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "แต่ละนักล่าได้รับ Azure Rathalos Marrow 1 ชิ้น",
+                        "PathToDialog": 29
+                    }
+                ]
+            },
+            {
+                "dialog_id": 23,
+                "title": "",
+                "subtitle": "พักผ่อนจากการหยุดชั่วคราวในการล่า คุณเตรียมตัวสำหรับขั้นตอนต่อไปของการตามล่า",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "ได้รับ track token 1 ชิ้น",
+                        "PathToDialog": 14
+                    }
+                ]
+            },
+            {
+                "dialog_id": 24,
+                "title": "",
+                "subtitle": "การปีนหน้าผาเป็นกระบวนการที่ยากและใช้แรงมาก นกและแมลงบินไปมารอบตัวคุณ แต่เมื่อคุณไปถึงยอดเขา คุณก็สามารถเห็นป่าเบื้องล่างได้ชัดเจน Azure Rathalos เคยอยู่ที่นี่ คุณสามารถดมกลิ่นซัลเฟอร์จากลมหายใจของมัน และเห็นรอยจากกรงเล็บของมัน",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "รักษาความเร็วในการเดินทางต่อไป",
+                        "consequences": "ได้รับ 1 track token",
+                        "PathToDialog": 21
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ศึกษาบริเวณรอบๆ",
+                        "consequences": "แต่ละนักล่าได้รับ 1 Azure Rathalos webbing ทิ้ง time card 2 ใบ",
+                        "PathToDialog": 15
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "",
+                        "title": "ปีนขึ้นไปข้างบน หวังว่าจะพบรังของมัน",
+                        "consequences": "แต่ละนักล่าได้รับ 1 Carbalite ore ได้รับ track token 1 ชิ้น ทิ้ง time card 1 ใบ",
+                        "PathToDialog": 16
+                    }
+                ]
+            },
+            {
+                "dialog_id": 25,
+                "title": "",
+                "subtitle": "Azure Rathalos กรีดร้อง และบินวนรอบตัวคุณ มันกำลังจับตามองคุณหรือมันเห็นเหยื่ออื่นในป่าลึกกว่านี้? คุณไม่สามารถบอกได้ แต่เพื่อความปลอดภัย คุณตัดสินใจหลบเข้าไปใต้ร่มเงาของต้นไม้ขณะที่มันเกาท้องฟ้าด้วยกรงเล็บของมัน",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "หนามแหลมตกลงมาเหมือนฝนอันตรายจากข้างบน ถูกดึงออกจากเปลือกไม้หนา",
+                        "consequences": "แต่ละนักล่าได้รับ 1 Azure Rathalos Wingtalon ได้รับ track token 1 ชิ้น",
+                        "PathToDialog": 28
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "บางสิ่งตกลงมาจากข้างบน คุณรีบไปจับมัน",
+                        "consequences": "แต่ละนักล่าได้รับ 1 Dragonvein Drystal",
+                        "PathToDialog": 8
+                    }
+                ]
+            },
+            {
+                "dialog_id": 26,
+                "title": "",
+                "subtitle": "มันหายไปไหน? คุณเกือบจะถึงมันแล้ว คุณมั่นใจว่าคุณอยู่ใกล้มาก คุณยังถืออาวุธไว้พร้อม ขยับร่างกายรู้สึกถึงความตึงเครียดในกล้ามเนื้อ ความตื่นเต้นที่สะสมและยังไม่ได้ปลดปล่อย... คุณพยายามสงบจิตใจ และเดินหน้าต่อในการล่าครั้งนี้",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "...",
+                        "consequences": "",
+                        "PathToDialog": 9
+                    }
+                ]
+            },
+            {
+                "dialog_id": 27,
+                "title": "",
+                "subtitle": "เลือดถูกกระจายไปทั่วที่โล่ง และเนื้อในท้องของสัตว์ที่ถูกฆ่าถูกกระเซ็นไปทั่วหญ้าที่แห้งแล้ง กลิ่นของซากศพแทบจะทนไม่ได้ แต่นั่นอาจจะมีสิ่งมีค่าซ่อนอยู่ในกองเนื้อเน่าเหม็นนั้น",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "คุณจะจริงจังกับการล้วงหากินจากซากศพนี้หรือ? แน่นอนว่าไม่",
+                        "consequences": "ได้รับ 1 track token.",
+                        "PathToDialog": 31
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "ข้อมูลทุกชิ้นอาจมีประโยชน์!",
+                        "consequences": "นักล่าทุกคนทอยลูกเต๋าหนึ่งครั้งจากตารางต่อไปนี้:\n1-2 ได้รับ Dragonite ore 1 ชิ้น\n3-4 ได้รับ Firecell Stone 1 ก้อน\n5-6 ได้รับ Azure Rathalos Shell 1 ชิ้น\nทิ้ง 1 Time card\nสับการ์ด Fumbled Carving กลับเข้าไปในกอง Time card.",
+                        "PathToDialog": 19
+                    }
+                ]
+            },
+            {
+                "dialog_id": 28,
+                "title": "",
+                "subtitle": "ยามเย็นเริ่มคล้อยลงขณะที่คุณเดินกลับลงสู่พื้นป่า Azure Rathalos ยังคงอยู่เหนือคุณที่ไหนสักแห่ง มันช่างฉลาดเกินกว่าจะไม่รู้ว่ามีอะไรบางอย่างกำลังตามมันอยู่ ขณะที่คุณปีนลงไป คุณพบเหยื่ออีกตัวหนึ่งของสัตว์ร้าย แต่มันก็ยังมีบางสิ่งที่อาจได้จากที่นี่...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "เพิกเฉยไปเถอะ Azure Rathalos คือเป้าหมายของคุณ",
+                        "consequences": "รับ 1 track token",
+                        "PathToDialog": 20
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "",
+                        "title": "มันคุ้มค่าที่จะเก็บไว้",
+                        "consequences": "นักล่าทุกคนได้รับ Wingdrake Hide 1 ชิ้น.",
+                        "PathToDialog": 27
+                    }
+                ]
+            },
+            {
+                "dialog_id": 29,
+                "title": "",
+                "subtitle": "ทรายใต้เท้าของคุณ เสียงคลื่นที่กระทบชายฝั่ง เสียงนกที่ร้องอยู่เหนือฟ้า มันช่างงดงามจนคุณเริ่มสงสัยว่าควรจะยังคงล่าสัตว์ต่อไปดีไหม คุณอาจจะนั่งอยู่ที่นี่ กินอาหารของคุณ และเพลิดเพลินกับแสงแดด แล้วจู่ๆ ก็มีบางสิ่งในน้ำดึงความสนใจของคุณ... เปลือกของ Azure Rathalos สัตว์ร้ายนั้นเคยอยู่ที่นี่ และมันเพิ่งจะไป",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "ดำน้ำลงไปและเก็บเปลือกนั้นขึ้นมา",
+                        "consequences": "นักล่าทุกคนได้รับ Coral Crystal 1 ชิ้น และ Azure Rathalos Shell 1 ชิ้น.",
+                        "PathToDialog": 10
+                    },
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "กลับไปที่การล่าทันที",
+                        "consequences": "นักล่าทุกคนได้รับ Warm Pelt 1 ชิ้น. รับ 1 track token.",
+                        "PathToDialog": 7
+                    }
+                ]
+            },
+            {
+                "dialog_id": 30,
+                "title": "",
+                "subtitle": "เกล็ดที่คุณเก็บได้บ่งชี้ว่า Azure Rathalos ได้รับบาดเจ็บ; มันถูกฉีกขาดออกไปในระหว่างการต่อสู้ที่ดุเดือด บริเวณพื้นดินมีรอยเลือดกระเซ็นกระจายไปทั่วใบไม้และดิน การล่าสัตว์ที่ได้รับบาดเจ็บเป็นเหมือนดาบสองคม; พวกมันอาจจะสู้ไม่ได้นาน แต่ก็จะสู้ด้วยความดุร้ายยิ่งขึ้น...",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "หากทอยได้ 1-3 ให้เลือกตัวเลือกนี้",
+                        "title": "ตามรอยเลือดไป\nได้รับ 2 track tokens\nทิ้ง Time card 1 ใบและทอยลูกเต๋า",
+                        "consequences": "",
+                        "PathToDialog": 26
+                    },
+                    {
+                        "action_id": 2,
+                        "required_dialog": "หากทอยได้ 4-6 ให้เลือกตัวเลือกนี้",
+                        "title": "",
+                        "consequences": "ลดค่าเลือดของ Azure Rathalos ตามจำนวนที่ทอยได้.",
+                        "PathToDialog": 25
+                    },
+                    {
+                        "action_id": 3,
+                        "required_dialog": "",
+                        "title": "ค้นหาบริเวณนี้",
+                        "consequences": "นักล่าทุกคนได้รับ Quality Bone 1 ชิ้น และ Monster Bone Small 1 ชิ้น.",
+                        "PathToDialog": 26
+                    }
+                ]
+            },
+            {
+                "dialog_id": 31,
+                "title": "",
+                "subtitle": "เสียงกรีดร้องที่ดังสนั่นฉีกท้องฟ้าเหนือหัวคุณ เสียงร้องของ Azure Rathalos ผสมผสานกับเสียงลมที่พัดกระโชกขณะที่มันโฉบลงมาหาคุณ มีแสงสะท้อนของกรงเล็บและฟัน รวมทั้งลมหายใจไฟที่พุ่งออกจากปากของมัน... ถึงเวลาต่อสู้แล้ว",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "",
+                        "consequences": "ได้รับ 2 track token เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "PathToDialog": 0
+                    }
+                ]
+            },
+            {
+                "dialog_id": 32,
+                "title": "",
+                "subtitle": "เสียงเคี้ยวกินนั้นไม่อาจผิดพลาดได้; เสียงน้ำลายและเนื้อที่ถูกฉีกขาดอย่างไม่หยุดยั้ง Azure Rathalos กำลังกินอิ่มกับเหยื่อที่มันล่ามาใหม่ มันฉีกชิ้นเนื้อออกมาแล้วขว้างขึ้นไปในอากาศ\nตอนนี้คือโอกาสของคุณ อย่าปล่อยให้มันหนีไป!",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "",
+                        "consequences": "ทิ้ง Time card 2 ใบ เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "PathToDialog": 0
+                    }
+                ]
+            },
+            {
+                "dialog_id": 33,
+                "title": "",
+                "subtitle": "หลังคาป่าค่อยๆ โค้งลงแล้วก็แตกออก Azure Rathalos ตกลงมาข้างหน้าคุณ ดวงตาของมันจ้องมองคุณเหมือนมีดที่เฉือนเข้าที่ใจคุณ ในความพยายามที่จะหลบหนี คุณตกลงไปผ่านพงหญ้า เกือบจะรอดจากเปลวไฟที่ลุกโชนพุ่งผ่านตัวคุณ",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "",
+                        "consequences": "เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "PathToDialog": 0
+                    }
+                ]
+            },
+            {
+                "dialog_id": 34,
+                "title": "",
+                "subtitle": "คุณไม่ผิดเลย Azure Rathalos ซ่อนตัวอยู่หลังต้นไม้ พยายามหาช่วงเวลาพักฟื้น แต่การติดตามอย่างไม่ย่อท้อของคุณได้ปลุกความโกรธของมัน ตอนนี้มันพุ่งตัวขึ้นสู่ท้องฟ้าและใช้กระแสลมหมุนตัว วงปีกของมันเปิดออกจนสุดขีด และเสียงคำรามเหมือนภูเขาถล่มทำให้สติของคุณแทบสะเทือน เตรียมพร้อมต่อสู้เพื่อชีวิตของคุณ!",
+                "consequences": "",
+                "actions": [
+                    {
+                        "action_id": 1,
+                        "required_dialog": "",
+                        "title": "",
+                        "consequences": "ได้รับ 1 track token เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "PathToDialog": 0
+                    }
+                ]
+            }
+        ]
+    }
+]

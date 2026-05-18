@@ -1,0 +1,132 @@
+[
+    {
+        "ability_id": 1,
+        "ability_name": "Poison Resistance",
+        "ability": "Hunter จะต้านทานต่อสถานะ Poison ได้"
+    },
+    {
+        "ability_id": 2,
+        "ability_name": "Slugger",
+        "ability": "เควสละครั้ง, เมื่อ Hunter ใช้การ์ดโจมตีที่มีสถานะ Stun ให้วาง Token Stun +1 อัน"
+    },
+    {
+        "ability_id": 3,
+        "ability_name": "Speed Eating",
+        "ability": "เควสละครั้ง, Hunter สามารถใช้ Combat Action และ Preparation Action พร้อมกันได้ในเทิร์นเดียว"
+    },
+    {
+        "ability_id": 4,
+        "ability_name": "Palico Rally",
+        "ability": "Hunter ใช้ความสามารถของ Palico ได้ 2 ครั้งต่อเควสแทน"
+    },
+    {
+        "ability_id": 5,
+        "ability_name": "Constitution",
+        "ability": "เควสละครั้ง, เมื่อ Hunter ทำการหลบหลีกการโจมตีของมอนสเตอร์ได้สำเร็จ ให้ทิ้งการ์ดโจมตีที่ใช้หลบหลีกทั้งหมดนั้นออกจาก Stamina Board"
+    },
+    {
+        "ability_id": 6,
+        "ability_name": "Evade Extender",
+        "ability": "เมื่อ Hunter ทำการหลบหลีกการโจมตีของมอนสเตอร์ได้สำเร็จ, สามารถเคลื่อนที่เพิ่มเติมได้อีก 1 node."
+    },
+    {
+        "ability_id": 7,
+        "ability_name": "Thunder Attack",
+        "ability": "เมื่อ Hunter เล่นการ์ดโจมตีที่มีการโจมตีธาตุ Thunder, จั๋ว Damage card เพิ่มเติม +1 ใบ"
+    },
+    {
+        "ability_id": 8,
+        "ability_name": "Fire Attack",
+        "ability": "เมื่อ Hunter เล่นการ์ดโจมตีที่มีการโจมตีธาตุ Fire, จั๋ว Damage card เพิ่มเติม +1 ใบ"
+    },
+    {
+        "ability_id": 9,
+        "ability_name": "Marathon Runner",
+        "ability": "เมื่อ Hunter ทำการ walks, Hunter สามารถเคลื่อนที่ 2 node แทน 1 node ได้"
+    },
+    {
+        "ability_id": 10,
+        "ability_name": "Rathalos Mastery",
+        "ability": "เมื่อ Hunter เล่นการ์ดโจมตีที่มีการโจมตีธาตุ Fire, แทนการวางโทเคนธาตุ Fire, ให้จั๋ว Elemental Damage card 1 ใบทันที, เอฟเฟคนี้จะไม่เป็นผลหากมอนสเตอร์นั้นไม่รับผลดาเมจธาตุ Fire"
+    },
+    {
+        "ability_id": 11,
+        "ability_name": "Weakness Exploit",
+        "ability": "เควสละครั้ง, สามารถสลับโทเค็นนักล่าของตนกับผู้เล่นคนอื่นได้, ตำแหน่งการหันหน้าของโทเค็นนักล่าที่ผู้เล่นแต่ละคนได้รับควรตรงกับตำแหน่งการหันหน้าของโทเค็นก่อนหน้านี้ของตน"
+    },
+    {
+        "ability_id": 12,
+        "ability_name": "Sleep Resistance",
+        "ability": "Hunter จะต้านทานต่อสถานะ Sleep ได้"
+    },
+    {
+        "ability_id": 13,
+        "ability_name": "Intimidator",
+        "ability": "Hunter จะไม่ได้รับความเสียหายระหว่าง gathering phase"
+    },
+    {
+        "ability_id": 14,
+        "ability_name": "Azure Rathalos Mastery",
+        "ability": "เมื่อ Hunter จะจั๋วการ์ด Elemental Damage, ให้จั๋ว 3 ใบ หลังจากนั้นเลือก 1 ใบและทำผล"
+    },
+    {
+        "ability_id": 15,
+        "ability_name": "Focus",
+        "ability": "เมื่อ Hunter เล่นการ์ดที่มีสัญลักษณ์ Combos, ให้ลดจำนวน Combos ลง 1 หน่วย แต่จำนวน Combos ต้องไม่ต่ำกว่า 1 หน่วย"
+    },
+    {
+        "ability_id": 16,
+        "ability_name": "Guard",
+        "ability": "เมื่อ Hunter เล่นการ์ดโจมตีที่มีค่าป้องกัน ให้เพิ่มค่าป้องกันอีก +1 หน่วย"
+    },
+    {
+        "ability_id": 17,
+        "ability_name": "Stun Resistance",
+        "ability": "Hunter จะต้านทานต่อสถานะ Stun ได้"
+    },
+    {
+        "ability_id": 18,
+        "ability_name": "Sporepuff Expert",
+        "ability": "เมื่อ Hunter ได้รับการฟื้นฟูพลังชีวิต (ยกเว้น Potion) จะได้รับการฟื้นฟูพลังชีวิตเพิ่มเติม +1 health"
+    },
+    {
+        "ability_id": 19,
+        "ability_name": "Botanist",
+        "ability": "ระหว่างช่วง gathering phase เมื่อ Hunter ได้รับ Potion สามารถฟื้นฟูพลังชีวิตเต็มทันทีโดยไม่ต้องใช้ยา"
+    },
+    {
+        "ability_id": 20,
+        "ability_name": "Aquatic Expert",
+        "ability": "เมื่อ Hunter เคลื่อนที่เข้าสู่ ช่องหนองน้ำ Hunter ไม่จำเป็นต้องทิ้ง Damage Cards."
+    },
+    {
+        "ability_id": 21,
+        "ability_name": "Water Attack",
+        "ability": "เมื่อ Hunter เล่นการ์ดโจมตีที่มีการโจมตีธาตุ Water, จั๋ว Damage card เพิ่มเติม +1 ใบ"
+    },
+    {
+        "ability_id": 22,
+        "ability_name": "Heroics",
+        "ability": "ในระหว่างที่ Hunter พลังชีวิตเหลือ 2 หรือน้อยกว่า เมื่อ Hunter เล่นการ์ดโจมตีที่ไม่มีการโจมตีธาตุ จั๋ว Damage Card เพิ่ม +1 ใบ"
+    },
+    {
+        "ability_id": 23,
+        "ability_name": "Diablos Mastery",
+        "ability": "เมื่อ Hunter เล่นการ์ดโจมตีที่ไม่มีการโจมตีธาตุ จั๋ว Damage Card เพิ่ม +1 ใบ"
+    },
+    {
+        "ability_id": 24,
+        "ability_name": "Black Diablos Mastery",
+        "ability": "เมื่อ Hunter เล่นการ์ดโจมตีที่ไม่มีการโจมตีธาตุ จั๋ว Damage Card เพิ่ม +1 ใบ"
+    },
+    {
+        "ability_id": 25,
+        "ability_name": "Resentment",
+        "ability": "หาก Hunter ฟื้นฟูพลังชีวิตในเทิร์นก่อนหน้านี้ การ์ดโจมตีใบแรกที่คุณเล่นในเทิร์นนี้จะได้รับ +2 ความเสียหาย"
+    },
+    {
+        "ability_id": 26,
+        "ability_name": "Part Breaker",
+        "ability": "เมื่อ Hunter เล่นการ์ดโจมตีที่มีการ Break Part การ์ดนั้นได้รับ Break Part +1 หน่วย"
+    }
+]

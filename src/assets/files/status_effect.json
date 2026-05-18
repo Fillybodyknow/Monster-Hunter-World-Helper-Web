@@ -1,0 +1,37 @@
+[
+    {
+        "effect_id": 1,
+        "effect_name": "Stun",
+        "hunter_suffer": "เลือกการ์ดโจมตีหนึ่งใบจากมือ และวางคว่ำหน้าลงบน stamina board หากไม่สามารถวางการ์ดได้ สถานะผิดปกตินี้จะไม่มีผลใดๆ",
+        "monster_suffer": "ค่าหลบหลีกของการโจมตีครั้งถัดไปของมอนสเตอร์คือ 1 และไม่สามารถเพิ่มหรือลดได้ด้วยเอฟเฟกต์อื่นใด",
+        "thumbnail": "assets/img/status_effect/stun.webp"
+    },
+    {
+        "effect_id": 2,
+        "effect_name": "Poison",
+        "hunter_suffer": "Hunter ของคุณจะสูญเสียเลือด 2 หน่วย เมื่อจบเทิร์นครั้งถัดไปของคุณ",
+        "monster_suffer": "มอนสเตอร์จะสูญเสียเลือด 2 หน่วย เมื่อจบเทิร์นครั้งถัดไปของมอนสเตอร์",
+        "thumbnail": "assets/img/status_effect/poison.webp"
+    },
+    {
+        "effect_id": 3,
+        "effect_name": "Sleep",
+        "hunter_suffer": "Hunter ไม่สามารถวางการ์ดโจมตีบน Stamina Board เพื่อโจมตี, เคลื่อนที่, หรือ หลบหลีกได้ จนกว่าจะจบเทิร์นครั้งถัดไปของคุณ",
+        "monster_suffer": "จะแสดงผลแค่ เทิร์นของ Hunter และ จำนวนการ์ดโจมตีที่สามารถโจมตีได้ของ Hunter ในการ์ดการโจมตีครั้งถัดไปของมอนสเตอร์",
+        "thumbnail": "assets/img/status_effect/sleep.webp"
+    },
+    {
+        "effect_id": 4,
+        "effect_name": "Paralysis",
+        "hunter_suffer": "ถ้าคุณมีการ์ดบนมือมากกว่า 2 ใบ ให้ทิ้งการ์ดบนมือจนเหลือ 2 ใบบนมือ",
+        "monster_suffer": "ถ้าการ์ดโจมตีถัดไปของมอนสเตอร์มีการเคลื่อนที่ การเคลื่อนที่ของมอนสเตอร์จะกลายเป็น 0",
+        "thumbnail": "assets/img/status_effect/paralysis.webp"
+    },
+    {
+        "effect_id": 5,
+        "effect_name": "Blastblight",
+        "hunter_suffer": "Hunter ของคุณ เกราะ -2 หน่วย จนกว่าจะจบเทิร์นครั้งถัดไปของคุณ",
+        "monster_suffer": "ทุกส่วนของมอนสเตอร์เกราะ -1 หน่วย จนกว่าจบเทิร์นครั้งถัดไปของมอนสเตอร์",
+        "thumbnail": "assets/img/status_effect/blastblight.webp"
+    }
+]

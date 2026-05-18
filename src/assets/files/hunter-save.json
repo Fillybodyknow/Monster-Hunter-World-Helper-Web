@@ -1,0 +1,25 @@
+[
+    {
+        "hunter_id": 1,
+        "hunter_name": "John Doe",
+        "hunter_class_id": 1,
+        "campaign_day": 5,
+        "equipment": [
+            
+        ],
+        "inventory": [
+            {
+                "resource_type_id": 1,
+                "item_id": 1,
+                "quantity": 1
+            }
+        ],
+        "attempted_quest": [
+            {
+                "monster_id": 1,
+                "quest_id": 2,
+                "attempted": []
+            }
+        ]
+    }
+]

@@ -1,0 +1,27 @@
+[
+    {
+        "elemental_id": 1,
+        "elemental": "Fire",
+        "thumbnail": "assets/img/elemental/fire.png"
+    },
+    {
+        "elemental_id": 2,
+        "elemental": "Water",
+        "thumbnail": "assets/img/elemental/water.png"
+    },
+    {
+        "elemental_id": 3,
+        "elemental": "Thunder",
+        "thumbnail": "assets/img/elemental/thunder.png"
+    },
+    {
+        "elemental_id": 4,
+        "elemental": "Ice",
+        "thumbnail": "assets/img/elemental/ice.png"
+    },
+    {
+        "elemental_id": 5,
+        "elemental": "Dragon",
+        "thumbnail": "assets/img/elemental/dragon.webp"
+    }
+]

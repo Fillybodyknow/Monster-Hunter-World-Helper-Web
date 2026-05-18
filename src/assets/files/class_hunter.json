@@ -1,0 +1,32 @@
+[
+    {
+        "hunter_class_id" : 1,
+        "hunter_class" : "Great Sword",
+        "thumbnail" : "assets/img/class/greatsword.png"
+    },
+    {
+        "hunter_class_id" : 2,
+        "hunter_class" : "Bow",
+        "thumbnail" : "assets/img/class/bow.png"
+    },
+    {
+        "hunter_class_id" : 3,
+        "hunter_class" : "Dual Blades",
+        "thumbnail" : "assets/img/class/dual-blades.png"
+    },
+    {
+        "hunter_class_id" : 4,
+        "hunter_class" : "Sword & Shield",
+        "thumbnail" : "assets/img/class/swordANDshield.png"
+    },
+    {
+        "hunter_class_id" : 5,
+        "hunter_class" : "Hammer",
+        "thumbnail" : "assets/img/class/hammer.webp"
+    },
+    {
+        "hunter_class_id" : 6,
+        "hunter_class" : "Charge Blade",
+        "thumbnail" : "assets/img/class/charge_blade.webp"
+    }
+]

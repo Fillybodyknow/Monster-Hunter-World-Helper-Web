@@ -1,0 +1,1760 @@
+[
+  {
+    "hunter_class_id": 1,
+    "weapons_list": [
+      {
+        "weapon_type_id": 1,
+        "weapon_type": "Ore",
+        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Buster Sword",
+            "rarity": 1,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 7,
+              "damage_2": 4,
+              "damage_3": 1,
+              "damage_4": 0
+            },
+            "remove": "",
+            "add": ""
+          },
+          {
+            "item_id": 2,
+            "item": "Buster Blade",
+            "rarity": 2,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 4,
+              "damage_2": 6,
+              "damage_3": 2,
+              "damage_4": 0
+            },
+            "remove": "2 Jumping Slash",
+            "add": "2 Enhanced Jumping Slash"
+          },
+          {
+            "item_id": 3,
+            "item": "Chrome Razor",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 2,
+              "damage_2": 6,
+              "damage_3": 4,
+              "damage_4": 0
+            },
+            "remove": "2 Jumping Slash\n2 Wide Slash",
+            "add": "2 Enhanced Jumping Slash\n2 Heavy Slice"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 2,
+        "weapon_type": "Monster Bone",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Bone Blade",
+            "rarity": 1,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 5,
+              "damage_2": 3,
+              "damage_3": 2,
+              "damage_4": 0
+            },
+            "remove": "",
+            "add": ""
+          },
+          {
+            "item_id": 2,
+            "item": "Bone Slasher",
+            "rarity": 2,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 2,
+              "damage_2": 5,
+              "damage_3": 3,
+              "damage_4": 0
+            },
+            "remove": "Any 1 Card",
+            "add": "1 Great Sword Block"
+          },
+          {
+            "item_id": 3,
+            "item": "Giant Jawblade",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 2,
+              "damage_2": 4,
+              "damage_3": 4,
+              "damage_4": 0
+            },
+            "remove": "Any 1 Card\n4 Overhead Slam",
+            "add": "1 Great Sword Block\n4 Enhanced Overhead Slam"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 3,
+        "weapon_type": "Great Jagras",
+        "thumbnail": "assets/img/equiments/sets/Great_Jagras.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Jagras Blade",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 6,
+              "damage_3": 5,
+              "damage_4": 1
+            },
+            "remove": "3 Rising Slash",
+            "add": "3 Strong Rising Slash"
+          },
+          {
+            "item_id": 2,
+            "item": "Bone Hacker",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 3,
+              "damage_3": 9,
+              "damage_4": 2
+            },
+            "remove": "3 Rising Slash\nAny 2 Cards",
+            "add": "3 Strong Rising Slash\n2 Strong Change Up"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 4,
+        "weapon_type": "Rathalos",
+        "thumbnail": "assets/img/equiments/sets/Rathalos.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Flame Blade",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 5,
+              "damage_3": 5,
+              "damage_4": 2
+            },
+            "remove": "4 Overhead Slam",
+            "add": "4 Blazing Slam"
+          },
+          {
+            "item_id": 2,
+            "item": "Red Wing",
+            "rarity": 4,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 5,
+              "damage_3": 6,
+              "damage_4": 3
+            },
+            "remove": "4 Overhead Slam\n2 Wide Slash",
+            "add": "4 Blazing Slam\n2 Crushing Slash"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 5,
+        "weapon_type": "Barroth",
+        "thumbnail": "assets/img/equiments/sets/barroth.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Carapace Buster",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 5,
+              "damage_3": 4,
+              "damage_4": 1
+            },
+            "remove": "2 Great Sword Block",
+            "add": "2 Empowered Great Sword Block"
+          },
+          {
+            "item_id": 2,
+            "item": "Barroth Shredder",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 6,
+              "damage_3": 4,
+              "damage_4": 2
+            },
+            "remove": "2 Great Sword Block\nAny 2 Cards",
+            "add": "2 Empowered Great Sword Block\n2 Paralysing Slash"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 6,
+        "weapon_type": "Pukei-Pukei",
+        "thumbnail": "assets/img/equiments/sets/pukei-pukei.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Blooming Blade",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 5,
+              "damage_3": 6,
+              "damage_4": 1
+            },
+            "remove": "2 True Charged Slash",
+            "add": "2 Toxic Charged Slash"
+          },
+          {
+            "item_id": 2,
+            "item": "Datura Blaze",
+            "rarity": 4,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 3,
+              "damage_3": 8,
+              "damage_4": 3
+            },
+            "remove": "2 True Charged Slash\n2 Charge Up",
+            "add": "2 Toxic Charged Slash\n2 Poisoned Charge Up"
+          }
+        ]
+      }
+    ],
+    "weapon_priority_set": [
+      {
+        "weapon_type_id": 1,
+        "priority": [
+          [1, 1],
+          [1, 2],
+          [1, 3]
+        ]
+      },
+      {
+        "weapon_type_id": 2,
+        "priority": [
+          [2, 1],
+          [2, 2],
+          [2, 3]
+        ]
+      },
+      {
+        "weapon_type_id": 3,
+        "priority": [
+          [1, 1],
+          [3, 1],
+          [3, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 5,
+        "priority": [
+          [2, 1],
+          [5, 1],
+          [5, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 4,
+        "priority": [
+          [1, 1],
+          [4, 1],
+          [4, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 6,
+        "priority": [
+          [1, 1],
+          [6, 1],
+          [6, 2]
+        ]
+      }
+    ]
+  },
+  {
+    "hunter_class_id": 2,
+    "weapons_list": [
+      {
+        "weapon_type_id": 1,
+        "weapon_type": "Ore",
+        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Iron Bow",
+            "rarity": 1,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 8,
+              "damage_2": 4,
+              "damage_3": 0,
+              "damage_4": 0
+            },
+            "remove": "",
+            "add": ""
+          },
+          {
+            "item_id": 2,
+            "item": "Steel Bow",
+            "rarity": 2,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 6,
+              "damage_2": 6,
+              "damage_3": 0,
+              "damage_4": 0
+            },
+            "remove": "2 Feint",
+            "add": "2 Skilled Feint"
+          },
+          {
+            "item_id": 3,
+            "item": "Alloy Bow",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 4,
+              "damage_2": 6,
+              "damage_3": 2,
+              "damage_4": 0
+            },
+            "remove": "2 Feint\n2 3 Charged Shot",
+            "add": "2 Skilled Feint\n2 Enhanced Charged Shot"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 2,
+        "weapon_type": "Monster Bone",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Hunter's Bow",
+            "rarity": 1,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 6,
+              "damage_2": 4,
+              "damage_3": 0,
+              "damage_4": 0
+            },
+            "remove": "4 Power Coating",
+            "add": "2 Poison Coating\n2 Paralysis Coating"
+          },
+          {
+            "item_id": 2,
+            "item": "Hunter's Stoutbow",
+            "rarity": 2,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 4,
+              "damage_2": 6,
+              "damage_3": 0,
+              "damage_4": 0
+            },
+            "remove": "4 Power Coating\n2 Shot",
+            "add": "2 Poison Coating\n2 Paralysis Coating\n2 Enhanced Shot"
+          },
+          {
+            "item_id": 3,
+            "item": "Hunter's Proudbow",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 5,
+              "damage_3": 2,
+              "damage_4": 0
+            },
+            "remove": "4 Power Coating\n2 Shot\n2 Arc Shot",
+            "add": "2 Poison Coating\n2 Paralysis Coating\n2 Enhanced Shot\n2 Strong Arc Shot"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 3,
+        "weapon_type": "Tobi-Kadachi",
+        "thumbnail": "assets/img/equiments/sets/Tobi-Kadachi.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Pulsar Bow",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 2,
+              "damage_2": 5,
+              "damage_3": 3,
+              "damage_4": 0
+            },
+            "remove": "4 Power Coating",
+            "add": "3 High Power Coating\n1 Paralysis Coating"
+          },
+          {
+            "item_id": 2,
+            "item": "Flying Kadachi Strikebow",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 9,
+              "damage_3": 3,
+              "damage_4": 0
+            },
+            "remove": "4 Power Coating\n1 Dragon Piercer\nAny 1 Card",
+            "add": "3 High Power Coating\n1 Paralysis Coating\n 2 Striking Dragon Piercer"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 4,
+        "weapon_type": "Anjanath",
+        "thumbnail": "assets/img/equiments/sets/Anjanath.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Blazing Bow",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 2,
+              "damage_2": 6,
+              "damage_3": 4,
+              "damage_4": 0
+            },
+            "remove": "4 Power Coating",
+            "add": "2 Blast Coating\n2 Poison Coating"
+          },
+          {
+            "item_id": 2,
+            "item": "Anja Arch",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 6,
+              "damage_3": 8,
+              "damage_4": 0
+            },
+            "remove": "4 Power Coating\n3 Charged Shot",
+            "add": "2 Blast Coating\n2 Poison Coating\n3 Blazing Charged Shot"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 5,
+        "weapon_type": "Pukei-Pukei",
+        "thumbnail": "assets/img/equiments/sets/pukei-pukei.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Blooming Arch",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 1,
+              "damage_2": 7,
+              "damage_3": 2,
+              "damage_4": 0
+            },
+            "remove": "4 Power Coating\n2 Shot",
+            "add": "2 Poison Coating\n2 Paralysis Coating\n2 Poisoned Shot"
+          },
+          {
+            "item_id": 2,
+            "item": "Datura String",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 1,
+              "damage_2": 7,
+              "damage_3": 4,
+              "damage_4": 0
+            },
+            "remove": "4 Power Coating\n6 Shot",
+            "add": "2 Poison Coating\n2 Paralysis Coating\n2 Poisoned Shot\n4 Flared Shot"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 6,
+        "weapon_type": "Diablos",
+        "thumbnail": "assets/img/equiments/sets/diablos.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Diablos Bow",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 4,
+              "damage_2": 4,
+              "damage_3": 4,
+              "damage_4": 0
+            },
+            "remove": "2 Power Coating\n2 Shot",
+            "add": "2 Paralysis Coating\n2 Rending Arrows"
+          },
+          {
+            "item_id": 2,
+            "item": "Diablos Coilbender",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 2,
+              "damage_2": 7,
+              "damage_3": 5,
+              "damage_4": 0
+            },
+            "remove": "2 Power Coating\n2 Shot\n2 Charge Sidestep",
+            "add": "2 Paralysis Coating\n2 Rending Arrows\n2 Rapid Dash"
+          }
+        ]
+      }
+    ],
+    "weapon_priority_set": [
+      {
+        "weapon_type_id": 1,
+        "priority": [
+          [1, 1],
+          [1, 2],
+          [1, 3]
+        ]
+      },
+      {
+        "weapon_type_id": 2,
+        "priority": [
+          [2, 1],
+          [2, 2],
+          [2, 3]
+        ]
+      },
+      {
+        "weapon_type_id": 3,
+        "priority": [
+          [2, 1],
+          [3, 1],
+          [3, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 4,
+        "priority": [
+          [2, 1],
+          [4, 1],
+          [4, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 5,
+        "priority": [
+          [2, 1],
+          [5, 1],
+          [5, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 6,
+        "priority": [
+          [2, 1],
+          [6, 1],
+          [6, 2]
+        ]
+      }
+    ]
+  },
+  {
+    "hunter_class_id": 3,
+    "weapons_list": [
+      {
+        "weapon_type_id": 1,
+        "weapon_type": "Ore",
+        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Matched Slicers",
+            "rarity": 1,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 10,
+              "damage_2": 2,
+              "damage_3": 0,
+              "damage_4": 0
+            },
+            "remove": "",
+            "add": ""
+          },
+          {
+            "item_id": 2,
+            "item": "Dual Slicers",
+            "rarity": 2,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 8,
+              "damage_2": 3,
+              "damage_3": 1,
+              "damage_4": 0
+            },
+            "remove": "2 Lunging Stab",
+            "add": "2 Enhanced Lunging Stab"
+          },
+          {
+            "item_id": 3,
+            "item": "Chrome Slicers",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 5,
+              "damage_2": 5,
+              "damage_3": 2,
+              "damage_4": 0
+            },
+            "remove": "2 Lunging Stab\n4 Blade Dance",
+            "add": "2 Enhanced Lunging Stab\n4 Enhanced Blade Dance"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 2,
+        "weapon_type": "Monster Bone",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Bone Hatchets",
+            "rarity": 1,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 7,
+              "damage_2": 3,
+              "damage_3": 0,
+              "damage_4": 0
+            },
+            "remove": "",
+            "add": ""
+          },
+          {
+            "item_id": 2,
+            "item": "Wild Hatchets",
+            "rarity": 2,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 5,
+              "damage_2": 5,
+              "damage_3": 0,
+              "damage_4": 0
+            },
+            "remove": "2 Double Slash",
+            "add": "2 Impact Double Slash"
+          },
+          {
+            "item_id": 3,
+            "item": "Strong Hatchets",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 5,
+              "damage_3": 2,
+              "damage_4": 0
+            },
+            "remove": "2 Double Slash\n2 Rapid Spin",
+            "add": "2 Impact Double Slash\n2 Strong Rapid Spin"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 3,
+        "weapon_type": "Tobi-Kadachi",
+        "thumbnail": "assets/img/equiments/sets/Tobi-Kadachi.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Pulsar Hatchets",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 4,
+              "damage_3": 3,
+              "damage_4": 0
+            },
+            "remove": "2 Blades Fangs\n2 Rapid Spin",
+            "add": "4 Shocking Rush"
+          },
+          {
+            "item_id": 2,
+            "item": "Kadachi Claws",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 4,
+              "damage_3": 5,
+              "damage_4": 0
+            },
+            "remove": "2 Blades Fangs\n2 Rapid Spin\n2 Demon Mode",
+            "add": "4 Shocking Rush\n2 Enhanced Demon Mode"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 4,
+        "weapon_type": "Anjanath",
+        "thumbnail": "assets/img/equiments/sets/Anjanath.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Blazing Hatchets",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 1,
+              "damage_2": 9,
+              "damage_3": 3,
+              "damage_4": 0
+            },
+            "remove": "1 Six Fold Slash\n1 Any 1 Card",
+            "add": "2 Blazing Fold Slash"
+          },
+          {
+            "item_id": 2,
+            "item": "Anja Cyclone",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 1,
+              "damage_2": 9,
+              "damage_3": 4,
+              "damage_4": 0
+            },
+            "remove": "1 Six Fold Slash\n1 Any 1 Card\n2 Double Slash",
+            "add": "2 Blazing Fold Slash\n2 Blazing Double Slash"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 5,
+        "weapon_type": "Jyuratodus",
+        "thumbnail": "assets/img/equiments/sets/jyuratodus.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Madness Pangas",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 2,
+              "damage_2": 5,
+              "damage_3": 3,
+              "damage_4": 0
+            },
+            "remove": "4 Blade Dance",
+            "add": "4 Water Dance"
+          },
+          {
+            "item_id": 2,
+            "item": "Jyura Hatchets",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 2,
+              "damage_2": 6,
+              "damage_3": 4,
+              "damage_4": 0
+            },
+            "remove": "4 Blade Dance\n2 Rapid Spin",
+            "add": "4 Water Dance\n2 Flurry Rush"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 6,
+        "weapon_type": "Diablos",
+        "thumbnail": "assets/img/equiments/sets/diablos.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Diablos Hatchets",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 2,
+              "damage_2": 6,
+              "damage_3": 4,
+              "damage_4": 0
+            },
+            "remove": "2 Double Slash",
+            "add": "2 Brutal Double Slash"
+          },
+          {
+            "item_id": 2,
+            "item": "Diablos Clubs",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 2,
+              "damage_2": 7,
+              "damage_3": 5,
+              "damage_4": 0
+            },
+            "remove": "2 Double Slash\n2 Demon Mode",
+            "add": "2 Brutal Double Slash\n2 Brutal Demon Mode"
+          }
+        ]
+      }
+    ],
+    "weapon_priority_set": [
+      {
+        "weapon_type_id": 1,
+        "priority": [
+          [1, 1],
+          [1, 2],
+          [1, 3]
+        ]
+      },
+      {
+        "weapon_type_id": 2,
+        "priority": [
+          [2, 1],
+          [2, 2],
+          [2, 3]
+        ]
+      },
+      {
+        "weapon_type_id": 3,
+        "priority": [
+          [2, 1],
+          [3, 1],
+          [3, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 4,
+        "priority": [
+          [2, 1],
+          [4, 1],
+          [4, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 5,
+        "priority": [
+          [2, 1],
+          [5, 1],
+          [5, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 6,
+        "priority": [
+          [2, 1],
+          [6, 1],
+          [6, 2]
+        ]
+      }
+    ]
+  },
+  {
+    "hunter_class_id": 4,
+    "weapons_list": [
+      {
+        "weapon_type_id": 1,
+        "weapon_type": "Ore",
+        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Hunter's Knife",
+            "rarity": 1,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 8,
+              "damage_2": 4,
+              "damage_3": 0,
+              "damage_4": 0
+            },
+            "remove": "",
+            "add": ""
+          },
+          {
+            "item_id": 2,
+            "item": "Steel Knife",
+            "rarity": 2,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 6,
+              "damage_2": 5,
+              "damage_3": 1,
+              "damage_4": 0
+            },
+            "remove": "2 Advancing Slash",
+            "add": "2 Enhanced Advancing Slash"
+          },
+          {
+            "item_id": 3,
+            "item": "Chrome Slicer",
+            "rarity": 3,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 2,
+              "damage_2": 6,
+              "damage_3": 4,
+              "damage_4": 0
+            },
+            "remove": "2 Advancing Slash\nAny 2 Cards",
+            "add": "2 Enhanced Advancing Slash\n2 Helm Splitter"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 2,
+        "weapon_type": "Monster Bone",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Bone Kukri",
+            "rarity": 1,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 5,
+              "damage_2": 4,
+              "damage_3": 1,
+              "damage_4": 0
+            },
+            "remove": "",
+            "add": ""
+          },
+          {
+            "item_id": 2,
+            "item": "Chief Kukri",
+            "rarity": 2,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 5,
+              "damage_3": 2,
+              "damage_4": 0
+            },
+            "remove": "1 Shield Bash",
+            "add": "1 Strong Shield Bash"
+          },
+          {
+            "item_id": 3,
+            "item": "Grand Barong",
+            "rarity": 3,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 4,
+              "damage_3": 3,
+              "damage_4": 0
+            },
+            "remove": "1 Shield Bash\n2 Chop",
+            "add": "1 Strong Shield Bash\n2 Chop Reversal"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 3,
+        "weapon_type": "Great Jagras",
+        "thumbnail": "assets/img/equiments/sets/Great_Jagras.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Jagras Edge",
+            "rarity": 3,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 2,
+              "damage_2": 6,
+              "damage_3": 2,
+              "damage_4": 0
+            },
+            "remove": "2 Lateral Slash",
+            "add": "2 Glutton Lateral Slash"
+          },
+          {
+            "item_id": 2,
+            "item": "Jagras Garotte",
+            "rarity": 4,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 5,
+              "damage_3": 3,
+              "damage_4": 4
+            },
+            "remove": "2 Lateral Slash\n1 Rising Slash\nAny 1 Card",
+            "add": "2 Glutton Lateral Slash\n2 Jump Rising Slash"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 4,
+        "weapon_type": "Rathalos",
+        "thumbnail": "assets/img/equiments/sets/Rathalos.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Flame Knife",
+            "rarity": 3,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 2,
+              "damage_2": 6,
+              "damage_3": 4,
+              "damage_4": 0
+            },
+            "remove": "2 Advancing Slash",
+            "add": "2 Advancing Double Slash"
+          },
+          {
+            "item_id": 2,
+            "item": "Heat Edge",
+            "rarity": 4,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 1,
+              "damage_2": 7,
+              "damage_3": 5,
+              "damage_4": 1
+            },
+            "remove": "2 Advancing Slash\n2 Sword & Shield Combo",
+            "add": "2 Advancing Double Slash\n2 Blazing Combo"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 5,
+        "weapon_type": "Barroth",
+        "thumbnail": "assets/img/equiments/sets/barroth.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Carapace Edge",
+            "rarity": 3,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 8,
+              "damage_3": 2,
+              "damage_4": 0
+            },
+            "remove": "2 Advancing Slash",
+            "add": "2 Powerful Double Slash"
+          },
+          {
+            "item_id": 2,
+            "item": "Heat Edge",
+            "rarity": 4,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 8,
+              "damage_3": 4,
+              "damage_4": 0
+            },
+            "remove": "2 Advancing Slash\n2 Chop",
+            "add": "2 Powerful Double Slash\n 2 Steadfast Chop"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 6,
+        "weapon_type": "Pukei-Pukei",
+        "thumbnail": "assets/img/equiments/sets/pukei-pukei.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Blooming Knife",
+            "rarity": 3,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 1,
+              "damage_2": 8,
+              "damage_3": 3,
+              "damage_4": 0
+            },
+            "remove": "1 Round Slash\n1 Rising Slash",
+            "add": "2 Poison Spin Slash"
+          },
+          {
+            "item_id": 2,
+            "item": "Datura Blossom",
+            "rarity": 4,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 1,
+              "damage_2": 9,
+              "damage_3": 4,
+              "damage_4": 0
+            },
+            "remove": "1 Round Slash\n1 Rising Slash\nAny 3 Cards",
+            "add": "2 Poison Spin Slash\n3 Toxicity"
+          }
+        ]
+      }
+    ],
+    "weapon_priority_set": [
+      {
+        "weapon_type_id": 1,
+        "priority": [
+          [1, 1],
+          [1, 2],
+          [1, 3]
+        ]
+      },
+      {
+        "weapon_type_id": 2,
+        "priority": [
+          [2, 1],
+          [2, 2],
+          [2, 3]
+        ]
+      },
+      {
+        "weapon_type_id": 3,
+        "priority": [
+          [2, 1],
+          [3, 1],
+          [3, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 5,
+        "priority": [
+          [2, 1],
+          [5, 1],
+          [5, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 4,
+        "priority": [
+          [1, 1],
+          [4, 1],
+          [4, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 6,
+        "priority": [
+          [1, 1],
+          [6, 1],
+          [6, 2]
+        ]
+      }
+    ]
+  },
+  {
+    "hunter_class_id": 5,
+    "weapons_list": [
+      {
+        "weapon_type_id": 1,
+        "weapon_type": "Ore",
+        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Iron Hammer",
+            "rarity": 1,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 10,
+              "damage_2": 1,
+              "damage_3": 0,
+              "damage_4": 1
+            },
+            "remove": "",
+            "add": ""
+          },
+          {
+            "item_id": 2,
+            "item": "Iron Demon",
+            "rarity": 2,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 8,
+              "damage_2": 2,
+              "damage_3": 0,
+              "damage_4": 2
+            },
+            "remove": "2 Rare Steak",
+            "add": "2 Well-Done Steak"
+          },
+          {
+            "item_id": 3,
+            "item": "Iron Archdemon",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 6,
+              "damage_2": 3,
+              "damage_3": 0,
+              "damage_4": 3
+            },
+            "remove": "2 Rare Steak\n2 Upswing",
+            "add": "2 Well-Done Steak\n2 Improved Upswing"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 2,
+        "weapon_type": "Monster Bone",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Bone Bludgeon",
+            "rarity": 1,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 7,
+              "damage_2": 2,
+              "damage_3": 0,
+              "damage_4": 4
+            },
+            "remove": "",
+            "add": ""
+          },
+          {
+            "item_id": 2,
+            "item": "Fossil Bludgeon",
+            "rarity": 2,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 5,
+              "damage_2": 3,
+              "damage_3": 0,
+              "damage_4": 2
+            },
+            "remove": "4 Charge",
+            "add": "4 Improved Charge"
+          },
+          {
+            "item_id": 3,
+            "item": "Grandrock",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 4,
+              "damage_2": 3,
+              "damage_3": 0,
+              "damage_4": 3
+            },
+            "remove": "4 Charge\n2 Spinning Bludgeon",
+            "add": "4 Improved Charge\n2 Improved Spinning Bludgeon"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 3,
+        "weapon_type": "Anjanath",
+        "thumbnail": "assets/img/equiments/sets/Anjanath.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Blazing Hammer",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 8,
+              "damage_3": 0,
+              "damage_4": 4
+            },
+            "remove": "4 Big Bang",
+            "add": "4 Blazing Big Bang"
+          },
+          {
+            "item_id": 2,
+            "item": "Anja Striker",
+            "rarity": 4,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 9,
+              "damage_3": 0,
+              "damage_4": 3
+            },
+            "remove": "4 Big Bang\n2 Charged Upswing",
+            "add": "4 Blazing Big Bang\n2 Blazing Charged Upswing"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 4,
+        "weapon_type": "Barroth",
+        "thumbnail": "assets/img/equiments/sets/barroth.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Carapace Sledge",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 4,
+              "damage_2": 2,
+              "damage_3": 0,
+              "damage_4": 4
+            },
+            "remove": "2 Spinning Bludgeon",
+            "add": "2 Brutal Bludgeon"
+          },
+          {
+            "item_id": 2,
+            "item": "Barroth Breaker",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 2,
+              "damage_2": 5,
+              "damage_3": 0,
+              "damage_4": 5
+            },
+            "remove": "2 Spinning Bludgeon\n2 Charge Brutal Big Bang",
+            "add": "2 Brutal Bludgeon\n2 Pulverising Brutal Big Bang"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 5,
+        "weapon_type": "Pukei-Pukei",
+        "thumbnail": "assets/img/equiments/sets/pukei-pukei.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Blooming Hammer",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 1,
+              "damage_2": 8,
+              "damage_3": 0,
+              "damage_4": 3
+            },
+            "remove": "2 Side Smash",
+            "add": "2 Poison Side Smash"
+          },
+          {
+            "item_id": 2,
+            "item": "Buon Fiore",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 1,
+              "damage_2": 9,
+              "damage_3": 0,
+              "damage_4": 4
+            },
+            "remove": "2 Side Smash\n2 Charged Upswing",
+            "add": "2 Poison Side Smash\n2 Poison Charged Upswing"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 6,
+        "weapon_type": "Diablos",
+        "thumbnail": "assets/img/equiments/sets/diablos.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Diablos Sledge",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 4,
+              "damage_2": 3,
+              "damage_3": 0,
+              "damage_4": 5
+            },
+            "remove": "4 Big Bang",
+            "add": "4 Crippling Big Bang"
+          },
+          {
+            "item_id": 2,
+            "item": "Diablos Shatterer",
+            "rarity": 4,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 5,
+              "damage_3": 0,
+              "damage_4": 6
+            },
+            "remove": "4 Big Bang\n2 Upswing",
+            "add": "4 Crippling Big Bang\n2 Brutal Upswing"
+          }
+        ]
+      }
+    ],
+    "weapon_priority_set": [
+      {
+        "weapon_type_id": 1,
+        "priority": [
+          [1, 1],
+          [1, 2],
+          [1, 3]
+        ]
+      },
+      {
+        "weapon_type_id": 2,
+        "priority": [
+          [2, 1],
+          [2, 2],
+          [2, 3]
+        ]
+      },
+      {
+        "weapon_type_id": 4,
+        "priority": [
+          [2, 1],
+          [4, 1],
+          [4, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 3,
+        "priority": [
+          [2, 1],
+          [3, 1],
+          [3, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 5,
+        "priority": [
+          [1, 1],
+          [5, 1],
+          [5, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 6,
+        "priority": [
+          [2, 1],
+          [6, 1],
+          [6, 2]
+        ]
+      }
+    ]
+  },
+  {
+    "hunter_class_id": 6,
+    "weapons_list": [
+      {
+        "weapon_type_id": 1,
+        "weapon_type": "Ore",
+        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Proto Commission Axe",
+            "rarity": 1,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 8,
+              "damage_2": 4,
+              "damage_3": 0,
+              "damage_4": 0
+            },
+            "remove": "",
+            "add": ""
+          },
+          {
+            "item_id": 2,
+            "item": "Elite Commission Axe",
+            "rarity": 2,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 8,
+              "damage_2": 3,
+              "damage_3": 1,
+              "damage_4": 0
+            },
+            "remove": "3 Return Stroke",
+            "add": "3 Powered Stroke"
+          },
+          {
+            "item_id": 3,
+            "item": "Chrome Guardian",
+            "rarity": 3,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 5,
+              "damage_2": 4,
+              "damage_3": 3,
+              "damage_4": 0
+            },
+            "remove": "2 Return Stroke\n3 Shield Block",
+            "add": "2 Powered Stroke\n3 Solid Block"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 2,
+        "weapon_type": "Monster Bone",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Bone Strongarm",
+            "rarity": 1,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 5,
+              "damage_2": 5,
+              "damage_3": 0,
+              "damage_4": 0
+            },
+            "remove": "",
+            "add": ""
+          },
+          {
+            "item_id": 2,
+            "item": "Hard Bone Strongarm",
+            "rarity": 2,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 4,
+              "damage_2": 5,
+              "damage_3": 1,
+              "damage_4": 0
+            },
+            "remove": "2 Charged Rising Slash",
+            "add": "2 Quick Rising Slash"
+          },
+          {
+            "item_id": 3,
+            "item": "Mighty Strongarm",
+            "rarity": 3,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 4,
+              "damage_3": 3,
+              "damage_4": 0
+            },
+            "remove": "2 Charged Rising Slash\n2 Forward Slash",
+            "add": "2 Quick Rising Slash\n2 Lunging Slash"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 3,
+        "weapon_type": "Great Jagras",
+        "thumbnail": "assets/img/equiments/sets/Great_Jagras.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Jagras Strongarm",
+            "rarity": 3,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 3,
+              "damage_3": 3,
+              "damage_4": 0
+            },
+            "remove": "2 Charged Rising Slash",
+            "add": "2 Gluttonous Slash"
+          },
+          {
+            "item_id": 2,
+            "item": "Jagras Escudo",
+            "rarity": 4,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 2,
+              "damage_2": 4,
+              "damage_3": 5,
+              "damage_4": 1
+            },
+            "remove": "2 Charged Rising Slash\n2 Forward Slash",
+            "add": "2 Gluttonous Slash\n2 Ravenous Slash"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 4,
+        "weapon_type": "Tobi-Kadachi",
+        "thumbnail": "assets/img/equiments/sets/Tobi-Kadachi.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Pulsar Strongarm",
+            "rarity": 3,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 2,
+              "damage_2": 5,
+              "damage_3": 2,
+              "damage_4": 1
+            },
+            "remove": "3 Shield Block",
+            "add": "3 Lightning Reflex Block"
+          },
+          {
+            "item_id": 2,
+            "item": "Kadachi Kaina",
+            "rarity": 4,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 1,
+              "damage_2": 6,
+              "damage_3": 3,
+              "damage_4": 2
+            },
+            "remove": "3 Shield Block\n3 Return Stroke",
+            "add": "3 Lightning Reflex Block\n3 Thunder Stroke"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 5,
+        "weapon_type": "Jyuratodus",
+        "thumbnail": "assets/img/equiments/sets/jyuratodus.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Mudslide Blade",
+            "rarity": 3,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 4,
+              "damage_3": 5,
+              "damage_4": 0
+            },
+            "remove": "2 Elemental Round Slash",
+            "add": "2 Slippery Round Slash"
+          },
+          {
+            "item_id": 2,
+            "item": "Jyura Depth",
+            "rarity": 4,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 1,
+              "damage_2": 6,
+              "damage_3": 5,
+              "damage_4": 2
+            },
+            "remove": "2 Elemental Round Slash\n2 Amped Element Discharge",
+            "add": "2 Slippery Round Slash\n2 Water Element Discharge"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 6,
+        "weapon_type": "Diablos",
+        "thumbnail": "assets/img/equiments/sets/diablos.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Diablos Wall",
+            "rarity": 3,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 1,
+              "damage_2": 7,
+              "damage_3": 1,
+              "damage_4": 1
+            },
+            "remove": "2 Weak Slash",
+            "add": "2 Deft Slash"
+          },
+          {
+            "item_id": 2,
+            "item": "Diablos Tyrannis",
+            "rarity": 4,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 5,
+              "damage_3": 0,
+              "damage_4": 6
+            },
+            "remove": "2 Weak Slash\n2 Element Discharge",
+            "add": "2 Deft Slash\n2 Crippling Discharge"
+          }
+        ]
+      }
+    ],
+    "weapon_priority_set": [
+      {
+        "weapon_type_id": 1,
+        "priority": [
+          [1, 1],
+          [1, 2],
+          [1, 3]
+        ]
+      },
+      {
+        "weapon_type_id": 2,
+        "priority": [
+          [2, 1],
+          [2, 2],
+          [2, 3]
+        ]
+      },
+      {
+        "weapon_type_id": 4,
+        "priority": [
+          [2, 1],
+          [4, 1],
+          [4, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 3,
+        "priority": [
+          [2, 1],
+          [3, 1],
+          [3, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 5,
+        "priority": [
+          [1, 1],
+          [5, 1],
+          [5, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 6,
+        "priority": [
+          [2, 1],
+          [6, 1],
+          [6, 2]
+        ]
+      }
+    ]
+  }
+]

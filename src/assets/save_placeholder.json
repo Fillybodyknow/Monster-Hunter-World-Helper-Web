@@ -1,0 +1,44 @@
+[
+    {
+        "hunter_id": 1,
+        "hunter_name": "Place Holder",
+        "hunter_class_id": 1,
+        "campaign_day": 5,
+        "equipment": {
+            "weapons": [
+                {
+                    "weapon_type_id": 1,
+                    "item_id":1
+                }
+            ],
+            "armors": {
+                "helm": {
+                    "equip_set_id": 1,
+                    "equip_id": 1
+                },
+                "mail": {
+                    "equip_set_id": 1,
+                    "equip_id": 2
+                },
+                "greaves": {
+                    "equip_set_id": 1,
+                    "equip_id": 3
+                }
+            }
+        },
+        "inventory": [
+            {
+                "resource_type_id": 1,
+                "item_id": 1,
+                "quantity": 1
+            }
+        ],
+        "attempted_quest": [
+            {
+                "monster_id": 1,
+                "quest_id": 2,
+                "attempted": []
+            }
+        ]
+    }
+]
