@@ -291,14 +291,16 @@ const getArmorRarityIcon = (rarity, armor_part_id) => {
 }
 
 const armorList = computed(() => {
-  return armorsData.map((set) => ({
-    equip_set_id: set.equip_set_id,
-    set_name: set.equip_set,
-    rarity: set.rarity,
-    thumbnail: set.thumbnail,
-    set_ability_bonus: set.set_ability_bonus,
-    equips: set.equips,
-  }))
+  return armorsData
+    .filter((set) => set.equip_set_id > 2)
+    .map((set) => ({
+      equip_set_id: set.equip_set_id,
+      set_name: set.equip_set,
+      rarity: set.rarity,
+      thumbnail: set.thumbnail,
+      set_ability_bonus: set.set_ability_bonus,
+      equips: set.equips,
+    }))
 })
 </script>
 
