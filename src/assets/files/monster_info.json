@@ -1,0 +1,253 @@
+[
+  {
+    "monster_id": 1,
+    "monster_name": "Great Jagras",
+    "thumbnail": "assets/img/Great_Jagras_Icon.webp",
+    "difficulty": [
+      {
+        "difficulty_id": 1,
+        "level": 1,
+        "health": 50,
+        "map_image": "src/assets/img/maps/great_jagras/great_jagras_1_star_map.png",
+        "special_rule": {
+          "title": "Gluttonous",
+          "description": "ทุกครั้งที่ Great Jagras สร้างความเสียหายใส่ Hunter ได้สำเร็จ, มันจะฟื้นฟูพลังชีวิตที่เสียไปของมัน 1 หน่วย"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 4,
+            "armor": 0,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Water จะถือว่าเป็นการโจมตีกายภาพแทน"
+          },
+          "back": {
+            "part_id": 2,
+            "connect_part_position": null,
+            "part_break_threshold": 3,
+            "armor": 1,
+            "part_break_rule": "Great Jagras ได้รับความเสียหาย 5 หน่วย เมื่อส่วนนี้ถูกทำลาย"
+          },
+          "left": {
+            "part_id": 3,
+            "connect_part_position": "right",
+            "part_break_threshold": 3,
+            "armor": 0,
+            "part_break_rule": null
+          }
+        },
+        "element_resistance": [
+          {
+            "element_id": 1,
+            "level": 1,
+            "immune": false
+          },
+          {
+            "element_id": 2,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 3,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 5,
+            "level": 0,
+            "immune": true
+          }
+        ],
+        "status_resistance": [
+          {
+            "status_id": 1,
+            "level": 2
+          },
+          {
+            "status_id": 2,
+            "level": 1
+          },
+          {
+            "status_id": 3,
+            "level": 1
+          },
+          {
+            "status_id": 4,
+            "level": 1
+          },
+          {
+            "status_id": 5,
+            "level": 1
+          }
+        ]
+      },
+      {
+        "difficulty_id": 2,
+        "level": 2,
+        "health": 60,
+        "special_rule": {
+          "title": "Irritable",
+          "description": "ทุกครั้งที่ Great Jagras สร้างความเสียหายใส่ Hunter ได้สำเร็จ มันจะฟื้นฟูพลังชีวิตที่เสียไปของมัน 1 หน่วย, ในระหว่างที่ Great Jagras มีชิ้นส่วนที่ถูกทำลาย มันจะสร้างความเสียหายเพิ่มขึ้น 1 หน่วย และระยะการโจมตีของมันจะเพิ่มขึ้น 1 ช่อง"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 4,
+            "armor": 0,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Water จะถือว่าเป็นการโจมตีกายภาพแทน"
+          },
+          "back": {
+            "part_id": 2,
+            "connect_part_position": null,
+            "part_break_threshold": 4,
+            "armor": 1,
+            "part_break_rule": "Great Jagras ได้รับความเสียหาย 5 หน่วย เมื่อส่วนนี้ถูกทำลาย"
+          },
+          "left": {
+            "part_id": 3,
+            "connect_part_position": "right",
+            "part_break_threshold": 5,
+            "armor": 1,
+            "part_break_rule": "Great Jagras จะสร้างความเสียหายผ่าน Claw ลดลง 1 หน่วย"
+          }
+        },
+        "element_resistance": [
+          {
+            "element_id": 1,
+            "level": 1,
+            "immune": false
+          },
+          {
+            "element_id": 2,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 3,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 5,
+            "level": 0,
+            "immune": true
+          }
+        ],
+        "status_resistance": [
+          {
+            "status_id": 1,
+            "level": 2
+          },
+          {
+            "status_id": 2,
+            "level": 1
+          },
+          {
+            "status_id": 3,
+            "level": 1
+          },
+          {
+            "status_id": 4,
+            "level": 1
+          },
+          {
+            "status_id": 5,
+            "level": 1
+          }
+        ]
+      },
+      {
+        "difficulty_id": 3,
+        "level": 3,
+        "health": 65,
+        "special_rule": {
+          "title": "Jagras Alpha",
+          "description": "ทุกครั้งที่ Great Jagras สร้างความเสียหายใส่ Hunter ได้สำเร็จ มันจะฟื้นฟูพลังชีวิตที่เสียไปของมัน 1 หน่วย, Great Jagras จะสร้างความเสียหายเพิ่มขึ้น 1 หน่วย และระยะการโจมตีของมันจะเพิ่มขึ้น 1 ช่อง"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 5,
+            "armor": 1,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Water จะถือว่าเป็นการโจมตีกายภาพแทน"
+          },
+          "back": {
+            "part_id": 2,
+            "connect_part_position": null,
+            "part_break_threshold": 5,
+            "armor": 2,
+            "part_break_rule": "Great Jagras จะไม่ฟื้นฟูพลังชีวิตที่เสียไปของมันอีกต่อไป เมื่อมันสร้างความเสียหายใส่ Hunter"
+          },
+          "left": {
+            "part_id": 3,
+            "connect_part_position": "right",
+            "part_break_threshold": 5,
+            "armor": 1,
+            "part_break_rule": "Great Jagras จะสร้างความเสียหายผ่าน Claw ลดลง 1 หน่วย"
+          }
+        },
+        "element_resistance": [
+          {
+            "element_id": 1,
+            "level": 1,
+            "immune": false
+          },
+          {
+            "element_id": 2,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 3,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 5,
+            "level": 0,
+            "immune": true
+          }
+        ],
+        "status_resistance": [
+          {
+            "status_id": 1,
+            "level": 2
+          },
+          {
+            "status_id": 2,
+            "level": 1
+          },
+          {
+            "status_id": 3,
+            "level": 1
+          },
+          {
+            "status_id": 4,
+            "level": 1
+          },
+          {
+            "status_id": 5,
+            "level": 1
+          }
+        ]
+      }
+    ]
+  }
+]

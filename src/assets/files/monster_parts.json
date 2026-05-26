@@ -1,0 +1,32 @@
+[
+  {
+    "part_id": 1,
+    "part": "Head",
+    "thumbnail": "assets/img/monster_breakable_parts/head.png"
+  },
+  {
+    "part_id": 2,
+    "part": "Body",
+    "thumbnail": "assets/img/monster_breakable_parts/body.png"
+  },
+  {
+    "part_id": 3,
+    "part": "Claw",
+    "thumbnail": "assets/img/monster_breakable_parts/claw.png"
+  },
+  {
+    "part_id": 4,
+    "part": "Wing",
+    "thumbnail": "assets/img/monster_breakable_parts/wing.png"
+  },
+  {
+    "part_id": 5,
+    "part": "Leg",
+    "thumbnail": "assets/img/monster_breakable_parts/leg.png"
+  },
+  {
+    "part_id": 6,
+    "part": "Tail",
+    "thumbnail": "assets/img/monster_breakable_parts/tail.png"
+  }
+]

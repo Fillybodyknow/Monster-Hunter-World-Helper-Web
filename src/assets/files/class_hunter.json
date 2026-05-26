@@ -1,32 +1,176 @@
 [
-    {
-        "hunter_class_id" : 1,
-        "hunter_class" : "Great Sword",
-        "thumbnail" : "assets/img/class/greatsword.png"
+  {
+    "hunter_class_id": 1,
+    "hunter_class": "Great Sword",
+    "starter_set": {
+      "weapon": {
+        "weapon_type_id": 1,
+        "item_id": 1,
+        "is_equip": true
+      },
+      "armors": {
+        "helm": {
+          "equip_set_id": 1,
+          "equip_id": 1,
+          "is_equip": true
+        },
+        "mail": {
+          "equip_set_id": 1,
+          "equip_id": 2,
+          "is_equip": true
+        },
+        "greaves": {
+          "equip_set_id": 1,
+          "equip_id": 3,
+          "is_equip": true
+        }
+      }
     },
-    {
-        "hunter_class_id" : 2,
-        "hunter_class" : "Bow",
-        "thumbnail" : "assets/img/class/bow.png"
+    "thumbnail": "assets/img/class/greatsword.png"
+  },
+  {
+    "hunter_class_id": 2,
+    "hunter_class": "Bow",
+    "starter_set": {
+      "weapon": {
+        "weapon_type_id": 1,
+        "item_id": 1,
+        "is_equip": true
+      },
+      "armors": {
+        "helm": {
+          "equip_set_id": 1,
+          "equip_id": 1,
+          "is_equip": true
+        },
+        "mail": {
+          "equip_set_id": 1,
+          "equip_id": 2,
+          "is_equip": true
+        },
+        "greaves": {
+          "equip_set_id": 1,
+          "equip_id": 3,
+          "is_equip": true
+        }
+      }
     },
-    {
-        "hunter_class_id" : 3,
-        "hunter_class" : "Dual Blades",
-        "thumbnail" : "assets/img/class/dual-blades.png"
+    "thumbnail": "assets/img/class/bow.png"
+  },
+  {
+    "hunter_class_id": 3,
+    "hunter_class": "Dual Blades",
+    "starter_set": {
+      "weapon": {
+        "weapon_type_id": 1,
+        "item_id": 1,
+        "is_equip": true
+      },
+      "armors": {
+        "helm": {
+          "equip_set_id": 2,
+          "equip_id": 1,
+          "is_equip": true
+        },
+        "mail": {
+          "equip_set_id": 2,
+          "equip_id": 2,
+          "is_equip": true
+        },
+        "greaves": {
+          "equip_set_id": 2,
+          "equip_id": 3,
+          "is_equip": true
+        }
+      }
     },
-    {
-        "hunter_class_id" : 4,
-        "hunter_class" : "Sword & Shield",
-        "thumbnail" : "assets/img/class/swordANDshield.png"
+    "thumbnail": "assets/img/class/dual-blades.png"
+  },
+  {
+    "hunter_class_id": 4,
+    "hunter_class": "Sword & Shield",
+    "starter_set": {
+      "weapon": {
+        "weapon_type_id": 1,
+        "item_id": 1,
+        "is_equip": true
+      },
+      "armors": {
+        "helm": {
+          "equip_set_id": 2,
+          "equip_id": 1,
+          "is_equip": true
+        },
+        "mail": {
+          "equip_set_id": 2,
+          "equip_id": 2,
+          "is_equip": true
+        },
+        "greaves": {
+          "equip_set_id": 2,
+          "equip_id": 3,
+          "is_equip": true
+        }
+      }
     },
-    {
-        "hunter_class_id" : 5,
-        "hunter_class" : "Hammer",
-        "thumbnail" : "assets/img/class/hammer.webp"
+    "thumbnail": "assets/img/class/swordANDshield.png"
+  },
+  {
+    "hunter_class_id": 5,
+    "hunter_class": "Hammer",
+    "starter_set": {
+      "weapon": {
+        "weapon_type_id": 1,
+        "item_id": 1,
+        "is_equip": true
+      },
+      "armors": {
+        "helm": {
+          "equip_set_id": 2,
+          "equip_id": 1,
+          "is_equip": true
+        },
+        "mail": {
+          "equip_set_id": 2,
+          "equip_id": 2,
+          "is_equip": true
+        },
+        "greaves": {
+          "equip_set_id": 2,
+          "equip_id": 3,
+          "is_equip": true
+        }
+      }
     },
-    {
-        "hunter_class_id" : 6,
-        "hunter_class" : "Charge Blade",
-        "thumbnail" : "assets/img/class/charge_blade.webp"
-    }
+    "thumbnail": "assets/img/class/hammer.webp"
+  },
+  {
+    "hunter_class_id": 6,
+    "hunter_class": "Charge Blade",
+    "starter_set": {
+      "weapon": {
+        "weapon_type_id": 1,
+        "item_id": 1,
+        "is_equip": true
+      },
+      "armors": {
+        "helm": {
+          "equip_set_id": 2,
+          "equip_id": 1,
+          "is_equip": true
+        },
+        "mail": {
+          "equip_set_id": 2,
+          "equip_id": 2,
+          "is_equip": true
+        },
+        "greaves": {
+          "equip_set_id": 2,
+          "equip_id": 3,
+          "is_equip": true
+        }
+      }
+    },
+    "thumbnail": "assets/img/class/charge_blade.webp"
+  }
 ]
