@@ -264,7 +264,11 @@ const questTypeStamp = (type) => {
           <div class="book-spine"></div>
           <div class="book-body">
             <div class="book-seal">
-              <span class="seal-inner">G</span>
+              <img
+                class="seal-inner"
+                :src="book.id === 'ancient' ? '/src/assets/img/ancient_forest.webp' : '/src/assets/img/wildspire_waste.webp'"
+                :alt="book.name"
+              />
             </div>
             <h2 class="book-title-text">{{ book.name }}</h2>
             <div class="book-divider"></div>
@@ -857,8 +861,8 @@ const questTypeStamp = (type) => {
 }
 
 .book-seal {
-  width: 52px;
-  height: 52px;
+  width: 200px;
+  height: 200px;
   border-radius: 50%;
   border: 2px solid var(--book-accent);
   background: radial-gradient(circle, color-mix(in srgb, var(--book-bg) 60%, #17120c), #17120c);
@@ -869,10 +873,11 @@ const questTypeStamp = (type) => {
 }
 
 .seal-inner {
-  font-size: 22px;
-  font-weight: bold;
-  color: var(--book-accent);
-  text-shadow: 0 0 8px var(--book-accent);
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
 }
 
 .book-title-text {
@@ -2103,7 +2108,8 @@ const questTypeStamp = (type) => {
     flex-shrink: 0;
   }
   .seal-inner {
-    font-size: 18px;
+    width: 100%;
+    height: 100%;
   }
   .book-title-text {
     font-size: 16px;
