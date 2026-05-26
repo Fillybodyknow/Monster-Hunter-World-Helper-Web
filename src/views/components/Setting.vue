@@ -20,8 +20,8 @@ import { showQuestEffects } from '@/stores/settings'
     <div class="guild-notice">
       <div class="notice-stamp">GUILD NOTICE</div>
       <p class="notice-text">
-        Additional game settings and campaign management options will be available in a future update.
-        The Hunter's Guild thanks you for your patience.
+        การตั้งค่าเกมเพิ่มเติมและตัวเลือกจัดการแคมเปญจะพร้อมใช้งานในการอัปเดตถัดไป
+        สมาคมนักล่าขอบคุณสำหรับความอดทนของคุณ
       </p>
     </div>
 
@@ -31,30 +31,30 @@ import { showQuestEffects } from '@/stores/settings'
       <div class="setting-section">
         <div class="ss-header">
           <span class="ss-icon">📋</span>
-          <span class="ss-title">Campaign</span>
+          <span class="ss-title">แคมเปญ</span>
         </div>
         <div class="ss-body coming-soon">
-          <span class="cs-badge">Coming Soon</span>
-          <p class="cs-text">Campaign day management, difficulty settings</p>
+          <span class="cs-badge">เร็วๆ นี้</span>
+          <p class="cs-text">การจัดการวันแคมเปญ, การตั้งค่าความยาก</p>
         </div>
       </div>
 
       <div class="setting-section">
         <div class="ss-header">
           <span class="ss-icon">🔊</span>
-          <span class="ss-title">Display</span>
+          <span class="ss-title">การแสดงผล</span>
         </div>
         <div class="ss-body">
           <div class="setting-row">
             <div class="setting-row-info">
-              <span class="setting-row-label">Quest Action Effects</span>
-              <span class="setting-row-desc">Show consequences text on quest choice buttons</span>
+              <span class="setting-row-label">เอฟเฟกต์การเลือกเควส</span>
+              <span class="setting-row-desc">แสดงข้อความผลที่เกิดขึ้นบนปุ่มเลือกเควส</span>
             </div>
             <button
               class="toggle-btn"
               :class="{ active: showQuestEffects }"
               @click="showQuestEffects = !showQuestEffects"
-              :aria-label="showQuestEffects ? 'Hide effects' : 'Show effects'"
+              :aria-label="showQuestEffects ? 'ซ่อนเอฟเฟกต์' : 'แสดงเอฟเฟกต์'"
             >
               <span class="toggle-track">
                 <span class="toggle-thumb"></span>
@@ -68,11 +68,11 @@ import { showQuestEffects } from '@/stores/settings'
       <div class="setting-section">
         <div class="ss-header">
           <span class="ss-icon">💾</span>
-          <span class="ss-title">Save Data</span>
+          <span class="ss-title">ข้อมูลเซฟ</span>
         </div>
         <div class="ss-body coming-soon">
-          <span class="cs-badge">Coming Soon</span>
-          <p class="cs-text">Export, import, and backup hunter save data</p>
+          <span class="cs-badge">เร็วๆ นี้</span>
+          <p class="cs-text">ส่งออก นำเข้า และสำรองข้อมูลเซฟของนักล่า</p>
         </div>
       </div>
 
@@ -81,7 +81,7 @@ import { showQuestEffects } from '@/stores/settings'
     <!-- VERSION FOOTER -->
     <div class="setting-footer">
       <span class="footer-ornament">— ✦ —</span>
-      <p class="footer-ver">MHW Board Game Companion · Early Access</p>
+      <p class="footer-ver">MHW Board Game Companion · ช่วงทดสอบ</p>
       <span class="footer-ornament">— ✦ —</span>
     </div>
 

@@ -108,7 +108,7 @@ const confirmReset = () => {
 
     <!-- HUNTER INFO -->
     <div v-if="hunter" class="hq-hunter-bar">
-      <div class="hqh-label">Active Hunter</div>
+      <div class="hqh-label">นักล่าปัจจุบัน</div>
       <div class="hqh-name">{{ hunter.hunter_name }}</div>
       <div class="hqh-class">{{ hunter.hunter_class }}</div>
     </div>
@@ -117,16 +117,16 @@ const confirmReset = () => {
     <div class="hq-notice">
       <span class="hq-notice-stamp">GUILD ORDER</span>
       <p class="hq-notice-text">
-        Select Investigation and Tempered quests to reset their attempt records.
-        Assigned Quests are permanent commission records and cannot be reset.
+        เลือก Investigation และ Tempered quests เพื่อล้างบันทึกจำนวนการเล่น
+        Assigned Quests เป็นบันทึกถาวรของสมาคมและไม่สามารถรีเซ็ตได้
       </p>
     </div>
 
     <!-- EMPTY STATE -->
     <div v-if="resettableList.length === 0" class="hq-empty">
       <div class="hq-empty-icon">📋</div>
-      <p class="hq-empty-title">No Records Found</p>
-      <p class="hq-empty-sub">No Investigation or Tempered quests have been attempted yet.</p>
+      <p class="hq-empty-title">ไม่พบบันทึก</p>
+      <p class="hq-empty-sub">ยังไม่มีการเล่น Investigation หรือ Tempered quests</p>
     </div>
 
     <!-- QUEST LIST -->
@@ -135,8 +135,8 @@ const confirmReset = () => {
       <!-- ACTION BAR -->
       <div class="hq-action-bar">
         <div class="hq-select-btns">
-          <button class="btn-select-all" @click="selectAll">Select All</button>
-          <button class="btn-clear-sel" @click="clearAll" :disabled="selected.size === 0">Clear</button>
+          <button class="btn-select-all" @click="selectAll">เลือกทั้งหมด</button>
+          <button class="btn-clear-sel" @click="clearAll" :disabled="selected.size === 0">ล้างการเลือก</button>
         </div>
         <button
           class="btn-reset"
@@ -144,7 +144,7 @@ const confirmReset = () => {
           @click="showConfirm = true"
         >
           <span class="btn-reset-icon">↺</span>
-          Reset ({{ selected.size }})
+          รีเซ็ต ({{ selected.size }})
         </button>
       </div>
 
@@ -188,7 +188,7 @@ const confirmReset = () => {
                 <span class="hqr-attempts-used">{{ entry.attempted }}</span>
                 <span class="hqr-attempts-sep">/</span>
                 <span class="hqr-attempts-total">{{ entry.total }}</span>
-                <span class="hqr-attempts-label">used</span>
+                <span class="hqr-attempts-label">ใช้แล้ว</span>
               </div>
             </div>
           </div>
@@ -201,14 +201,14 @@ const confirmReset = () => {
       <div v-if="showConfirm" class="hq-confirm-overlay">
         <div class="hq-confirm-modal">
           <div class="hq-confirm-stamp">GUILD RESET ORDER</div>
-          <p class="hq-confirm-question">Reset {{ selected.size }} quest record(s)?</p>
+          <p class="hq-confirm-question">รีเซ็ต {{ selected.size }} บันทึกเควส?</p>
           <p class="hq-confirm-desc">
-            Attempt counts will be cleared and quests can be played from the beginning.
-            This action cannot be undone.
+            จำนวนการเล่นจะถูกล้าง และสามารถเล่นเควสใหม่ได้ตั้งแต่ต้น
+            การกระทำนี้ไม่สามารถยกเลิกได้
           </p>
           <div class="hq-confirm-btns">
-            <button class="hq-btn-confirm" @click="confirmReset">↺ Confirm Reset</button>
-            <button class="hq-btn-cancel" @click="showConfirm = false">← Go Back</button>
+            <button class="hq-btn-confirm" @click="confirmReset">↺ ยืนยันการรีเซ็ต</button>
+            <button class="hq-btn-cancel" @click="showConfirm = false">← กลับ</button>
           </div>
         </div>
       </div>
