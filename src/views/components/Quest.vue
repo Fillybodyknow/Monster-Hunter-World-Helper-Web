@@ -1,22 +1,16 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onActivated } from 'vue'
 
 defineOptions({ name: 'Quest' })
 import ancientData from '@/assets/files/ancient-quest-book.json'
 import wildspireData from '@/assets/files/wildspire_book.json'
-import { getHunterById, saveHunter } from '@/services/hunterStorage'
 import { showQuestEffects } from '@/stores/settings'
+import { hunter, loadHunter, saveHunter } from '@/stores/hunter'
 
 const getImg = (path) => `src/${path}`
 
-const hunter = ref(null)
-
-const reloadHunter = () => {
-  const id = parseInt(localStorage.getItem('hunterId'))
-  hunter.value = getHunterById(id)
-}
-
-onMounted(reloadHunter)
+onMounted(loadHunter)
+onActivated(loadHunter)
 
 const phase = ref('book')
 const selectedBook = ref(null)
@@ -64,6 +58,12 @@ const isQuestUnlocked = (monster_id, quest_id) => {
 
 const isQuestExhausted = (quest) =>
   getAttempted(selectedMonster.value?.monster_id, quest.quest_id) >= quest.starting_point.length
+
+const calMonths = computed(() => {
+  const day = hunter.value?.campaign_day ?? 1
+  const count = Math.max(1, Math.ceil(day / 31))
+  return Array.from({ length: count })
+})
 
 const attemptsLeft = (quest) => {
   const used = getAttempted(selectedMonster.value?.monster_id, quest.quest_id)
@@ -172,11 +172,16 @@ const incrementAttempted = () => {
     entry.attempted += 1
   }
   saveHunter(hunter.value)
-  reloadHunter()
+}
+
+const incrementDay = () => {
+  hunter.value.campaign_day = (hunter.value.campaign_day ?? 0) + 1
+  saveHunter(hunter.value)
 }
 
 const onComplete = () => {
   incrementAttempted()
+  incrementDay()
   currentDialogId.value = null
   selectedQuest.value = null
   phase.value = 'quest'
@@ -184,6 +189,7 @@ const onComplete = () => {
 
 const onFail = () => {
   if (selectedQuest.value.quest_id !== 1) incrementAttempted()
+  incrementDay()
   currentDialogId.value = null
   selectedQuest.value = null
   phase.value = 'quest'
@@ -252,6 +258,27 @@ const questTypeStamp = (type) => {
         <div class="board-ornament">✦</div>
       </div>
       <p class="board-subtitle">Commission Quest Board</p>
+
+      <div class="cal-months-row">
+        <div
+          v-for="(_, mi) in calMonths"
+          :key="mi"
+          class="campaign-calendar"
+        >
+          <div class="cal-header">
+            <span class="cal-title">MONTH {{ mi + 1 }}</span>
+            <span class="cal-day-label">DAY {{ hunter?.campaign_day ?? 1 }}</span>
+          </div>
+          <div class="cal-grid">
+            <div
+              v-for="n in 31"
+              :key="n"
+              class="cal-cell"
+              :class="{ filled: mi * 31 + n <= (hunter?.campaign_day ?? 1) }"
+            ></div>
+          </div>
+        </div>
+      </div>
 
       <div class="book-grid">
         <div
@@ -807,6 +834,67 @@ const questTypeStamp = (type) => {
   letter-spacing: 4px;
   text-transform: uppercase;
   margin: 0;
+}
+
+.cal-months-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  width: 100%;
+}
+
+.campaign-calendar {
+  display: flex;
+  flex-direction: column;
+  width: 160px;
+  border: 1px solid #c89b3c;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 0 10px rgba(200, 155, 60, 0.2);
+  background: #1a1208;
+}
+
+.cal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #c89b3c;
+  padding: 3px 6px;
+}
+
+.cal-title {
+  font-size: 8px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  color: #1a1208;
+}
+
+.cal-day-label {
+  font-size: 8px;
+  font-weight: bold;
+  color: #1a1208;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  padding: 5px;
+}
+
+.cal-cell {
+  aspect-ratio: 1;
+  border-radius: 1px;
+  border: 1px solid #2a1c08;
+  background: #0f0b05;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.cal-cell.filled {
+  background: #c89b3c;
+  border-color: #ffd27a;
+  box-shadow: 0 0 3px rgba(255, 210, 100, 0.35);
 }
 
 .book-grid {

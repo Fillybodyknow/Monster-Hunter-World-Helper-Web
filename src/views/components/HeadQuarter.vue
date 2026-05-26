@@ -1,19 +1,15 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { getHunterById, saveHunter } from '@/services/hunterStorage'
+import { hunter, loadHunter, saveHunter } from '@/stores/hunter'
 import ancientData from '@/assets/files/ancient-quest-book.json'
 import wildspireData from '@/assets/files/wildspire_book.json'
 
 const getImg = (path) => `src/${path}`
 
-const hunter = ref(null)
 const selected = ref(new Set())
 const showConfirm = ref(false)
 
-onMounted(() => {
-  const id = parseInt(localStorage.getItem('hunterId'))
-  hunter.value = getHunterById(id)
-})
+onMounted(loadHunter)
 
 const books = [
   { id: 'ancient',   name: 'Ancient Forest',  data: ancientData },
@@ -90,6 +86,12 @@ const confirmReset = () => {
   selected.value = new Set()
   showConfirm.value = false
 }
+
+const addDay = () => {
+  if (!hunter.value) return
+  hunter.value.campaign_day = (hunter.value.campaign_day ?? 0) + 1
+  saveHunter(hunter.value)
+}
 </script>
 
 <template>
@@ -113,9 +115,21 @@ const confirmReset = () => {
       <div class="hqh-class">{{ hunter.hunter_class }}</div>
     </div>
 
+    <!-- CAMP ACTIONS -->
+    <div v-if="hunter" class="hq-camp-actions">
+      <div class="hq-camp-label">CAMP LOG</div>
+      <div class="hq-camp-row">
+        <div class="hq-camp-day">
+          <span class="hq-camp-day-num">{{ hunter.campaign_day ?? 1 }}</span>
+          <span class="hq-camp-day-text">วันที่</span>
+        </div>
+        <button class="btn-add-day" @click="addDay">+ เพิ่มวัน</button>
+      </div>
+    </div>
+
     <!-- NOTICE -->
     <div class="hq-notice">
-      <span class="hq-notice-stamp">GUILD ORDER</span>
+      <span class="hq-notice-stamp">VISIT THE HANDLER</span>
       <p class="hq-notice-text">
         เลือก Investigation และ Tempered quests เพื่อล้างบันทึกจำนวนการเล่น
         Assigned Quests เป็นบันทึกถาวรของสมาคมและไม่สามารถรีเซ็ตได้
@@ -614,6 +628,74 @@ const confirmReset = () => {
   min-height: 48px;
 }
 .hq-btn-cancel:hover { color: #a88040; }
+
+/* ══════════════════════════════════════════
+   CAMP ACTIONS
+══════════════════════════════════════════ */
+.hq-camp-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: linear-gradient(to right, rgba(40, 28, 14, 0.9), rgba(20, 15, 8, 0.9));
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  border-left: 3px solid #c89b3c;
+}
+
+.hq-camp-label {
+  font-size: 9px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: #7c5a2b;
+}
+
+.hq-camp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hq-camp-day {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.hq-camp-day-num {
+  font-size: 32px;
+  font-weight: bold;
+  color: #ffd27a;
+  line-height: 1;
+  text-shadow: 0 0 12px rgba(255, 210, 100, 0.4);
+}
+
+.hq-camp-day-text {
+  font-size: 11px;
+  color: #a88040;
+  letter-spacing: 2px;
+}
+
+.btn-add-day {
+  padding: 8px 18px;
+  border-radius: 6px;
+  border: 1px solid #c89b3c;
+  background: linear-gradient(to bottom, #2a1f0a, #1a1208);
+  color: #ffd27a;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: 0.2s;
+  min-height: 38px;
+}
+
+.btn-add-day:hover {
+  background: linear-gradient(to bottom, #3a2d10, #221908);
+  box-shadow: 0 0 12px rgba(200, 155, 60, 0.3);
+}
 
 /* ══════════════════════════════════════════
    RESPONSIVE
