@@ -1,10 +1,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import weaponsData from '@/assets/files/weapons.json'
+import armorsData from '@/assets/files/armors.json'
 import { getHunterById, saveHunter } from '@/services/hunterStorage'
 import craftingData from '@/assets/files/crafting_item.json'
 import resourceData from '@/assets/files/resource.json'
 import rarityData from '@/assets/files/equiment_rarity.json'
+import elementalData from '@/assets/files/elemental.json'
+import bonusAbilityData from '@/assets/files/bonus_ability.json'
 import { getArmors, getWeapons } from '@/services/equipService'
 
 const activeTab = ref('weapon')
@@ -199,16 +202,130 @@ const hasWeapon = (node) => {
     (w) => w.weapon_type_id === node.weapon_type_id && w.item_id === node.item_id,
   )
 }
+
+// ===== ARMOR =====
+const getArmorRecipe = (equip_set_id, equip_id) => {
+  return craftingData
+    .find((c) => c.type === 'Armor')
+    ?.craft_list.find((c) => c.equip_set_id === equip_set_id && c.equip_id === equip_id)
+}
+
+const getArmorCrafting = (equip_set_id, equip_id) => {
+  return getArmorRecipe(equip_set_id, equip_id)?.crafting_table || []
+}
+
+const canCraftArmor = (equip_set_id, equip_id) => {
+  if (!hunter.value) return false
+  const recipe = getArmorRecipe(equip_set_id, equip_id)
+  if (!recipe?.crafting_table) return false
+
+  return recipe.crafting_table.every((mat) => {
+    return getInventoryCount(mat.material[0], mat.material[1]) >= mat.amount
+  })
+}
+
+const armorSlotKey = (armor_part_id) => {
+  if (armor_part_id === 1) return 'helm'
+  if (armor_part_id === 2) return 'mail'
+  return 'greaves'
+}
+
+const hasArmor = (equip_set_id, equip_id, armor_part_id) => {
+  if (!hunter.value) return false
+  const slot = armorSlotKey(armor_part_id)
+  return (hunter.value.equipments.armors[slot] || []).some(
+    (a) => a.equip_set_id === equip_set_id && a.equip_id === equip_id,
+  )
+}
+
+const craftArmor = (armorSet, equip) => {
+  const recipe = getArmorRecipe(armorSet.equip_set_id, equip.equip_id)
+  if (!recipe) return
+
+  recipe.crafting_table.forEach((mat) => {
+    const inv = hunter.value.inventory.find(
+      (i) => i.resource_type_id === mat.material[0] && i.item_id === mat.material[1],
+    )
+    if (inv) {
+      inv.quantity -= mat.amount
+      if (inv.quantity <= 0) {
+        hunter.value.inventory = hunter.value.inventory.filter((i) => i !== inv)
+      }
+    }
+  })
+
+  const slot = armorSlotKey(equip.armor_part_id)
+  if (!hunter.value.equipments.armors[slot]) {
+    hunter.value.equipments.armors[slot] = []
+  }
+  hunter.value.equipments.armors[slot].push({
+    equip_set_id: armorSet.equip_set_id,
+    equip_id: equip.equip_id,
+    is_equip: false,
+  })
+
+  saveHunter(hunter.value)
+  console.log('✅ CRAFTED ARMOR:', equip.equip)
+}
+
+const getElemental = (elemental_id) => {
+  return elementalData.find((e) => e.elemental_id === elemental_id)
+}
+
+const getAbility = (ability_id) => {
+  return bonusAbilityData.find((a) => a.ability_id === ability_id)
+}
+
+const hasFullSet = (equip_set_id) => {
+  if (!hunter.value) return false
+  return ['helm', 'mail', 'greaves'].every((slot) =>
+    (hunter.value.equipments.armors[slot] || []).some((a) => a.equip_set_id === equip_set_id),
+  )
+}
+
+const getArmorRarityIcon = (rarity, armor_part_id) => {
+  const rarityGroup = rarityData[0].rarity_list.find((r) => r.equipment_rarity === rarity)
+  if (!rarityGroup) return ''
+  const item = rarityGroup.list.find((i) => i.id === armor_part_id)
+  return item ? `/src/${item.thumbnail}` : ''
+}
+
+const armorList = computed(() => {
+  return armorsData.map((set) => ({
+    equip_set_id: set.equip_set_id,
+    set_name: set.equip_set,
+    rarity: set.rarity,
+    thumbnail: set.thumbnail,
+    set_ability_bonus: set.set_ability_bonus,
+    equips: set.equips,
+  }))
+})
 </script>
 
 <template>
-  <div class="crafting-container">
-    <!-- TAB -->
+  <div class="crafting-page">
+
+    <!-- CRAFT STATION HEADER -->
+    <div class="craft-header">
+      <div class="ch-line"></div>
+      <div class="ch-title-wrap">
+        <span class="ch-ornament">🔨</span>
+        <h2 class="ch-title">Crafting Station</h2>
+        <span class="ch-ornament">🔨</span>
+      </div>
+      <div class="ch-line"></div>
+    </div>
+
+    <!-- TABS -->
     <div class="tabs">
-      <button :class="{ active: activeTab === 'weapon' }" @click="activeTab = 'weapon'">
-        Weapon
+      <button class="tab-btn" :class="{ active: activeTab === 'weapon' }" @click="activeTab = 'weapon'">
+        <span class="tab-icon">⚔</span>
+        <span>Weapons</span>
       </button>
-      <button :class="{ active: activeTab === 'armor' }" @click="activeTab = 'armor'">Armor</button>
+      <button class="tab-btn" :class="{ active: activeTab === 'armor' }" @click="activeTab = 'armor'">
+        <span class="tab-icon">🛡</span>
+        <span>Armor</span>
+      </button>
     </div>
 
     <!-- ================= WEAPON ================= -->
@@ -274,11 +391,9 @@ const hasWeapon = (node) => {
 
                 <!-- 🛡 DEFENSE -->
                 <div class="defense-row" v-if="node.defense > 0">
-                  <div class="stat def">
-                    <div class="icon-wrap">
-                      <img src="/src/assets/img/bonus_armor.png" />
-                      <span class="def-val">{{ node.defense }}</span>
-                    </div>
+                  <div class="armor-element-card">
+                    <img src="/src/assets/img/bonus_armor.png" class="armor-base" />
+                    <span class="element-value">{{ node.defense }}</span>
                   </div>
                 </div>
               </div>
@@ -315,383 +430,675 @@ const hasWeapon = (node) => {
     </div>
 
     <!-- ================= ARMOR ================= -->
-    <div v-if="activeTab === 'armor'">Coming Soon...</div>
+    <div v-if="activeTab === 'armor'" class="weapon-tree">
+      <div v-for="armorSet in armorList" :key="armorSet.equip_set_id" class="tree-line armor-tree-line">
+        <!-- LEFT: SET INFO -->
+        <div class="tree-info">
+          <img :src="getImg(armorSet.thumbnail)" />
+          <p>{{ armorSet.set_name }}</p>
+        </div>
+
+        <!-- CENTER: SET BONUS -->
+        <div class="set-bonus-col">
+          <div
+            v-if="armorSet.set_ability_bonus !== 0 && getAbility(armorSet.set_ability_bonus)"
+            class="set-bonus-bar"
+            :class="{ unlocked: hasFullSet(armorSet.equip_set_id) }"
+          >
+            <span class="set-bonus-label">Set Bonus</span>
+            <span class="set-bonus-name">{{ getAbility(armorSet.set_ability_bonus).ability_name }}</span>
+            <span class="set-bonus-desc">{{ getAbility(armorSet.set_ability_bonus).ability }}</span>
+          </div>
+        </div>
+
+        <!-- RIGHT: ARMOR PIECES -->
+        <div class="tree-nodes">
+          <div v-for="equip in armorSet.equips" :key="equip.equip_id" class="node-wrapper">
+            <div
+              class="node-card"
+              :class="{
+                equipped: hasArmor(armorSet.equip_set_id, equip.equip_id, equip.armor_part_id),
+                locked: !hasArmor(armorSet.equip_set_id, equip.equip_id, equip.armor_part_id),
+                craftable: canCraftArmor(armorSet.equip_set_id, equip.equip_id),
+              }"
+            >
+              <img
+                class="rarity-icon"
+                :src="getArmorRarityIcon(armorSet.rarity, equip.armor_part_id)"
+              />
+              <p class="weapon-name">{{ equip.equip }}</p>
+
+              <div class="weapon-stats">
+                <!-- MATERIALS -->
+                <div
+                  class="crafting-box"
+                  v-if="
+                    getArmorCrafting(armorSet.equip_set_id, equip.equip_id).length &&
+                    !hasArmor(armorSet.equip_set_id, equip.equip_id, equip.armor_part_id)
+                  "
+                >
+                  <div
+                    v-for="(mat, mIndex) in getArmorCrafting(armorSet.equip_set_id, equip.equip_id)"
+                    :key="mIndex"
+                    class="material"
+                  >
+                    <img :src="getImg(getResource(mat.material[0], mat.material[1])?.thumbnail)" />
+                    <div class="mat-info">
+                      <span class="mat-name">{{
+                        getResource(mat.material[0], mat.material[1])?.item
+                      }}</span>
+                      <span class="mat-count">
+                        {{ getInventoryCount(mat.material[0], mat.material[1]) }} / {{ mat.amount }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- STATS -->
+                <div class="defense-row">
+                  <div v-if="equip.physical_armor > 0" class="armor-element-card">
+                    <img src="/src/assets/img/bonus_armor.png" class="armor-base" />
+                    <span class="element-value">{{ equip.physical_armor }}</span>
+                  </div>
+
+                  <div v-if="equip.elemental_armor?.elemental_id !== 0" class="armor-element-card">
+                    <img src="/src/assets/img/bonus_armor.png" class="armor-base" />
+                    <img
+                      :src="getImg(getElemental(equip.elemental_armor.elemental_id)?.thumbnail)"
+                      class="element-icon"
+                    />
+                    <span class="element-value">{{ equip.elemental_armor.protection }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- PIECE ABILITY -->
+              <div v-if="equip.ability_id !== 0 && getAbility(equip.ability_id)" class="ability-tag">
+                <span class="ability-name">{{ getAbility(equip.ability_id).ability_name }}</span>
+                <span class="ability-desc">{{ getAbility(equip.ability_id).ability }}</span>
+              </div>
+
+              <!-- CRAFT BUTTON -->
+              <button
+                v-if="
+                  canCraftArmor(armorSet.equip_set_id, equip.equip_id) &&
+                  !hasArmor(armorSet.equip_set_id, equip.equip_id, equip.armor_part_id)
+                "
+                class="btn-craft"
+                @click="craftArmor(armorSet, equip)"
+              >
+                Craft
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.node-card.craftable {
-  border: 2px solid #00ffcc;
-  box-shadow: 0 0 12px rgba(0, 255, 200, 0.6);
+/* ══════════════════════════════════════════
+   BASE
+══════════════════════════════════════════ */
+.crafting-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: #f0ddb0;
+  font-family: 'Georgia', 'Times New Roman', serif;
 }
 
+/* ══════════════════════════════════════════
+   HEADER
+══════════════════════════════════════════ */
+.craft-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ch-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, #7c5a2b);
+}
+
+.ch-line:last-child {
+  background: linear-gradient(to left, transparent, #7c5a2b);
+}
+
+.ch-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.ch-title {
+  margin: 0;
+  font-size: 18px;
+  color: #ffd27a;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  text-shadow: 0 0 12px rgba(255, 200, 80, 0.4);
+}
+
+.ch-ornament { font-size: 14px; color: #7c5a2b; }
+
+/* ══════════════════════════════════════════
+   TABS
+══════════════════════════════════════════ */
+.tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  background: rgba(16, 12, 6, 0.8);
+  color: #7c5a2b;
+  font-family: 'Georgia', serif;
+  font-size: 13px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: 0.2s;
+  min-height: 44px;
+}
+
+.tab-btn:hover {
+  color: #a88040;
+  border-color: #7c5a2b;
+}
+
+.tab-btn.active {
+  color: #ffd27a;
+  border-color: #c89b3c;
+  background: linear-gradient(to bottom, rgba(60, 40, 15, 0.8), rgba(20, 14, 6, 0.9));
+  box-shadow: 0 0 10px rgba(200, 155, 60, 0.2);
+  border-bottom: 2px solid #c89b3c;
+}
+
+.tab-icon { font-size: 14px; }
+
+/* ══════════════════════════════════════════
+   TREE
+══════════════════════════════════════════ */
+.weapon-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* TREE ROW */
+.tree-line {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  align-items: start;
+  padding: 12px;
+  border-radius: 12px;
+  background: linear-gradient(160deg, rgba(22, 16, 8, 0.9), rgba(12, 9, 5, 0.95));
+  border: 1px solid rgba(124, 90, 43, 0.6);
+  overflow: hidden;
+}
+
+/* ARMOR TREE: 3 columns */
+.armor-tree-line {
+  grid-template-columns: 160px 160px 1fr !important;
+}
+
+/* LEFT INFO */
+.tree-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  border-right: 1px solid rgba(200, 155, 60, 0.15);
+  padding: 4px 12px 4px 0;
+}
+
+.tree-info img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(255, 200, 100, 0.3));
+}
+
+.tree-info p {
+  font-size: 11px;
+  font-weight: bold;
+  color: #c89b3c;
+  text-align: center;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+/* SET BONUS COLUMN */
+.set-bonus-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-right: 1px solid rgba(200, 155, 60, 0.15);
+}
+
+/* SET BONUS BAR */
+.set-bonus-bar {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(20, 14, 6, 0.8);
+  border: 1px solid rgba(124, 90, 43, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  opacity: 0.4;
+  width: 100%;
+  transition: 0.3s;
+}
+
+.set-bonus-bar.unlocked {
+  border-color: #c89b3c;
+  background: rgba(60, 40, 10, 0.4);
+  box-shadow: 0 0 10px rgba(200, 155, 60, 0.25);
+  opacity: 1;
+}
+
+.set-bonus-label {
+  font-size: 8px;
+  font-weight: bold;
+  color: #7c5a2b;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.set-bonus-bar.unlocked .set-bonus-label { color: #c89b3c; }
+
+.set-bonus-name {
+  font-size: 12px;
+  font-weight: bold;
+  color: #f0ddb0;
+}
+
+.set-bonus-desc {
+  font-size: 10px;
+  color: #a88040;
+  line-height: 1.5;
+}
+
+/* NODE AREA */
+.tree-nodes {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-left: 12px;
+}
+
+/* NODE WRAPPER */
+.node-wrapper {
+  display: flex;
+  align-items: flex-start;
+}
+
+/* NODE CARD */
+.node-card {
+  width: 200px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(124, 90, 43, 0.6);
+  background: linear-gradient(160deg, rgba(28, 20, 10, 0.9), rgba(14, 10, 5, 0.95));
+  text-align: center;
+  cursor: pointer;
+  transition: 0.18s;
+}
+
+.node-card:hover {
+  border-color: #a88040;
+  box-shadow: 0 0 12px rgba(200, 155, 60, 0.3);
+  transform: translateY(-2px);
+}
+
+/* EQUIPPED */
+.node-card.equipped {
+  border: 2px solid #c89b3c;
+  box-shadow:
+    0 0 16px rgba(200, 155, 60, 0.5),
+    inset 0 0 10px rgba(200, 155, 60, 0.08);
+  background: linear-gradient(160deg, rgba(50, 35, 12, 0.9), rgba(25, 18, 6, 0.95));
+}
+
+/* LOCKED */
+.node-card.locked {
+  filter: grayscale(70%);
+  opacity: 0.75;
+}
+
+.node-card.locked:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* CRAFTABLE */
+.node-card.craftable {
+  border: 2px solid #00e5b8;
+  box-shadow: 0 0 10px rgba(0, 229, 184, 0.4);
+}
+
+/* RARITY ICON */
+.rarity-icon {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
+/* WEAPON NAME */
+.weapon-name {
+  font-size: 11px;
+  color: #f0ddb0;
+  margin: 4px 0 6px;
+  line-height: 1.3;
+}
+
+/* CONNECTING LINE */
+.line {
+  width: 40px;
+  height: 2px;
+  background: linear-gradient(to right, #c89b3c, rgba(124, 90, 43, 0.4));
+  margin: 0 4px;
+  flex-shrink: 0;
+  align-self: center;
+  margin-top: 50px;
+}
+
+/* ══════════════════════════════════════════
+   STATS
+══════════════════════════════════════════ */
+.weapon-stats {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* DAMAGE ROW */
 .damage-row {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 4px;
 }
+
+/* DEFENSE ROW */
 .defense-row {
   display: flex;
   justify-content: center;
+  gap: 6px;
 }
-/* 🛠 crafting panel */
-.crafting-box {
-  margin-top: 8px;
-  padding: 8px;
 
+/* STAT BADGE */
+.stat {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-
-  border-radius: 10px;
-
-  /* 🔥 กรอบ */
-  border: 1px solid rgba(200, 150, 80, 0.4);
-
-  /* 🔥 ทำให้ดูยุบลง */
-  background: linear-gradient(to bottom, #14100a, #0d0a06);
-
-  box-shadow:
-    inset 0 2px 6px rgba(0, 0, 0, 0.8),
-    inset 0 -1px 3px rgba(255, 200, 100, 0.1);
-}
-
-/* 📦 material row */
-.material {
-  display: flex;
   align-items: center;
-  gap: 8px;
-
-  padding: 4px 6px;
-
-  border-radius: 6px;
-
-  background: rgba(255, 255, 255, 0.03);
+  gap: 2px;
 }
 
-/* icon */
-.material img {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
-}
+.stat.dmg { color: #ffb347; }
 
-/* 📝 text container */
-.mat-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  width: 100%;
-}
-
-/* name */
-.mat-name {
-  font-size: 11px;
-  color: #e6d3a3;
-}
-
-/* count */
-.mat-count {
-  font-size: 11px;
-  font-weight: bold;
-  color: #bbb;
-}
-
-/* 🔥 ถ้าของไม่พอ */
-.mat-count.not-enough {
-  color: #ff6b6b;
-}
-
-/* 🔥 ถ้าของพอ */
-.mat-count.enough {
-  color: #7cfc00;
-}
-
-/* ครอบ icon */
+/* ICON WRAP (damage tier overlay) */
 .icon-wrap {
   position: relative;
-  width: 20px;
-  height: 20px;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
 }
 
-/* icon */
 .icon-wrap img {
-  width: 200%;
-  height: 200%;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
-}
-
-/* DEFENSE VALUE overlay */
-.icon-wrap .def-val {
-  left: 50%;
-  transform: translateX(-50%);
-
-  font-size: 14px;
-  font-weight: bold;
-  color: #ffffff;
-
-  text-shadow:
-    0 0 4px rgba(100, 180, 255, 0.8),
-    0 0 2px #000;
 }
 
 .icon-wrap .tier,
 .icon-wrap .def-val {
   position: absolute;
-}
-
-/* ตัวเลข "ชั้น damage" */
-.icon-wrap .tier {
-  left: 50%;
-  transform: translateX(-50%);
-
-  font-size: 14px;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
   font-weight: bold;
-  color: white;
-  text-shadow:
-    0 0 4px rgba(255, 200, 100, 0.8),
-    0 0 2px #000;
+  color: #fff;
+  text-shadow: 0 0 5px rgba(0,0,0,0.9), 0 0 3px #000;
 }
 
-/* xจำนวน */
 .dmg-count {
-  font-size: 10px;
-  color: #ffb347;
-}
-
-/* ===== STAT CONTAINER ===== */
-.weapon-stats {
-  margin-top: 6px;
-
-  display: flex;
-  flex-direction: column; /* 🔥 สำคัญ */
-  gap: 6px;
-}
-
-/* ===== STAT BADGE ===== */
-.stat {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-
-  padding: 2px 5px;
-  border-radius: 6px;
-
-  font-size: 10px;
+  margin: 0;
+  font-size: 11px;
   font-weight: bold;
-
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid rgba(255, 200, 100, 0.3);
-
-  box-shadow: inset 0 0 4px rgba(255, 200, 100, 0.2);
+  color: #c89b3c;
 }
 
-/* ICON */
-.stat img {
-  width: 14px;
-  height: 14px;
+/* ══════════════════════════════════════════
+   ARMOR ELEMENT CARD
+══════════════════════════════════════════ */
+.armor-element-card {
+  position: relative;
+  width: 36px;
+  height: 36px;
 }
 
-/* DAMAGE STYLE */
-.stat.dmg {
-  color: #ffb347;
-  border-color: rgba(255, 150, 50, 0.5);
-}
-
-/* DEFENSE STYLE */
-.stat.def {
-  color: #7ec8ff;
-  border-color: rgba(100, 180, 255, 0.5);
-}
-/* 🔥 equipped = เรืองแสง */
-.node-card.equipped {
-  border: 2px solid gold;
-  box-shadow:
-    0 0 15px rgba(255, 200, 100, 0.9),
-    0 0 30px rgba(255, 200, 100, 0.4);
-
-  background: linear-gradient(to bottom, #3a2c1a, #1a1208);
-}
-
-/* ❌ locked = หม่น */
-.node-card.locked {
-  /* opacity: 0.75; */
-  filter: grayscale(85%);
-}
-
-/* hover เฉพาะตัวที่ใช้ได้ */
-.node-card.locked:hover {
-  transform: none;
-  box-shadow: none;
-}
-
-.weapon-tree {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-/* ===== LINE (แต่ละ tree) ===== */
-.tree-line {
-  display: grid;
-  grid-template-columns: 200px 1fr;
-  align-items: center;
-
-  padding: 10px;
-  border-radius: 12px;
-
-  background: rgba(20, 15, 10, 0.9);
-  border: 1px solid #7c5a2b;
-}
-
-/* ===== LEFT INFO ===== */
-.tree-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-
-  border-right: 1px solid rgba(255, 200, 100, 0.2);
-  padding-right: 10px;
-}
-
-.tree-info img {
-  width: 100px;
-  height: 100px;
-}
-
-.tree-info p {
-  font-weight: bold;
-  color: #f5d7a1;
-}
-
-/* ===== NODE AREA ===== */
-.tree-nodes {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-left: 15px;
-}
-
-/* ===== NODE ===== */
-.node-wrapper {
-  display: flex;
-  align-items: center;
-}
-
-.node-card {
-  width: 240px;
-  padding: 10px;
-
-  border-radius: 10px;
-  border: 1px solid #7c5a2b;
-
-  background: linear-gradient(to bottom, #2d2418, #17120c);
-
-  text-align: center;
-  cursor: pointer;
-
-  transition: 0.2s;
-}
-
-.node-card:hover {
-  border-color: gold;
-  box-shadow: 0 0 12px rgba(255, 200, 100, 0.7);
-  transform: translateY(-2px);
-}
-
-/* ===== TEXT ===== */
-.weapon-name {
-  font-size: 12px;
-  color: #fff3d1;
-  margin-bottom: 6px;
-}
-
-/* ===== RARITY ===== */
-.rarity-icon {
-  width: 40px;
-  height: 40px;
+.armor-element-card .armor-base {
+  width: 100%;
+  height: 100%;
   object-fit: contain;
 }
 
-/* ===== LINE ===== */
-.line {
-  width: 60px;
-  height: 3px;
-
-  background: linear-gradient(to right, gold, #7c5a2b);
-
-  margin: 0 5px;
+.armor-element-card .element-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 28px !important;
+  height: 28px !important;
+  object-fit: contain;
+  z-index: 2;
 }
 
-.crafting-container {
-  color: #f5e6c8;
-}
-
-/* TAB */
-.tabs {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-.tabs button {
-  flex: 1;
-  padding: 10px;
-
-  background: #2d2418;
-  border: 1px solid #7c5a2b;
-  color: #aaa;
-}
-
-.tabs button.active {
+.armor-element-card .element-value {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 15px;
+  font-weight: bold;
   color: #fff;
-  border-bottom: 2px solid gold;
+  text-shadow: 0 0 4px black;
+  z-index: 3;
+  -webkit-text-stroke: 0.5px black;
 }
 
-/* LAYOUT */
-.crafting-layout {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 15px;
+.armor-element-card .armor-phys-value {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  font-weight: 900;
+  color: #1a0f00;
+  text-shadow:
+    0 0 3px rgba(255, 255, 255, 0.9),
+    0 1px 2px rgba(255, 255, 255, 0.8);
+  z-index: 3;
 }
 
-/* TREE */
-.tree-box {
-  background: rgba(20, 15, 10, 0.9);
-  border: 1px solid #7c5a2b;
-  padding: 10px;
-}
-
-.tree-row {
-  display: flex;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.node {
-  display: flex;
-  align-items: center;
-}
-
-/* DETAIL */
-.detail-box {
-  background: rgba(20, 15, 10, 0.9);
-  border: 1px solid #7c5a2b;
-  padding: 15px;
-}
-
-/* ARMOR */
-
-/* BUTTON */
-.btn-craft {
-  margin-top: 10px;
-  width: 100%;
+/* ══════════════════════════════════════════
+   CRAFTING BOX
+══════════════════════════════════════════ */
+.crafting-box {
+  margin-top: 6px;
   padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border-radius: 8px;
+  border: 1px solid rgba(124, 90, 43, 0.3);
+  background: rgba(8, 6, 3, 0.7);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.8);
+}
 
-  background: linear-gradient(to bottom, #3a2c1a, #1a1208);
+/* MATERIAL ROW */
+.material {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.material img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.mat-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 4px;
+}
+
+.mat-name {
+  font-size: 10px;
+  color: #c89b3c;
+}
+
+.mat-count {
+  font-size: 10px;
+  font-weight: bold;
+  color: #7c5a2b;
+  flex-shrink: 0;
+}
+
+.mat-count.not-enough { color: #e05050; }
+.mat-count.enough { color: #5ab85a; }
+
+/* ══════════════════════════════════════════
+   PIECE ABILITY
+══════════════════════════════════════════ */
+.ability-tag {
+  margin-top: 7px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(80, 50, 150, 0.15);
+  border: 1px solid rgba(150, 100, 240, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.ability-name {
+  font-size: 11px;
+  font-weight: bold;
+  color: #c9a0ff;
+}
+
+.ability-desc {
+  font-size: 10px;
+  color: #b8a0d8;
+  line-height: 1.4;
+}
+
+/* ══════════════════════════════════════════
+   CRAFT BUTTON
+══════════════════════════════════════════ */
+.btn-craft {
+  margin-top: 8px;
+  width: 100%;
+  padding: 7px;
+  border-radius: 7px;
   border: 1px solid #c89b3c;
-  color: #f5e6c8;
+  background: linear-gradient(to bottom, #2a1e10, #17120c);
+  color: #ffd27a;
+  font-family: 'Georgia', serif;
+  font-size: 11px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-craft:hover {
+  background: linear-gradient(to bottom, #3a2c1a, #1a1208);
+  box-shadow: 0 0 8px rgba(200, 155, 60, 0.4);
+}
+
+/* ══════════════════════════════════════════
+   RESPONSIVE — iPad (≤768px)
+══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .tree-line {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+
+  .tree-info {
+    flex-direction: row;
+    border-right: none;
+    border-bottom: 1px solid rgba(200, 155, 60, 0.15);
+    padding: 0 0 10px;
+    justify-content: flex-start;
+  }
+
+  .tree-info img { width: 60px; height: 60px; }
+  .tree-info p { text-align: left; font-size: 13px; }
+
+  .set-bonus-col {
+    border-right: none;
+    border-bottom: 1px solid rgba(200, 155, 60, 0.15);
+    padding: 0 0 10px;
+  }
+
+  .tree-nodes {
+    padding-left: 0;
+    flex-wrap: wrap;
+  }
+
+  .node-card { width: 180px; }
+
+  .line {
+    width: 24px;
+    margin-top: 44px;
+  }
+}
+
+/* ══════════════════════════════════════════
+   RESPONSIVE — Phone (≤480px)
+══════════════════════════════════════════ */
+@media (max-width: 480px) {
+  .ch-title { font-size: 14px; letter-spacing: 2px; }
+
+  .tab-btn { font-size: 12px; padding: 8px 10px; gap: 5px; }
+  .tab-icon { font-size: 12px; }
+
+  .tree-line { padding: 10px; border-radius: 10px; }
+  .tree-info img { width: 50px; height: 50px; }
+
+  .tree-nodes { gap: 6px; }
+  .node-card { width: 150px; }
+
+  .line { width: 16px; margin-top: 40px; }
 }
 </style>

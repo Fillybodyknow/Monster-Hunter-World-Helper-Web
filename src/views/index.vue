@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import WeaponSelect from '@/views/components/WeaponSelect.vue'
 import { createHunter, getHunters, deleteHunter } from '@/services/hunterStorage'
-import { getHunterClasses } from '@/services/hunterService'
+import { getHunterClasses, getHunterClassById } from '@/services/hunterService'
 import { getArmors, getWeapons } from '@/services/equipService'
 import { useRouter } from 'vue-router'
 
@@ -31,6 +31,7 @@ const hunterEquip = ref({
 })
 
 const openHunter = async (h) => {
+  console.log('Opening hunter:', h)
   const helm = h.equipments.armors.helm.find((i) => i.is_equip)
   const mail = h.equipments.armors.mail.find((i) => i.is_equip)
   const greaves = h.equipments.armors.greaves.find((i) => i.is_equip)
@@ -43,7 +44,6 @@ const openHunter = async (h) => {
     getWeapons(h.hunter_class_id, weapon.weapon_type_id, weapon.item_id),
   ])
 
-  // 🔥 เก็บลง state
   hunterEquip.value = {
     weapon: weapondetail,
     helm: helmdetail,
@@ -60,8 +60,8 @@ const handleDelete = () => {
   if (deleteConfirmName.value !== selectedHunter.value.hunter_name) {
     Swal.fire({
       icon: 'error',
-      title: 'ชื่อไม่ตรง',
-      text: 'กรุณาพิมพ์ชื่อ Hunter ให้ถูกต้อง',
+      title: 'Name Mismatch',
+      text: 'Please type the hunter name correctly.',
       timer: 1500,
       showConfirmButton: false,
     })
@@ -72,7 +72,7 @@ const handleDelete = () => {
 
   Swal.fire({
     icon: 'success',
-    title: 'ลบสำเร็จ',
+    title: 'Hunter Retired',
     timer: 1200,
     showConfirmButton: false,
   })
@@ -87,7 +87,6 @@ const enterWorld = () => {
   showDetailModal.value = false
   showDeleteModal.value = false
   showModal.value = false
-  // 👉 ต่อ router ได้ เช่น:
   router.push('/home')
   localStorage.setItem('hunterId', selectedHunter.value.hunter_id)
 }
@@ -114,13 +113,15 @@ const handleCreate = () => {
   if (!hunterName.value || !palicoName.value || !weapon.value) {
     Swal.fire({
       icon: 'error',
-      title: '[แจ้งเตือนจากระบบ]',
-      text: 'กรุณากรอกข้อมูลให้ครบ',
+      title: '[Guild Notice]',
+      text: 'Please fill in all required fields.',
       showConfirmButton: false,
       timer: 1500,
     })
     return
   }
+  var HunterClass = getHunterClassById(weapon.value.hunter_class_id)
+  console.log(HunterClass)
   const hunterData = {
     hunter_name: hunterName.value,
     hunter_class_id: weapon.value.hunter_class_id,
@@ -128,154 +129,207 @@ const handleCreate = () => {
     palico_name: palicoName.value,
 
     equipments: {
-      weapons: [
-        {
-          weapon_type_id: 1,
-          item_id: 1,
-          is_equip: true,
-        },
-      ],
+      weapons: [HunterClass.starter_set.weapon],
       armors: {
-        helm: [{ equip_set_id: 1, equip_id: 1, is_equip: true }],
-        mail: [{ equip_set_id: 1, equip_id: 2, is_equip: true }],
-        greaves: [{ equip_set_id: 1, equip_id: 3, is_equip: true }],
+        helm: [HunterClass.starter_set.armors.helm],
+        mail: [HunterClass.starter_set.armors.mail],
+        greaves: [HunterClass.starter_set.armors.greaves],
       },
     },
 
-    inventory: [{ resource_type_id: 1, item_id: 1, quantity: 1 }],
+    inventory: [],
 
     attempted_quest: [{ monster_id: 1, quest_id: 2, attempted: 0 }],
   }
 
-  const newHunter = createHunter(hunterData)
-
+  createHunter(hunterData)
   loadHunters()
-
   showModal.value = false
 }
 </script>
 
 <template>
-  <div class="menu">
-    <h1 class="title">Hunter Save Data</h1>
+  <div class="registry-page">
+    <!-- GUILD HEADER -->
+    <div class="registry-header">
+      <div class="rh-ornament">— ✦ —</div>
+      <h1 class="rh-title">Hunter Registry</h1>
+      <p class="rh-sub">Select your hunter to enter the world</p>
+      <div class="rh-ornament">— ✦ —</div>
+    </div>
 
+    <!-- HUNTER LIST -->
     <div class="hunter-list">
-      <div
-        v-for="h in hunters"
-        :key="h.hunter_id"
-        class="hunter-card row align-items-center justify-content-start"
-        @click="openHunter(h)"
-      >
-        <div class="col-5">
-          <img
-            v-if="getClass(h.hunter_class_id)"
-            :src="getImg(getClass(h.hunter_class_id).thumbnail)"
-            class="weapon-img"
-          />
+      <!-- EXISTING HUNTERS -->
+      <div v-for="h in hunters" :key="h.hunter_id" class="guild-card" @click="openHunter(h)">
+        <div class="gc-left">
+          <div class="gc-icon-wrap">
+            <img
+              v-if="getClass(h.hunter_class_id)"
+              :src="getImg(getClass(h.hunter_class_id).thumbnail)"
+              class="gc-icon"
+            />
+          </div>
         </div>
 
-        <div class="col-5">
-          <h3>{{ h.hunter_name }}</h3>
-          <p>Palico: {{ h.palico_name }}</p>
-          <p>Day {{ h.campaign_day }}</p>
+        <div class="gc-body">
+          <div class="gc-name">{{ h.hunter_name }}</div>
+          <div class="gc-meta">
+            <span class="gc-tag">{{ getClass(h.hunter_class_id)?.hunter_class || '—' }}</span>
+          </div>
+          <div class="gc-details">
+            <span class="gc-palico">Palico: {{ h.palico_name }}</span>
+            <span class="gc-day">Day {{ h.campaign_day }}</span>
+          </div>
+        </div>
+
+        <div class="gc-right">
+          <div class="gc-enter-hint">▶</div>
         </div>
       </div>
-      <div
-        class="hunter-card row align-items-center justify-content-start"
-        @click="showModal = true"
-      >
-        <div class="col-5">
-          <span class="add-icon" style="font-size: 50px; margin-left: 10px">+</span>
+
+      <!-- CREATE NEW HUNTER CARD -->
+      <div class="guild-card new-hunter-card" @click="showModal = true">
+        <div class="gc-left">
+          <div class="gc-icon-wrap new-icon-wrap">
+            <span class="new-plus">+</span>
+          </div>
         </div>
-        <div class="col-5">
-          <h3>Create Hunter</h3>
+        <div class="gc-body">
+          <div class="gc-name new-name">Register New Hunter</div>
+          <div class="gc-meta">
+            <span class="gc-tag new-tag">Guild Enrollment</span>
+          </div>
+        </div>
+        <div class="gc-right">
+          <div class="gc-enter-hint">▶</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- 🔥 HUNTER DETAIL MODAL -->
+  <!-- ══════════ HUNTER DETAIL MODAL ══════════ -->
   <teleport to="body">
     <div v-if="showDetailModal" class="modal-overlay">
-      <div class="modal-box align-items-center">
-        <h2>{{ selectedHunter.hunter_name }}</h2>
+      <div class="modal-parchment">
+        <div class="modal-stamp-header">
+          <div class="modal-stamp">HUNTER FILE</div>
+        </div>
 
         <img
           v-if="getClass(selectedHunter.hunter_class_id)"
           :src="getImg(getClass(selectedHunter.hunter_class_id).thumbnail)"
-          class="weapon-img"
+          class="modal-hunter-img"
         />
 
-        <p>Palico: {{ selectedHunter.palico_name }}</p>
-        <p>Day {{ selectedHunter.campaign_day }}</p>
+        <h2 class="modal-hunter-name">{{ selectedHunter.hunter_name }}</h2>
+
+        <div class="modal-meta-row">
+          <span class="modal-meta-chip">Palico: {{ selectedHunter.palico_name }}</span>
+          <span class="modal-meta-chip">Day {{ selectedHunter.campaign_day }}</span>
+        </div>
+
+        <div class="modal-divider">— Equipment —</div>
 
         <div class="equip-grid">
-          <!-- WEAPON -->
           <div class="equip-slot">
-            <img v-if="hunterEquip.weapon" :src="getImg(hunterEquip.weapon.thumbnail)" />
-            <p>{{ hunterEquip.weapon?.item || 'Empty' }}</p>
+            <img
+              v-if="hunterEquip.weapon"
+              :src="getImg(hunterEquip.weapon.thumbnail)"
+              class="equip-slot-img"
+            />
+            <p class="equip-slot-name">{{ hunterEquip.weapon?.item || '—' }}</p>
+            <span class="equip-slot-label">Weapon</span>
           </div>
-
-          <!-- HELM -->
           <div class="equip-slot">
-            <img v-if="hunterEquip.helm" :src="getImg(hunterEquip.helm.thumbnail)" />
-            <p>{{ hunterEquip.helm?.equip || 'Empty' }}</p>
+            <img
+              v-if="hunterEquip.helm"
+              :src="getImg(hunterEquip.helm.thumbnail)"
+              class="equip-slot-img"
+            />
+            <p class="equip-slot-name">{{ hunterEquip.helm?.equip || '—' }}</p>
+            <span class="equip-slot-label">Helm</span>
           </div>
-
-          <!-- MAIL -->
           <div class="equip-slot">
-            <img v-if="hunterEquip.mail" :src="getImg(hunterEquip.mail.thumbnail)" />
-            <p>{{ hunterEquip.mail?.equip || 'Empty' }}</p>
+            <img
+              v-if="hunterEquip.mail"
+              :src="getImg(hunterEquip.mail.thumbnail)"
+              class="equip-slot-img"
+            />
+            <p class="equip-slot-name">{{ hunterEquip.mail?.equip || '—' }}</p>
+            <span class="equip-slot-label">Mail</span>
           </div>
-
-          <!-- GREAVES -->
           <div class="equip-slot">
-            <img v-if="hunterEquip.greaves" :src="getImg(hunterEquip.greaves.thumbnail)" />
-            <p>{{ hunterEquip.greaves?.equip || 'Empty' }}</p>
+            <img
+              v-if="hunterEquip.greaves"
+              :src="getImg(hunterEquip.greaves.thumbnail)"
+              class="equip-slot-img"
+            />
+            <p class="equip-slot-name">{{ hunterEquip.greaves?.equip || '—' }}</p>
+            <span class="equip-slot-label">Greaves</span>
           </div>
         </div>
 
         <div class="modal-actions">
-          <button class="btn-mhw" @click="enterWorld">Enter World</button>
-
-          <button class="btn-danger" @click="showDeleteModal = true">Delete Account</button>
-
-          <button class="btn-cancel" @click="showDetailModal = false">Close</button>
+          <button class="btn-embark" @click="enterWorld"><span>⚔</span> Enter World</button>
+          <button class="btn-danger-sm" @click="showDeleteModal = true">Retire Hunter</button>
+          <button class="btn-close-sm" @click="showDetailModal = false">Close</button>
         </div>
       </div>
     </div>
   </teleport>
+
+  <!-- ══════════ DELETE CONFIRM MODAL ══════════ -->
   <teleport to="body">
     <div v-if="showDeleteModal" class="modal-overlay">
-      <div class="modal-box align-items-center">
-        <h2>{{ selectedHunter.hunter_name }}</h2>
+      <div class="modal-parchment narrow">
+        <div class="modal-stamp-header danger">
+          <div class="modal-stamp danger-stamp">RETIREMENT FORM</div>
+        </div>
 
-        <input v-model="deleteConfirmName" placeholder="Type Hunter Name to delete" />
+        <p class="delete-warning">
+          This action is irreversible.<br />
+          Type the hunter's name to confirm.
+        </p>
+
+        <h3 class="delete-hunter-name">{{ selectedHunter.hunter_name }}</h3>
+
+        <input v-model="deleteConfirmName" class="mhw-input" placeholder="Type hunter name..." />
 
         <div class="modal-actions">
-          <button class="btn-danger" @click="handleDelete">Delete Account</button>
-
-          <button class="btn-cancel" @click="showDeleteModal = false">Close</button>
+          <button class="btn-danger-sm" @click="handleDelete">Confirm Retirement</button>
+          <button class="btn-close-sm" @click="showDeleteModal = false">Cancel</button>
         </div>
       </div>
     </div>
   </teleport>
 
-  <!-- MODAL -->
+  <!-- ══════════ CREATE HUNTER MODAL ══════════ -->
   <teleport to="body">
     <div v-if="showModal" class="modal-overlay">
-      <div class="modal-box">
-        <h2>Create Hunter</h2>
+      <div class="modal-parchment">
+        <div class="modal-stamp-header">
+          <div class="modal-stamp">GUILD ENROLLMENT</div>
+        </div>
 
-        <input v-model="hunterName" placeholder="Hunter Name" />
-        <input v-model="palicoName" placeholder="Palico Name" />
+        <div class="form-section">
+          <label class="form-label">Hunter Name</label>
+          <input v-model="hunterName" class="mhw-input" placeholder="Enter hunter name..." />
+        </div>
 
-        <WeaponSelect @select="(w) => (weapon = w)" />
+        <div class="form-section">
+          <label class="form-label">Palico Name</label>
+          <input v-model="palicoName" class="mhw-input" placeholder="Enter palico name..." />
+        </div>
+
+        <div class="form-section">
+          <label class="form-label">Hunter Class</label>
+          <WeaponSelect @select="(w) => (weapon = w)" />
+        </div>
 
         <div class="modal-actions">
-          <button class="btn-mhw" @click="handleCreate">Confirm</button>
-
-          <button class="btn-cancel" @click="showModal = false">Cancel</button>
+          <button class="btn-embark" @click="handleCreate"><span>✦</span> Enroll Hunter</button>
+          <button class="btn-close-sm" @click="showModal = false">Cancel</button>
         </div>
       </div>
     </div>
@@ -283,202 +337,574 @@ const handleCreate = () => {
 </template>
 
 <style scoped>
-.equip-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-top: 10px;
+/* ══════════════════════════════════════════
+   BASE
+══════════════════════════════════════════ */
+.registry-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  color: #f0ddb0;
+  padding: 10px 0;
 }
 
-.equip-slot {
-  background: rgba(30, 20, 10, 0.8);
-  border: 1px solid #7c5a2b;
-  border-radius: 10px;
-
-  padding: 10px;
+/* ══════════════════════════════════════════
+   GUILD HEADER
+══════════════════════════════════════════ */
+.registry-header {
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
+.rh-title {
+  margin: 0;
+  font-size: 28px;
+  color: #ffd27a;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 20px rgba(255, 200, 80, 0.5),
+    0 2px 6px rgba(0, 0, 0, 0.9);
+}
+
+.rh-sub {
+  margin: 0;
+  font-size: 12px;
+  color: #a88040;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+.rh-ornament {
+  color: #5a3d1f;
+  font-size: 12px;
+  letter-spacing: 6px;
+}
+
+/* ══════════════════════════════════════════
+   HUNTER LIST
+══════════════════════════════════════════ */
+.hunter-list {
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ══════════════════════════════════════════
+   GUILD CARD
+══════════════════════════════════════════ */
+.guild-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(30, 22, 10, 0.9), rgba(20, 14, 6, 0.95));
+  border: 1px solid #7c5a2b;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.guild-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(200, 155, 60, 0.04) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.guild-card:hover {
+  border-color: #c89b3c;
+  transform: translateY(-2px);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.6),
+    0 0 12px rgba(200, 155, 60, 0.2);
+}
+
+/* NEW HUNTER */
+.new-hunter-card {
+  border-style: dashed;
+  border-color: #5a3d1f;
+  background: rgba(20, 14, 6, 0.6);
+}
+
+.new-hunter-card:hover {
+  border-color: #c89b3c;
+  border-style: solid;
+}
+
+/* LEFT */
+.gc-left {
+}
+
+.gc-icon-wrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  border: 1px solid #5a3d1f;
+  background: rgba(10, 8, 4, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.gc-icon {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(255, 200, 100, 0.4));
+}
+
+.new-icon-wrap {
+  border-style: dashed;
+}
+
+.new-plus {
+  font-size: 32px;
+  color: #5a3d1f;
+  line-height: 1;
+}
+
+/* BODY */
+.gc-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gc-name {
+  font-size: 16px;
+  color: #ffd27a;
+  font-weight: bold;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  letter-spacing: 0.5px;
+}
+
+.new-name {
+  color: #a88040;
+}
+
+.gc-meta {
+  display: flex;
+  gap: 6px;
+}
+
+.gc-tag {
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #c89b3c;
+  background: rgba(200, 155, 60, 0.12);
+  border: 1px solid rgba(200, 155, 60, 0.3);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.new-tag {
+  color: #5a3d1f;
+  border-color: rgba(90, 61, 31, 0.3);
+  background: transparent;
+}
+
+.gc-details {
+  display: flex;
+  gap: 12px;
+}
+
+.gc-palico,
+.gc-day {
+  font-size: 11px;
+  color: #a88040;
+}
+
+/* RIGHT */
+.gc-right {
+}
+
+.gc-enter-hint {
+  font-size: 14px;
+  color: #5a3d1f;
   transition: 0.2s;
 }
 
-.equip-slot img {
-  width: 60px;
-  height: 60px;
-  object-fit: contain;
-
-  filter: drop-shadow(0 0 5px rgba(255, 200, 100, 0.5));
+.guild-card:hover .gc-enter-hint {
+  color: #c89b3c;
+  transform: translateX(3px);
 }
 
-.equip-slot p {
-  margin-top: 5px;
-  font-size: 12px;
-  color: #f5d7a1;
-}
-
-.equip-slot:hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 10px rgba(255, 200, 100, 0.5);
-}
-
-.btn-danger {
-  padding: 10px;
-  border-radius: 8px;
-  border: none;
-
-  background: #8b1a1a;
-  color: #fff;
-
-  cursor: pointer;
-}
-
-.btn-danger:hover {
-  box-shadow: 0 0 10px rgba(255, 50, 50, 0.7);
-}
-
-.weapon-img {
-  width: 100px;
-  height: 100px;
-  object-fit: contain;
-
-  filter: drop-shadow(0 0 5px rgba(255, 200, 100, 0.6));
-}
-
-.hunter-list {
-  margin-top: 30px;
-  width: 400px;
-
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-/* CARD */
-.hunter-card {
-  padding: 10px;
-  border-radius: 12px;
-
-  background: rgba(20, 15, 10, 0.85);
-  border: 2px solid #7c5a2b;
-
-  color: #f5d7a1;
-
-  box-shadow:
-    0 0 10px rgba(0, 0, 0, 0.8),
-    inset 0 0 10px rgba(255, 200, 100, 0.1);
-
-  transition: all 0.2s;
-}
-
-/* HOVER */
-.hunter-card:hover {
-  transform: scale(1.02);
-  box-shadow: 0 0 15px rgba(255, 200, 100, 0.6);
-  cursor: pointer;
-}
-
-.menu {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-}
-
-.title {
-  color: #f5d7a1;
-}
-
-/* ===== MODAL ===== */
+/* ══════════════════════════════════════════
+   MODAL OVERLAY
+══════════════════════════════════════════ */
 .modal-overlay {
   position: fixed;
   inset: 0;
-
-  background: rgba(10, 8, 5, 0.6);
-
-  backdrop-filter: blur(10px) brightness(0.7);
-  -webkit-backdrop-filter: blur(10px) brightness(0.7);
-
+  background: rgba(5, 4, 2, 0.75);
+  backdrop-filter: blur(10px) brightness(0.6);
   display: flex;
   justify-content: center;
   align-items: center;
+  z-index: 100;
+  padding: 16px;
 }
 
-.modal-box {
-  width: 350px;
-  padding: 25px;
+/* ══════════════════════════════════════════
+   MODAL PARCHMENT
+══════════════════════════════════════════ */
+.modal-parchment {
+  width: min(460px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px;
   border-radius: 12px;
-
-  background: rgba(20, 15, 10, 0.95);
+  background: linear-gradient(160deg, #1c1508, #13100a, #1c1508);
   border: 2px solid #7c5a2b;
-
   box-shadow:
-    0 0 20px rgba(0, 0, 0, 0.8),
-    0 0 15px rgba(255, 200, 100, 0.2);
-
+    0 0 40px rgba(0, 0, 0, 0.9),
+    0 0 20px rgba(200, 155, 60, 0.15);
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 16px;
+  animation: popIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  font-family: 'Georgia', serif;
 }
 
-.modal-box h2 {
-  text-align: center;
-  color: #f5d7a1;
+.modal-parchment.narrow {
+  width: min(360px, 100%);
 }
 
-/* INPUT */
-.modal-box input,
-.modal-box select {
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid #7c5a2b;
-
-  background: #1a1208;
-  color: #fff;
-}
-
-/* BUTTON */
-.btn-mhw {
-  padding: 10px;
-  border-radius: 8px;
-  border: 2px solid #7c5a2b;
-
-  background: linear-gradient(to bottom, #3a2c1a, #1a1208);
-  color: #f5d7a1;
-
-  cursor: pointer;
-}
-
-.btn-mhw:hover {
-  box-shadow: 0 0 10px rgba(255, 200, 100, 0.7);
-}
-
-.btn-cancel {
-  padding: 10px;
-  border-radius: 8px;
-  border: none;
-
-  background: #444;
-  color: #fff;
-}
-
-/* ACTION */
-.modal-actions {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.modal-box {
-  animation: popup 0.2s ease;
-}
-
-@keyframes popup {
+@keyframes popIn {
   from {
-    transform: scale(0.8);
+    transform: scale(0.85);
     opacity: 0;
   }
   to {
     transform: scale(1);
     opacity: 1;
+  }
+}
+
+/* STAMP HEADER */
+.modal-stamp-header {
+  text-align: center;
+}
+
+.modal-stamp {
+  display: inline-block;
+  font-size: 10px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: #c89b3c;
+  border: 2px solid #7c5a2b;
+  border-radius: 4px;
+  padding: 4px 14px;
+  background: rgba(200, 155, 60, 0.08);
+  text-shadow: 0 0 8px rgba(200, 155, 60, 0.4);
+}
+
+.modal-stamp-header.danger .modal-stamp {
+  color: #e05050;
+  border-color: #8b1a1a;
+  background: rgba(140, 26, 26, 0.12);
+  text-shadow: 0 0 8px rgba(224, 80, 80, 0.4);
+}
+
+/* HUNTER IMAGE */
+.modal-hunter-img {
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+  margin: 0 auto;
+  display: block;
+  filter: drop-shadow(0 0 10px rgba(255, 200, 100, 0.5));
+}
+
+.modal-hunter-name {
+  text-align: center;
+  margin: 0;
+  font-size: 22px;
+  color: #ffd27a;
+  text-shadow: 0 0 15px rgba(255, 200, 80, 0.4);
+  letter-spacing: 1px;
+}
+
+.modal-meta-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.modal-meta-chip {
+  font-size: 11px;
+  color: #a88040;
+  letter-spacing: 1px;
+}
+
+.modal-divider {
+  text-align: center;
+  font-size: 11px;
+  color: #7c5a2b;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+
+/* EQUIP GRID */
+.equip-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.equip-slot {
+  background: rgba(10, 8, 4, 0.7);
+  border: 1px solid #5a3d1f;
+  border-radius: 8px;
+  padding: 10px 8px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: 0.2s;
+}
+
+.equip-slot:hover {
+  border-color: #7c5a2b;
+}
+
+.equip-slot-img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 5px rgba(255, 200, 100, 0.4));
+}
+
+.equip-slot-name {
+  margin: 0;
+  font-size: 11px;
+  color: #f0ddb0;
+  line-height: 1.3;
+}
+
+.equip-slot-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #7c5a2b;
+}
+
+/* ══════════════════════════════════════════
+   BUTTONS
+══════════════════════════════════════════ */
+.modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.btn-embark {
+  flex: 1;
+  min-width: 140px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: 2px solid #7c5a2b;
+  background: linear-gradient(to bottom, #3a2c1a, #1a1208);
+  color: #ffd27a;
+  font-size: 14px;
+  font-family: 'Georgia', serif;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+}
+
+.btn-embark:hover {
+  border-color: #c89b3c;
+  box-shadow: 0 0 15px rgba(200, 155, 60, 0.4);
+  color: #fff;
+}
+
+.btn-danger-sm {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid #8b1a1a;
+  background: rgba(139, 26, 26, 0.2);
+  color: #e05050;
+  font-size: 12px;
+  cursor: pointer;
+  transition: 0.2s;
+  min-height: 44px;
+}
+
+.btn-danger-sm:hover {
+  background: rgba(139, 26, 26, 0.4);
+  box-shadow: 0 0 10px rgba(224, 80, 80, 0.3);
+}
+
+.btn-close-sm {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid #3a2c1a;
+  background: rgba(30, 22, 10, 0.6);
+  color: #7c5a2b;
+  font-size: 12px;
+  cursor: pointer;
+  transition: 0.2s;
+  min-height: 44px;
+}
+
+.btn-close-sm:hover {
+  color: #a88040;
+  border-color: #5a3d1f;
+}
+
+/* ══════════════════════════════════════════
+   FORM
+══════════════════════════════════════════ */
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #7c5a2b;
+}
+
+.mhw-input {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #7c5a2b;
+  background: rgba(10, 8, 4, 0.8);
+  color: #f0ddb0;
+  font-size: 14px;
+  font-family: 'Georgia', serif;
+  width: 100%;
+  box-sizing: border-box;
+  transition: 0.2s;
+}
+
+.mhw-input:focus {
+  outline: none;
+  border-color: #c89b3c;
+  box-shadow: 0 0 8px rgba(200, 155, 60, 0.25);
+}
+
+.mhw-input::placeholder {
+  color: #5a3d1f;
+}
+
+/* DELETE SECTION */
+.delete-warning {
+  text-align: center;
+  font-size: 13px;
+  color: #a88040;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.delete-hunter-name {
+  text-align: center;
+  margin: 0;
+  font-size: 18px;
+  color: #e05050;
+  letter-spacing: 1px;
+}
+
+/* ══════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .rh-title {
+    font-size: 22px;
+    letter-spacing: 2px;
+  }
+  .hunter-list {
+    max-width: 100%;
+  }
+  .guild-card {
+    padding: 12px;
+    gap: 12px;
+  }
+  .gc-icon-wrap {
+    width: 56px;
+    height: 56px;
+  }
+  .gc-icon {
+    width: 48px;
+    height: 48px;
+  }
+  .gc-name {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .rh-title {
+    font-size: 18px;
+    letter-spacing: 1px;
+  }
+  .rh-sub {
+    font-size: 10px;
+    letter-spacing: 2px;
+  }
+
+  .guild-card {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .gc-icon-wrap {
+    width: 48px;
+    height: 48px;
+  }
+  .gc-icon {
+    width: 40px;
+    height: 40px;
+  }
+  .gc-name {
+    font-size: 14px;
+  }
+  .gc-details {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .modal-parchment {
+    padding: 18px 16px;
+    gap: 12px;
+  }
+  .equip-grid {
+    gap: 8px;
+  }
+  .equip-slot-img {
+    width: 44px;
+    height: 44px;
+  }
+
+  .btn-embark {
+    font-size: 13px;
+    padding: 10px 14px;
+  }
+  .modal-hunter-name {
+    font-size: 18px;
   }
 }
 </style>

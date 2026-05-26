@@ -110,7 +110,9 @@ const selectItem = (item, delta) => {
   found.quantity += delta
 
   if (found.quantity <= 0) {
-    selectedItems.value = selectedItems.value.filter((i) => i.item_id !== item.item_id)
+    selectedItems.value = selectedItems.value.filter(
+      (i) => !(i.item_id === item.item_id && i.resource_type_id === item.resource_type_id),
+    )
   }
 }
 
@@ -135,98 +137,116 @@ const confirmAdd = () => {
   showAddModal.value = false
 }
 
-const tooltipItem = ref(null)
-let hoverTimer = null
-
-const handleMouseEnter = (item) => {
-  clearTimeout(hoverTimer)
-
-  hoverTimer = setTimeout(() => {
-    tooltipItem.value = item
-  }, 500) // 👈 delay 0.5 วิ
-}
-
-const handleMouseLeave = () => {
-  clearTimeout(hoverTimer)
-  tooltipItem.value = null
-}
 </script>
 
 <template>
-  <div class="inventory-container">
-    <h2>Inventory</h2>
+  <div class="inventory-page">
 
-    <button class="btn-add" @click="showAddModal = true">+ Add Item</button>
+    <!-- HEADER -->
+    <div class="inv-header">
+      <div class="inv-title-row">
+        <span class="inv-ornament">◆</span>
+        <h2 class="inv-title">Supply Pack</h2>
+        <span class="inv-ornament">◆</span>
+      </div>
+      <button class="btn-add-item" @click="showAddModal = true">+ Add Item</button>
+    </div>
 
-    <!-- INVENTORY -->
-    <div v-for="group in groupedInventory" :key="group.resource_type">
-      <h3>{{ group.resource_type }}</h3>
+    <!-- INVENTORY BY CATEGORY -->
+    <div v-if="groupedInventory.length === 0" class="inv-empty">
+      <p>Your supply pack is empty.</p>
+    </div>
+
+    <div v-for="group in groupedInventory" :key="group.resource_type" class="inv-group">
+      <div class="group-header">
+        <div class="gh-line"></div>
+        <span class="gh-label">{{ group.resource_type }}</span>
+        <div class="gh-line"></div>
+      </div>
 
       <div class="grid">
-        <div v-for="item in group.items" :key="item.item_id" class="card">
-          <img :src="getImg(item.thumbnail)" />
-
+        <div v-for="item in group.items" :key="`${item.resource_type_id}-${item.item_id}`" class="card">
+          <img :src="getImg(item.thumbnail)" class="card-img" />
           <span class="qty">x{{ item.quantity }}</span>
-
           <div class="control">
-            <button @click="changeQty(item, -1)">-</button>
+            <button @click="changeQty(item, -1)">−</button>
             <button @click="changeQty(item, 1)">+</button>
           </div>
-
-          <p>{{ item.item }}</p>
+          <p class="card-name">{{ item.item }}</p>
         </div>
       </div>
     </div>
 
-    <!-- MODAL -->
+    <!-- ADD ITEM MODAL -->
     <teleport to="body">
-      <div v-if="showAddModal" class="modal">
-        <div class="modal-box">
-          <h2>Add Item</h2>
+      <div v-if="showAddModal" class="modal-overlay">
+        <div class="modal-parchment">
+
+          <div class="modal-top">
+            <div class="modal-title-wrap">
+              <span class="mt-ornament">◆</span>
+              <h2 class="modal-title">Add to Supply Pack</h2>
+              <span class="mt-ornament">◆</span>
+            </div>
+            <button class="btn-modal-close" @click="showAddModal = false">✕</button>
+          </div>
 
           <div class="add-layout">
-            <!-- LEFT -->
-            <div class="box">
-              <input v-model="search" placeholder="Search..." />
+            <!-- LEFT — AVAILABLE -->
+            <div class="add-panel">
+              <div class="add-panel-label">Available Items</div>
+              <input v-model="search" class="search-input" placeholder="Search items..." />
 
-              <div class="grid">
-                <div v-for="item in filteredAvailable" :key="item.item_id" class="card">
-                  <img :src="getImg(item.thumbnail)" />
-
+              <div class="grid scrollable">
+                <div
+                  v-for="item in filteredAvailable"
+                  :key="`${item.resource_type_id}-${item.item_id}`"
+                  class="card"
+                >
+                  <img :src="getImg(item.thumbnail)" class="card-img" />
                   <div class="control">
-                    <button @click="selectItem(item, -1)">-</button>
+                    <button @click="selectItem(item, -1)">−</button>
                     <button @click="selectItem(item, 1)">+</button>
                   </div>
+                  <p class="card-name">{{ item.item }}</p>
+                </div>
 
-                  <p>{{ item.item }}</p>
+                <div v-if="filteredAvailable.length === 0" class="no-results">
+                  No items found
                 </div>
               </div>
             </div>
 
-            <!-- RIGHT -->
-            <div class="box">
-              <h3>Selected</h3>
+            <!-- RIGHT — SELECTED -->
+            <div class="add-panel">
+              <div class="add-panel-label">Selected</div>
 
-              <div class="grid">
-                <div v-for="item in selectedItems" :key="item.item_id" class="card active">
-                  <img :src="getImg(item.thumbnail)" />
-
+              <div class="grid scrollable">
+                <div
+                  v-for="item in selectedItems"
+                  :key="`${item.resource_type_id}-${item.item_id}`"
+                  class="card active"
+                >
+                  <img :src="getImg(item.thumbnail)" class="card-img" />
                   <span class="qty">x{{ item.quantity }}</span>
-
                   <div class="control">
-                    <button @click="selectItem(item, -1)">-</button>
+                    <button @click="selectItem(item, -1)">−</button>
                     <button @click="selectItem(item, 1)">+</button>
                   </div>
+                  <p class="card-name">{{ item.item }}</p>
+                </div>
 
-                  <p>{{ item.item }}</p>
+                <div v-if="selectedItems.length === 0" class="no-results">
+                  Nothing selected
                 </div>
               </div>
 
-              <button class="btn-confirm" @click="confirmAdd">Confirm</button>
+              <button class="btn-confirm" @click="confirmAdd" :disabled="selectedItems.length === 0">
+                ✦ Confirm
+              </button>
             </div>
           </div>
 
-          <button class="btn-cancel" @click="showAddModal = false">Close</button>
         </div>
       </div>
     </teleport>
@@ -234,252 +254,414 @@ const handleMouseLeave = () => {
 </template>
 
 <style scoped>
-/* ===== GLOBAL ===== */
-.inventory-container {
-  color: #f8f4e6;
-  max-width: 1100px;
-  margin: auto;
+/* ══════════════════════════════════════════
+   BASE
+══════════════════════════════════════════ */
+.inventory-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  color: #f0ddb0;
+  font-family: 'Georgia', 'Times New Roman', serif;
 }
 
-/* ===== TITLE ===== */
-h2 {
+/* ══════════════════════════════════════════
+   HEADER
+══════════════════════════════════════════ */
+.inv-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.inv-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.inv-title {
+  margin: 0;
+  font-size: 20px;
   color: #ffd27a;
-  text-shadow: 0 0 8px rgba(255, 200, 100, 0.6);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  text-shadow: 0 0 12px rgba(255, 200, 80, 0.4);
 }
 
-h3 {
-  color: #ffcc66;
+.inv-ornament {
+  font-size: 8px;
+  color: #7c5a2b;
 }
 
-/* ===== GRID ===== */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+.btn-add-item {
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1px solid #7c5a2b;
+  background: linear-gradient(to bottom, #2a1e10, #17120c);
+  color: #c89b3c;
+  font-size: 13px;
+  font-family: 'Georgia', serif;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: 0.2s;
+  min-height: 40px;
+  white-space: nowrap;
+}
+
+.btn-add-item:hover {
+  border-color: #c89b3c;
+  color: #ffd27a;
+  box-shadow: 0 0 10px rgba(200, 155, 60, 0.3);
+}
+
+/* EMPTY STATE */
+.inv-empty {
+  text-align: center;
+  padding: 40px 0;
+  color: #5a3d1f;
+  font-style: italic;
+  font-size: 14px;
+}
+
+/* ══════════════════════════════════════════
+   CATEGORY GROUP
+══════════════════════════════════════════ */
+.inv-group {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
-/* ===== CARD ===== */
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gh-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(124, 90, 43, 0.35);
+}
+
+.gh-label {
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #a88040;
+  white-space: nowrap;
+}
+
+/* ══════════════════════════════════════════
+   GRID
+══════════════════════════════════════════ */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 10px;
+}
+
+.grid.scrollable {
+  overflow-y: auto;
+  max-height: 360px;
+  padding-right: 4px;
+}
+
+/* ══════════════════════════════════════════
+   CARD
+══════════════════════════════════════════ */
 .card {
-  padding: 10px;
-  border-radius: 12px;
-
-  background: linear-gradient(to bottom, #2d2418, #17120c);
-  border: 1px solid #7c5a2b;
-
+  padding: 10px 8px;
+  border-radius: 10px;
+  background: linear-gradient(160deg, rgba(30, 22, 10, 0.9), rgba(16, 12, 6, 0.95));
+  border: 1px solid rgba(124, 90, 43, 0.6);
   text-align: center;
-  position: relative;
-
   display: flex;
   flex-direction: column;
   align-items: center;
-
-  transition: 0.2s;
+  gap: 4px;
+  transition: 0.18s;
+  position: relative;
 }
 
-/* HOVER */
 .card:hover {
-  transform: translateY(-3px) scale(1.05);
-  box-shadow: 0 0 10px rgba(255, 200, 100, 0.6);
+  border-color: #a88040;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 8px rgba(200, 155, 60, 0.15);
 }
 
-/* ACTIVE */
 .card.active {
-  border: 2px solid gold;
-  box-shadow: 0 0 12px rgba(255, 215, 0, 0.8);
+  border: 2px solid #c89b3c;
+  box-shadow: 0 0 14px rgba(200, 155, 60, 0.5);
 }
 
-/* IMG */
-.card img {
-  width: 50px;
-  height: 50px;
+.card-img {
+  width: 48px;
+  height: 48px;
   object-fit: contain;
-
-  filter: drop-shadow(0 0 5px rgba(255, 200, 100, 0.5));
+  filter: drop-shadow(0 0 5px rgba(255, 200, 100, 0.4));
 }
 
-/* NAME */
-.card p {
-  font-size: 11px;
-  margin-top: 5px;
-  line-height: 1.2;
-
-  color: #f8f4e6; /* 👈 อ่านชัด */
-  text-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
+.card-name {
+  font-size: 10px;
+  margin: 0;
+  line-height: 1.3;
+  color: #c89b3c;
+  -webkit-text-stroke: 0.1px rgba(0,0,0,0.5);
 }
 
-/* QTY */
 .qty {
-  color: #fff;
-
-  background: rgba(0, 0, 0, 0.8);
-  /* padding: 0 50px 0 50px; */
-  width: 75%;
-  border-radius: 10px;
-  text-shadow: 0 0 5px #000;
-
+  font-size: 11px;
   font-weight: bold;
+  color: #ffd27a;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 8px;
+  padding: 1px 8px;
+  width: 80%;
+  text-align: center;
+  text-shadow: 0 0 4px #000;
 }
 
-/* ===== CONTROL ===== */
+/* ══════════════════════════════════════════
+   CONTROLS
+══════════════════════════════════════════ */
 .control {
   display: flex;
   justify-content: center;
-  gap: 6px;
-  margin-top: 5px;
+  gap: 4px;
 }
 
 .control button {
   width: 26px;
   height: 26px;
-
   border-radius: 6px;
-  border: 1px solid #7c5a2b;
-
-  background: #1a1208;
-  color: #f5d7a1;
-
+  border: 1px solid #5a3d1f;
+  background: rgba(10, 8, 4, 0.8);
+  color: #c89b3c;
+  font-size: 14px;
   cursor: pointer;
-  transition: 0.2s;
+  transition: 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .control button:hover {
-  background: #3a2c1a;
-  box-shadow: 0 0 5px gold;
+  border-color: #c89b3c;
+  background: rgba(60, 40, 15, 0.7);
+  box-shadow: 0 0 6px rgba(200, 155, 60, 0.4);
 }
 
-/* ===== MODAL ===== */
-.modal {
+/* ══════════════════════════════════════════
+   MODAL OVERLAY
+══════════════════════════════════════════ */
+.modal-overlay {
   position: fixed;
   inset: 0;
-
-  background: rgba(10, 8, 5, 0.7);
-  backdrop-filter: blur(8px);
-
+  background: rgba(5, 4, 2, 0.75);
+  backdrop-filter: blur(10px) brightness(0.6);
   display: flex;
   justify-content: center;
   align-items: center;
+  z-index: 200;
+  padding: 16px;
 }
 
-/* BOX */
-.modal-box {
-  width: 1000px;
+/* ══════════════════════════════════════════
+   MODAL PARCHMENT
+══════════════════════════════════════════ */
+.modal-parchment {
+  width: min(1000px, 100%);
+  max-height: 90vh;
   padding: 20px;
-
-  background: rgba(20, 15, 10, 0.95);
+  background: linear-gradient(160deg, #1c1508, #13100a, #1c1508);
   border: 2px solid #7c5a2b;
   border-radius: 14px;
-
+  box-shadow: 0 0 40px rgba(0,0,0,0.9), 0 0 20px rgba(200, 155, 60, 0.1);
   display: flex;
   flex-direction: column;
-  gap: 15px;
-
-  box-shadow:
-    0 0 20px rgba(0, 0, 0, 0.8),
-    0 0 15px rgba(255, 200, 100, 0.2);
+  gap: 16px;
+  animation: popIn 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  font-family: 'Georgia', serif;
 }
 
-/* ===== LAYOUT ===== */
+@keyframes popIn {
+  from { transform: scale(0.88); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(124, 90, 43, 0.3);
+  padding-bottom: 12px;
+}
+
+.modal-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mt-ornament {
+  font-size: 8px;
+  color: #7c5a2b;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 16px;
+  color: #ffd27a;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(255, 200, 80, 0.3);
+}
+
+.btn-modal-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid #5a3d1f;
+  background: rgba(20, 14, 6, 0.8);
+  color: #7c5a2b;
+  font-size: 14px;
+  cursor: pointer;
+  transition: 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-modal-close:hover {
+  border-color: #c89b3c;
+  color: #c89b3c;
+}
+
+/* ══════════════════════════════════════════
+   ADD LAYOUT
+══════════════════════════════════════════ */
 .add-layout {
   display: grid;
   grid-template-columns: 2.5fr 1fr;
-  gap: 15px;
+  gap: 14px;
+  min-height: 0;
 }
 
-/* ===== BOX ===== */
-.box {
-  background: rgba(30, 20, 10, 0.85);
-  border: 1px solid #7c5a2b;
+.add-panel {
+  background: rgba(10, 8, 4, 0.5);
+  border: 1px solid rgba(124, 90, 43, 0.4);
   border-radius: 10px;
-
-  padding: 10px;
-
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-
-  max-height: 500px;
+  min-height: 0;
 }
 
-/* SCROLL */
-.box .grid {
-  overflow-y: auto;
-  padding-right: 5px;
+.add-panel-label {
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #7c5a2b;
+  border-bottom: 1px solid rgba(124, 90, 43, 0.25);
+  padding-bottom: 6px;
 }
 
-/* ===== SEARCH ===== */
-.box input {
-  padding: 8px;
+.search-input {
+  padding: 8px 12px;
   border-radius: 8px;
-  border: 1px solid #a67c3b;
-
-  background: #1a1208;
-  color: #fff;
-}
-
-.box input::placeholder {
-  color: #aaa;
-}
-
-/* ===== SELECTED TITLE ===== */
-.box h3 {
-  text-align: center;
-  color: #ffd27a;
-  text-shadow: 0 0 5px rgba(255, 200, 100, 0.5);
-}
-
-/* EMPTY */
-.box:has(.grid:empty)::after {
-  content: 'No items';
-  text-align: center;
-  opacity: 0.5;
-}
-
-/* ===== BUTTON ===== */
-.btn-add,
-.btn-confirm,
-.btn-cancel {
-  padding: 10px;
-  border-radius: 10px;
-
-  border: 2px solid #7c5a2b;
-  background: linear-gradient(to bottom, #3a2c1a, #1a1208);
-
-  color: #f5d7a1;
-  cursor: pointer;
-
+  border: 1px solid #5a3d1f;
+  background: rgba(5, 4, 2, 0.8);
+  color: #f0ddb0;
+  font-size: 13px;
+  font-family: 'Georgia', serif;
   transition: 0.2s;
 }
 
-.btn-add:hover,
-.btn-confirm:hover {
-  box-shadow: 0 0 10px rgba(255, 200, 100, 0.7);
+.search-input:focus {
+  outline: none;
+  border-color: #7c5a2b;
+  box-shadow: 0 0 6px rgba(124, 90, 43, 0.3);
 }
 
-.btn-cancel {
-  background: #444;
+.search-input::placeholder { color: #3a2c1a; }
+
+.no-results {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 30px 0;
+  color: #5a3d1f;
+  font-style: italic;
+  font-size: 12px;
 }
 
-.card p,
-.qty {
-  -webkit-text-stroke: 0.2px rgba(0, 0, 0, 0.6);
+/* CONFIRM BUTTON */
+.btn-confirm {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #7c5a2b;
+  background: linear-gradient(to bottom, #3a2c1a, #17120c);
+  color: #ffd27a;
+  font-size: 13px;
+  font-family: 'Georgia', serif;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: 0.2s;
+  min-height: 44px;
 }
 
-/* ===== GLOBAL SCROLLBAR ===== */
-::-webkit-scrollbar {
-  width: 10px;
+.btn-confirm:hover:not(:disabled) {
+  border-color: #c89b3c;
+  box-shadow: 0 0 12px rgba(200, 155, 60, 0.35);
 }
 
-::-webkit-scrollbar-track {
-  background: #1a1208; /* พื้น */
+.btn-confirm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
+/* ══════════════════════════════════════════
+   SCROLLBAR
+══════════════════════════════════════════ */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: rgba(10, 8, 4, 0.5); border-radius: 4px; }
 ::-webkit-scrollbar-thumb {
   background: linear-gradient(to bottom, #7c5a2b, #3a2c1a);
-  border-radius: 10px;
-  border: 1px solid #000;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: #a67c3b; }
+
+/* ══════════════════════════════════════════
+   RESPONSIVE — iPad (≤768px)
+══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
+
+  .add-layout {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .grid.scrollable { max-height: 220px; }
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #a67c3b, #5a3d1f);
+/* ══════════════════════════════════════════
+   RESPONSIVE — Phone (≤480px)
+══════════════════════════════════════════ */
+@media (max-width: 480px) {
+  .inv-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .btn-add-item { width: 100%; }
+
+  .grid { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; }
+  .card-img { width: 40px; height: 40px; }
+
+  .modal-parchment { padding: 14px; gap: 12px; }
+  .add-layout { grid-template-columns: 1fr; }
+  .grid.scrollable { max-height: 180px; }
 }
 </style>

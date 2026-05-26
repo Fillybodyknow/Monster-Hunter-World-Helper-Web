@@ -116,130 +116,624 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div v-if="hunter" class="state-container">
-    <!-- ===== LEFT PANEL ===== -->
-    <div class="panel left">
-      <img :src="getImg(hunter.class.thumbnail)" class="class-img" />
+  <div v-if="hunter" class="state-page">
 
-      <h2>{{ hunter.name }}</h2>
-      <p class="class-name">{{ hunter.class.hunter_class }}</p>
-      <p>Palico: {{ hunter.palico }}</p>
-      <p>Day {{ hunter.campaign_day }}</p>
+    <!-- ══════════ DOSSIER HEADER ══════════ -->
+    <div class="dossier-header">
+      <div class="dh-ornament">✦</div>
+      <div class="dh-title-block">
+        <h2 class="dh-title">{{ hunter.name }}</h2>
+        <p class="dh-class">{{ hunter.class.hunter_class }}</p>
+      </div>
+      <div class="dh-ornament">✦</div>
     </div>
 
-    <!-- ===== CENTER PANEL ===== -->
-    <div class="panel center">
-      <h3>Equipment</h3>
+    <div class="state-grid">
 
-      <div class="equip-grid">
-        <!-- WEAPON -->
-        <div class="equip-card">
-          <div class="col">
-            <img :src="getImg(hunter.weapon.set_thumbnail)" />
-            <img :src="getImg(hunter.weapon.thumbnail)" />
-          </div>
-          <p>{{ hunter.weapon.item }}</p>
+      <!-- ══════════ LEFT PANEL — PROFILE ══════════ -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="ph-label">Hunter Profile</span>
         </div>
 
-        <!-- HELM -->
-        <div class="equip-card">
-          <div class="col">
-            <img :src="getImg(hunter.armors.helm.set_thumbnail)" />
-            <img :src="getImg(hunter.armors.helm.thumbnail)" />
+        <div class="profile-center">
+          <div class="hunter-portrait">
+            <img :src="getImg(hunter.class.thumbnail)" class="class-img" />
           </div>
-          <p>{{ hunter.armors.helm.equip }}</p>
-        </div>
 
-        <!-- MAIL -->
-        <div class="equip-card">
-          <div class="col">
-            <img :src="getImg(hunter.armors.mail.set_thumbnail)" />
-            <img :src="getImg(hunter.armors.mail.thumbnail)" />
-          </div>
-          <p>{{ hunter.armors.mail.equip }}</p>
-        </div>
-
-        <!-- GREAVES -->
-        <div class="equip-card">
-          <div class="col">
-            <img :src="getImg(hunter.armors.greaves.set_thumbnail)" />
-            <img :src="getImg(hunter.armors.greaves.thumbnail)" />
-          </div>
-          <p>{{ hunter.armors.greaves.equip }}</p>
-        </div>
-      </div>
-
-      <!-- SET BONUS -->
-      <div class="set-box">
-        <h3>Bonus Ability</h3>
-
-        <div v-if="bonusAbilities.length > 0" class="ability-list">
-          <div v-for="ab in bonusAbilities" :key="ab.ability_id" class="ability-card">
-            <h4>{{ ab.ability_name }}</h4>
-            <p>{{ ab.ability }}</p>
-          </div>
-        </div>
-
-        <p v-else class="no-ability">No Ability</p>
-      </div>
-    </div>
-
-    <!-- ===== RIGHT PANEL ===== -->
-    <div class="panel right">
-      <h3>Stats</h3>
-
-      <!-- DAMAGE -->
-      <div class="damage-box">
-        <!-- 🔥 CARD FRAME -->
-        <div class="damage-row">
-          <div v-for="(val, key) in hunter.weapon.damage_cards" :key="key" class="damage-wrapper">
-            <div class="damage-frame">
-              <div class="damage-card">
-                <img src="/src/assets/img/take_damage.png" />
-                <span class="dmg-value">
-                  {{ key.split('_')[1] }}
-                </span>
-              </div>
-
-              <p class="dmg-count">x{{ val }}</p>
+          <div class="profile-tags">
+            <div class="ptag">
+              <span class="ptag-l">Palico</span>
+              <span class="ptag-v">{{ hunter.palico }}</span>
+            </div>
+            <div class="ptag">
+              <span class="ptag-l">Campaign Day</span>
+              <span class="ptag-v day-badge">Day {{ hunter.campaign_day }}</span>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- ARMOR STATS -->
-      <div class="armor-stats col justify-content-center">
-        <div class="armor-card element-card">
-          <img src="/src/assets/img/bonus_armor.png" />
-          <span>{{ totalArmor }}</span>
+      <!-- ══════════ CENTER PANEL — EQUIPMENT ══════════ -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="ph-label">Equipment</span>
         </div>
 
-        <!-- 🔒 Placeholder Element Armor -->
-        <div class="element-grid">
+        <div class="equip-grid">
+          <!-- WEAPON -->
+          <div class="equip-card">
+            <span class="equip-slot-badge">Weapon</span>
+            <div class="equip-imgs">
+              <img :src="getImg(hunter.weapon.set_thumbnail)" class="equip-set-img" />
+              <img :src="getImg(hunter.weapon.thumbnail)" class="equip-item-img" />
+            </div>
+            <p class="equip-name">{{ hunter.weapon.item }}</p>
+          </div>
+
+          <!-- HELM -->
+          <div class="equip-card">
+            <span class="equip-slot-badge">Helm</span>
+            <div class="equip-imgs">
+              <img :src="getImg(hunter.armors.helm.set_thumbnail)" class="equip-set-img" />
+              <img :src="getImg(hunter.armors.helm.thumbnail)" class="equip-item-img" />
+            </div>
+            <p class="equip-name">{{ hunter.armors.helm.equip }}</p>
+          </div>
+
+          <!-- MAIL -->
+          <div class="equip-card">
+            <span class="equip-slot-badge">Mail</span>
+            <div class="equip-imgs">
+              <img :src="getImg(hunter.armors.mail.set_thumbnail)" class="equip-set-img" />
+              <img :src="getImg(hunter.armors.mail.thumbnail)" class="equip-item-img" />
+            </div>
+            <p class="equip-name">{{ hunter.armors.mail.equip }}</p>
+          </div>
+
+          <!-- GREAVES -->
+          <div class="equip-card">
+            <span class="equip-slot-badge">Greaves</span>
+            <div class="equip-imgs">
+              <img :src="getImg(hunter.armors.greaves.set_thumbnail)" class="equip-set-img" />
+              <img :src="getImg(hunter.armors.greaves.thumbnail)" class="equip-item-img" />
+            </div>
+            <p class="equip-name">{{ hunter.armors.greaves.equip }}</p>
+          </div>
+        </div>
+
+        <!-- BONUS ABILITY -->
+        <div class="panel-section-header">Bonus Abilities</div>
+
+        <div v-if="bonusAbilities.length > 0" class="ability-list">
+          <div v-for="ab in bonusAbilities" :key="ab.ability_id" class="ability-card">
+            <p class="ability-name">{{ ab.ability_name }}</p>
+            <p class="ability-desc">{{ ab.ability }}</p>
+          </div>
+        </div>
+        <p v-else class="no-ability">No abilities active</p>
+      </div>
+
+      <!-- ══════════ RIGHT PANEL — STATS ══════════ -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="ph-label">Combat Stats</span>
+        </div>
+
+        <!-- DAMAGE CARDS -->
+        <div class="panel-section-header">Damage Cards</div>
+        <div class="damage-row">
+          <div v-for="(val, key) in hunter.weapon.damage_cards" :key="key" class="damage-wrapper">
+            <div class="damage-frame">
+              <div class="damage-card">
+                <img src="/src/assets/img/take_damage.png" />
+                <span class="dmg-value">{{ key.split('_')[1] }}</span>
+              </div>
+              <p class="dmg-count">x{{ val }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ARMOR STATS -->
+        <div class="panel-section-header">Defense</div>
+        <div class="armor-stats-row">
+          <div class="armor-card element-card">
+            <img src="/src/assets/img/bonus_armor.png" />
+            <span>{{ totalArmor }}</span>
+          </div>
+
           <div v-for="el in elementArmor" :key="el.elemental_id" class="armor-card element-card">
-            <!-- BASE ARMOR -->
             <img src="/src/assets/img/bonus_armor.png" class="armor-base" />
-
-            <!-- ELEMENT ICON -->
             <img :src="getImg(el.thumbnail)" class="element-icon" />
-
-            <!-- VALUE -->
             <span class="element-value">{{ el.value }}</span>
+          </div>
+        </div>
+
+        <!-- DECK MODS -->
+        <div class="panel-section-header">Deck Modification</div>
+        <div class="deck-mod-row">
+          <div class="deck-chip remove-chip">
+            <span class="dc-label">Remove</span>
+            <span class="dc-val">{{ hunter.weapon.remove || '—' }}</span>
+          </div>
+          <div class="deck-chip add-chip">
+            <span class="dc-label">Add</span>
+            <span class="dc-val">{{ hunter.weapon.add || '—' }}</span>
           </div>
         </div>
       </div>
 
-      <!-- REMOVE / ADD -->
-      <div class="card-mod">
-        <p>Remove: {{ hunter.weapon.remove || '-' }}</p>
-        <p>Add: {{ hunter.weapon.add || '-' }}</p>
-      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* ELEMENT GRID */
+/* ══════════════════════════════════════════
+   BASE
+══════════════════════════════════════════ */
+.state-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  color: #f0ddb0;
+  font-family: 'Georgia', 'Times New Roman', serif;
+}
+
+/* ══════════════════════════════════════════
+   DOSSIER HEADER
+══════════════════════════════════════════ */
+.dossier-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px 0 4px;
+}
+
+.dh-ornament {
+  color: #7c5a2b;
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.dh-title-block {
+  text-align: center;
+}
+
+.dh-title {
+  margin: 0;
+  font-size: 22px;
+  color: #ffd27a;
+  letter-spacing: 2px;
+  text-shadow: 0 0 15px rgba(255, 200, 80, 0.4), 0 2px 4px rgba(0,0,0,0.8);
+}
+
+.dh-class {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #a88040;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+
+/* ══════════════════════════════════════════
+   MAIN GRID
+══════════════════════════════════════════ */
+.state-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+/* ══════════════════════════════════════════
+   PANEL
+══════════════════════════════════════════ */
+.panel {
+  padding: 14px;
+  border-radius: 12px;
+  background: linear-gradient(160deg, rgba(28, 20, 10, 0.9), rgba(16, 12, 6, 0.95));
+  border: 1px solid #7c5a2b;
+  box-shadow:
+    0 0 10px rgba(0,0,0,0.7),
+    inset 0 0 12px rgba(255, 200, 100, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* PANEL HEADER */
+.panel-header {
+  border-bottom: 1px solid rgba(200, 155, 60, 0.25);
+  padding-bottom: 8px;
+  margin-bottom: 2px;
+}
+
+.ph-label {
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #c89b3c;
+  text-shadow: 0 0 8px rgba(200, 155, 60, 0.3);
+}
+
+/* SECTION HEADER */
+.panel-section-header {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #7c5a2b;
+  border-bottom: 1px solid rgba(124, 90, 43, 0.25);
+  padding-bottom: 4px;
+  margin-top: 2px;
+}
+
+/* ══════════════════════════════════════════
+   PROFILE (LEFT PANEL)
+══════════════════════════════════════════ */
+.profile-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.hunter-portrait {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(60, 40, 15, 0.5) 0%, transparent 70%);
+}
+
+.class-img {
+  width: 90px;
+  height: 90px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(255, 200, 100, 0.4));
+}
+
+.profile-tags {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ptag {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(10, 8, 4, 0.5);
+  border: 1px solid rgba(124, 90, 43, 0.3);
+}
+
+.ptag-l {
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #7c5a2b;
+}
+
+.ptag-v {
+  font-size: 12px;
+  color: #f0ddb0;
+  text-align: right;
+}
+
+.day-badge {
+  color: #ffd27a;
+  font-weight: bold;
+  text-shadow: 0 0 6px rgba(255, 200, 80, 0.4);
+}
+
+/* ══════════════════════════════════════════
+   EQUIPMENT (CENTER PANEL)
+══════════════════════════════════════════ */
+.equip-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.equip-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  background: rgba(10, 8, 4, 0.6);
+  border: 1px solid rgba(124, 90, 43, 0.4);
+  position: relative;
+  transition: 0.2s;
+}
+
+.equip-card:hover {
+  border-color: #7c5a2b;
+  box-shadow: inset 0 0 8px rgba(255, 200, 100, 0.06);
+}
+
+.equip-slot-badge {
+  font-size: 8px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #7c5a2b;
+}
+
+.equip-imgs {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.equip-set-img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  opacity: 0.7;
+  filter: drop-shadow(0 0 3px rgba(255, 200, 100, 0.3));
+}
+
+.equip-item-img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 5px rgba(255, 200, 100, 0.4));
+}
+
+.equip-name {
+  margin: 0;
+  font-size: 10px;
+  color: #c89b3c;
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* ABILITY LIST */
+.ability-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ability-card {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(10, 8, 4, 0.6);
+  border: 1px solid rgba(124, 90, 43, 0.35);
+  border-left: 2px solid #c89b3c;
+}
+
+.ability-name {
+  margin: 0;
+  font-size: 12px;
+  color: #ffd27a;
+  font-weight: bold;
+}
+
+.ability-desc {
+  margin: 3px 0 0;
+  font-size: 11px;
+  color: #a88040;
+  line-height: 1.4;
+}
+
+.no-ability {
+  text-align: center;
+  font-size: 12px;
+  color: #5a3d1f;
+  font-style: italic;
+}
+
+/* ══════════════════════════════════════════
+   STATS (RIGHT PANEL)
+══════════════════════════════════════════ */
+
+/* DAMAGE */
+.damage-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.damage-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.damage-frame {
+  padding: 10px 6px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 12px;
+  background: linear-gradient(to bottom, rgba(60, 45, 25, 0.9), rgba(20, 15, 10, 0.9));
+  border: 1px solid #7c5a2b;
+  box-shadow: inset 0 0 8px rgba(255, 200, 100, 0.1);
+  transition: 0.2s;
+}
+
+.damage-frame:hover {
+  box-shadow: 0 0 10px rgba(255, 200, 100, 0.3), inset 0 0 8px rgba(255, 200, 100, 0.1);
+}
+
+.damage-card {
+  position: relative;
+  width: 54px;
+  height: 54px;
+}
+
+.damage-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.dmg-value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 17px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 6px #000;
+}
+
+.dmg-count {
+  margin-top: 2px;
+  font-size: 13px;
+  color: #c89b3c;
+  font-weight: bold;
+}
+
+/* ARMOR STATS */
+.armor-stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+
+.armor-card {
+  position: relative;
+  width: 64px;
+  height: 64px;
+}
+
+.armor-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.armor-card > span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 18px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 8px #000;
+}
+
+.element-card { position: relative; }
+
+.armor-base {
+  width: 100%;
+  height: 100%;
+}
+
+.element-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 52px !important;
+  height: 52px !important;
+  object-fit: contain;
+  z-index: 2;
+}
+
+.element-value {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 13px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 6px black;
+  z-index: 3;
+}
+
+/* DECK MODS */
+.deck-mod-row {
+  display: flex;
+  gap: 8px;
+}
+
+.deck-chip {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(10, 8, 4, 0.5);
+  border: 1px solid rgba(124, 90, 43, 0.3);
+  text-align: center;
+}
+
+.dc-label {
+  font-size: 8px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #7c5a2b;
+}
+
+.dc-val {
+  font-size: 12px;
+  color: #f0ddb0;
+}
+
+.remove-chip { border-left: 2px solid #8b1a1a; }
+.add-chip { border-left: 2px solid #1a6b1a; }
+
+/* ══════════════════════════════════════════
+   RESPONSIVE — iPad (≤768px)
+══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .state-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .panel:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .dh-title { font-size: 18px; }
+  .class-img { width: 72px; height: 72px; }
+}
+
+/* ══════════════════════════════════════════
+   RESPONSIVE — Phone (≤480px)
+══════════════════════════════════════════ */
+@media (max-width: 480px) {
+  .state-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .panel:last-child {
+    grid-column: auto;
+  }
+
+  .dossier-header { gap: 10px; }
+  .dh-title { font-size: 16px; letter-spacing: 1px; }
+
+  .equip-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+
+  .damage-row { justify-content: flex-start; }
+  .armor-stats-row { justify-content: flex-start; }
+
+  .armor-card { width: 56px; height: 56px; }
+}
+
+/* ══════════════════════════════════════════
+   LEGACY (kept for existing classes)
+══════════════════════════════════════════ */
 .ability-list {
   display: flex;
   flex-direction: column;
