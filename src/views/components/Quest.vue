@@ -947,7 +947,7 @@ const goToRewardPhase = () => {
         v-if="monsterHuntingData.map_image"
         style="display: flex; align-items: center; justify-content: center; width: 100%"
       >
-        <img :src="monsterHuntingData.map_image" class="hpanel-map-img" />
+        <img :src="getImg(monsterHuntingData.map_image)" class="hpanel-map-img" />
       </div>
 
       <!-- Info + Parts Row -->

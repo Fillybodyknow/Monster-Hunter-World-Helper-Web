@@ -8,7 +8,7 @@
         "difficulty_id": 1,
         "level": 1,
         "health": 50,
-        "map_image": "src/assets/img/maps/great_jagras/great_jagras_1_star_map.png",
+        "map_image": "assets/img/maps/great_jagras/great_jagras_1_star_map.png",
         "special_rule": {
           "title": "Gluttonous",
           "description": "ทุกครั้งที่ Great Jagras สร้างความเสียหายใส่ Hunter ได้สำเร็จ, มันจะฟื้นฟูพลังชีวิตที่เสียไปของมัน 1 หน่วย"
@@ -198,7 +198,7 @@
         "difficulty_id": 2,
         "level": 2,
         "health": 60,
-        "map_image": "src/assets/img/maps/great_jagras/great_jagras_2_star_map.png",
+        "map_image": "assets/img/maps/great_jagras/great_jagras_2_star_map.png",
         "special_rule": {
           "title": "Irritable",
           "description": "ทุกครั้งที่ Great Jagras สร้างความเสียหายใส่ Hunter ได้สำเร็จ มันจะฟื้นฟูพลังชีวิตที่เสียไปของมัน 1 หน่วย, ในระหว่างที่ Great Jagras มีชิ้นส่วนที่ถูกทำลาย มันจะสร้างความเสียหายเพิ่มขึ้น 1 หน่วย และระยะการโจมตีของมันจะเพิ่มขึ้น 1 ช่อง"
@@ -387,7 +387,7 @@
         "difficulty_id": 3,
         "level": 3,
         "health": 65,
-        "map_image": "src/assets/img/maps/great_jagras/great_jagras_3_star_map.png",
+        "map_image": "assets/img/maps/great_jagras/great_jagras_3_star_map.png",
         "special_rule": {
           "title": "Jagras Alpha",
           "description": "ทุกครั้งที่ Great Jagras สร้างความเสียหายใส่ Hunter ได้สำเร็จ มันจะฟื้นฟูพลังชีวิตที่เสียไปของมัน 1 หน่วย, Great Jagras จะสร้างความเสียหายเพิ่มขึ้น 1 หน่วย และระยะการโจมตีของมันจะเพิ่มขึ้น 1 ช่อง"
@@ -588,7 +588,7 @@
         "difficulty_id": 1,
         "level": 1,
         "health": 60,
-        "map_image": "src/assets/img/maps/tobi/tobi_1_star_map.png",
+        "map_image": "assets/img/maps/tobi/tobi_1_star_map.png",
         "special_rule": {
           "title": "Shocking",
           "description": "เมื่อกำหนดเป้าหมายของการ์ดพฤติกรรมที่มีการโจมตีธาตุ Thunder ให้ Tobi-Kadachi แล้ว, ให้นำ Tobi-Kadachi ออกจากบอร์ด จากนั้นวาง Tobi-Kadachi ไปยัง Rock Node ที่อยู่ไกลจากตำแหน่งปัจจุบันมากที่สุด โดยไม่เปลี่ยนทิศทางการหันหน้าเดิมของมัน, หากมี Rock Node ที่ไกลที่สุดมากกว่าหนึ่งช่อง ให้ Hunters เป็นคนเลือก, หากมี Hunter อยู่บน Node นั้น ให้ย้าย Hunter เหล่านั้นเสมือนว่า Tobi-Kadachi ได้เคลื่อนที่เข้ามายัง Node ดังกล่าว, หลังจากนั้น ให้ดำเนินการการ์ดพฤติกรรมของ Tobi-Kadachi ตามปกติ"
@@ -778,7 +778,7 @@
         "difficulty_id": 2,
         "level": 2,
         "health": 65,
-        "map_image": "src/assets/img/maps/tobi/tobi_2_star_map.png",
+        "map_image": "assets/img/maps/tobi/tobi_2_star_map.png",
         "special_rule": {
           "title": "Electrifying",
           "description": "เมื่อกำหนดเป้าหมายของการ์ดพฤติกรรมที่มีการโจมตีธาตุ Thunder ให้ Tobi-Kadachi แล้ว, ให้นำ Tobi-Kadachi ออกจากบอร์ด จากนั้นวาง Tobi-Kadachi ไปยัง Rock Node ที่อยู่ไกลจากตำแหน่งปัจจุบันมากที่สุด โดยไม่เปลี่ยนทิศทางการหันหน้าเดิมของมัน, หากมี Rock Node ที่ไกลที่สุดมากกว่าหนึ่งช่อง ให้ Hunters เป็นคนเลือก, หากมี Hunter อยู่บน Node นั้น ให้ย้าย Hunter เหล่านั้นเสมือนว่า Tobi-Kadachi ได้เคลื่อนที่เข้ามายัง Node ดังกล่าว, หลังจากนั้น ให้ดำเนินการการ์ดพฤติกรรมของ Tobi-Kadachi ตามปกติ, การ์ดพฤติกรรมที่มีการโจมตีธาตุ Thunder ความเสียหายของการโจมตีนั้นจะเพิ่มขึ้น 1 หน่วย"
@@ -968,7 +968,7 @@
         "difficulty_id": 3,
         "level": 3,
         "health": 70,
-        "map_image": "src/assets/img/maps/tobi/tobi_3_star_map.png",
+        "map_image": "assets/img/maps/tobi/tobi_3_star_map.png",
         "special_rule": {
           "title": "Static Charge",
           "description": "เมื่อกำหนดเป้าหมายของการ์ดพฤติกรรมที่มีการโจมตีธาตุ Thunder ให้ Tobi-Kadachi แล้ว, ให้นำ Tobi-Kadachi ออกจากบอร์ด จากนั้นวาง Tobi-Kadachi ไปยัง Rock Node ที่อยู่ไกลจากตำแหน่งปัจจุบันมากที่สุด โดยไม่เปลี่ยนทิศทางการหันหน้าเดิมของมัน, หากมี Rock Node ที่ไกลที่สุดมากกว่าหนึ่งช่อง ให้ Hunters เป็นคนเลือก, หากมี Hunter อยู่บน Node นั้น ให้ย้าย Hunter เหล่านั้นเสมือนว่า Tobi-Kadachi ได้เคลื่อนที่เข้ามายัง Node ดังกล่าว, หลังจากนั้น ให้ดำเนินการการ์ดพฤติกรรมของ Tobi-Kadachi ตามปกติ, การ์ดพฤติกรรมที่มีการโจมตีธาตุ Thunder ความเสียหายของการโจมตีนั้นจะเพิ่มขึ้น 2 หน่วย"
