@@ -154,7 +154,7 @@ const getRarityIcon = (rarity) => {
 
   const weapon = rarityGroup.list.find((w) => w.id === weaponTypeId)
 
-  return weapon ? `/src/${weapon.thumbnail}` : ''
+  return weapon ? `${import.meta.env.BASE_URL}${weapon.thumbnail}` : ''
 }
 
 // ===== GET WEAPON TREE =====
@@ -285,7 +285,7 @@ const getArmorRarityIcon = (rarity, armor_part_id) => {
   const rarityGroup = rarityData[0].rarity_list.find((r) => r.equipment_rarity === rarity)
   if (!rarityGroup) return ''
   const item = rarityGroup.list.find((i) => i.id === armor_part_id)
-  return item ? `/src/${item.thumbnail}` : ''
+  return item ? `${import.meta.env.BASE_URL}${item.thumbnail}` : ''
 }
 
 const armorList = computed(() => {
