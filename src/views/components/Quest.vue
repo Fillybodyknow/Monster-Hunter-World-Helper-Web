@@ -1130,7 +1130,7 @@ const goToRewardPhase = () => {
                   </div>
                   <div class="part-card-armor-wrap">
                     <div class="armor-element-card">
-                      <img src="/src/assets/img/bonus_armor.png" class="armor-base" />
+                      <img :src="getImg('assets/img/bonus_armor.png')" class="armor-base" />
                       <span class="element-value">{{ partData.armor }}</span>
                     </div>
                   </div>

@@ -383,7 +383,7 @@ const armorList = computed(() => {
                   <template v-for="(val, key) in node.damage_cards || {}" :key="key">
                     <div v-if="val > 0" class="stat dmg">
                       <div class="icon-wrap">
-                        <img src="/src/assets/img/take_damage.png" />
+                        <img :src="getImg('assets/img/take_damage.png')" />
                         <span class="tier">{{ key.split('_')[1] }}</span>
                       </div>
                       <p class="dmg-count">x{{ val }}</p>
@@ -394,7 +394,7 @@ const armorList = computed(() => {
                 <!-- 🛡 DEFENSE -->
                 <div class="defense-row" v-if="node.defense > 0">
                   <div class="armor-element-card">
-                    <img src="/src/assets/img/bonus_armor.png" class="armor-base" />
+                    <img :src="getImg('assets/img/bonus_armor.png')" class="armor-base" />
                     <span class="element-value">{{ node.defense }}</span>
                   </div>
                 </div>
@@ -499,12 +499,12 @@ const armorList = computed(() => {
                 <!-- STATS -->
                 <div class="defense-row">
                   <div v-if="equip.physical_armor > 0" class="armor-element-card">
-                    <img src="/src/assets/img/bonus_armor.png" class="armor-base" />
+                    <img :src="getImg('assets/img/bonus_armor.png')" class="armor-base" />
                     <span class="element-value">{{ equip.physical_armor }}</span>
                   </div>
 
                   <div v-if="equip.elemental_armor?.elemental_id !== 0" class="armor-element-card">
-                    <img src="/src/assets/img/bonus_armor.png" class="armor-base" />
+                    <img :src="getImg('assets/img/bonus_armor.png')" class="armor-base" />
                     <img
                       :src="getImg(getElemental(equip.elemental_armor.elemental_id)?.thumbnail)"
                       class="element-icon"

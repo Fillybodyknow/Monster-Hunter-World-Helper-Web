@@ -226,7 +226,7 @@ onMounted(async () => {
           <div v-for="(val, key) in hunter.weapon.damage_cards" :key="key" class="damage-wrapper">
             <div class="damage-frame">
               <div class="damage-card">
-                <img src="/src/assets/img/take_damage.png" />
+                <img :src="getImg('assets/img/take_damage.png')" />
                 <span class="dmg-value">{{ key.split('_')[1] }}</span>
               </div>
               <p class="dmg-count">x{{ val }}</p>
@@ -238,12 +238,12 @@ onMounted(async () => {
         <div class="panel-section-header">Defense</div>
         <div class="armor-stats-row">
           <div class="armor-card element-card">
-            <img src="/src/assets/img/bonus_armor.png" />
+            <img :src="getImg('assets/img/bonus_armor.png')" />
             <span>{{ totalArmor }}</span>
           </div>
 
           <div v-for="el in elementArmor" :key="el.elemental_id" class="armor-card element-card">
-            <img src="/src/assets/img/bonus_armor.png" class="armor-base" />
+            <img :src="getImg('assets/img/bonus_armor.png')" class="armor-base" />
             <img :src="getImg(el.thumbnail)" class="element-icon" />
             <span class="element-value">{{ el.value }}</span>
           </div>
