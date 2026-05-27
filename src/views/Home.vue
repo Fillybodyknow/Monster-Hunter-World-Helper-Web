@@ -9,13 +9,13 @@ import Setting from './components/Setting.vue'
 import HeadQuarter from './components/HeadQuarter.vue'
 
 const menus = [
-  { menu: 'Quest',       label: 'Quest',     thumbnail: 'src/assets/img/menu_topbar_icon/quest.png' },
-  { menu: 'HeadQuarter', label: 'HQ',        thumbnail: 'src/assets/img/menu_topbar_icon/head_querter.png', white: true },
-  { menu: 'State',       label: 'State',     thumbnail: 'src/assets/img/menu_topbar_icon/hunter.png' },
-  { menu: 'Inventory',   label: 'Inventory', thumbnail: 'src/assets/img/menu_topbar_icon/inv.png' },
-  { menu: 'Equipment',   label: 'Equipment', thumbnail: 'src/assets/img/menu_topbar_icon/equip.png' },
-  { menu: 'Crafting',    label: 'Crafting',  thumbnail: 'src/assets/img/menu_topbar_icon/craft.png' },
-  { menu: 'Setting',     label: 'Setting',   thumbnail: 'src/assets/img/menu_topbar_icon/setting.png' },
+  { menu: 'Quest',       label: 'Quest',     thumbnail: 'assets/img/menu_topbar_icon/quest.png' },
+  { menu: 'HeadQuarter', label: 'HQ',        thumbnail: 'assets/img/menu_topbar_icon/head_querter.png', white: true },
+  { menu: 'State',       label: 'State',     thumbnail: 'assets/img/menu_topbar_icon/hunter.png' },
+  { menu: 'Inventory',   label: 'Inventory', thumbnail: 'assets/img/menu_topbar_icon/inv.png' },
+  { menu: 'Equipment',   label: 'Equipment', thumbnail: 'assets/img/menu_topbar_icon/equip.png' },
+  { menu: 'Crafting',    label: 'Crafting',  thumbnail: 'assets/img/menu_topbar_icon/craft.png' },
+  { menu: 'Setting',     label: 'Setting',   thumbnail: 'assets/img/menu_topbar_icon/setting.png' },
 ]
 
 const componentMap = { Quest, State, Inventory, Equipment, Crafting, HeadQuarter, Setting }

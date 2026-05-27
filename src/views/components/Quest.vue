@@ -587,8 +587,8 @@ const goToRewardPhase = () => {
                 class="seal-inner"
                 :src="
                   book.id === 'ancient'
-                    ? '/src/assets/img/ancient_forest.webp'
-                    : '/src/assets/img/wildspire_waste.webp'
+                    ? getImg('assets/img/ancient_forest.webp')
+                    : getImg('assets/img/wildspire_waste.webp')
                 "
                 :alt="book.name"
               />
