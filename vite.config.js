@@ -7,6 +7,7 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/Monster-Hunter-World-Helper-Web/',
   plugins: [
     vue(),
     vueJsx(),
