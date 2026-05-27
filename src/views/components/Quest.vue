@@ -402,6 +402,34 @@ const rewardDiceCount = computed(() => {
 const rolledDice = ref([]) // [{id, value, spent}]
 const selectedDiceIds = ref([]) // ids of dice currently selected
 const claimedRewards = ref([]) // [{resource_type_id, item_id, quantity}]
+const rollingDiceIds = ref(new Set())
+
+const isAnyRolling = computed(() => rollingDiceIds.value.size > 0)
+
+const dotPatterns = {
+  1: [4],
+  2: [2, 6],
+  3: [2, 4, 6],
+  4: [0, 2, 6, 8],
+  5: [0, 2, 4, 6, 8],
+  6: [0, 2, 3, 5, 6, 8],
+}
+
+const animateDie = (id, finalValue, duration = 600) => {
+  rollingDiceIds.value = new Set([...rollingDiceIds.value, id])
+  const interval = setInterval(() => {
+    rolledDice.value = rolledDice.value.map((d) =>
+      d.id === id ? { ...d, value: Math.ceil(Math.random() * 6) } : d,
+    )
+  }, 55)
+  setTimeout(() => {
+    clearInterval(interval)
+    rolledDice.value = rolledDice.value.map((d) =>
+      d.id === id ? { ...d, value: finalValue } : d,
+    )
+    rollingDiceIds.value = new Set([...rollingDiceIds.value].filter((x) => x !== id))
+  }, duration)
+}
 
 const getResourceItem = (resource_type_id, item_id) => {
   const type = resourceData.find((t) => t.resource_type_id === resource_type_id)
@@ -416,18 +444,23 @@ const isPartBrokenById = (partId) => {
 }
 
 const rollAllDice = () => {
-  rolledDice.value = Array.from({ length: rewardDiceCount.value }, (_, i) => ({
+  if (isAnyRolling.value) return
+  const count = rewardDiceCount.value
+  const finalValues = Array.from({ length: count }, () => Math.ceil(Math.random() * 6))
+  rolledDice.value = Array.from({ length: count }, (_, i) => ({
     id: i,
     value: Math.ceil(Math.random() * 6),
     spent: false,
   }))
   selectedDiceIds.value = []
+  finalValues.forEach((val, i) => {
+    setTimeout(() => animateDie(i, val, 650), i * 100)
+  })
 }
 
 const rerollDie = (id) => {
-  rolledDice.value = rolledDice.value.map((d) =>
-    d.id === id ? { ...d, value: Math.ceil(Math.random() * 6) } : d,
-  )
+  if (rollingDiceIds.value.has(id)) return
+  animateDie(id, Math.ceil(Math.random() * 6), 550)
 }
 
 const toggleDie = (id) => {
@@ -1316,14 +1349,27 @@ const goToRewardPhase = () => {
           {{ selectedQuest.quest_type }}
         </p>
         <div class="rw-dice-row">
-          <div v-for="die in rolledDice" :key="die.id" class="rw-die">
-            <span class="rw-die-value">{{ die.value }}</span>
-            <button class="rw-die-reroll" @click="rerollDie(die.id)" title="ทอยใหม่">↺</button>
+          <div
+            v-for="die in rolledDice"
+            :key="die.id"
+            class="rw-die"
+            :class="{ rolling: rollingDiceIds.has(die.id) }"
+            @click="rerollDie(die.id)"
+            title="คลิกเพื่อทอยใหม่"
+          >
+            <div class="die-face">
+              <span
+                v-for="pos in 9"
+                :key="pos"
+                class="die-dot"
+                :class="{ visible: dotPatterns[die.value]?.includes(pos - 1) }"
+              />
+            </div>
           </div>
         </div>
         <div class="rw-roll-actions">
-          <button class="rw-btn-secondary" @click="rollAllDice()">🎲 ทอยใหม่ทั้งหมด</button>
-          <button class="rw-btn-primary" @click="initAssignPhase()">ใช้ผลนี้ →</button>
+          <button class="rw-btn-secondary" @click="rollAllDice()" :disabled="isAnyRolling">🎲 ทอยใหม่ทั้งหมด</button>
+          <button class="rw-btn-primary" @click="initAssignPhase()" :disabled="isAnyRolling">ใช้ผลนี้ →</button>
         </div>
       </div>
 
@@ -4992,37 +5038,48 @@ const goToRewardPhase = () => {
   background: rgba(10, 8, 4, 0.8);
   border: 1px solid rgba(90, 61, 31, 0.4);
 }
+@keyframes dice-shake {
+  0%   { transform: rotate(-18deg) scale(1.15); }
+  20%  { transform: rotate(14deg)  scale(1.2);  }
+  40%  { transform: rotate(-10deg) scale(1.15); }
+  60%  { transform: rotate(8deg)   scale(1.18); }
+  80%  { transform: rotate(-5deg)  scale(1.12); }
+  100% { transform: rotate(0deg)   scale(1);    }
+}
 .rw-die {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  width: 56px;
-  padding: 10px 0;
-  border-radius: 10px;
-  background: rgba(30, 22, 8, 0.9);
-  border: 2px solid #c89b3c;
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 0 10px rgba(200, 155, 60, 0.2);
-}
-.rw-die-value {
-  font-size: 26px;
-  font-weight: bold;
-  color: #ffd27a;
-  line-height: 1;
-}
-.rw-die-reroll {
-  font-size: 14px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  border: 1px solid rgba(124, 90, 43, 0.5);
-  background: transparent;
-  color: #7c5a2b;
+  transition: box-shadow 0.2s, border-color 0.2s;
   cursor: pointer;
-  transition: 0.15s;
+  padding: 6px;
 }
-.rw-die-reroll:hover {
-  color: #ffd27a;
-  border-color: #c89b3c;
+.rw-die:hover {
+  border-color: #ffd27a;
+  box-shadow: 0 0 14px rgba(255, 210, 122, 0.4);
+}
+.rw-die.rolling {
+  animation: dice-shake 0.12s ease-in-out infinite;
+  border-color: #ffd27a;
+  box-shadow: 0 0 18px rgba(255, 210, 122, 0.7), 0 0 6px rgba(200, 155, 60, 0.4);
+  cursor: default;
+}
+.die-face {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+}
+.die-dot {
+  border-radius: 50%;
+  background: transparent;
+}
+.die-dot.visible {
+  background: #000000;
+  box-shadow: 0 0 4px rgba(255, 210, 122, 0.7);
 }
 .rw-roll-actions {
   display: flex;
