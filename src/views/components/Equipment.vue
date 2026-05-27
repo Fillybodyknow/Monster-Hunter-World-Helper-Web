@@ -11,7 +11,7 @@ const slotHelm = ref(null)
 const slotMail = ref(null)
 const slotGreaves = ref(null)
 
-const getImg = (path) => `src/${path}`
+const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 
 const equippedOrNull = (arr) => {
   if (!Array.isArray(arr)) return null

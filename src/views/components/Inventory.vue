@@ -66,7 +66,7 @@ const groupedInventory = computed(() => {
     .filter((g) => g.items.length)
 })
 
-const getImg = (path) => `src/${path}`
+const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 
 // ================= MODAL =================
 const showAddModal = ref(false)

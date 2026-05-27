@@ -15,7 +15,7 @@ const activeTab = ref('weapon')
 const hunter = ref(null)
 const selectedWeapon = ref(null)
 
-const getImg = (path) => `src/${path}`
+const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 
 // ===== LOAD HUNTER =====
 onMounted(() => {

@@ -4,7 +4,7 @@ import { hunter, loadHunter, saveHunter } from '@/stores/hunter'
 import ancientData from '@/assets/files/ancient-quest-book.json'
 import wildspireData from '@/assets/files/wildspire_book.json'
 
-const getImg = (path) => `src/${path}`
+const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 
 const selected = ref(new Set())
 const showConfirm = ref(false)

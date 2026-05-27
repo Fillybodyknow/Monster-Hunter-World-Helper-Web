@@ -13,7 +13,7 @@ import statusEffectData from '@/assets/files/status_effect.json'
 import resourceData from '@/assets/files/resource.json'
 import { getHunters, saveHunters } from '@/services/hunterStorage'
 
-const getImg = (path) => `src/${path}`
+const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 
 onMounted(loadHunter)
 onActivated(loadHunter)

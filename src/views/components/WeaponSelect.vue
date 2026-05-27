@@ -36,7 +36,7 @@ const prevPage = () => {
   if (currentPage.value > 1) currentPage.value--
 }
 
-const getImg = (path) => `/src/${path}`
+const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 </script>
 
 <template>

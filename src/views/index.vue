@@ -105,9 +105,7 @@ const getClass = (id) => {
   return hunterClasses.value.find((c) => c.hunter_class_id === id)
 }
 
-const getImg = (path) => {
-  return `src/${path}`
-}
+const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 
 const handleCreate = () => {
   if (!hunterName.value || !palicoName.value || !weapon.value) {

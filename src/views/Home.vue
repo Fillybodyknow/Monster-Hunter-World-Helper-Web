@@ -22,7 +22,7 @@ const componentMap = { Quest, State, Inventory, Equipment, Crafting, HeadQuarter
 const currentComponent = computed(() => componentMap[activeMenu.value])
 const activeMenu = ref('Quest')
 
-const getImg = (path) => path
+const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 </script>
 
 <template>

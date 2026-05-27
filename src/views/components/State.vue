@@ -73,7 +73,7 @@ const bonusAbilities = computed(() => {
     .filter(Boolean)
 })
 
-const getImg = (path) => `src/${path}`
+const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 
 onMounted(async () => {
   const HunterID = parseInt(localStorage.getItem('hunterId'))
