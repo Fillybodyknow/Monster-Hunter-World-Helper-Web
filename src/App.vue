@@ -1,11 +1,10 @@
 <script setup>
 import { useRoute } from 'vue-router'
 import { computed } from 'vue'
-import logo from './assets/img/UI/icon.jpg'
-
 const route = useRoute()
 
 const isHomePage = computed(() => route.path === '/')
+const logo = `${import.meta.env.BASE_URL}assets/img/UI/icon.jpg`
 </script>
 
 <template>
