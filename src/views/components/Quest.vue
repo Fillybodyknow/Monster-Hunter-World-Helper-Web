@@ -6,6 +6,12 @@ import ancientData from '@/assets/files/ancient-quest-book.json'
 import wildspireData from '@/assets/files/wildspire_book.json'
 import { showQuestEffects } from '@/stores/settings'
 import { hunter, loadHunter, saveHunter } from '@/stores/hunter'
+import monsterInfoData from '@/assets/files/monster_info.json'
+import monsterPartsData from '@/assets/files/monster_parts.json'
+import elementalData from '@/assets/files/elemental.json'
+import statusEffectData from '@/assets/files/status_effect.json'
+import resourceData from '@/assets/files/resource.json'
+import { getHunters, saveHunters } from '@/services/hunterStorage'
 
 const getImg = (path) => `src/${path}`
 
@@ -133,12 +139,19 @@ const cancelOutcome = () => {
 const confirmOutcome = () => {
   const type = pendingOutcome.value
   pendingOutcome.value = null
-  resultMonsterName.value = selectedMonster.value?.monster_name ?? ''
-  resultAnimType.value = type
-  showResultAnim.value = true
   if (type === 'complete') {
-    onComplete()
+    if (monsterHuntingData.value?.reward_table?.length) {
+      goToRewardPhase()
+    } else {
+      resultMonsterName.value = selectedMonster.value?.monster_name ?? ''
+      resultAnimType.value = 'complete'
+      showResultAnim.value = true
+      onComplete()
+    }
   } else {
+    resultMonsterName.value = selectedMonster.value?.monster_name ?? ''
+    resultAnimType.value = 'fail'
+    showResultAnim.value = true
     onFail()
   }
 }
@@ -197,6 +210,12 @@ const onFail = () => {
 
 const goBack = () => {
   const map = {
+    reward: () => {
+      phase.value = 'huntingPanel'
+    },
+    huntingPanel: () => {
+      phase.value = 'hunting'
+    },
     hunting: () => {
       phase.value = 'dialog'
     },
@@ -231,6 +250,283 @@ const questTypeStamp = (type) => {
   if (type === 'Investigation Quest') return { label: 'INVESTIGATION', cls: 'stamp-investigation' }
   return { label: 'TEMPERED', cls: 'stamp-tempered' }
 }
+
+// ─── Hunting Panel ───────────────────────────────────────────────────────────
+const huntingHp = ref(0)
+const partDamage = ref({})
+
+const monsterHuntingData = computed(() => {
+  if (!selectedMonster.value || !selectedQuest.value) return null
+  const info = monsterInfoData.find((m) => m.monster_id === selectedMonster.value.monster_id)
+  if (!info) return null
+  return (
+    info.difficulty.find((d) => d.difficulty_id === selectedQuest.value.difficulty_level) ?? null
+  )
+})
+
+const activeParts = computed(() => {
+  if (!monsterHuntingData.value) return {}
+  return Object.fromEntries(
+    Object.entries(monsterHuntingData.value.monster_parts).filter(
+      ([, data]) => data && Object.keys(data).length > 0,
+    ),
+  )
+})
+
+const brokenParts = computed(() => {
+  const result = {}
+  Object.entries(activeParts.value).forEach(([pos, data]) => {
+    result[pos] = data.part_break_threshold
+      ? (partDamage.value[pos] ?? 0) >= data.part_break_threshold
+      : false
+  })
+  return result
+})
+
+const hpPercent = computed(() => {
+  if (!monsterHuntingData.value) return 0
+  return Math.max(0, Math.min(100, (huntingHp.value / monsterHuntingData.value.health) * 100))
+})
+
+const hpBarColor = computed(() => {
+  const pct = huntingHp.value / (monsterHuntingData.value?.health ?? 1)
+  if (pct > 0.5) return '#3cb83c'
+  if (pct > 0.25) return '#d4a017'
+  return '#cc2222'
+})
+
+const getPartMeta = (partId) => monsterPartsData.find((p) => p.part_id === partId)
+const getElemental = (id) => elementalData.find((e) => e.elemental_id === id)
+const getStatusEffect = (id) => statusEffectData.find((s) => s.effect_id === id)
+
+const posDotCoords = {
+  front: { x: 50, y: 20 },
+  back: { x: 50, y: 80 },
+  left: { x: 20, y: 50 },
+  right: { x: 80, y: 50 },
+}
+
+// Status / Element mark tracking
+const statusMarks = ref({})
+const appliedStatuses = ref([])
+const elementMarks = ref({})
+const triggeringElement = ref(null)
+let _elemAnimTimer = null
+
+const markStatus = (statusId) => {
+  const res = monsterHuntingData.value?.status_resistance?.find((s) => s.status_id === statusId)
+  if (!res) return
+  const cur = statusMarks.value[statusId] ?? 0
+  const next = cur + 1
+  if (next >= res.level) {
+    if (!appliedStatuses.value.includes(statusId))
+      appliedStatuses.value = [...appliedStatuses.value, statusId]
+    statusMarks.value = { ...statusMarks.value, [statusId]: 0 }
+  } else {
+    statusMarks.value = { ...statusMarks.value, [statusId]: next }
+  }
+}
+
+const removeStatus = (statusId) => {
+  appliedStatuses.value = appliedStatuses.value.filter((id) => id !== statusId)
+  statusMarks.value = { ...statusMarks.value, [statusId]: 0 }
+}
+
+const markElement = (elementId) => {
+  const res = monsterHuntingData.value?.element_resistance?.find((e) => e.element_id === elementId)
+  if (!res || res.immune || res.level <= 0) return
+  const cur = elementMarks.value[elementId] ?? 0
+  const next = cur + 1
+  if (next >= res.level) {
+    triggeringElement.value = elementId
+    elementMarks.value = { ...elementMarks.value, [elementId]: 0 }
+    if (_elemAnimTimer) clearTimeout(_elemAnimTimer)
+    _elemAnimTimer = setTimeout(() => {
+      triggeringElement.value = null
+    }, 1800)
+  } else {
+    elementMarks.value = { ...elementMarks.value, [elementId]: next }
+  }
+}
+
+const initHuntingData = () => {
+  if (!monsterHuntingData.value) return
+  huntingHp.value = monsterHuntingData.value.health
+  const parts = {}
+  Object.keys(activeParts.value).forEach((pos) => {
+    parts[pos] = 0
+  })
+  partDamage.value = parts
+  statusMarks.value = {}
+  appliedStatuses.value = []
+  elementMarks.value = {}
+  triggeringElement.value = null
+  if (_elemAnimTimer) clearTimeout(_elemAnimTimer)
+}
+
+const adjustHp = (delta) => {
+  const max = monsterHuntingData.value?.health ?? 999
+  huntingHp.value = Math.max(0, Math.min(max, huntingHp.value + delta))
+}
+
+const adjustPartDamage = (position, delta) => {
+  const data = activeParts.value[position]
+  if (!data) return
+  const max = data.part_break_threshold ?? 0
+  const current = partDamage.value[position] ?? 0
+  partDamage.value = {
+    ...partDamage.value,
+    [position]: Math.max(0, Math.min(max, current + delta)),
+  }
+}
+
+const goToHuntingPanel = () => {
+  initHuntingData()
+  phase.value = 'huntingPanel'
+}
+
+// ─── Reward Phase ─────────────────────────────────────────────────────────────
+const diceCountTable = {
+  'Assigned Quest': { 2: 3, 3: 2, 4: 2 },
+  'Investigation Quest': { 2: 4, 3: 3, 4: 3 },
+  'Tempered Investigation Quest': { 2: 5, 3: 4, 4: 4 },
+}
+
+const rewardPhase = ref('hunterSelect') // 'hunterSelect' | 'diceRoll' | 'assign'
+const rewardHunterCount = ref(2)
+const rewardDiceCount = computed(() => {
+  const qt = selectedQuest.value?.quest_type ?? ''
+  return diceCountTable[qt]?.[rewardHunterCount.value] ?? 2
+})
+
+const rolledDice = ref([]) // [{id, value, spent}]
+const selectedDiceIds = ref([]) // ids of dice currently selected
+const claimedRewards = ref([]) // [{resource_type_id, item_id, quantity}]
+
+const getResourceItem = (resource_type_id, item_id) => {
+  const type = resourceData.find((t) => t.resource_type_id === resource_type_id)
+  return type?.resources.find((r) => r.item_id === item_id) ?? null
+}
+
+const isPartBrokenById = (partId) => {
+  if (!partId) return false
+  return Object.entries(activeParts.value).some(
+    ([pos, data]) => data.part_id === partId && brokenParts.value[pos],
+  )
+}
+
+const rollAllDice = () => {
+  rolledDice.value = Array.from({ length: rewardDiceCount.value }, (_, i) => ({
+    id: i,
+    value: Math.ceil(Math.random() * 6),
+    spent: false,
+  }))
+  selectedDiceIds.value = []
+}
+
+const rerollDie = (id) => {
+  rolledDice.value = rolledDice.value.map((d) =>
+    d.id === id ? { ...d, value: Math.ceil(Math.random() * 6) } : d,
+  )
+}
+
+const toggleDie = (id) => {
+  const die = rolledDice.value.find((d) => d.id === id)
+  if (!die || die.spent) return
+  selectedDiceIds.value = selectedDiceIds.value.includes(id)
+    ? selectedDiceIds.value.filter((x) => x !== id)
+    : [...selectedDiceIds.value, id]
+}
+
+const selectedSum = computed(() =>
+  selectedDiceIds.value.reduce((sum, id) => {
+    const die = rolledDice.value.find((d) => d.id === id)
+    return sum + (die?.value ?? 0)
+  }, 0),
+)
+
+const allDiceSpent = computed(
+  () => rolledDice.value.length > 0 && rolledDice.value.every((d) => d.spent),
+)
+
+const initAssignPhase = () => {
+  const auto = []
+  monsterHuntingData.value?.reward_table?.forEach((row) => {
+    if (!row.part_break_reward?.part_id) return
+    if (!isPartBrokenById(row.part_break_reward.part_id)) return
+    const { resource_type_id, item_id } = row.reward
+    const qty = row.part_break_reward.gain_additional ?? 1
+    const existing = auto.find(
+      (r) => r.resource_type_id === resource_type_id && r.item_id === item_id,
+    )
+    if (existing) {
+      existing.quantity += qty
+    } else {
+      auto.push({ resource_type_id, item_id, quantity: qty, fromBreak: true })
+    }
+  })
+  claimedRewards.value = auto
+  rewardPhase.value = 'assign'
+}
+
+const claimReward = (row) => {
+  if (selectedDiceIds.value.length === 0) return
+  if (row.rolled_number !== selectedSum.value) return
+
+  const { resource_type_id, item_id } = row.reward
+  const existing = claimedRewards.value.find(
+    (r) => r.resource_type_id === resource_type_id && r.item_id === item_id,
+  )
+  if (existing) {
+    claimedRewards.value = claimedRewards.value.map((r) =>
+      r.resource_type_id === resource_type_id && r.item_id === item_id
+        ? { ...r, quantity: r.quantity + 1 }
+        : r,
+    )
+  } else {
+    claimedRewards.value = [...claimedRewards.value, { resource_type_id, item_id, quantity: 1 }]
+  }
+
+  rolledDice.value = rolledDice.value.map((d) =>
+    selectedDiceIds.value.includes(d.id) ? { ...d, spent: true } : d,
+  )
+  selectedDiceIds.value = []
+}
+
+const confirmRewards = () => {
+  if (claimedRewards.value.length > 0) {
+    const hunters = getHunters()
+    const h = hunters.find((x) => x.hunter_id === hunter.value?.hunter_id)
+    if (h) {
+      if (!h.inventory) h.inventory = []
+      claimedRewards.value.forEach((r) => {
+        const existing = h.inventory.find(
+          (i) => i.resource_type_id === r.resource_type_id && i.item_id === r.item_id,
+        )
+        if (existing) {
+          existing.quantity += r.quantity
+        } else {
+          h.inventory.push({ ...r })
+        }
+      })
+      saveHunters(hunters)
+      loadHunter()
+    }
+  }
+  resultMonsterName.value = selectedMonster.value?.monster_name ?? ''
+  resultAnimType.value = 'complete'
+  showResultAnim.value = true
+  onComplete()
+}
+
+const goToRewardPhase = () => {
+  rewardPhase.value = 'hunterSelect'
+  rewardHunterCount.value = 2
+  rolledDice.value = []
+  selectedDiceIds.value = []
+  claimedRewards.value = []
+  phase.value = 'reward'
+}
 </script>
 
 <template>
@@ -260,11 +556,7 @@ const questTypeStamp = (type) => {
       <p class="board-subtitle">Commission Quest Board</p>
 
       <div class="cal-months-row">
-        <div
-          v-for="(_, mi) in calMonths"
-          :key="mi"
-          class="campaign-calendar"
-        >
+        <div v-for="(_, mi) in calMonths" :key="mi" class="campaign-calendar">
           <div class="cal-header">
             <span class="cal-title">MONTH {{ mi + 1 }}</span>
             <span class="cal-day-label">DAY {{ hunter?.campaign_day ?? 1 }}</span>
@@ -293,7 +585,11 @@ const questTypeStamp = (type) => {
             <div class="book-seal">
               <img
                 class="seal-inner"
-                :src="book.id === 'ancient' ? '/src/assets/img/ancient_forest.webp' : '/src/assets/img/wildspire_waste.webp'"
+                :src="
+                  book.id === 'ancient'
+                    ? '/src/assets/img/ancient_forest.webp'
+                    : '/src/assets/img/wildspire_waste.webp'
+                "
                 :alt="book.name"
               />
             </div>
@@ -618,17 +914,514 @@ const questTypeStamp = (type) => {
         </div>
       </div>
 
-      <!-- RESULT -->
+      <!-- ENTER HUNTING PANEL -->
+      <div class="hunt-enter-section">
+        <button class="btn-enter-hunt" @click="goToHuntingPanel">
+          <span class="enter-hunt-icon">⚔</span>
+          เข้าสู่ Hunting Phase
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══════════ HUNTING PANEL ═══════════ -->
+    <div v-if="phase === 'huntingPanel' && monsterHuntingData" class="phase-hunting-panel">
+      <!-- Header -->
+      <div class="hpanel-header">
+        <img :src="getImg(selectedMonster.thumbnail)" class="hpanel-monster-img" />
+        <div class="hpanel-header-info">
+          <p class="hpanel-phase-tag">HUNTING PHASE</p>
+          <h2 class="hpanel-monster-name">{{ selectedMonster.monster_name }}</h2>
+          <div class="hpanel-stars">
+            <span
+              v-for="i in selectedQuest.difficulty_level"
+              :key="i"
+              :style="{ color: starColor(selectedQuest.difficulty_level, i - 1) }"
+              >★</span
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- Map -->
+      <div
+        v-if="monsterHuntingData.map_image"
+        style="display: flex; align-items: center; justify-content: center; width: 100%"
+      >
+        <img :src="monsterHuntingData.map_image" class="hpanel-map-img" />
+      </div>
+
+      <!-- Info + Parts Row -->
+      <div class="info-parts-row">
+        <!-- Left column: monster status canvas + resist + special rule -->
+        <div class="info-left-col">
+          <!-- ── Monster Status Canvas ── -->
+          <div class="msc-wrap">
+            <!-- Monster portrait -->
+            <div class="msc-portrait">
+              <img :src="getImg(selectedMonster.thumbnail)" class="msc-monster-img" />
+
+              <!-- Applied status overlays -->
+              <div class="msc-status-overlays">
+                <transition-group name="status-pop" tag="div" class="msc-status-list">
+                  <div
+                    v-for="sid in appliedStatuses"
+                    :key="sid"
+                    class="msc-applied-badge"
+                    @click="removeStatus(sid)"
+                    title="กดเพื่อเอาออก"
+                  >
+                    <img
+                      v-if="getStatusEffect(sid)"
+                      :src="getImg(getStatusEffect(sid).thumbnail)"
+                      class="msc-applied-icon"
+                    />
+                    <span class="msc-remove-x">×</span>
+                  </div>
+                </transition-group>
+              </div>
+
+              <!-- Element animation overlay -->
+              <transition name="elem-flash">
+                <div
+                  v-if="triggeringElement !== null"
+                  class="msc-elem-flash"
+                  :class="`elem-flash-${triggeringElement}`"
+                >
+                  <img
+                    v-if="getElemental(triggeringElement)"
+                    :src="getImg(getElemental(triggeringElement).thumbnail)"
+                    class="msc-elem-flash-img"
+                  />
+                </div>
+              </transition>
+            </div>
+          </div>
+
+          <!-- ── Resistance / Marking Row ── -->
+          <div class="resist-row">
+            <!-- Element Resistance (interactive) -->
+            <div class="resist-col">
+              <p class="resist-col-label">Element</p>
+              <div class="resist-items">
+                <div
+                  v-for="er in monsterHuntingData.element_resistance"
+                  :key="er.element_id"
+                  class="resist-item"
+                  :class="{ 'resist-item-active': !er.immune && er.level > 0 }"
+                  @click="markElement(er.element_id)"
+                >
+                  <div class="resist-icon-wrap">
+                    <img
+                      v-if="getElemental(er.element_id)"
+                      :src="getImg(getElemental(er.element_id).thumbnail)"
+                      class="resist-icon"
+                    />
+                    <span v-if="er.immune" class="resist-immune-x">✕</span>
+                  </div>
+                  <div class="resist-marks" v-if="!er.immune && er.level > 0">
+                    <span
+                      v-for="i in er.level"
+                      :key="i"
+                      class="resist-mark resist-mark-elem"
+                      :class="{ 'mark-filled': i <= (elementMarks[er.element_id] ?? 0) }"
+                    ></span>
+                  </div>
+                  <div v-else class="resist-marks">
+                    <span class="resist-mark mark-immune"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Status Resistance (interactive) -->
+            <div class="resist-col">
+              <p class="resist-col-label">Status</p>
+              <div class="resist-items">
+                <div
+                  v-for="sr in monsterHuntingData.status_resistance"
+                  :key="sr.status_id"
+                  class="resist-item resist-item-active"
+                  :class="{ 'resist-item-applied': appliedStatuses.includes(sr.status_id) }"
+                  @click="markStatus(sr.status_id)"
+                >
+                  <div class="resist-icon-wrap">
+                    <img
+                      v-if="getStatusEffect(sr.status_id)"
+                      :src="getImg(getStatusEffect(sr.status_id).thumbnail)"
+                      class="resist-icon"
+                    />
+                    <span v-if="appliedStatuses.includes(sr.status_id)" class="resist-applied-dot"
+                      >✓</span
+                    >
+                  </div>
+                  <div class="resist-marks">
+                    <span
+                      v-for="i in sr.level"
+                      :key="i"
+                      class="resist-mark resist-mark-status"
+                      :class="{ 'mark-filled': i <= (statusMarks[sr.status_id] ?? 0) }"
+                    ></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Special Rule -->
+          <div v-if="monsterHuntingData.special_rule" class="hpanel-special-rule">
+            <span class="hpanel-rule-icon">⚡</span>
+            <div>
+              <p class="hpanel-rule-title">{{ monsterHuntingData.special_rule.title }}</p>
+              <p class="hpanel-rule-desc">{{ monsterHuntingData.special_rule.description }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Parts Section (right) -->
+        <div v-if="Object.keys(activeParts).length > 0" class="hpanel-section hpanel-parts-col">
+          <!-- <div class="hpanel-section-header">
+          <span class="hpanel-section-icon">🗡</span>
+          <span class="hpanel-section-label">Monster Parts</span>
+        </div> -->
+        <!-- HP Section -->
+      <div class="hpanel-section">
+        <div class="hpanel-section-header" :class="{ 'hp-header-dead': huntingHp === 0 }">
+          <span class="hpanel-section-icon">{{ huntingHp === 0 ? '💀' : '♥' }}</span>
+          <span class="hpanel-section-label">Monster HP</span>
+          <span class="hpanel-hp-nums" :class="{ 'hp-nums-dead': huntingHp === 0 }">
+            {{ huntingHp === 0 ? 'SLAIN' : `${huntingHp} / ${monsterHuntingData.health}` }}
+          </span>
+        </div>
+        <div class="hp-bar-track">
+          <div
+            class="hp-bar-fill"
+            :style="{ width: hpPercent + '%', background: hpBarColor }"
+          ></div>
+        </div>
+        <div class="hp-controls">
+          <button class="hp-btn hp-minus" @click="adjustHp(-10)">−10</button>
+          <button class="hp-btn hp-minus" @click="adjustHp(-5)">−5</button>
+          <button class="hp-btn hp-minus" @click="adjustHp(-1)">−1</button>
+          <div class="hp-ctrl-sep"></div>
+          <button class="hp-btn hp-plus" @click="adjustHp(1)">+1</button>
+          <button class="hp-btn hp-plus" @click="adjustHp(5)">+5</button>
+          <button class="hp-btn hp-plus" @click="adjustHp(10)">+10</button>
+        </div>
+      </div>
+
+          <!-- Part cards -->
+          <div class="parts-layout">
+            <div class="parts-list">
+              <div
+                v-for="(partData, position) in activeParts"
+                :key="position"
+                class="part-card"
+                :class="{ 'part-card-broken': brokenParts[position] }"
+              >
+                <!-- Card header -->
+                <div class="part-card-head">
+                  <div class="part-icon-wrap">
+                    <img
+                      v-if="getPartMeta(partData.part_id)"
+                      :src="getImg(getPartMeta(partData.part_id).thumbnail)"
+                      class="part-icon-img"
+                      :class="{ 'part-icon-broken': brokenParts[position] }"
+                    />
+                  </div>
+                  <div class="part-card-armor-wrap">
+                    <div class="armor-element-card">
+                      <img src="/src/assets/img/bonus_armor.png" class="armor-base" />
+                      <span class="element-value">{{ partData.armor }}</span>
+                    </div>
+                  </div>
+                  <!-- Mini position diagram -->
+                  <div class="part-mini-diagram">
+                    <svg viewBox="0 0 100 100" class="part-mini-svg">
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="46"
+                        fill="#0f0b05"
+                        stroke="#5a3d1f"
+                        stroke-width="2"
+                      />
+                      <line x1="4" y1="4" x2="96" y2="96" stroke="#3a2810" stroke-width="2" />
+                      <line x1="96" y1="4" x2="4" y2="96" stroke="#3a2810" stroke-width="2" />
+                      <!-- Primary position dot -->
+                      <circle
+                        v-if="posDotCoords[position]"
+                        :cx="posDotCoords[position].x"
+                        :cy="posDotCoords[position].y"
+                        r="12"
+                        :fill="
+                          brokenParts[position] ? 'rgba(220,60,40,0.9)' : 'rgba(200,155,60,0.9)'
+                        "
+                        :filter="brokenParts[position] ? 'url(#glow-red)' : 'url(#glow-gold)'"
+                      />
+                      <!-- Connected position dot -->
+                      <circle
+                        v-if="
+                          partData.connect_part_position &&
+                          posDotCoords[partData.connect_part_position]
+                        "
+                        :cx="posDotCoords[partData.connect_part_position].x"
+                        :cy="posDotCoords[partData.connect_part_position].y"
+                        r="12"
+                        :fill="
+                          brokenParts[position] ? 'rgba(220,60,40,0.9)' : 'rgba(200,155,60,0.9)'
+                        "
+                        :filter="brokenParts[position] ? 'url(#glow-red)' : 'url(#glow-gold)'"
+                      />
+                      <defs>
+                        <filter id="glow-gold" x="-50%" y="-50%" width="200%" height="200%">
+                          <feGaussianBlur stdDeviation="3" result="blur" />
+                          <feMerge>
+                            <feMergeNode in="blur" />
+                            <feMergeNode in="SourceGraphic" />
+                          </feMerge>
+                        </filter>
+                        <filter id="glow-red" x="-50%" y="-50%" width="200%" height="200%">
+                          <feGaussianBlur stdDeviation="3" result="blur" />
+                          <feMerge>
+                            <feMergeNode in="blur" />
+                            <feMergeNode in="SourceGraphic" />
+                          </feMerge>
+                        </filter>
+                      </defs>
+                    </svg>
+                  </div>
+                  <div v-if="brokenParts[position]" class="part-broken-stamp">BROKEN</div>
+                </div>
+
+                <!-- Break bar -->
+                <div class="part-break-wrap">
+                  <div class="part-break-row">
+                    <span class="part-break-label">Break</span>
+                    <span class="part-break-nums">
+                      {{ partDamage[position] ?? 0 }} / {{ partData.part_break_threshold }}
+                    </span>
+                  </div>
+                  <div class="part-break-track">
+                    <div
+                      class="part-break-fill"
+                      :class="{ 'break-fill-broken': brokenParts[position] }"
+                      :style="{
+                        width:
+                          Math.min(
+                            100,
+                            ((partDamage[position] ?? 0) / partData.part_break_threshold) * 100,
+                          ) + '%',
+                      }"
+                    ></div>
+                  </div>
+                  <div class="part-break-controls">
+                    <button class="pb-btn pb-minus" @click="adjustPartDamage(position, -5)">
+                      −5
+                    </button>
+                    <button class="pb-btn pb-minus" @click="adjustPartDamage(position, -1)">
+                      −1
+                    </button>
+                    <button class="pb-btn pb-plus" @click="adjustPartDamage(position, 1)">
+                      +1
+                    </button>
+                    <button class="pb-btn pb-plus" @click="adjustPartDamage(position, 5)">
+                      +5
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Break rule — tip before break, alert after -->
+                <div
+                  v-if="partData.part_break_rule"
+                  class="part-break-rule"
+                  :class="brokenParts[position] ? 'pbr-broken' : 'pbr-tip'"
+                >
+                  <span class="pbr-icon">{{ brokenParts[position] ? '⚡' : '💡' }}</span>
+                  <div class="pbr-body">
+                    <span class="pbr-label">{{
+                      brokenParts[position] ? 'BREAK EFFECT' : 'TIP ON BREAK'
+                    }}</span>
+                    <p class="pbr-text">{{ partData.part_break_rule }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end info-parts-row -->
+
+      <!-- Quest Outcome -->
       <div class="hunt-result-section">
         <p class="hunt-result-label">— Quest Outcome —</p>
         <div class="hunt-result-btns">
           <button class="btn-complete" @click="requestOutcome('complete')">
-            <span class="result-icon">✦</span>
-            Quest Complete
+            <span class="result-icon">✦</span>Quest Complete
           </button>
           <button class="btn-fail" @click="requestOutcome('fail')">
-            <span class="result-icon">✕</span>
-            Quest Failed
+            <span class="result-icon">✕</span>Quest Failed
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ REWARD PHASE ═══════════ -->
+    <div v-if="phase === 'reward' && monsterHuntingData" class="phase-reward">
+      <!-- ── Hunter Count Select ── -->
+      <div v-if="rewardPhase === 'hunterSelect'" class="rw-hunter-select">
+        <div class="rw-header">
+          <span class="rw-trophy">🏆</span>
+          <div>
+            <p class="rw-title">Quest Complete</p>
+            <p class="rw-sub">{{ selectedMonster.monster_name }} ถูกล่าสำเร็จ</p>
+          </div>
+        </div>
+        <p class="rw-section-label">มี Hunter กี่คนร่วมล่า?</p>
+        <div class="rw-hunter-btns">
+          <button
+            v-for="n in [2, 3, 4]"
+            :key="n"
+            class="rw-hunter-btn"
+            :class="{ active: rewardHunterCount === n }"
+            @click="rewardHunterCount = n"
+          >
+            <span class="rw-hunter-num">{{ n }}</span>
+            <span class="rw-hunter-label">Hunters</span>
+            <span class="rw-dice-preview">
+              {{ diceCountTable[selectedQuest.quest_type]?.[n] ?? '?' }} 🎲
+            </span>
+          </button>
+        </div>
+        <div class="rw-quest-type-row">
+          <span class="rw-qt-label">{{ selectedQuest.quest_type }}</span>
+          <span class="rw-qt-arrow">→</span>
+          <span class="rw-qt-dice">{{ rewardDiceCount }} ลูกเต๋า</span>
+        </div>
+        <button
+          class="rw-btn-primary"
+          @click="
+            rewardPhase = 'diceRoll';
+            rollAllDice()
+          "
+        >
+          ⚔ เริ่มรับรางวัล
+        </button>
+      </div>
+
+      <!-- ── Dice Roll ── -->
+      <div v-else-if="rewardPhase === 'diceRoll'" class="rw-dice-roll">
+        <p class="rw-title">ทอยเต๋า</p>
+        <p class="rw-sub">
+          {{ rewardDiceCount }} ลูกเต๋า · {{ rewardHunterCount }} Hunters ·
+          {{ selectedQuest.quest_type }}
+        </p>
+        <div class="rw-dice-row">
+          <div v-for="die in rolledDice" :key="die.id" class="rw-die">
+            <span class="rw-die-value">{{ die.value }}</span>
+            <button class="rw-die-reroll" @click="rerollDie(die.id)" title="ทอยใหม่">↺</button>
+          </div>
+        </div>
+        <div class="rw-roll-actions">
+          <button class="rw-btn-secondary" @click="rollAllDice()">🎲 ทอยใหม่ทั้งหมด</button>
+          <button class="rw-btn-primary" @click="initAssignPhase()">ใช้ผลนี้ →</button>
+        </div>
+      </div>
+
+      <!-- ── Assign Dice → Claim Rewards ── -->
+      <div v-else-if="rewardPhase === 'assign'" class="rw-assign">
+        <!-- Dice chips -->
+        <div class="rw-dice-chips-wrap">
+          <p class="rw-section-label">เต๋าที่ทอยได้ — เลือกเพื่อรวมค่า</p>
+          <div class="rw-dice-chips">
+            <div
+              v-for="die in rolledDice"
+              :key="die.id"
+              class="rw-die-chip"
+              :class="{
+                'chip-selected': selectedDiceIds.includes(die.id),
+                'chip-spent': die.spent,
+              }"
+              @click="toggleDie(die.id)"
+            >
+              {{ die.value }}
+            </div>
+            <div v-if="selectedDiceIds.length > 0" class="rw-sum-badge">= {{ selectedSum }}</div>
+          </div>
+          <p v-if="selectedDiceIds.length > 0" class="rw-sum-hint">
+            เลือก row {{ selectedSum }} เพื่อรับรางวัล
+          </p>
+        </div>
+
+        <!-- Reward table -->
+        <p class="rw-section-label">ตาราง Reward</p>
+        <div class="rw-table">
+          <div
+            v-for="row in monsterHuntingData.reward_table"
+            :key="row.rolled_number"
+            class="rw-row"
+            :class="{
+              'rw-row-claimable': selectedDiceIds.length > 0 && selectedSum === row.rolled_number,
+              'rw-row-locked': selectedDiceIds.length > 0 && selectedSum !== row.rolled_number,
+            }"
+            @click="claimReward(row)"
+          >
+            <span class="rw-row-num">{{ row.rolled_number }}</span>
+            <div class="rw-row-item">
+              <img
+                v-if="getResourceItem(row.reward.resource_type_id, row.reward.item_id)"
+                :src="
+                  getImg(getResourceItem(row.reward.resource_type_id, row.reward.item_id).thumbnail)
+                "
+                class="rw-item-img"
+              />
+              <span class="rw-item-name">{{
+                getResourceItem(row.reward.resource_type_id, row.reward.item_id)?.item ?? '?'
+              }}</span>
+            </div>
+            <div
+              v-if="row.part_break_reward?.part_id"
+              class="rw-part-bonus"
+              :class="{ 'bonus-active': isPartBrokenById(row.part_break_reward.part_id) }"
+            >
+              <span class="rw-bonus-icon">{{
+                isPartBrokenById(row.part_break_reward.part_id) ? '🔓' : '🔒'
+              }}</span>
+              <span class="rw-bonus-text">
+                +{{ row.part_break_reward.gain_additional }}
+                {{ getPartMeta(row.part_break_reward.part_id)?.part ?? '' }} Break
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Claimed summary -->
+        <div v-if="claimedRewards.length > 0" class="rw-claimed">
+          <p class="rw-section-label">รางวัลที่รับแล้ว</p>
+          <div class="rw-claimed-list">
+            <div
+              v-for="r in claimedRewards"
+              :key="`${r.resource_type_id}-${r.item_id}`"
+              class="rw-claimed-item"
+            >
+              <img
+                v-if="getResourceItem(r.resource_type_id, r.item_id)"
+                :src="getImg(getResourceItem(r.resource_type_id, r.item_id).thumbnail)"
+                class="rw-claimed-img"
+              />
+              <span class="rw-claimed-qty">×{{ r.quantity }}</span>
+              <span class="rw-claimed-name">{{
+                getResourceItem(r.resource_type_id, r.item_id)?.item
+              }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="rw-confirm-row">
+          <p v-if="!allDiceSpent" class="rw-skip-hint">
+            ยังมีเต๋าเหลือ {{ rolledDice.filter((d) => !d.spent).length }} ลูก
+          </p>
+          <button class="rw-btn-primary rw-btn-confirm" @click="confirmRewards">
+            ✦ รับรางวัลและปิด Quest
           </button>
         </div>
       </div>
@@ -888,7 +1681,9 @@ const questTypeStamp = (type) => {
   border-radius: 1px;
   border: 1px solid #2a1c08;
   background: #0f0b05;
-  transition: background 0.15s, box-shadow 0.15s;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
 }
 
 .cal-cell.filled {
@@ -2087,6 +2882,864 @@ const questTypeStamp = (type) => {
 }
 
 /* ══════════════════════════════════════════
+   ENTER HUNTING PHASE BUTTON
+══════════════════════════════════════════ */
+.hunt-enter-section {
+  padding-top: 4px;
+}
+
+.btn-enter-hunt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 16px;
+  border-radius: 8px;
+  border: 2px solid #c89b3c;
+  background: linear-gradient(to bottom, #3a2c1a, #1a1208);
+  color: #ffd27a;
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: 0.25s;
+  min-height: 56px;
+  font-family: inherit;
+}
+
+.btn-enter-hunt:hover {
+  background: linear-gradient(to bottom, #4a3820, #2a1e10);
+  box-shadow:
+    0 0 20px rgba(200, 155, 60, 0.6),
+    0 0 40px rgba(200, 155, 60, 0.2);
+  transform: translateY(-2px);
+}
+
+.enter-hunt-icon {
+  font-size: 20px;
+}
+
+/* ══════════════════════════════════════════
+   HUNTING PANEL
+══════════════════════════════════════════ */
+.phase-hunting-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* — Header — */
+.hpanel-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(120, 30, 10, 0.25) 0%,
+    rgba(10, 5, 2, 0.95) 70%
+  );
+  border: 1px solid rgba(180, 60, 20, 0.4);
+}
+
+.hpanel-monster-img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 14px rgba(255, 100, 50, 0.5));
+  flex-shrink: 0;
+}
+
+.hpanel-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hpanel-phase-tag {
+  font-size: 9px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: #ff9955;
+  margin: 0;
+}
+
+.hpanel-monster-name {
+  font-size: 22px;
+  color: #ffd27a;
+  margin: 0;
+  text-shadow: 0 0 10px rgba(255, 200, 80, 0.3);
+}
+
+.hpanel-stars {
+  display: flex;
+  gap: 3px;
+  font-size: 16px;
+}
+
+/* — Map — */
+.hpanel-map-wrap {
+  padding: 12px;
+}
+
+.hpanel-map-img {
+  display: block;
+  width: 50%;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  border-radius: 4px;
+  image-rendering: pixelated;
+}
+
+/* — Monster Status Canvas — */
+.msc-wrap {
+  width: 100%;
+}
+.msc-portrait {
+  position: relative;
+  width: 100%;
+  /* aspect-ratio: 1 / 1; */
+  border-radius: 10px;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 60%, rgba(30, 20, 8, 0.95), rgba(8, 6, 2, 0.98));
+  border: 1px solid rgba(124, 90, 43, 0.4);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.msc-monster-img {
+  width: 70%;
+  height: 70%;
+  object-fit: contain;
+  padding: 6%;
+}
+/* Applied status overlay */
+.msc-status-overlays {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 6px 8px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.75) 60%, transparent);
+}
+.msc-status-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.msc-applied-badge {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 200, 80, 0.8);
+  background: rgba(10, 8, 4, 0.85);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.15s;
+  box-shadow: 0 0 8px rgba(255, 150, 50, 0.4);
+}
+.msc-applied-badge:hover {
+  border-color: #ff6666;
+  box-shadow: 0 0 10px rgba(255, 80, 80, 0.5);
+}
+.msc-applied-icon {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+.msc-remove-x {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #cc2222;
+  color: #fff;
+  font-size: 9px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  pointer-events: none;
+}
+/* Status pop transition */
+.status-pop-enter-active {
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.status-pop-leave-active {
+  transition: all 0.15s ease;
+}
+.status-pop-enter-from {
+  opacity: 0;
+  transform: scale(0);
+}
+.status-pop-leave-to {
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+/* Element animation overlay */
+.msc-elem-flash {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  pointer-events: none;
+}
+.msc-elem-flash-img {
+  width: 30%;
+  height: 30%;
+  object-fit: contain;
+}
+/* Per-element tint + animation */
+.elem-flash-1 {
+  background: rgba(255, 80, 20, 0.25);
+}
+.elem-flash-2 {
+  background: rgba(30, 120, 255, 0.25);
+}
+.elem-flash-3 {
+  background: rgba(255, 230, 0, 0.25);
+}
+.elem-flash-4 {
+  background: rgba(160, 220, 255, 0.25);
+}
+.elem-flash-5 {
+  background: rgba(140, 40, 220, 0.25);
+}
+
+@keyframes elem-trigger {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) rotate(-15deg);
+  }
+  25% {
+    opacity: 1;
+    transform: scale(1.6) rotate(5deg);
+    filter: brightness(2);
+  }
+  60% {
+    opacity: 0.85;
+    transform: scale(1.3) rotate(0deg);
+    filter: brightness(1.4);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2) rotate(3deg);
+    filter: brightness(1);
+  }
+}
+.elem-flash-enter-active .msc-elem-flash-img {
+  animation: elem-trigger 1.8s ease forwards;
+}
+.elem-flash-enter-active {
+  animation: elem-trigger 1.8s ease forwards;
+}
+.elem-flash-enter-from {
+  opacity: 0;
+}
+.elem-flash-leave-active {
+  display: none;
+}
+
+/* — Resistance / Marking Row — */
+.resist-row {
+  display: flex;
+  gap: 8px;
+}
+
+.resist-col {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(20, 15, 10, 0.9);
+  border: 1px solid rgba(124, 90, 43, 0.45);
+}
+
+.resist-col-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #7c5a2b;
+  margin: 0 0 7px;
+}
+
+.resist-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.resist-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.5;
+}
+.resist-item-active {
+  opacity: 1;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.resist-item-active:hover .resist-icon-wrap {
+  filter: drop-shadow(0 0 5px rgba(255, 200, 80, 0.6));
+}
+.resist-item-applied .resist-icon-wrap {
+  filter: drop-shadow(0 0 6px rgba(100, 255, 100, 0.7));
+}
+
+.resist-icon-wrap {
+  position: relative;
+  width: 50px;
+  height: 50px;
+}
+.resist-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.resist-immune-x {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 900;
+  color: #ff2222;
+  text-shadow:
+    0 0 6px rgba(255, 0, 0, 0.7),
+    0 0 2px #000;
+  line-height: 1;
+  pointer-events: none;
+}
+.resist-applied-dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #3cb83c;
+  color: #fff;
+  font-size: 8px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  box-shadow: 0 0 5px rgba(60, 200, 60, 0.6);
+}
+
+/* Mark dots */
+.resist-marks {
+  display: flex;
+  gap: 3px;
+  min-height: 8px;
+  justify-content: center;
+}
+.resist-mark {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid rgba(124, 90, 43, 0.7);
+  background: transparent;
+  transition: 0.15s;
+}
+.resist-mark-elem.mark-filled {
+  background: #ffd27a;
+  border-color: #ffd27a;
+  box-shadow: 0 0 4px rgba(255, 200, 80, 0.8);
+}
+.resist-mark-status.mark-filled {
+  background: #e06060;
+  border-color: #e06060;
+  box-shadow: 0 0 4px rgba(230, 80, 80, 0.8);
+}
+.resist-mark.mark-immune {
+  background: rgba(90, 61, 31, 0.2);
+  border-color: rgba(90, 61, 31, 0.3);
+  width: 5px;
+  height: 5px;
+}
+
+/* — Special Rule + Parts Row — */
+.info-parts-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.info-left-col {
+  flex: 0 0 42%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.info-left-col .resist-row {
+  flex-direction: row;
+  gap: 8px;
+}
+
+.hpanel-special-rule {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: rgba(100, 60, 10, 0.12);
+  border: 1px solid rgba(200, 130, 40, 0.35);
+  border-left: 3px solid #c89b3c;
+}
+
+.hpanel-parts-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.hpanel-rule-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.hpanel-rule-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: #ffd27a;
+  margin: 0 0 4px;
+}
+
+.hpanel-rule-desc {
+  font-size: 12px;
+  color: #c0a870;
+  line-height: 1.7;
+  margin: 0;
+  font-style: italic;
+}
+
+/* — Section wrapper — */
+.hpanel-section {
+  border-radius: 8px;
+  background: rgba(20, 15, 10, 0.9);
+  border: 1px solid rgba(124, 90, 43, 0.45);
+  overflow: hidden;
+}
+
+.hpanel-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(50, 36, 16, 0.7);
+  border-bottom: 1px solid rgba(124, 90, 43, 0.3);
+}
+
+.hpanel-section-icon {
+  font-size: 15px;
+}
+
+.hpanel-section-label {
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #c89b3c;
+  flex: 1;
+}
+
+.hpanel-hp-nums {
+  font-size: 15px;
+  font-weight: bold;
+  color: #f5d7a1;
+  letter-spacing: 1px;
+}
+
+.hp-header-dead {
+  background: rgba(60, 10, 10, 0.6);
+}
+
+.hp-nums-dead {
+  color: #ff4444;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  font-size: 13px;
+  animation: deadPulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes deadPulse {
+  from {
+    opacity: 0.7;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* — HP Bar — */
+.hp-bar-track {
+  margin: 12px 14px 0;
+  height: 18px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(124, 90, 43, 0.3);
+  overflow: hidden;
+}
+
+.hp-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition:
+    width 0.3s ease,
+    background 0.5s ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* — HP Controls — */
+.hp-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px 14px;
+  flex-wrap: wrap;
+}
+
+.hp-ctrl-sep {
+  flex: 1;
+  height: 1px;
+  background: rgba(124, 90, 43, 0.3);
+  min-width: 8px;
+}
+
+.hp-btn {
+  padding: 7px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.15s;
+  min-height: 36px;
+  min-width: 44px;
+  font-family: inherit;
+  letter-spacing: 0.5px;
+}
+
+.hp-minus {
+  border: 1px solid rgba(200, 60, 60, 0.5);
+  background: rgba(60, 10, 10, 0.7);
+  color: #ff9090;
+}
+
+.hp-minus:hover {
+  border-color: #cc4444;
+  background: rgba(100, 20, 20, 0.8);
+  box-shadow: 0 0 8px rgba(200, 60, 60, 0.3);
+}
+
+.hp-plus {
+  border: 1px solid rgba(60, 184, 60, 0.5);
+  background: rgba(10, 40, 10, 0.7);
+  color: #7cfc00;
+}
+
+.hp-plus:hover {
+  border-color: #3cb83c;
+  background: rgba(20, 60, 20, 0.8);
+  box-shadow: 0 0 8px rgba(60, 184, 60, 0.3);
+}
+
+/* — Parts Layout — */
+.parts-layout {
+  padding: 14px;
+}
+
+/* — Part Cards — */
+.parts-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.part-card {
+  border-radius: 8px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  background: linear-gradient(135deg, #1e1810, #17120c);
+  overflow: hidden;
+  transition: border-color 0.3s;
+}
+
+.part-card-broken {
+  border-color: rgba(220, 60, 40, 0.6);
+  background: linear-gradient(135deg, #1e1010, #140c0c);
+}
+
+.part-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(124, 90, 43, 0.25);
+  position: relative;
+}
+
+.part-icon-wrap {
+  width: 50px;
+  height: 50px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(124, 90, 43, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.part-icon-img {
+  width: 43px;
+  height: 43px;
+  border-radius: 4px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 3px rgba(200, 155, 60, 0.4));
+  transition: filter 0.3s;
+}
+
+.part-icon-broken {
+  filter: drop-shadow(0 0 4px rgba(220, 60, 40, 0.6)) grayscale(0.3);
+}
+
+/* — Armor element card (mirrors Crafting.vue) — */
+.part-card-armor-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.armor-element-card {
+  position: relative;
+  width: 44px;
+  height: 44px;
+}
+
+.armor-element-card .armor-base {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.armor-element-card .element-value {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 15px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 4px black;
+  z-index: 3;
+  -webkit-text-stroke: 0.5px black;
+}
+
+.part-mini-diagram {
+  flex-shrink: 0;
+}
+
+.part-mini-svg {
+  width: 44px;
+  height: 44px;
+  display: block;
+}
+
+.part-broken-stamp {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-8deg);
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  color: #ff5533;
+  border: 2px solid #ff5533;
+  padding: 2px 8px;
+  border-radius: 3px;
+  background: rgba(30, 5, 5, 0.7);
+  text-transform: uppercase;
+  box-shadow: 0 0 8px rgba(255, 50, 30, 0.3);
+  animation: brokenStampIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes brokenStampIn {
+  from {
+    transform: translateY(-50%) rotate(-8deg) scale(0.5);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(-50%) rotate(-8deg) scale(1);
+    opacity: 1;
+  }
+}
+
+/* — Break bar — */
+.part-break-wrap {
+  padding: 10px 12px 12px;
+}
+
+.part-break-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.part-break-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #7c5a2b;
+}
+
+.part-break-nums {
+  font-size: 12px;
+  font-weight: bold;
+  color: #f5d7a1;
+}
+
+.part-break-track {
+  height: 10px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(124, 90, 43, 0.3);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.part-break-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(to right, #7c5a2b, #c89b3c);
+  transition: width 0.3s ease;
+}
+
+.break-fill-broken {
+  background: linear-gradient(to right, #992222, #dd4422);
+  box-shadow: 0 0 6px rgba(220, 60, 30, 0.5);
+}
+
+.part-break-controls {
+  display: flex;
+  gap: 5px;
+}
+
+.pb-btn {
+  flex: 1;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.15s;
+  min-height: 32px;
+  font-family: inherit;
+}
+
+.pb-minus {
+  border: 1px solid rgba(180, 60, 60, 0.45);
+  background: rgba(50, 8, 8, 0.7);
+  color: #ff9090;
+}
+
+.pb-minus:hover {
+  border-color: #cc4444;
+  box-shadow: 0 0 6px rgba(200, 60, 60, 0.25);
+}
+
+.pb-plus {
+  border: 1px solid rgba(200, 155, 60, 0.45);
+  background: rgba(30, 22, 8, 0.7);
+  color: #ffd27a;
+}
+
+.pb-plus:hover {
+  border-color: #c89b3c;
+  box-shadow: 0 0 6px rgba(200, 155, 60, 0.25);
+}
+
+/* — Break rule — */
+.part-break-rule {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 0 12px 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+}
+
+.pbr-tip {
+  background: rgba(200, 155, 60, 0.05);
+  border: 1px solid rgba(200, 155, 60, 0.2);
+  border-left: 3px solid rgba(200, 155, 60, 0.4);
+}
+
+.pbr-broken {
+  background: rgba(180, 40, 20, 0.12);
+  border: 1px solid rgba(220, 60, 40, 0.35);
+  border-left: 3px solid #dd4422;
+}
+
+.pbr-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.pbr-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pbr-label {
+  font-size: 8px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.pbr-tip .pbr-label {
+  color: #7c5a2b;
+}
+
+.pbr-broken .pbr-label {
+  color: #dd4422;
+}
+
+.pbr-text {
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 0;
+  font-style: italic;
+}
+
+.pbr-tip .pbr-text {
+  color: #a88040;
+}
+
+.pbr-broken .pbr-text {
+  color: #ffb090;
+}
+
+/* ══════════════════════════════════════════
    RESPONSIVE — iPad (≤ 768px)
 ══════════════════════════════════════════ */
 @media (max-width: 768px) {
@@ -2340,6 +3993,74 @@ const questTypeStamp = (type) => {
   }
   .breadcrumb {
     font-size: 11px;
+  }
+
+  .hpanel-monster-name {
+    font-size: 18px;
+  }
+  .hpanel-monster-img {
+    width: 56px;
+    height: 56px;
+  }
+
+  /* Hunting panel: stack left col + parts col vertically */
+  .info-parts-row {
+    flex-direction: column;
+  }
+  .info-left-col {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+  .info-left-col .resist-row {
+    flex-direction: row;
+  }
+  .msc-portrait {
+    aspect-ratio: 2 / 1;
+  }
+  .msc-monster-img {
+    object-position: center 30%;
+  }
+
+  /* Parts: single column for full width */
+  .parts-layout {
+    padding: 10px;
+  }
+  .parts-list {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  /* Bigger touch targets for part break buttons */
+  .pb-btn {
+    min-height: 40px;
+    font-size: 13px;
+    padding: 8px 6px;
+  }
+  .part-break-controls {
+    gap: 6px;
+  }
+
+  /* Part card: reduce icon size a bit to save space */
+  .part-icon-wrap {
+    width: 40px;
+    height: 40px;
+  }
+  .part-icon-img {
+    width: 34px;
+    height: 34px;
+  }
+  .part-card-head {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .hp-controls {
+    gap: 5px;
+  }
+  .hp-btn {
+    min-width: 38px;
+    padding: 6px 8px;
+    font-size: 12px;
   }
 }
 </style>
@@ -3110,5 +4831,412 @@ const questTypeStamp = (type) => {
   .ra-tap-hint {
     bottom: 72px;
   }
+}
+
+/* ══════════════════════════════════════════
+   REWARD PHASE
+══════════════════════════════════════════ */
+.phase-reward {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 2px;
+}
+
+.rw-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(30, 22, 8, 0.95), rgba(20, 15, 6, 0.9));
+  border: 1px solid rgba(200, 155, 60, 0.4);
+}
+.rw-trophy {
+  font-size: 32px;
+  flex-shrink: 0;
+}
+.rw-title {
+  font-size: 17px;
+  font-weight: bold;
+  color: #ffd27a;
+  text-shadow: 0 0 12px rgba(255, 200, 80, 0.5);
+  margin: 0;
+  letter-spacing: 1px;
+}
+.rw-sub {
+  font-size: 11px;
+  color: #a88040;
+  margin: 2px 0 0;
+}
+
+.rw-section-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #7c5a2b;
+  margin: 0 0 8px;
+}
+
+/* Hunter count buttons */
+.rw-hunter-btns {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.rw-hunter-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 12px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(124, 90, 43, 0.4);
+  background: rgba(20, 15, 8, 0.8);
+  color: #7c5a2b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.rw-hunter-btn.active {
+  border-color: #c89b3c;
+  background: rgba(60, 40, 10, 0.9);
+  color: #ffd27a;
+  box-shadow: 0 0 12px rgba(200, 155, 60, 0.25);
+}
+.rw-hunter-num {
+  font-size: 22px;
+  font-weight: bold;
+  line-height: 1;
+}
+.rw-hunter-label {
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.rw-dice-preview {
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.rw-quest-type-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(10, 8, 4, 0.6);
+  border: 1px solid rgba(90, 61, 31, 0.4);
+  margin-bottom: 14px;
+}
+.rw-qt-label {
+  font-size: 11px;
+  color: #a88040;
+}
+.rw-qt-arrow {
+  color: #5a3d1f;
+}
+.rw-qt-dice {
+  font-size: 13px;
+  color: #ffd27a;
+  font-weight: bold;
+}
+
+/* Primary / Secondary buttons */
+.rw-btn-primary {
+  width: 100%;
+  padding: 13px;
+  border-radius: 10px;
+  border: 1px solid #c89b3c;
+  background: linear-gradient(135deg, #3a2a0a, #241a06);
+  color: #ffd27a;
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.rw-btn-primary:hover {
+  background: linear-gradient(135deg, #4a3510, #2e2008);
+  box-shadow: 0 0 14px rgba(200, 155, 60, 0.3);
+}
+.rw-btn-secondary {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  background: rgba(20, 15, 8, 0.8);
+  color: #a88040;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.rw-btn-secondary:hover {
+  color: #ffd27a;
+  border-color: #c89b3c;
+}
+
+/* Dice roll screen */
+.rw-dice-roll {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.rw-dice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(10, 8, 4, 0.8);
+  border: 1px solid rgba(90, 61, 31, 0.4);
+}
+.rw-die {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 56px;
+  padding: 10px 0;
+  border-radius: 10px;
+  background: rgba(30, 22, 8, 0.9);
+  border: 2px solid #c89b3c;
+  box-shadow: 0 0 10px rgba(200, 155, 60, 0.2);
+}
+.rw-die-value {
+  font-size: 26px;
+  font-weight: bold;
+  color: #ffd27a;
+  line-height: 1;
+}
+.rw-die-reroll {
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  background: transparent;
+  color: #7c5a2b;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.rw-die-reroll:hover {
+  color: #ffd27a;
+  border-color: #c89b3c;
+}
+.rw-roll-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Assign screen */
+.rw-assign {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rw-dice-chips-wrap {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(10, 8, 4, 0.8);
+  border: 1px solid rgba(90, 61, 31, 0.4);
+}
+.rw-dice-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.rw-die-chip {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 8px;
+  border: 2px solid rgba(124, 90, 43, 0.5);
+  background: rgba(30, 22, 8, 0.9);
+  color: #a88040;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+.rw-die-chip.chip-selected {
+  border-color: #ffd27a;
+  color: #ffd27a;
+  background: rgba(60, 40, 10, 0.9);
+  box-shadow: 0 0 10px rgba(255, 210, 122, 0.35);
+}
+.rw-die-chip.chip-spent {
+  opacity: 0.25;
+  cursor: default;
+  pointer-events: none;
+}
+.rw-sum-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: rgba(200, 155, 60, 0.2);
+  border: 1px solid #c89b3c;
+  color: #ffd27a;
+  font-size: 14px;
+  font-weight: bold;
+}
+.rw-sum-hint {
+  font-size: 10px;
+  color: #c89b3c;
+  margin: 6px 0 0;
+  letter-spacing: 0.5px;
+}
+
+/* Reward table */
+.rw-table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(90, 61, 31, 0.4);
+}
+.rw-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(15, 11, 5, 0.85);
+  border-bottom: 1px solid rgba(60, 40, 15, 0.4);
+  transition: all 0.15s;
+  cursor: default;
+}
+.rw-row:last-child {
+  border-bottom: none;
+}
+.rw-row-claimable {
+  background: rgba(40, 28, 8, 0.95);
+  border-color: rgba(200, 155, 60, 0.4);
+  cursor: pointer;
+  box-shadow: inset 0 0 16px rgba(200, 155, 60, 0.12);
+}
+.rw-row-claimable:hover {
+  background: rgba(55, 38, 10, 0.95);
+  box-shadow: inset 0 0 22px rgba(200, 155, 60, 0.2);
+}
+.rw-row-locked {
+  opacity: 0.4;
+}
+.rw-row-num {
+  min-width: 22px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #7c5a2b;
+  text-align: center;
+}
+.rw-row-claimable .rw-row-num {
+  color: #ffd27a;
+}
+.rw-row-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+.rw-item-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+.rw-item-name {
+  font-size: 11px;
+  color: #c8a060;
+  flex: 1;
+}
+.rw-row-claimable .rw-item-name {
+  color: #ffd27a;
+}
+.rw-part-bonus {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  border: 1px solid rgba(90, 61, 31, 0.5);
+  background: rgba(10, 8, 4, 0.6);
+  opacity: 0.5;
+}
+.rw-part-bonus.bonus-active {
+  border-color: rgba(80, 200, 80, 0.5);
+  background: rgba(20, 60, 20, 0.5);
+  opacity: 1;
+}
+.rw-bonus-icon {
+  font-size: 11px;
+}
+.rw-bonus-text {
+  font-size: 9px;
+  color: #7c5a2b;
+  white-space: nowrap;
+}
+.rw-part-bonus.bonus-active .rw-bonus-text {
+  color: #7adf7a;
+}
+
+/* Claimed summary */
+.rw-claimed {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(10, 20, 10, 0.7);
+  border: 1px solid rgba(60, 140, 60, 0.35);
+}
+.rw-claimed-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.rw-claimed-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(20, 35, 20, 0.8);
+  border: 1px solid rgba(60, 140, 60, 0.3);
+}
+.rw-claimed-img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+.rw-claimed-qty {
+  font-size: 13px;
+  font-weight: bold;
+  color: #7adf7a;
+}
+.rw-claimed-name {
+  font-size: 10px;
+  color: #5aab5a;
+}
+
+.rw-confirm-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rw-skip-hint {
+  font-size: 10px;
+  color: #7c5a2b;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+.rw-btn-confirm {
+  margin-top: 4px;
+}
+
+.rw-hunter-select {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 </style>

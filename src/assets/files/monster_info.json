@@ -34,7 +34,8 @@
             "part_break_threshold": 3,
             "armor": 0,
             "part_break_rule": null
-          }
+          },
+          "right": {}
         },
         "element_resistance": [
           {
@@ -84,12 +85,120 @@
             "status_id": 5,
             "level": 1
           }
+        ],
+        "reward_table": [
+          {
+            "rolled_number": 1,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 8
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 2,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 1
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 3,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 4
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 4,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 2
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 5,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 3
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 6,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 1
+            },
+            "part_break_reward": {
+              "part_id": 3,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 7,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 4
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 8,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 1
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 9,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 8
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 10,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 4
+            },
+            "part_break_reward": {
+              "part_id": 2,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 11,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 2
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 12,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 3
+            },
+            "part_break_reward": {
+              "part_id": 1,
+              "gain_additional": 1
+            }
+          }
         ]
       },
       {
         "difficulty_id": 2,
         "level": 2,
         "health": 60,
+        "map_image": "src/assets/img/maps/great_jagras/great_jagras_2_star_map.png",
         "special_rule": {
           "title": "Irritable",
           "description": "ทุกครั้งที่ Great Jagras สร้างความเสียหายใส่ Hunter ได้สำเร็จ มันจะฟื้นฟูพลังชีวิตที่เสียไปของมัน 1 หน่วย, ในระหว่างที่ Great Jagras มีชิ้นส่วนที่ถูกทำลาย มันจะสร้างความเสียหายเพิ่มขึ้น 1 หน่วย และระยะการโจมตีของมันจะเพิ่มขึ้น 1 ช่อง"
@@ -165,12 +274,120 @@
             "status_id": 5,
             "level": 1
           }
+        ],
+        "reward_table": [
+          {
+            "rolled_number": 1,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 8
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 2,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 1
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 3,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 4
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 4,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 2
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 5,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 3
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 6,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 1
+            },
+            "part_break_reward": {
+              "part_id": 3,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 7,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 4
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 8,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 1
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 9,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 8
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 10,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 4
+            },
+            "part_break_reward": {
+              "part_id": 2,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 11,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 2
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 12,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 3
+            },
+            "part_break_reward": {
+              "part_id": 1,
+              "gain_additional": 1
+            }
+          }
         ]
       },
       {
         "difficulty_id": 3,
         "level": 3,
         "health": 65,
+        "map_image": "src/assets/img/maps/great_jagras/great_jagras_3_star_map.png",
         "special_rule": {
           "title": "Jagras Alpha",
           "description": "ทุกครั้งที่ Great Jagras สร้างความเสียหายใส่ Hunter ได้สำเร็จ มันจะฟื้นฟูพลังชีวิตที่เสียไปของมัน 1 หน่วย, Great Jagras จะสร้างความเสียหายเพิ่มขึ้น 1 หน่วย และระยะการโจมตีของมันจะเพิ่มขึ้น 1 ช่อง"
@@ -228,6 +445,208 @@
         "status_resistance": [
           {
             "status_id": 1,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 2,
+            "level": 1,
+            "immune": false
+          },
+          {
+            "status_id": 3,
+            "level": 1,
+            "immune": false
+          },
+          {
+            "status_id": 4,
+            "level": 1,
+            "immune": false
+          },
+          {
+            "status_id": 5,
+            "level": 1,
+            "immune": false
+          }
+        ],
+        "reward_table": [
+          {
+            "rolled_number": 1,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 8
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 2,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 1
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 3,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 4
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 4,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 2
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 5,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 3
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 6,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 1
+            },
+            "part_break_reward": {
+              "part_id": 3,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 7,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 4
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 8,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 1
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 9,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 8
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 10,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 4
+            },
+            "part_break_reward": {
+              "part_id": 2,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 11,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 2
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 12,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 3
+            },
+            "part_break_reward": {
+              "part_id": 1,
+              "gain_additional": 1
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "monster_id": 2,
+    "monster_name": "Tobi-Kadachi",
+    "thumbnail": "assets/img/Tobi_Kadachi_Icon.webp",
+    "difficulty": [
+      {
+        "difficulty_id": 1,
+        "level": 1,
+        "health": 60,
+        "map_image": "src/assets/img/maps/tobi/tobi_1_star_map.png",
+        "special_rule": {
+          "title": "Shocking",
+          "description": "เมื่อกำหนดเป้าหมายของการ์ดพฤติกรรมที่มีการโจมตีธาตุ Thunder ให้ Tobi-Kadachi แล้ว, ให้นำ Tobi-Kadachi ออกจากบอร์ด จากนั้นวาง Tobi-Kadachi ไปยัง Rock Node ที่อยู่ไกลจากตำแหน่งปัจจุบันมากที่สุด โดยไม่เปลี่ยนทิศทางการหันหน้าเดิมของมัน, หากมี Rock Node ที่ไกลที่สุดมากกว่าหนึ่งช่อง ให้ Hunters เป็นคนเลือก, หากมี Hunter อยู่บน Node นั้น ให้ย้าย Hunter เหล่านั้นเสมือนว่า Tobi-Kadachi ได้เคลื่อนที่เข้ามายัง Node ดังกล่าว, หลังจากนั้น ให้ดำเนินการการ์ดพฤติกรรมของ Tobi-Kadachi ตามปกติ"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 3,
+            "armor": 1,
+            "part_break_rule": null
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 4,
+            "armor": 1,
+            "part_break_rule": null
+          },
+          "left": {
+            "part_id": 2,
+            "connect_part_position": "right",
+            "part_break_threshold": 3,
+            "armor": 2,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีติดสถานะ Paralysis ความเสียหายของการโจมตีจะลดลง 1 หน่วย"
+          },
+          "right": {}
+        },
+        "element_resistance": [
+          {
+            "element_id": 1,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 2,
+            "level": 1,
+            "immune": false
+          },
+          {
+            "element_id": 3,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 5,
+            "level": 0,
+            "immune": true
+          }
+        ],
+        "status_resistance": [
+          {
+            "status_id": 1,
             "level": 2
           },
           {
@@ -236,15 +655,502 @@
           },
           {
             "status_id": 3,
-            "level": 1
+            "level": 2
           },
           {
             "status_id": 4,
-            "level": 1
+            "level": 2
           },
           {
             "status_id": 5,
+            "level": 2
+          }
+        ],
+        "reward_table": [
+          {
+            "rolled_number": 1,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 9
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 2,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 7
+            },
+            "part_break_reward": {
+              "part_id": 2,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 3,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 6
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 4,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 6
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 5,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 9
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 6,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 8
+            },
+            "part_break_reward": {
+              "part_id": 1,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 7,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 12
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 8,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 5
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 9,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 9
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 10,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 7
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 11,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 12
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 12,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 9
+            },
+            "part_break_reward": {
+              "part_id": 6,
+              "gain_additional": 1
+            }
+          }
+        ]
+      },
+      {
+        "difficulty_id": 2,
+        "level": 2,
+        "health": 65,
+        "map_image": "src/assets/img/maps/tobi/tobi_2_star_map.png",
+        "special_rule": {
+          "title": "Electrifying",
+          "description": "เมื่อกำหนดเป้าหมายของการ์ดพฤติกรรมที่มีการโจมตีธาตุ Thunder ให้ Tobi-Kadachi แล้ว, ให้นำ Tobi-Kadachi ออกจากบอร์ด จากนั้นวาง Tobi-Kadachi ไปยัง Rock Node ที่อยู่ไกลจากตำแหน่งปัจจุบันมากที่สุด โดยไม่เปลี่ยนทิศทางการหันหน้าเดิมของมัน, หากมี Rock Node ที่ไกลที่สุดมากกว่าหนึ่งช่อง ให้ Hunters เป็นคนเลือก, หากมี Hunter อยู่บน Node นั้น ให้ย้าย Hunter เหล่านั้นเสมือนว่า Tobi-Kadachi ได้เคลื่อนที่เข้ามายัง Node ดังกล่าว, หลังจากนั้น ให้ดำเนินการการ์ดพฤติกรรมของ Tobi-Kadachi ตามปกติ, การ์ดพฤติกรรมที่มีการโจมตีธาตุ Thunder ความเสียหายของการโจมตีนั้นจะเพิ่มขึ้น 1 หน่วย"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 5,
+            "armor": 2,
+            "part_break_rule": "นำการ์ดพฤติกรรม 'Leaping Bite' ออกจากเด็ค จากนั้นนำกองการ์ดที่ทิ้งแล้วสับกลับเข้ากองการ์ดพฤติกรรมของ Tobi-Kadachi"
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 4,
+            "armor": 1,
+            "part_break_rule": null
+          },
+          "left": {
+            "part_id": 2,
+            "connect_part_position": "right",
+            "part_break_threshold": 4,
+            "armor": 2,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีติดสถานะ Paralysis ความเสียหายของการโจมตีจะลดลง 1 หน่วย"
+          },
+          "right": {}
+        },
+        "element_resistance": [
+          {
+            "element_id": 1,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 2,
+            "level": 1,
+            "immune": false
+          },
+          {
+            "element_id": 3,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 5,
+            "level": 0,
+            "immune": true
+          }
+        ],
+        "status_resistance": [
+          {
+            "status_id": 1,
+            "level": 2
+          },
+          {
+            "status_id": 2,
             "level": 1
+          },
+          {
+            "status_id": 3,
+            "level": 2
+          },
+          {
+            "status_id": 4,
+            "level": 2
+          },
+          {
+            "status_id": 5,
+            "level": 2
+          }
+        ],
+        "reward_table": [
+          {
+            "rolled_number": 1,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 9
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 2,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 7
+            },
+            "part_break_reward": {
+              "part_id": 2,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 3,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 6
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 4,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 6
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 5,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 9
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 6,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 8
+            },
+            "part_break_reward": {
+              "part_id": 1,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 7,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 12
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 8,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 5
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 9,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 9
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 10,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 7
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 11,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 12
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 12,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 9
+            },
+            "part_break_reward": {
+              "part_id": 6,
+              "gain_additional": 1
+            }
+          }
+        ]
+      },
+      {
+        "difficulty_id": 3,
+        "level": 3,
+        "health": 70,
+        "map_image": "src/assets/img/maps/tobi/tobi_3_star_map.png",
+        "special_rule": {
+          "title": "Static Charge",
+          "description": "เมื่อกำหนดเป้าหมายของการ์ดพฤติกรรมที่มีการโจมตีธาตุ Thunder ให้ Tobi-Kadachi แล้ว, ให้นำ Tobi-Kadachi ออกจากบอร์ด จากนั้นวาง Tobi-Kadachi ไปยัง Rock Node ที่อยู่ไกลจากตำแหน่งปัจจุบันมากที่สุด โดยไม่เปลี่ยนทิศทางการหันหน้าเดิมของมัน, หากมี Rock Node ที่ไกลที่สุดมากกว่าหนึ่งช่อง ให้ Hunters เป็นคนเลือก, หากมี Hunter อยู่บน Node นั้น ให้ย้าย Hunter เหล่านั้นเสมือนว่า Tobi-Kadachi ได้เคลื่อนที่เข้ามายัง Node ดังกล่าว, หลังจากนั้น ให้ดำเนินการการ์ดพฤติกรรมของ Tobi-Kadachi ตามปกติ, การ์ดพฤติกรรมที่มีการโจมตีธาตุ Thunder ความเสียหายของการโจมตีนั้นจะเพิ่มขึ้น 2 หน่วย"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 6,
+            "armor": 2,
+            "part_break_rule": "นำการ์ดพฤติกรรม 'Leaping Bite' ออกจากเด็ค จากนั้นนำกองการ์ดที่ทิ้งแล้วสับกลับเข้ากองการ์ดพฤติกรรมของ Tobi-Kadachi"
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 5,
+            "armor": 2,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Thunder ความเสียหายของการโจมตีนั้นจะลดลง 1 หน่วย"
+          },
+          "left": {
+            "part_id": 2,
+            "connect_part_position": "right",
+            "part_break_threshold": 5,
+            "armor": 3,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีติดสถานะ Paralysis ความเสียหายของการโจมตีจะลดลง 1 หน่วย"
+          },
+          "right": {}
+        },
+        "element_resistance": [
+          {
+            "element_id": 1,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 2,
+            "level": 1,
+            "immune": false
+          },
+          {
+            "element_id": 3,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 5,
+            "level": 0,
+            "immune": true
+          }
+        ],
+        "status_resistance": [
+          {
+            "status_id": 1,
+            "level": 2
+          },
+          {
+            "status_id": 2,
+            "level": 1
+          },
+          {
+            "status_id": 3,
+            "level": 2
+          },
+          {
+            "status_id": 4,
+            "level": 2
+          },
+          {
+            "status_id": 5,
+            "level": 2
+          }
+        ],
+        "reward_table": [
+          {
+            "rolled_number": 1,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 9
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 2,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 7
+            },
+            "part_break_reward": {
+              "part_id": 2,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 3,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 6
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 4,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 6
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 5,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 9
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 6,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 8
+            },
+            "part_break_reward": {
+              "part_id": 1,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 7,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 12
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 8,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 5
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 9,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 9
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 10,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 7
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 11,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 12
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 12,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 9
+            },
+            "part_break_reward": {
+              "part_id": 6,
+              "gain_additional": 1
+            }
           }
         ]
       }
