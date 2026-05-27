@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="/Monster-Hunter-World-Helper-Web/favicon.ico">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      body {
+        overflow-x: hidden;
+        overflow-y: auto;
+        position: relative;
+        margin: 0;
+        font-family: "Cinzel", serif; /* 🔥 ฟีลแฟนตาซี */
+        color: #eee;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+
+        background-image: url("/Monster-Hunter-World-Helper-Web/assets/background-BC9R5vhG.jpg");
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-position: center;
+
+        filter: blur(4px) brightness(0.8);       /* 👉 ปรับความเบลอ */
+        transform: scale(1.1);   /* 👉 กันขอบเบลอล้น */
+        
+        z-index: -1;
+      }
+
+      body.modal-open {
+        overflow: hidden;
+      }
+    </style>
+    <title>MHW Boardgame Helper</title>
+    <script type="module" crossorigin src="/Monster-Hunter-World-Helper-Web/assets/index-DxXjOKlu.js"></script>
+    <link rel="stylesheet" crossorigin href="/Monster-Hunter-World-Helper-Web/assets/index--0XgoKYP.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>
