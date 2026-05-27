@@ -68,7 +68,6 @@ const craftWeapon = (node) => {
   // 🔥 SAVE จริงลง localStorage
   saveHunter(hunter.value)
 
-  console.log('✅ SAVED & CRAFTED:', node.item)
 }
 
 const getRecipe = (node) => {
@@ -265,7 +264,6 @@ const craftArmor = (armorSet, equip) => {
   })
 
   saveHunter(hunter.value)
-  console.log('✅ CRAFTED ARMOR:', equip.equip)
 }
 
 const getElemental = (elemental_id) => {

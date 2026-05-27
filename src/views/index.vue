@@ -31,7 +31,6 @@ const hunterEquip = ref({
 })
 
 const openHunter = async (h) => {
-  console.log('Opening hunter:', h)
   const helm = h.equipments.armors.helm.find((i) => i.is_equip)
   const mail = h.equipments.armors.mail.find((i) => i.is_equip)
   const greaves = h.equipments.armors.greaves.find((i) => i.is_equip)
@@ -119,7 +118,6 @@ const handleCreate = () => {
     return
   }
   var HunterClass = getHunterClassById(weapon.value.hunter_class_id)
-  console.log(HunterClass)
   const hunterData = {
     hunter_name: hunterName.value,
     hunter_class_id: weapon.value.hunter_class_id,
