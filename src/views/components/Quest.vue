@@ -1073,8 +1073,11 @@ const goToRewardPhase = () => {
                 <div
                   v-for="sr in monsterHuntingData.status_resistance"
                   :key="sr.status_id"
-                  class="resist-item resist-item-active"
-                  :class="{ 'resist-item-applied': appliedStatuses.includes(sr.status_id) }"
+                  class="resist-item"
+                  :class="{
+                    'resist-item-active': !sr.immune && sr.level > 0,
+                    'resist-item-applied': appliedStatuses.includes(sr.status_id),
+                  }"
                   @click="markStatus(sr.status_id)"
                 >
                   <div class="resist-icon-wrap">
@@ -1083,17 +1086,21 @@ const goToRewardPhase = () => {
                       :src="getImg(getStatusEffect(sr.status_id).thumbnail)"
                       class="resist-icon"
                     />
+                    <span v-if="sr.immune" class="resist-immune-x">✕</span>
                     <span v-if="appliedStatuses.includes(sr.status_id)" class="resist-applied-dot"
                       >✓</span
                     >
                   </div>
-                  <div class="resist-marks">
+                  <div class="resist-marks" v-if="!sr.immune && sr.level > 0">
                     <span
                       v-for="i in sr.level"
                       :key="i"
                       class="resist-mark resist-mark-status"
                       :class="{ 'mark-filled': i <= (statusMarks[sr.status_id] ?? 0) }"
                     ></span>
+                  </div>
+                  <div v-else class="resist-marks">
+                    <span class="resist-mark mark-immune"></span>
                   </div>
                 </div>
               </div>
@@ -1192,19 +1199,21 @@ const goToRewardPhase = () => {
                         :filter="brokenParts[position] ? 'url(#glow-red)' : 'url(#glow-gold)'"
                       />
                       <!-- Connected position dot -->
-                      <circle
-                        v-if="
-                          partData.connect_part_position &&
-                          posDotCoords[partData.connect_part_position]
-                        "
-                        :cx="posDotCoords[partData.connect_part_position].x"
-                        :cy="posDotCoords[partData.connect_part_position].y"
-                        r="12"
-                        :fill="
-                          brokenParts[position] ? 'rgba(220,60,40,0.9)' : 'rgba(200,155,60,0.9)'
-                        "
-                        :filter="brokenParts[position] ? 'url(#glow-red)' : 'url(#glow-gold)'"
-                      />
+                      <template
+                        v-for="connPos in (partData.connect_part_position ?? [])"
+                        :key="connPos"
+                      >
+                        <circle
+                          v-if="posDotCoords[connPos]"
+                          :cx="posDotCoords[connPos].x"
+                          :cy="posDotCoords[connPos].y"
+                          r="12"
+                          :fill="
+                            brokenParts[position] ? 'rgba(220,60,40,0.9)' : 'rgba(200,155,60,0.9)'
+                          "
+                          :filter="brokenParts[position] ? 'url(#glow-red)' : 'url(#glow-gold)'"
+                        />
+                      </template>
                       <defs>
                         <filter id="glow-gold" x="-50%" y="-50%" width="200%" height="200%">
                           <feGaussianBlur stdDeviation="3" result="blur" />
@@ -3262,7 +3271,7 @@ const goToRewardPhase = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 50px;
   font-weight: 900;
   color: #ff2222;
   text-shadow:

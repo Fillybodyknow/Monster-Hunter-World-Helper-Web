@@ -30,7 +30,7 @@
           },
           "left": {
             "part_id": 3,
-            "connect_part_position": "right",
+            "connect_part_position": ["right"],
             "part_break_threshold": 3,
             "armor": 0,
             "part_break_rule": null
@@ -67,23 +67,28 @@
         "status_resistance": [
           {
             "status_id": 1,
-            "level": 2
+            "level": 2,
+            "immune": false
           },
           {
             "status_id": 2,
-            "level": 1
+            "level": 1,
+            "immune": false
           },
           {
             "status_id": 3,
-            "level": 1
+            "level": 1,
+            "immune": false
           },
           {
             "status_id": 4,
-            "level": 1
+            "level": 1,
+            "immune": false
           },
           {
             "status_id": 5,
-            "level": 1
+            "level": 1,
+            "immune": false
           }
         ],
         "reward_table": [
@@ -201,7 +206,7 @@
         "map_image": "assets/img/maps/great_jagras/great_jagras_2_star_map.png",
         "special_rule": {
           "title": "Irritable",
-          "description": "ทุกครั้งที่ Great Jagras สร้างความเสียหายใส่ Hunter ได้สำเร็จ มันจะฟื้นฟูพลังชีวิตที่เสียไปของมัน 1 หน่วย, ในระหว่างที่ Great Jagras มีชิ้นส่วนที่ถูกทำลาย มันจะสร้างความเสียหายเพิ่มขึ้น 1 หน่วย และระยะการโจมตีของมันจะเพิ่มขึ้น 1 ช่อง"
+          "description": "ทุกครั้งที่ Great Jagras สร้างความเสียหายใส่ Hunter ได้สำเร็จ มันจะฟื้นฟูพลังชีวิตที่เสียไปของมัน 1 หน่วย, ในระหว่างที่ Great Jagras มีชิ้นส่วนที่ถูกทำลาย มันจะสร้างความเสียหายเพิ่มขึ้น 1 หน่วย และ ระยะการโจมตี กับ ค่าหลบหลีก ของมันจะเพิ่มขึ้น 1 หน่วย"
         },
         "monster_parts": {
           "front": {
@@ -220,7 +225,7 @@
           },
           "left": {
             "part_id": 3,
-            "connect_part_position": "right",
+            "connect_part_position": ["right"],
             "part_break_threshold": 5,
             "armor": 1,
             "part_break_rule": "Great Jagras จะสร้างความเสียหายผ่าน Claw ลดลง 1 หน่วย"
@@ -256,23 +261,28 @@
         "status_resistance": [
           {
             "status_id": 1,
-            "level": 2
+            "level": 2,
+            "immune": false
           },
           {
             "status_id": 2,
-            "level": 1
+            "level": 1,
+            "immune": false
           },
           {
             "status_id": 3,
-            "level": 1
+            "level": 1,
+            "immune": false
           },
           {
             "status_id": 4,
-            "level": 1
+            "level": 1,
+            "immune": false
           },
           {
             "status_id": 5,
-            "level": 1
+            "level": 1,
+            "immune": false
           }
         ],
         "reward_table": [
@@ -390,7 +400,7 @@
         "map_image": "assets/img/maps/great_jagras/great_jagras_3_star_map.png",
         "special_rule": {
           "title": "Jagras Alpha",
-          "description": "ทุกครั้งที่ Great Jagras สร้างความเสียหายใส่ Hunter ได้สำเร็จ มันจะฟื้นฟูพลังชีวิตที่เสียไปของมัน 1 หน่วย, Great Jagras จะสร้างความเสียหายเพิ่มขึ้น 1 หน่วย และระยะการโจมตีของมันจะเพิ่มขึ้น 1 ช่อง"
+          "description": "ทุกครั้งที่ Great Jagras สร้างความเสียหายใส่ Hunter ได้สำเร็จ มันจะฟื้นฟูพลังชีวิตที่เสียไปของมัน 1 หน่วย, Great Jagras จะสร้างความเสียหายเพิ่มขึ้น 1 หน่วย และ ระยะการโจมตี กับ ค่าหลบหลีก ของมันจะเพิ่มขึ้น 1 หน่วย"
         },
         "monster_parts": {
           "front": {
@@ -409,7 +419,7 @@
           },
           "left": {
             "part_id": 3,
-            "connect_part_position": "right",
+            "connect_part_position": ["right"],
             "part_break_threshold": 5,
             "armor": 1,
             "part_break_rule": "Great Jagras จะสร้างความเสียหายผ่าน Claw ลดลง 1 หน่วย"
@@ -610,7 +620,7 @@
           },
           "left": {
             "part_id": 2,
-            "connect_part_position": "right",
+            "connect_part_position": ["right"],
             "part_break_threshold": 3,
             "armor": 2,
             "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีติดสถานะ Paralysis ความเสียหายของการโจมตีจะลดลง 1 หน่วย"
@@ -647,23 +657,28 @@
         "status_resistance": [
           {
             "status_id": 1,
-            "level": 2
+            "level": 2,
+            "immune": false
           },
           {
             "status_id": 2,
-            "level": 1
+            "level": 1,
+            "immune": false
           },
           {
             "status_id": 3,
-            "level": 2
+            "level": 2,
+            "immune": false
           },
           {
             "status_id": 4,
-            "level": 2
+            "level": 2,
+            "immune": false
           },
           {
             "status_id": 5,
-            "level": 2
+            "level": 2,
+            "immune": false
           }
         ],
         "reward_table": [
@@ -800,7 +815,7 @@
           },
           "left": {
             "part_id": 2,
-            "connect_part_position": "right",
+            "connect_part_position": ["right"],
             "part_break_threshold": 4,
             "armor": 2,
             "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีติดสถานะ Paralysis ความเสียหายของการโจมตีจะลดลง 1 หน่วย"
@@ -837,23 +852,28 @@
         "status_resistance": [
           {
             "status_id": 1,
-            "level": 2
+            "level": 2,
+            "immune": false
           },
           {
             "status_id": 2,
-            "level": 1
+            "level": 1,
+            "immune": false
           },
           {
             "status_id": 3,
-            "level": 2
+            "level": 2,
+            "immune": false
           },
           {
             "status_id": 4,
-            "level": 2
+            "level": 2,
+            "immune": false
           },
           {
             "status_id": 5,
-            "level": 2
+            "level": 2,
+            "immune": false
           }
         ],
         "reward_table": [
@@ -990,7 +1010,7 @@
           },
           "left": {
             "part_id": 2,
-            "connect_part_position": "right",
+            "connect_part_position": ["right"],
             "part_break_threshold": 5,
             "armor": 3,
             "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีติดสถานะ Paralysis ความเสียหายของการโจมตีจะลดลง 1 หน่วย"
@@ -1027,23 +1047,28 @@
         "status_resistance": [
           {
             "status_id": 1,
-            "level": 2
+            "level": 2,
+            "immune": false
           },
           {
             "status_id": 2,
-            "level": 1
+            "level": 1,
+            "immune": false
           },
           {
             "status_id": 3,
-            "level": 2
+            "level": 2,
+            "immune": false
           },
           {
             "status_id": 4,
-            "level": 2
+            "level": 2,
+            "immune": false
           },
           {
             "status_id": 5,
-            "level": 2
+            "level": 2,
+            "immune": false
           }
         ],
         "reward_table": [
@@ -1149,6 +1174,1863 @@
             },
             "part_break_reward": {
               "part_id": 6,
+              "gain_additional": 1
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "monster_id": 3,
+    "monster_name": "Anjanath",
+    "thumbnail": "assets/img/Anjanath_Icon.webp",
+    "difficulty": [
+      {
+        "difficulty_id": 1,
+        "level": 1,
+        "health": 65,
+        "map_image": "assets/img/maps/anjanath/anjanath_1_star_map.png",
+        "special_rule": {
+          "title": "Reckless Aggression",
+          "description": "ทุกครั้งที่ Anjanath ได้รับความเสียหายมากกว่าหรือเท่ากับ 4 หน่วยจาก Attack Card หลังจากแสดงผลลัพท์ของการโจมตี มันจะเคลื่อนที่ 2 nodes ไปหา Hunter ที่อยู่ไกลที่สุด"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 5,
+            "armor": 2,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ความเสียหายของการโจมตีนั้นจะลดลง 1 หน่วย"
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 4,
+            "armor": 1,
+            "part_break_rule": null
+          },
+          "left": {
+            "part_id": 5,
+            "connect_part_position": ["right"],
+            "part_break_threshold": 4,
+            "armor": 2,
+            "part_break_rule": "นำการ์ดพฤติกรรม 'Crush' ออกจากเด็ค จากนั้นนำกองการ์ดที่ทิ้งแล้วสับกลับเข้ากองการ์ดพฤติกรรมของ Anjanath"
+          },
+          "right": {
+            "part_id": 2,
+            "connect_part_position": ["left", "front"],
+            "part_break_threshold": 5,
+            "armor": 2,
+            "part_break_rule": null
+          }
+        },
+        "element_resistance": [
+          {
+            "element_id": 1,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 2,
+            "level": 1,
+            "immune": false
+          },
+          {
+            "element_id": 3,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 5,
+            "level": 0,
+            "immune": true
+          }
+        ],
+        "status_resistance": [
+          {
+            "status_id": 1,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 2,
+            "level": 1,
+            "immune": false
+          },
+          {
+            "status_id": 3,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 5,
+            "level": 0,
+            "immune": true
+          }
+        ],
+        "reward_table": [
+          {
+            "rolled_number": 1,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 12
+            },
+            "part_break_reward": {
+              "part_id": 5,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 2,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 10
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 3,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 11
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 4,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 15
+            },
+            "part_break_reward": {
+              "part_id": 6,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 5,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 13
+            },
+            "part_break_reward": {
+              "part_id": 1,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 6,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 12
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 7,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 8
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 8,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 10
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 9,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 10
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 10,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 10
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 11,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 8
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 12,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 9
+            },
+            "part_break_reward": {
+              "part_id": 2,
+              "gain_additional": 1
+            }
+          }
+        ]
+      },
+      {
+        "difficulty_id": 2,
+        "level": 2,
+        "health": 70,
+        "map_image": "assets/img/maps/anjanath/anjanath_2_star_map.png",
+        "special_rule": {
+          "title": "Flaming Anger",
+          "description": "ทุกครั้งที่ Anjanath ได้รับความเสียหายมากกว่าหรือเท่ากับ 4 หน่วยจาก Attack Card หลังจากแสดงผลลัพท์ของการโจมตี มันจะเคลื่อนที่ 2 nodes ไปหา Hunter ที่อยู่ไกลที่สุด, การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ความเสียหายของการโจมตีนั้นจะเพิ่มขึ้น 1 หน่วย"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 6,
+            "armor": 2,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ความเสียหายของการโจมตีนั้นจะลดลง 1 หน่วย"
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 5,
+            "armor": 2,
+            "part_break_rule": null
+          },
+          "left": {
+            "part_id": 5,
+            "connect_part_position": ["right"],
+            "part_break_threshold": 5,
+            "armor": 2,
+            "part_break_rule": "นำการ์ดพฤติกรรม 'Crush' ออกจากเด็ค จากนั้นนำกองการ์ดที่ทิ้งแล้วสับกลับเข้ากองการ์ดพฤติกรรมของ Anjanath"
+          },
+          "right": {
+            "part_id": 2,
+            "connect_part_position": ["left", "front"],
+            "part_break_threshold": 5,
+            "armor": 3,
+            "part_break_rule": "ทิ้งการ์ดใบบนสุดของกองการ์ดพฤติกรรมของ Anjanath"
+          }
+        },
+        "element_resistance": [
+          {
+            "element_id": 1,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 2,
+            "level": 1,
+            "immune": false
+          },
+          {
+            "element_id": 3,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 5,
+            "level": 0,
+            "immune": true
+          }
+        ],
+        "status_resistance": [
+          {
+            "status_id": 1,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 2,
+            "level": 1,
+            "immune": false
+          },
+          {
+            "status_id": 3,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 5,
+            "level": 0,
+            "immune": true
+          }
+        ],
+        "reward_table": [
+          {
+            "rolled_number": 1,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 12
+            },
+            "part_break_reward": {
+              "part_id": 5,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 2,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 10
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 3,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 11
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 4,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 15
+            },
+            "part_break_reward": {
+              "part_id": 6,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 5,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 13
+            },
+            "part_break_reward": {
+              "part_id": 1,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 6,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 12
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 7,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 8
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 8,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 10
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 9,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 10
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 10,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 10
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 11,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 8
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 12,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 9
+            },
+            "part_break_reward": {
+              "part_id": 2,
+              "gain_additional": 1
+            }
+          }
+        ]
+      },
+      {
+        "difficulty_id": 3,
+        "level": 3,
+        "health": 75,
+        "map_image": "assets/img/maps/anjanath/anjanath_3_star_map.png",
+        "special_rule": {
+          "title": "Burning Wrath",
+          "description": "ทุกครั้งที่ Anjanath ได้รับความเสียหายมากกว่าหรือเท่ากับ 4 หน่วยจาก Attack Card หลังจากแสดงผลลัพท์ของการโจมตี มันจะเคลื่อนที่ 2 nodes ไปหา Hunter ที่อยู่ไกลที่สุด, การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ความเสียหายของการโจมตีนั้นจะเพิ่มขึ้น 1 หน่วย และระยะโจมตีกับค่าหลบหลีกเพิ่มขึ้น 1 หน่วย"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 6,
+            "armor": 2,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ความเสียหายของการโจมตีนั้นจะลดลง 1 หน่วย"
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 5,
+            "armor": 2,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ระยะการโจมตีของการ์ดนั้นจะลดลง 1 หน่วย"
+          },
+          "left": {
+            "part_id": 5,
+            "connect_part_position": ["right"],
+            "part_break_threshold": 6,
+            "armor": 3,
+            "part_break_rule": "นำการ์ดพฤติกรรม 'Crush' ออกจากเด็ค จากนั้นนำกองการ์ดที่ทิ้งแล้วสับกลับเข้ากองการ์ดพฤติกรรมของ Anjanath"
+          },
+          "right": {
+            "part_id": 2,
+            "connect_part_position": ["left", "front"],
+            "part_break_threshold": 5,
+            "armor": 3,
+            "part_break_rule": "ทิ้งการ์ดใบบนสุดของกองการ์ดพฤติกรรมของ Anjanath"
+          }
+        },
+        "element_resistance": [
+          {
+            "element_id": 1,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 2,
+            "level": 1,
+            "immune": false
+          },
+          {
+            "element_id": 3,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 5,
+            "level": 0,
+            "immune": true
+          }
+        ],
+        "status_resistance": [
+          {
+            "status_id": 1,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 2,
+            "level": 1,
+            "immune": false
+          },
+          {
+            "status_id": 3,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 5,
+            "level": 0,
+            "immune": true
+          }
+        ],
+        "reward_table": [
+          {
+            "rolled_number": 1,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 12
+            },
+            "part_break_reward": {
+              "part_id": 5,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 2,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 10
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 3,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 11
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 4,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 15
+            },
+            "part_break_reward": {
+              "part_id": 6,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 5,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 13
+            },
+            "part_break_reward": {
+              "part_id": 1,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 6,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 12
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 7,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 8
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 8,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 10
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 9,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 10
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 10,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 10
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 11,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 8
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 12,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 9
+            },
+            "part_break_reward": {
+              "part_id": 2,
+              "gain_additional": 1
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "monster_id": 4,
+    "monster_name": "Rathalos",
+    "thumbnail": "assets/img/rathalos_Icon.png",
+    "difficulty": [
+      {
+        "difficulty_id": 1,
+        "level": 1,
+        "health": 80,
+        "map_image": "assets/img/maps/rathalos/rathalos_1_star_map.png",
+        "special_rule": {
+          "title": "Chaotic Rage",
+          "description": "เมื่อ Rathalos มี HP น้อยกว่าเท่ากับ 35 หน่วย ให้นำการ์ดพฤติกรรม Special Attack(ที่มีรูป Track Token มุมบนซ้ายของการ์ด) ออกจากกองการ์ด หลังจากนั้นทำการสุ่มการ์ด Special Attack 1 ใบ(รวมใบที่เอาออกไปด้วย) เข้ากองการ์ด จากนั้นนำกองการ์ดที่ทิ้งแล้วสับกลับเข้ากองการ์ดพฤติกรรมของ Rathalos"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 6,
+            "armor": 3,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ระยะการโจมตีของการ์ดนั้นจะลดลง 1 หน่วย"
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 6,
+            "armor": 3,
+            "part_break_rule": "ทิ้งการ์ดใบบนสุดของกองการ์ดพฤติกรรมของ Rathalos"
+          },
+          "left": {
+            "part_id": 2,
+            "connect_part_position": ["right"],
+            "part_break_threshold": 5,
+            "armor": 4,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Body จะทำให้ Hunter เล่นเพิ่มได้อีก 1 คน และเล่น Attack Card ได้เพิ่มอีก 1 ใบ"
+          },
+          "right": {
+            "part_id": 4,
+            "connect_part_position": ["left"],
+            "part_break_threshold": 6,
+            "armor": 3,
+            "part_break_rule": "นำการ์ดพฤติกรรม 'Take Off Blast' ออกจากเด็ค จากนั้นนำกองการ์ดที่ทิ้งแล้วสับกลับเข้ากองการ์ดพฤติกรรมของ Rathalos"
+          }
+        },
+        "element_resistance": [
+          {
+            "element_id": 1,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 2,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 3,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 4,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 5,
+            "level": 1,
+            "immune": false
+          }
+        ],
+        "status_resistance": [
+          {
+            "status_id": 1,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 2,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "status_id": 3,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 5,
+            "level": 0,
+            "immune": true
+          }
+        ],
+        "reward_table": [
+          {
+            "rolled_number": 1,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 24
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 2,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 10
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 3,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 22
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 4,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 19
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 5,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 23
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 6,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 17
+            },
+            "part_break_reward": {
+              "part_id": 2,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 7,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 25
+            },
+            "part_break_reward": {
+              "part_id": 6,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 8,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 18
+            },
+            "part_break_reward": {
+              "part_id": 4,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 9,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 21
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 10,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 20
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 11,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 16
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 12,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 9
+            },
+            "part_break_reward": {
+              "part_id": 1,
+              "gain_additional": 1
+            }
+          }
+        ]
+      },
+      {
+        "difficulty_id": 2,
+        "level": 2,
+        "health": 85,
+        "map_image": "assets/img/maps/rathalos/rathalos_2_star_map.png",
+        "special_rule": {
+          "title": "Burning Rage",
+          "description": "เมื่อ Rathalos มี HP น้อยกว่าเท่ากับ 35 หน่วย ให้นำการ์ดพฤติกรรม Special Attack(ที่มีรูป Track Token มุมบนซ้ายของการ์ด) ออกจากกองการ์ด หลังจากนั้นทำการสุ่มการ์ด Special Attack 1 ใบ(รวมใบที่เอาออกไปด้วย) เข้ากองการ์ด จากนั้นนำกองการ์ดที่ทิ้งแล้วสับกลับเข้ากองการ์ดพฤติกรรมของ Rathalos, การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ความเสียหายของการ์ดนั้นจะเพิ่มขึ้น 1 หน่วย"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 6,
+            "armor": 3,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ระยะการโจมตีของการ์ดนั้นจะลดลง 1 หน่วย"
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 6,
+            "armor": 3,
+            "part_break_rule": "ทิ้งการ์ดใบบนสุดของกองการ์ดพฤติกรรมของ Rathalos"
+          },
+          "left": {
+            "part_id": 2,
+            "connect_part_position": ["right"],
+            "part_break_threshold": 7,
+            "armor": 4,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Body จะทำให้ Hunter เล่นเพิ่มได้อีก 1 คน และเล่น Attack Card ได้เพิ่มอีก 1 ใบ"
+          },
+          "right": {
+            "part_id": 4,
+            "connect_part_position": ["left"],
+            "part_break_threshold": 6,
+            "armor": 4,
+            "part_break_rule": "นำการ์ดพฤติกรรม 'Take Off Blast' ออกจากเด็ค จากนั้นนำกองการ์ดที่ทิ้งแล้วสับกลับเข้ากองการ์ดพฤติกรรมของ Rathalos"
+          }
+        },
+        "element_resistance": [
+          {
+            "element_id": 1,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 2,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 3,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 4,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 5,
+            "level": 1,
+            "immune": false
+          }
+        ],
+        "status_resistance": [
+          {
+            "status_id": 1,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 2,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "status_id": 3,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 5,
+            "level": 0,
+            "immune": true
+          }
+        ],
+        "reward_table": [
+          {
+            "rolled_number": 1,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 24
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 2,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 10
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 3,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 22
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 4,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 19
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 5,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 23
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 6,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 17
+            },
+            "part_break_reward": {
+              "part_id": 2,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 7,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 25
+            },
+            "part_break_reward": {
+              "part_id": 6,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 8,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 18
+            },
+            "part_break_reward": {
+              "part_id": 4,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 9,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 21
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 10,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 20
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 11,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 16
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 12,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 9
+            },
+            "part_break_reward": {
+              "part_id": 1,
+              "gain_additional": 1
+            }
+          }
+        ]
+      },
+      {
+        "difficulty_id": 4,
+        "level": 4,
+        "health": 90,
+        "map_image": "assets/img/maps/rathalos/rathalos_4_star_map.png",
+        "special_rule": {
+          "title": "King of the Skies",
+          "description": "เมื่อ Rathalos มี HP น้อยกว่าเท่ากับ 35 หน่วย ให้นำการ์ดพฤติกรรม Special Attack(ที่มีรูป Track Token มุมบนซ้ายของการ์ด) ออกจากกองการ์ด หลังจากนั้นทำการสุ่มการ์ด Special Attack 1 ใบ(รวมใบที่เอาออกไปด้วย) เข้ากองการ์ด จากนั้นนำกองการ์ดที่ทิ้งแล้วสับกลับเข้ากองการ์ดพฤติกรรมของ Rathalos, การ์ดพฤติกรรมทั้งหมด จะทำความเสียหายเพิ่มขึ้น 1 หน่วย และระยะการโจมตีกับค่าหลบหลีกเพิ่มขึ้น 1 หน่วย"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 7,
+            "armor": 4,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ระยะการโจมตีของการ์ดนั้นจะลดลง 1 หน่วย"
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 6,
+            "armor": 4,
+            "part_break_rule": "ทิ้งการ์ดใบบนสุดของกองการ์ดพฤติกรรมของ Rathalos"
+          },
+          "left": {
+            "part_id": 2,
+            "connect_part_position": ["right"],
+            "part_break_threshold": 7,
+            "armor": 5,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Body จะทำให้ Hunter เล่นเพิ่มได้อีก 1 คน และเล่น Attack Card ได้เพิ่มอีก 1 ใบ"
+          },
+          "right": {
+            "part_id": 4,
+            "connect_part_position": ["left"],
+            "part_break_threshold": 7,
+            "armor": 4,
+            "part_break_rule": "นำการ์ดพฤติกรรม 'Take Off Blast' ออกจากเด็ค จากนั้นนำกองการ์ดที่ทิ้งแล้วสับกลับเข้ากองการ์ดพฤติกรรมของ Rathalos"
+          }
+        },
+        "element_resistance": [
+          {
+            "element_id": 1,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 2,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 3,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 4,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 5,
+            "level": 1,
+            "immune": false
+          }
+        ],
+        "status_resistance": [
+          {
+            "status_id": 1,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 2,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "status_id": 3,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 5,
+            "level": 0,
+            "immune": true
+          }
+        ],
+        "reward_table": [
+          {
+            "rolled_number": 1,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 24
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 2,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 10
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 3,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 22
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 4,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 19
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 5,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 23
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 6,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 17
+            },
+            "part_break_reward": {
+              "part_id": 2,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 7,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 25
+            },
+            "part_break_reward": {
+              "part_id": 6,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 8,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 18
+            },
+            "part_break_reward": {
+              "part_id": 4,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 9,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 21
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 10,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 20
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 11,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 16
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 12,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 9
+            },
+            "part_break_reward": {
+              "part_id": 1,
+              "gain_additional": 1
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "monster_id": 5,
+    "monster_name": "Azure Rathalos",
+    "thumbnail": "assets/img/azure_rathalos_Icon.png",
+    "difficulty": [
+      {
+        "difficulty_id": 1,
+        "level": 1,
+        "health": 80,
+        "map_image": "assets/img/maps/a_rathalos/a_rathalos_1_star_map.png",
+        "special_rule": {
+          "title": "Fleeting Instinct",
+          "description": "ทุกครั้งที่ Azure Rathalos ได้รับความเสียหายจาก Attack Card หลังจากแสดงผลลัพท์ของการโจมตี มันจะเคลื่อนที่ 1 node ไปหา Hunter ที่อยู่ไกล้ที่สุด"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 5,
+            "armor": 3,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ระยะการโจมตีของการ์ดนั้นจะลดลง 1 หน่วย"
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 6,
+            "armor": 3,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Tail ระยะการโจมตีของการ์ดนั้นจะลดลง 1 หน่วย"
+          },
+          "left": {
+            "part_id": 2,
+            "connect_part_position": ["right"],
+            "part_break_threshold": 6,
+            "armor": 4,
+            "part_break_rule": "Fleeting Instinct: จะทำให้ Azure Rathalos เคลื่อนที่ 2 nodes แทนที่จะเป็น 1 node"
+          },
+          "right": {
+            "part_id": 4,
+            "connect_part_position": ["left"],
+            "part_break_threshold": 6,
+            "armor": 3,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Wing ในการโจมตีนั้นจะทำให้ Hunter เล่นเพิ่มได้อีก 1 คน"
+          }
+        },
+        "element_resistance": [
+          {
+            "element_id": 1,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 2,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 3,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 5,
+            "level": 1,
+            "immune": false
+          }
+        ],
+        "status_resistance": [
+          {
+            "status_id": 1,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 2,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "status_id": 3,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 5,
+            "level": 0,
+            "immune": true
+          }
+        ],
+        "reward_table": [
+          {
+            "rolled_number": 1,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 28
+            },
+            "part_break_reward": {
+              "part_id": 4,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 2,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 10
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 3,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 26
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 4,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 30
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 5,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 32
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 6,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 29
+            },
+            "part_break_reward": {
+              "part_id": 2,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 7,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 31
+            },
+            "part_break_reward": {
+              "part_id": 6,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 8,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 27
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 9,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 28
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 10,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 27
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 11,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 31
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 12,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 9
+            },
+            "part_break_reward": {
+              "part_id": 1,
+              "gain_additional": 1
+            }
+          }
+        ]
+      },
+      {
+        "difficulty_id": 2,
+        "level": 2,
+        "health": 85,
+        "map_image": "assets/img/maps/a_rathalos/a_rathalos_2_star_map.png",
+        "special_rule": {
+          "title": "Strafing Instinct",
+          "description": "ทุกครั้งที่ Azure Rathalos ได้รับความเสียหายจาก Attack Card หลังจากแสดงผลลัพท์ของการโจมตี มันจะเคลื่อนที่ 1 node ไปหา Hunter ที่อยู่ไกล้ที่สุด, การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ความเสียหายของการ์ดนั้นจะเพิ่มขึ้น 1 หน่วย"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 6,
+            "armor": 3,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ระยะการโจมตีของการ์ดนั้นจะลดลง 1 หน่วย"
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 6,
+            "armor": 3,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Tail ระยะการโจมตีของการ์ดนั้นจะลดลง 1 หน่วย"
+          },
+          "left": {
+            "part_id": 2,
+            "connect_part_position": ["right"],
+            "part_break_threshold": 6,
+            "armor": 4,
+            "part_break_rule": "Fleeting Instinct: จะทำให้ Azure Rathalos เคลื่อนที่ 2 nodes แทนที่จะเป็น 1 node"
+          },
+          "right": {
+            "part_id": 4,
+            "connect_part_position": ["left"],
+            "part_break_threshold": 7,
+            "armor": 4,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Wing ในการโจมตีนั้นจะทำให้ Hunter เล่นเพิ่มได้อีก 1 คน"
+          }
+        },
+        "element_resistance": [
+          {
+            "element_id": 1,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 2,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 3,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 5,
+            "level": 1,
+            "immune": false
+          }
+        ],
+        "status_resistance": [
+          {
+            "status_id": 1,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 2,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "status_id": 3,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 5,
+            "level": 0,
+            "immune": true
+          }
+        ],
+        "reward_table": [
+          {
+            "rolled_number": 1,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 28
+            },
+            "part_break_reward": {
+              "part_id": 4,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 2,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 10
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 3,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 26
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 4,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 30
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 5,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 32
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 6,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 29
+            },
+            "part_break_reward": {
+              "part_id": 2,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 7,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 31
+            },
+            "part_break_reward": {
+              "part_id": 6,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 8,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 27
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 9,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 28
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 10,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 27
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 11,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 31
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 12,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 9
+            },
+            "part_break_reward": {
+              "part_id": 1,
+              "gain_additional": 1
+            }
+          }
+        ]
+      },
+      {
+        "difficulty_id": 4,
+        "level": 4,
+        "health": 90,
+        "map_image": "assets/img/maps/a_rathalos/a_rathalos_4_star_map.png",
+        "special_rule": {
+          "title": "Skyfire Instinct",
+          "description": "ทุกครั้งที่ Azure Rathalos ได้รับความเสียหายจาก Attack Card หลังจากแสดงผลลัพท์ของการโจมตี มันจะเคลื่อนที่ 1 node ไปหา Hunter ที่อยู่ไกล้ที่สุด, การ์ดพฤติกรรมทุกใบจะความเสียหายเพิ่มขึ้น 1 หน่วย"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 6,
+            "armor": 4,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ระยะการโจมตีของการ์ดนั้นจะลดลง 1 หน่วย"
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 7,
+            "armor": 4,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Tail ระยะการโจมตีของการ์ดนั้นจะลดลง 1 หน่วย"
+          },
+          "left": {
+            "part_id": 2,
+            "connect_part_position": ["right"],
+            "part_break_threshold": 7,
+            "armor": 5,
+            "part_break_rule": "Fleeting Instinct: จะทำให้ Azure Rathalos เคลื่อนที่ 2 nodes แทนที่จะเป็น 1 node"
+          },
+          "right": {
+            "part_id": 4,
+            "connect_part_position": ["left"],
+            "part_break_threshold": 7,
+            "armor": 4,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Wing ในการโจมตีนั้นจะทำให้ Hunter เล่นเพิ่มได้อีก 1 คน"
+          }
+        },
+        "element_resistance": [
+          {
+            "element_id": 1,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 2,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 3,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 5,
+            "level": 1,
+            "immune": false
+          }
+        ],
+        "status_resistance": [
+          {
+            "status_id": 1,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 2,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "status_id": 3,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 5,
+            "level": 0,
+            "immune": true
+          }
+        ],
+        "reward_table": [
+          {
+            "rolled_number": 1,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 28
+            },
+            "part_break_reward": {
+              "part_id": 4,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 2,
+            "reward": {
+              "resource_type_id": 1,
+              "item_id": 10
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 3,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 26
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 4,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 30
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 5,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 32
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 6,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 29
+            },
+            "part_break_reward": {
+              "part_id": 2,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 7,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 31
+            },
+            "part_break_reward": {
+              "part_id": 6,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 8,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 27
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 9,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 28
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 10,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 27
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 11,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 31
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 12,
+            "reward": {
+              "resource_type_id": 2,
+              "item_id": 9
+            },
+            "part_break_reward": {
+              "part_id": 1,
               "gain_additional": 1
             }
           }
