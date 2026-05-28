@@ -349,9 +349,18 @@ const markElement = (elementId) => {
   }
 }
 
+const faintCount = ref(0)
+const canComplete = computed(() => huntingHp.value === 0)
+const canFail = computed(() => faintCount.value >= 3)
+
+const toggleFaint = (index) => {
+  faintCount.value = faintCount.value === index ? index - 1 : index
+}
+
 const initHuntingData = () => {
   if (!monsterHuntingData.value) return
   huntingHp.value = monsterHuntingData.value.health
+  faintCount.value = 0
   const parts = {}
   Object.keys(activeParts.value).forEach((pos) => {
     parts[pos] = 0
@@ -990,8 +999,18 @@ const goToRewardPhase = () => {
           <!-- ── Monster Status Canvas ── -->
           <div class="msc-wrap">
             <!-- Monster portrait -->
-            <div class="msc-portrait">
-              <img :src="getImg(selectedMonster.thumbnail)" class="msc-monster-img" />
+            <div class="msc-portrait" :class="{ 'portrait-slain': huntingHp === 0 }">
+              <img :src="getImg(selectedMonster.thumbnail)" class="msc-monster-img" :class="{ 'monster-img-slain': huntingHp === 0 }" />
+
+              <!-- Slain overlay -->
+              <transition name="slain-fade">
+                <div v-if="huntingHp === 0" class="msc-slain-overlay">
+                  <div class="msc-slain-content">
+                    <span class="msc-slain-skull">💀</span>
+                    <span class="msc-slain-text">SLAIN</span>
+                  </div>
+                </div>
+              </transition>
 
               <!-- Applied status overlays -->
               <div class="msc-status-overlays">
@@ -1106,6 +1125,25 @@ const goToRewardPhase = () => {
               </div>
             </div>
           </div>
+
+          <!-- Active Status Effects -->
+          <transition-group name="status-pop" tag="div" class="hpanel-active-statuses">
+            <div
+              v-for="sid in appliedStatuses"
+              :key="sid"
+              class="hpanel-status-suffer"
+            >
+              <img
+                v-if="getStatusEffect(sid)"
+                :src="getImg(getStatusEffect(sid).thumbnail)"
+                class="hpanel-suffer-icon"
+              />
+              <div class="hpanel-suffer-text">
+                <span class="hpanel-suffer-name">{{ getStatusEffect(sid)?.effect_name }}</span>
+                <span class="hpanel-suffer-desc">{{ getStatusEffect(sid)?.monster_suffer }}</span>
+              </div>
+            </div>
+          </transition-group>
 
           <!-- Special Rule -->
           <div v-if="monsterHuntingData.special_rule" class="hpanel-special-rule">
@@ -1296,11 +1334,50 @@ const goToRewardPhase = () => {
       <!-- Quest Outcome -->
       <div class="hunt-result-section">
         <p class="hunt-result-label">— Quest Outcome —</p>
+
+        <!-- Faint Tracker -->
+        <div class="faint-tracker">
+          <span class="faint-label">Faint</span>
+          <div class="faint-icons">
+            <div
+              v-for="i in 3"
+              :key="i"
+              class="faint-slot"
+              :class="{ 'faint-used': i <= faintCount }"
+              @click="toggleFaint(i)"
+              title="คลิกเพื่อ Faint / ยกเลิก"
+            >
+              <img :src="getImg('assets/img/UI/faint_icon.png')" class="faint-icon-img" />
+              <span v-if="i <= faintCount" class="faint-x">✕</span>
+            </div>
+          </div>
+        </div>
+
         <div class="hunt-result-btns">
-          <button class="btn-complete" @click="requestOutcome('complete')">
+          <!-- Time Out: manual trigger -->
+          <button
+            v-if="!canComplete && !canFail"
+            class="btn-timeout"
+            @click="requestOutcome('fail')"
+          >
+            <span class="result-icon">⏱</span>Time Out
+          </button>
+
+          <!-- Quest Complete: only when HP = 0 -->
+          <button
+            v-if="canComplete"
+            class="btn-complete"
+            @click="requestOutcome('complete')"
+          >
             <span class="result-icon">✦</span>Quest Complete
           </button>
-          <button class="btn-fail" @click="requestOutcome('fail')">
+
+          <!-- Quest Failed: only when 3 faints -->
+          <button
+            v-if="canFail"
+            class="btn-fail"
+            @click="requestOutcome('fail')"
+          >
             <span class="result-icon">✕</span>Quest Failed
           </button>
         </div>
@@ -2878,10 +2955,88 @@ const goToRewardPhase = () => {
   margin: 0;
 }
 
+.faint-tracker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+}
+.faint-label {
+  font-size: 11px;
+  color: #7c5a2b;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.faint-icons {
+  display: flex;
+  gap: 8px;
+}
+.faint-slot {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.faint-slot:hover {
+  transform: scale(1.12);
+}
+.faint-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0.85;
+  transition: opacity 0.2s, filter 0.2s;
+}
+.faint-used .faint-icon-img {
+  opacity: 0.35;
+  filter: grayscale(70%);
+}
+.faint-x {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 38px;
+  font-weight: bold;
+  color: #ff4444;
+  text-shadow: 0 0 10px rgba(255, 60, 60, 0.9), 0 0 3px #000;
+  pointer-events: none;
+}
+
 .hunt-result-btns {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.hunt-result-btns > * {
+  flex: 1;
+  min-width: 120px;
+}
+
+.btn-timeout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 8px;
+  border: 2px solid #5a4a2a;
+  background: linear-gradient(to bottom, #2a2010, #151008);
+  color: #c89b3c;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+  letter-spacing: 1px;
+  min-height: 56px;
+  font-family: inherit;
+}
+.btn-timeout:hover {
+  border-color: #c89b3c;
+  box-shadow: 0 0 16px rgba(200, 155, 60, 0.4);
+  transform: translateY(-2px);
 }
 
 .result-icon {
@@ -3071,7 +3226,50 @@ const goToRewardPhase = () => {
   height: 70%;
   object-fit: contain;
   padding: 6%;
+  transition: filter 0.6s ease, opacity 0.6s ease;
 }
+.monster-img-slain {
+  filter: grayscale(100%) brightness(0.4);
+  opacity: 0.6;
+}
+.portrait-slain {
+  border-color: rgba(180, 40, 40, 0.6);
+  box-shadow: inset 0 0 40px rgba(120, 0, 0, 0.4);
+}
+.msc-slain-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle, rgba(120, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0.15) 100%);
+}
+.msc-slain-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.msc-slain-skull {
+  font-size: 42px;
+  filter: drop-shadow(0 0 12px rgba(200, 50, 50, 0.8));
+  animation: slain-pulse 2s ease-in-out infinite;
+}
+.msc-slain-text {
+  font-size: 22px;
+  font-weight: bold;
+  letter-spacing: 6px;
+  color: #ff4444;
+  text-shadow: 0 0 16px rgba(255, 60, 60, 0.9), 0 0 4px #000;
+  animation: slain-pulse 2s ease-in-out infinite;
+}
+@keyframes slain-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.7; transform: scale(0.96); }
+}
+.slain-fade-enter-active { transition: opacity 0.5s ease, transform 0.5s ease; }
+.slain-fade-enter-from   { opacity: 0; transform: scale(1.2); }
+
 /* Applied status overlay */
 .msc-status-overlays {
   position: absolute;
@@ -3347,6 +3545,46 @@ const goToRewardPhase = () => {
 .info-left-col .resist-row {
   flex-direction: row;
   gap: 8px;
+}
+
+.hpanel-active-statuses {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hpanel-status-suffer {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(60, 10, 100, 0.15);
+  border: 1px solid rgba(160, 80, 220, 0.3);
+  border-left: 3px solid #a855f7;
+}
+.hpanel-suffer-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.hpanel-suffer-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.hpanel-suffer-name {
+  font-size: 11px;
+  font-weight: bold;
+  color: #c084fc;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.hpanel-suffer-desc {
+  font-size: 12px;
+  color: #d8b4fe;
+  line-height: 1.5;
 }
 
 .hpanel-special-rule {
