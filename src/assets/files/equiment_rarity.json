@@ -120,7 +120,7 @@
                     {
                         "id": 6,
                         "name": "Charge Blade",
-                        "thumbnail": "assets/img/equiments/weapons/charge_bladeR1.png"
+                        "thumbnail": "assets/img/equiments/weapons/charge-bladeR1.png"
                     }
                 ]
             },
@@ -155,7 +155,7 @@
                     {
                         "id": 6,
                         "name": "Charge Blade",
-                        "thumbnail": "assets/img/equiments/weapons/charge_bladeR2.png"
+                        "thumbnail": "assets/img/equiments/weapons/charge-bladeR2.png"
                     }
                 ]
             },
@@ -190,7 +190,7 @@
                     {
                         "id": 6,
                         "name": "Charge Blade",
-                        "thumbnail": "assets/img/equiments/weapons/charge_bladeR3.png"
+                        "thumbnail": "assets/img/equiments/weapons/charge-bladeR3.png"
                     }
                 ]
             },
@@ -225,7 +225,7 @@
                     {
                         "id": 6,
                         "name": "Charge Blade",
-                        "thumbnail": "assets/img/equiments/weapons/charge_bladeR4.png"
+                        "thumbnail": "assets/img/equiments/weapons/charge-bladeR4.png"
                     }
                 ]
             }

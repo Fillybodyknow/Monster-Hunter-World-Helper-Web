@@ -104,6 +104,37 @@ const currentDialog = computed(() => {
 })
 
 const pendingAction = ref(null)
+const showBattleIntro = ref(false)
+const battleIntroPhase = ref('enter') // 'enter' | 'show' | 'leave'
+const battleIntroKey = ref(0)
+
+const outcomeAudio = ref(null)
+
+const playOutcomeSound = (type) => {
+  if (outcomeAudio.value) {
+    outcomeAudio.value.pause()
+    outcomeAudio.value = null
+  }
+  const audio = new Audio(`${import.meta.env.BASE_URL}assets/sounds/hunting_phase/${type === 'complete' ? 'quest_complete' : 'quest_failed'}.mp3`)
+  audio.volume = 0.5
+  audio.play().catch(() => {})
+  outcomeAudio.value = audio
+}
+
+const fadeOutOutcomeSound = () => {
+  const audio = outcomeAudio.value
+  if (!audio) return
+  const step = audio.volume / 20
+  const fade = setInterval(() => {
+    if (audio.volume > step) {
+      audio.volume = Math.max(0, audio.volume - step)
+    } else {
+      audio.pause()
+      outcomeAudio.value = null
+      clearInterval(fade)
+    }
+  }, 50)
+}
 
 const doAction = (action) => {
   pendingAction.value = action
@@ -115,7 +146,16 @@ const confirmAction = () => {
   pendingAction.value = null
   currentDialogId.value = action.PathToDialog
   if (selectedMonster.value.dialog_hunting_phase.includes(action.PathToDialog)) {
-    phase.value = 'hunting'
+    battleIntroKey.value++
+    showBattleIntro.value = true
+    battleIntroPhase.value = 'enter'
+    setTimeout(() => { battleIntroPhase.value = 'show' }, 30)
+    setTimeout(() => { battleIntroPhase.value = 'leave' }, 2200)
+    setTimeout(() => {
+      showBattleIntro.value = false
+      battleIntroPhase.value = 'enter'
+      phase.value = 'hunting'
+    }, 2800)
   }
 }
 
@@ -146,21 +186,26 @@ const confirmOutcome = () => {
       resultMonsterName.value = selectedMonster.value?.monster_name ?? ''
       resultAnimType.value = 'complete'
       showResultAnim.value = true
+      playOutcomeSound('complete')
       onComplete()
     }
   } else {
     resultMonsterName.value = selectedMonster.value?.monster_name ?? ''
     resultAnimType.value = 'fail'
     showResultAnim.value = true
+    playOutcomeSound('fail')
     onFail()
   }
 }
 
 const dismissResult = () => {
+  fadeOutOutcomeSound()
   showResultAnim.value = false
   resultAnimType.value = null
   resultMonsterName.value = ''
 }
+
+
 
 const scoutflySummary = computed(() => {
   if (!selectedQuest.value || !selectedMonster.value) return []
@@ -558,6 +603,7 @@ const confirmRewards = () => {
   resultMonsterName.value = selectedMonster.value?.monster_name ?? ''
   resultAnimType.value = 'complete'
   showResultAnim.value = true
+  playOutcomeSound('complete')
   onComplete()
 }
 
@@ -1382,6 +1428,7 @@ const goToRewardPhase = () => {
           </button>
         </div>
       </div>
+
     </div>
 
     <!-- ═══════════ REWARD PHASE ═══════════ -->
@@ -1558,6 +1605,46 @@ const goToRewardPhase = () => {
         </div>
       </div>
     </div>
+
+    <!-- ═══════════ BATTLE INTRO CINEMATIC ═══════════ -->
+    <teleport to="body">
+      <div
+        v-if="showBattleIntro"
+        :key="battleIntroKey"
+        class="battle-intro-overlay"
+        :class="`bi-${battleIntroPhase}`"
+      >
+        <!-- Red flash -->
+        <div class="bi-flash"></div>
+
+        <!-- Speed lines -->
+        <div class="bi-speed-lines"></div>
+
+        <!-- Letterbox bars -->
+        <div class="bi-bar bi-bar-top"></div>
+        <div class="bi-bar bi-bar-bottom"></div>
+
+        <!-- Monster slam -->
+        <div class="bi-monster-wrap">
+          <div class="bi-impact-ring"></div>
+          <img :src="getImg(selectedMonster.thumbnail)" class="bi-monster-img" />
+          <div class="bi-monster-glow"></div>
+        </div>
+
+        <!-- Text block -->
+        <div class="bi-text-wrap">
+          <p class="bi-line-danger">⚠ DANGER ⚠</p>
+          <p class="bi-line-main">การต่อสู้กำลังจะเริ่มขึ้น</p>
+          <p class="bi-line-sub">{{ selectedMonster.monster_name }}</p>
+        </div>
+
+        <!-- Impact white flash -->
+        <div class="bi-impact-flash"></div>
+
+        <!-- Vignette -->
+        <div class="bi-vignette"></div>
+      </div>
+    </teleport>
 
     <!-- ═══════════ OUTCOME CONFIRM MODAL ═══════════ -->
     <teleport to="body">
@@ -3015,6 +3102,8 @@ const goToRewardPhase = () => {
   min-width: 120px;
 }
 
+
+
 .btn-timeout {
   display: flex;
   align-items: center;
@@ -4360,6 +4449,218 @@ const goToRewardPhase = () => {
 
 <style>
 /* ══════════════════════════════════════════
+   BATTLE INTRO CINEMATIC
+══════════════════════════════════════════ */
+.battle-intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.battle-intro-overlay.bi-leave {
+  animation: bi-fade-out 0.6s 0.1s ease forwards;
+}
+@keyframes bi-fade-out {
+  to { opacity: 0; }
+}
+
+/* Red flash */
+.bi-flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, #ff2200 0%, #8b0000 60%, transparent 100%);
+  z-index: 10;
+  animation: bi-flash-anim 0.5s ease forwards;
+}
+@keyframes bi-flash-anim {
+  0%   { opacity: 0; }
+  15%  { opacity: 0.45; }
+  100% { opacity: 0; }
+}
+
+/* Impact white flash */
+.bi-impact-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  z-index: 9;
+  animation: bi-impact-anim 0.25s 0.45s ease forwards;
+  opacity: 0;
+}
+@keyframes bi-impact-anim {
+  0%   { opacity: 0.4; }
+  100% { opacity: 0; }
+}
+
+/* Speed lines */
+.bi-speed-lines {
+  position: absolute;
+  inset: -50%;
+  background: repeating-conic-gradient(
+    rgba(255, 80, 0, 0.12) 0deg 2deg,
+    transparent 2deg 8deg
+  );
+  z-index: 1;
+  animation: bi-lines-anim 0.6s 0.1s ease forwards;
+  opacity: 0;
+  transform: scale(0.2);
+}
+@keyframes bi-lines-anim {
+  0%   { opacity: 0; transform: scale(0.2); }
+  30%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+
+/* Letterbox bars */
+.bi-bar {
+  position: absolute;
+  left: 0; right: 0;
+  background: #000;
+  z-index: 6;
+  animation: bi-bar-in 0.18s 0.42s cubic-bezier(0.2, 0, 0, 1) forwards;
+  height: 0;
+}
+.bi-bar-top  { top: 0; }
+.bi-bar-bottom { bottom: 0; }
+@keyframes bi-bar-in {
+  to { height: 13vh; }
+}
+
+/* Monster wrap — shake on land */
+.bi-monster-wrap {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  animation: bi-shake 0.15s 0.25s ease;
+}
+@keyframes bi-shake {
+  0%,100% { transform: translate(0,0) rotate(0deg); }
+  20%  { transform: translate(-10px, 8px) rotate(-0.8deg); }
+  40%  { transform: translate(10px, -6px) rotate(0.8deg); }
+  60%  { transform: translate(-6px, 4px) rotate(-0.4deg); }
+  80%  { transform: translate(6px, -3px) rotate(0.4deg); }
+}
+
+/* Monster image — slam in */
+.bi-monster-img {
+  width: min(340px, 60vw);
+  height: min(340px, 60vw);
+  object-fit: contain;
+  animation: bi-monster-slam 0.55s 0.08s cubic-bezier(0.15, 1.4, 0.4, 1) forwards;
+  opacity: 0;
+  transform: scale(2.2) translateY(-30%);
+  filter: drop-shadow(0 0 50px rgba(255, 60, 0, 0.9)) drop-shadow(0 0 20px #ff2200);
+}
+@keyframes bi-monster-slam {
+  0%   { opacity: 0; transform: scale(2.2) translateY(-30%); filter: brightness(3) drop-shadow(0 0 60px #ff0000); }
+  60%  { opacity: 1; transform: scale(0.93) translateY(2%);  filter: brightness(1.2) drop-shadow(0 0 40px rgba(255,60,0,0.8)); }
+  80%  { transform: scale(1.04) translateY(-1%); }
+  100% { opacity: 1; transform: scale(1) translateY(0);       filter: drop-shadow(0 0 30px rgba(255,60,0,0.6)); }
+}
+
+/* Impact ring */
+.bi-impact-ring {
+  position: absolute;
+  width: min(340px, 60vw);
+  height: min(340px, 60vw);
+  border-radius: 50%;
+  border: 4px solid rgba(255, 80, 0, 0.8);
+  z-index: 3;
+  animation: bi-ring-expand 0.5s 0.55s ease forwards;
+  opacity: 0;
+}
+@keyframes bi-ring-expand {
+  0%   { transform: scale(0.8); opacity: 0.9; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+/* Monster glow */
+.bi-monster-glow {
+  position: absolute;
+  width: min(340px, 60vw);
+  height: min(340px, 60vw);
+  background: radial-gradient(circle, rgba(255, 60, 0, 0.3) 0%, transparent 70%);
+  animation: bi-glow-pulse 0.7s 0.6s ease-in-out infinite alternate;
+  opacity: 0;
+}
+@keyframes bi-glow-pulse {
+  from { opacity: 0.6; transform: scale(0.9); }
+  to   { opacity: 1;   transform: scale(1.1); }
+}
+
+/* Text block */
+.bi-text-wrap {
+  position: absolute;
+  bottom: 18vh;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+.bi-line-danger {
+  font-size: 11px;
+  letter-spacing: 6px;
+  color: #ff4444;
+  text-transform: uppercase;
+  margin: 0;
+  animation: bi-text-pop 0.2s 0.75s ease both;
+  opacity: 0;
+}
+.bi-line-main {
+  font-size: clamp(22px, 5.5vw, 38px);
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 2px;
+  margin: 0;
+  text-shadow:
+    3px 0 0 rgba(255,0,0,0.7),
+    -3px 0 0 rgba(0,100,255,0.5),
+    0 0 30px rgba(255,80,80,0.9),
+    0 2px 8px #000;
+  animation: bi-text-slam 0.3s 0.85s cubic-bezier(0.1, 1.5, 0.4, 1) both;
+  opacity: 0;
+}
+.bi-line-sub {
+  font-size: 13px;
+  letter-spacing: 8px;
+  color: #c89b3c;
+  text-transform: uppercase;
+  margin: 0;
+  text-shadow: 0 0 12px rgba(200, 155, 60, 0.8);
+  animation: bi-text-pop 0.25s 1.05s ease both;
+  opacity: 0;
+}
+@keyframes bi-text-slam {
+  0%   { opacity: 0; transform: scale(2) translateY(-15px); filter: blur(6px); }
+  60%  { opacity: 1; filter: blur(0); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes bi-text-pop {
+  0%   { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Vignette */
+.bi-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.8) 100%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ══════════════════════════════════════════
    OUTCOME CONFIRM MODAL  (unscoped — teleport escapes scoped)
 ══════════════════════════════════════════ */
 .outcome-confirm-overlay {
@@ -4739,7 +5040,7 @@ const goToRewardPhase = () => {
   align-items: center;
   gap: 14px;
   padding: 20px 48px;
-  animation: raStageIn 0.3s ease-out 0.38s both;
+  animation: raStageIn 0.3s ease-out 0.98s both;
 }
 @keyframes raStageIn {
   from {
@@ -4798,7 +5099,7 @@ const goToRewardPhase = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: raCrestStamp 0.65s cubic-bezier(0.22, 1.4, 0.6, 1) 0.48s both;
+  animation: raCrestStamp 0.45s cubic-bezier(0.22, 1.4, 0.6, 1) 1.08s both;
 }
 @keyframes raCrestStamp {
   0% {
@@ -5044,7 +5345,7 @@ const goToRewardPhase = () => {
   border-radius: 50%;
   background: #ffd27a;
   box-shadow: 0 0 6px #c89b3c;
-  animation: raParticleOut 1.8s ease-out calc(0.55s + var(--i) * 0.045s) both;
+  animation: raParticleOut 1.8s ease-out calc(0.75s + var(--i) * 0.045s) both;
 }
 @keyframes raParticleOut {
   0% {

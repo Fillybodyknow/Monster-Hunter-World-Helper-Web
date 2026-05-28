@@ -1637,7 +1637,7 @@
                         "required_dialog": "",
                         "title": "เร่งรุดไปยังจุดสุดท้ายที่พบ Anjanath!",
                         "consequences": "ทิ้ง 7 time cards",
-                        "PathToDialog": 34
+                        "PathToDialog": 29
                     }
                 ]
             },
