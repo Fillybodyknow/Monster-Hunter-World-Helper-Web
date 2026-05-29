@@ -52,6 +52,9 @@ const elementArmor = computed(() => {
   })
 })
 
+const getAbilityById   = (id) => bonusAbilityData.find(a => a.ability_id === id) ?? null
+const getElementalById = (id) => elementalData.find(e => e.elemental_id === id) ?? null
+
 const bonusAbilities = computed(() => {
   if (!hunter.value) return []
 
@@ -136,10 +139,10 @@ const openSwapModal = async (type) => {
         if (!it) return null
         if (type === 'weapon') {
           const d = await getWeapons(rawHunter.value.hunter_class_id, it.weapon_type_id, it.item_id)
-          return { id: `${it.weapon_type_id}-${it.item_id}`, thumbnail: d?.thumbnail ?? null, label: d?.item || d?.weapon_type || `Weapon ${it.item_id}`, raw: it }
+          return { id: `${it.weapon_type_id}-${it.item_id}`, thumbnail: d?.thumbnail ?? null, label: d?.item || d?.weapon_type || `Weapon ${it.item_id}`, data: d, raw: it }
         }
         const d = await getArmors(it.equip_set_id, it.equip_id)
-        return { id: `${it.equip_set_id}-${it.equip_id}`, thumbnail: d?.thumbnail ?? null, label: d?.equip || d?.set_name || `Armor ${it.equip_id}`, raw: it }
+        return { id: `${it.equip_set_id}-${it.equip_id}`, thumbnail: d?.thumbnail ?? null, label: d?.equip || d?.set_name || `Armor ${it.equip_id}`, data: d, raw: it }
       })
     )
     modalItems.value = results.filter(Boolean)
@@ -221,6 +224,21 @@ const setEquip = async (item) => {
               <img :src="getImg(hunter.weapon.thumbnail)" class="equip-item-img" />
             </div>
             <p class="equip-name">{{ hunter.weapon.item }}</p>
+            <div class="equip-details">
+              <div v-for="(cnt, key) in hunter.weapon.damage_cards" :key="key" v-show="cnt > 0" class="mini-dmg-wrap">
+                <div class="mini-dmg-frame">
+                  <div class="mini-dmg-card" :style="{ backgroundImage: `url(${getImg('assets/img/take_damage.png')})` }">
+                    <span class="mini-dmg-val">{{ key.replace('damage_', '') }}</span>
+                  </div>
+                  <span class="mini-dmg-count">×{{ cnt }}</span>
+                </div>
+              </div>
+              <div v-if="hunter.weapon.defense > 0"
+                class="mini-armor-card"
+                :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.png')})` }">
+                <span>{{ hunter.weapon.defense }}</span>
+              </div>
+            </div>
           </div>
 
           <!-- HELM -->
@@ -231,6 +249,19 @@ const setEquip = async (item) => {
               <img :src="getImg(hunter.armors.helm.thumbnail)" class="equip-item-img" />
             </div>
             <p class="equip-name">{{ hunter.armors.helm.equip }}</p>
+            <div class="equip-details">
+              <div v-if="hunter.armors.helm.physical_armor > 0"
+                class="mini-armor-card"
+                :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.png')})` }">
+                <span>{{ hunter.armors.helm.physical_armor }}</span>
+              </div>
+              <div v-if="hunter.armors.helm.elemental_armor?.elemental_id > 0"
+                class="mini-armor-card"
+                :style="{ backgroundImage: `url(${getImg(getElementalById(hunter.armors.helm.elemental_armor.elemental_id)?.thumbnail)}), url(${getImg('assets/img/bonus_armor.png')})` }">
+                <span class="mini-elem-val">{{ hunter.armors.helm.elemental_armor.protection }}</span>
+              </div>
+              <span v-if="hunter.armors.helm.ability_id > 0" class="equip-ability-chip">{{ getAbilityById(hunter.armors.helm.ability_id)?.ability_name }}</span>
+            </div>
           </div>
 
           <!-- MAIL -->
@@ -241,6 +272,19 @@ const setEquip = async (item) => {
               <img :src="getImg(hunter.armors.mail.thumbnail)" class="equip-item-img" />
             </div>
             <p class="equip-name">{{ hunter.armors.mail.equip }}</p>
+            <div class="equip-details">
+              <div v-if="hunter.armors.mail.physical_armor > 0"
+                class="mini-armor-card"
+                :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.png')})` }">
+                <span>{{ hunter.armors.mail.physical_armor }}</span>
+              </div>
+              <div v-if="hunter.armors.mail.elemental_armor?.elemental_id > 0"
+                class="mini-armor-card"
+                :style="{ backgroundImage: `url(${getImg(getElementalById(hunter.armors.mail.elemental_armor.elemental_id)?.thumbnail)}), url(${getImg('assets/img/bonus_armor.png')})` }">
+                <span class="mini-elem-val">{{ hunter.armors.mail.elemental_armor.protection }}</span>
+              </div>
+              <span v-if="hunter.armors.mail.ability_id > 0" class="equip-ability-chip">{{ getAbilityById(hunter.armors.mail.ability_id)?.ability_name }}</span>
+            </div>
           </div>
 
           <!-- GREAVES -->
@@ -251,6 +295,19 @@ const setEquip = async (item) => {
               <img :src="getImg(hunter.armors.greaves.thumbnail)" class="equip-item-img" />
             </div>
             <p class="equip-name">{{ hunter.armors.greaves.equip }}</p>
+            <div class="equip-details">
+              <div v-if="hunter.armors.greaves.physical_armor > 0"
+                class="mini-armor-card"
+                :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.png')})` }">
+                <span>{{ hunter.armors.greaves.physical_armor }}</span>
+              </div>
+              <div v-if="hunter.armors.greaves.elemental_armor?.elemental_id > 0"
+                class="mini-armor-card"
+                :style="{ backgroundImage: `url(${getImg(getElementalById(hunter.armors.greaves.elemental_armor.elemental_id)?.thumbnail)}), url(${getImg('assets/img/bonus_armor.png')})` }">
+                <span class="mini-elem-val">{{ hunter.armors.greaves.elemental_armor.protection }}</span>
+              </div>
+              <span v-if="hunter.armors.greaves.ability_id > 0" class="equip-ability-chip">{{ getAbilityById(hunter.armors.greaves.ability_id)?.ability_name }}</span>
+            </div>
           </div>
         </div>
 
@@ -346,6 +403,41 @@ const setEquip = async (item) => {
                 <div v-else class="smc-empty">?</div>
               </div>
               <p class="smc-label">{{ it.label }}</p>
+
+              <!-- Weapon details -->
+              <template v-if="equipType === 'weapon' && it.data">
+                <div class="smc-details">
+                  <div v-for="(cnt, key) in it.data.damage_cards" :key="key" v-show="cnt > 0" class="smc-dmg-card"
+                    :style="{ backgroundImage: `url(${getImg('assets/img/take_damage.png')})` }">
+                    <span>{{ key.replace('damage_', '') }}</span>
+                  </div>
+                  <div v-if="it.data.defense > 0" class="smc-armor-card"
+                    :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.png')})` }">
+                    <span>{{ it.data.defense }}</span>
+                  </div>
+                </div>
+                <div v-if="it.data.remove || it.data.add" class="smc-deck-row">
+                  <span v-if="it.data.remove" class="smc-deck-chip smc-remove">− {{ it.data.remove }}</span>
+                  <span v-if="it.data.add" class="smc-deck-chip smc-add">+ {{ it.data.add }}</span>
+                </div>
+              </template>
+
+              <!-- Armor details -->
+              <template v-if="equipType !== 'weapon' && it.data">
+                <div class="smc-details">
+                  <div v-if="it.data.physical_armor > 0" class="smc-armor-card"
+                    :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.png')})` }">
+                    <span>{{ it.data.physical_armor }}</span>
+                  </div>
+                  <div v-if="it.data.elemental_armor?.elemental_id > 0" class="smc-armor-card"
+                    :style="{ backgroundImage: `url(${getImg(getElementalById(it.data.elemental_armor.elemental_id)?.thumbnail)}), url(${getImg('assets/img/bonus_armor.png')})` }">
+                    <span>{{ it.data.elemental_armor.protection }}</span>
+                  </div>
+                </div>
+                <span v-if="it.data.ability_id > 0" class="smc-ability-chip">
+                  {{ getAbilityById(it.data.ability_id)?.ability_name }}
+                </span>
+              </template>
             </div>
             <div v-if="!modalItems.length" class="swap-no-items">No items available</div>
           </div>
@@ -585,6 +677,97 @@ const setEquip = async (item) => {
   color: #c89b3c;
   text-align: center;
   line-height: 1.3;
+}
+
+.equip-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+  align-items: flex-end;
+  margin-top: 4px;
+}
+
+/* ── Mini Damage Card (ย่อจาก .damage-frame) ── */
+.mini-dmg-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mini-dmg-frame {
+  padding: 5px 4px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 8px;
+  background: linear-gradient(to bottom, rgba(60, 45, 25, 0.9), rgba(20, 15, 10, 0.9));
+  border: 1px solid #7c5a2b;
+  box-shadow: inset 0 0 6px rgba(255, 200, 100, 0.1);
+}
+
+.mini-dmg-card {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mini-dmg-val {
+  font-size: 12px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 4px #000;
+  line-height: 1;
+}
+
+.mini-dmg-count {
+  font-size: 11px;
+  color: #c89b3c;
+  font-weight: bold;
+  margin-top: 1px;
+}
+
+/* ── Mini Armor Card (ย่อจาก .armor-card) ── */
+.mini-armor-card {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  background-size: contain, contain;
+  background-repeat: no-repeat, no-repeat;
+  background-position: center, center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mini-armor-card > span,
+.mini-elem-val {
+  font-size: 13px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 5px #000;
+  line-height: 1;
+}
+
+/* ── Ability chip ── */
+.equip-ability-chip {
+  font-size: 9px;
+  color: #ffd27a;
+  background: rgba(60, 40, 0, 0.6);
+  border: 1px solid rgba(200, 155, 60, 0.35);
+  border-radius: 4px;
+  padding: 2px 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  align-self: center;
 }
 
 /* ABILITY LIST */
@@ -1365,6 +1548,100 @@ const setEquip = async (item) => {
   font-size: 11px;
   color: #d4b87a;
   line-height: 1.3;
+}
+
+.smc-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.smc-dmg-card {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.smc-dmg-card span {
+  font-size: 11px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 4px #000;
+  line-height: 1;
+}
+
+.smc-armor-card {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  background-size: contain, contain;
+  background-repeat: no-repeat, no-repeat;
+  background-position: center, center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.smc-armor-card span {
+  font-size: 12px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 5px #000;
+  line-height: 1;
+}
+
+.smc-deck-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  width: 100%;
+}
+
+.smc-deck-chip {
+  font-size: 9px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  line-height: 1.4;
+  white-space: pre-line;
+  text-align: left;
+}
+
+.smc-remove {
+  color: #ff8888;
+  background: rgba(140, 30, 30, 0.25);
+  border: 1px solid rgba(200, 60, 60, 0.3);
+}
+
+.smc-add {
+  color: #88dd88;
+  background: rgba(30, 100, 30, 0.25);
+  border: 1px solid rgba(60, 180, 60, 0.3);
+}
+
+.smc-ability-chip {
+  display: block;
+  margin-top: 4px;
+  font-size: 9px;
+  color: #ffd27a;
+  background: rgba(60, 40, 0, 0.6);
+  border: 1px solid rgba(200, 155, 60, 0.35);
+  border-radius: 4px;
+  padding: 2px 5px;
+  text-align: center;
+  width: 100%;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .swap-no-items {
