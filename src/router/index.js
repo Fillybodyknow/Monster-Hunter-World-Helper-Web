@@ -22,16 +22,10 @@ const router = createRouter({
 })
 
 // 🔥 GUARD
-router.beforeEach((to, from, next) => {
-  if (to.meta.requiresHunter) {
-    const hunterId = localStorage.getItem('hunterId')
-
-    if (!hunterId) {
-      return next('/') // เด้งกลับ
-    }
+router.beforeEach((to) => {
+  if (to.meta.requiresHunter && !localStorage.getItem('hunterId')) {
+    return '/'
   }
-
-  next()
 })
 
 export default router

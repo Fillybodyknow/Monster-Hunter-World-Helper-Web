@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import WeaponSelect from '@/views/components/WeaponSelect.vue'
-import { createHunter, getHunters, deleteHunter } from '@/services/hunterStorage'
+import { createHunter, getHunters, deleteHunter, saveHunters } from '@/services/hunterStorage'
 import { getHunterClasses, getHunterClassById } from '@/services/hunterService'
 import { getArmors, getWeapons } from '@/services/equipService'
 import { useRouter } from 'vue-router'
@@ -106,6 +106,61 @@ const getClass = (id) => {
 
 const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 
+// ─── Import Hunter ────────────────────────────────────────────────────────────
+const showImportConfirm = ref(false)
+const importPending     = ref(null)
+const importError       = ref('')
+
+const onImportFile = (e) => {
+  const file = e.target.files[0]
+  e.target.value = ''
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result)
+      if (!data.version || !data.hunter?.hunter_id) {
+        importError.value = 'ไฟล์ไม่ถูกต้อง — ใช้ได้เฉพาะไฟล์ที่ Export จากแอปนี้เท่านั้น'
+        return
+      }
+      importPending.value = data
+      showImportConfirm.value = true
+      importError.value = ''
+    } catch {
+      importError.value = 'ไม่สามารถอ่านไฟล์ได้'
+    }
+  }
+  reader.readAsText(file)
+}
+
+const confirmHunterImport = () => {
+  const incoming = importPending.value?.hunter
+  if (!incoming) return
+  const all = getHunters()
+  const idx = all.findIndex((h) => h.hunter_id === incoming.hunter_id)
+  if (idx !== -1) all[idx] = incoming
+  else all.push(incoming)
+  saveHunters(all)
+  loadHunters()
+  showImportConfirm.value = false
+  importPending.value = null
+  Swal.fire({
+    icon: 'success',
+    title: `นำเข้า "${incoming.hunter_name}" สำเร็จ`,
+    timer: 1500,
+    showConfirmButton: false,
+  })
+}
+
+const cancelHunterImport = () => {
+  showImportConfirm.value = false
+  importPending.value = null
+}
+
+const formatDate = (iso) => {
+  try { return new Date(iso).toLocaleString('th-TH') } catch { return iso }
+}
+
 const handleCreate = () => {
   if (!hunterName.value || !palicoName.value || !weapon.value) {
     Swal.fire({
@@ -201,8 +256,50 @@ const handleCreate = () => {
           <div class="gc-enter-hint">▶</div>
         </div>
       </div>
+
+      <!-- IMPORT HUNTER CARD -->
+      <label class="guild-card import-hunter-card">
+        <div class="gc-left">
+          <div class="gc-icon-wrap import-icon-wrap">
+            <span class="import-icon">📥</span>
+          </div>
+        </div>
+        <div class="gc-body">
+          <div class="gc-name import-name">Import Hunter</div>
+          <div class="gc-meta">
+            <span class="gc-tag import-tag">โหลดจากไฟล์ .json</span>
+          </div>
+          <p v-if="importError" class="import-error-text">⚠ {{ importError }}</p>
+        </div>
+        <div class="gc-right">
+          <div class="gc-enter-hint">▶</div>
+        </div>
+        <input type="file" accept=".json" @change="onImportFile" style="display:none" />
+      </label>
     </div>
   </div>
+
+  <!-- Import Confirm Modal -->
+  <teleport to="body">
+    <div v-if="showImportConfirm" class="modal-overlay">
+      <div class="modal-parchment import-confirm-parchment">
+        <div class="modal-stamp-header">
+          <div class="modal-stamp">⚠ ยืนยันการนำเข้า</div>
+        </div>
+        <p class="ic-body">จะ<strong>เพิ่มหรืออัปเดต</strong> Hunter นี้ในรายชื่อ</p>
+        <div v-if="importPending?.hunter" class="ic-info">
+          <span>Hunter: <strong>{{ importPending.hunter.hunter_name }}</strong></span>
+          <span>Class: {{ getClass(importPending.hunter.hunter_class_id)?.hunter_class ?? importPending.hunter.hunter_class_id }}</span>
+          <span>Campaign Day: {{ importPending.hunter.campaign_day ?? 1 }}</span>
+          <span>บันทึกเมื่อ: {{ formatDate(importPending.exportedAt) }}</span>
+        </div>
+        <div class="ic-btns">
+          <button class="modal-btn modal-btn-confirm" @click="confirmHunterImport">✓ ยืนยัน</button>
+          <button class="modal-btn modal-btn-cancel"  @click="cancelHunterImport">← ยกเลิก</button>
+        </div>
+      </div>
+    </div>
+  </teleport>
 
   <!-- ══════════ HUNTER DETAIL MODAL ══════════ -->
   <teleport to="body">
@@ -510,6 +607,109 @@ const handleCreate = () => {
   color: #5a3d1f;
   border-color: rgba(90, 61, 31, 0.3);
   background: transparent;
+}
+
+/* IMPORT HUNTER CARD */
+.import-hunter-card {
+  border-style: dashed;
+  border-color: rgba(60, 160, 220, 0.35);
+  background: rgba(4, 12, 20, 0.6);
+  cursor: pointer;
+}
+
+.import-hunter-card:hover {
+  border-color: rgba(60, 160, 220, 0.7);
+  border-style: solid;
+  box-shadow: 0 0 12px rgba(60, 160, 220, 0.15);
+}
+
+.import-icon-wrap {
+  border-style: dashed;
+  border-color: rgba(60, 160, 220, 0.3);
+}
+
+.import-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.import-name { color: #5ab4e0; }
+
+.import-tag {
+  color: #2a6a90;
+  border-color: rgba(60, 160, 220, 0.25);
+  background: transparent;
+}
+
+.import-error-text {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #e06060;
+}
+
+/* Import Confirm Modal */
+.import-confirm-parchment {
+  max-width: 380px;
+}
+
+.ic-body {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: #c4a060;
+  text-align: center;
+  line-height: 1.6;
+}
+.ic-body strong { color: #e08080; }
+
+.ic-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px;
+  background: rgba(200, 155, 60, 0.06);
+  border: 1px solid rgba(200, 155, 60, 0.2);
+  border-radius: 8px;
+  font-size: 12px;
+  color: #a88040;
+  margin-bottom: 16px;
+}
+.ic-info strong { color: #f0ddb0; }
+
+.ic-btns {
+  display: flex;
+  gap: 10px;
+}
+
+.modal-btn {
+  flex: 1;
+  padding: 10px 8px;
+  border-radius: 8px;
+  border: 1px solid;
+  font-size: 13px;
+  font-family: 'Georgia', serif;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.5px;
+}
+
+.modal-btn-confirm {
+  border-color: rgba(60, 160, 220, 0.5);
+  background: rgba(60, 160, 220, 0.08);
+  color: #5ab4e0;
+}
+.modal-btn-confirm:hover {
+  background: rgba(60, 160, 220, 0.16);
+  color: #90d0f8;
+}
+
+.modal-btn-cancel {
+  border-color: rgba(124, 90, 43, 0.4);
+  background: rgba(124, 90, 43, 0.08);
+  color: #a88040;
+}
+.modal-btn-cancel:hover {
+  background: rgba(124, 90, 43, 0.15);
+  color: #f0ddb0;
 }
 
 .gc-details {

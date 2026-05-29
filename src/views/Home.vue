@@ -3,7 +3,6 @@ import { ref, computed } from 'vue'
 import Quest from './components/Quest.vue'
 import State from './components/State.vue'
 import Inventory from './components/Inventory.vue'
-import Equipment from './components/Equipment.vue'
 import Crafting from './components/Crafting.vue'
 import Setting from './components/Setting.vue'
 import HeadQuarter from './components/HeadQuarter.vue'
@@ -13,12 +12,11 @@ const menus = [
   { menu: 'HeadQuarter', label: 'HQ',        thumbnail: 'assets/img/menu_topbar_icon/head_querter.png', white: true },
   { menu: 'State',       label: 'State',     thumbnail: 'assets/img/menu_topbar_icon/hunter.png' },
   { menu: 'Inventory',   label: 'Inventory', thumbnail: 'assets/img/menu_topbar_icon/inv.png' },
-  { menu: 'Equipment',   label: 'Equipment', thumbnail: 'assets/img/menu_topbar_icon/equip.png' },
   { menu: 'Crafting',    label: 'Crafting',  thumbnail: 'assets/img/menu_topbar_icon/craft.png' },
   { menu: 'Setting',     label: 'Setting',   thumbnail: 'assets/img/menu_topbar_icon/setting.png' },
 ]
 
-const componentMap = { Quest, State, Inventory, Equipment, Crafting, HeadQuarter, Setting }
+const componentMap = { Quest, State, Inventory, Crafting, HeadQuarter, Setting }
 const currentComponent = computed(() => componentMap[activeMenu.value])
 const activeMenu = ref('Quest')
 

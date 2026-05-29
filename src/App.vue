@@ -1,6 +1,6 @@
 <script setup>
 import { useRoute } from 'vue-router'
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { hunter, loadHunter } from '@/stores/hunter'
 import {
   craftNotifications,
@@ -8,6 +8,7 @@ import {
   checkCraftability,
   initCraftability,
 } from '@/stores/craftingWhitelist'
+import { showTips } from '@/stores/settings'
 
 const route = useRoute()
 const isHomePage = computed(() => route.path === '/')
@@ -21,6 +22,11 @@ onMounted(() => {
     initCraftability(hunter.value)
     craftabilityReady = true
   }
+  startTipTimer()
+})
+
+onUnmounted(() => {
+  stopTipTimer()
 })
 
 watch(hunter, (val) => {
@@ -31,6 +37,90 @@ watch(hunter, (val) => {
     return
   }
   checkCraftability(val)
+})
+
+// ─── Tip Notification System ──────────────────────────────────────────────────
+const tipNotifications = ref([])
+let tipTimer = null
+let firstTipTimer = null
+let lastTipIndex = -1
+
+const tips = [
+  { icon: '🎒', text: 'กด "🎒 Inventory" ระหว่าง Gathering Phase เพื่อเปิด Inventory และเพิ่ม Item ได้ทันที' },
+  { icon: '📌', text: 'กดที่การ์ด Weapon/Armor ใน Crafting เพื่อดูรายละเอียด และเพิ่มเข้า Whitelist (สูงสุด 5 Item)' },
+  { icon: '🔔', text: 'Craft Whitelist จะแจ้งเตือนเมื่อ Material ครบ และลบออกอัตโนมัติเมื่อ Craft ได้แล้ว' },
+  { icon: '⚔', text: 'ใน Hunting Panel กดที่ Element หรือ Status Resistance เพื่อนับจำนวนการโจมตีแบบ Real-time' },
+  { icon: '💀', text: 'กด Faint Icon เพื่อนับจำนวน Faint — Quest จะ Fail อัตโนมัติเมื่อครบ 3 ครั้ง' },
+  { icon: '🗡', text: 'กดปุ่ม +/− ใต้แต่ละ Part เพื่อ Track ความเสียหาย — Part จะแสดงสถานะ BROKEN เมื่อถึง Threshold' },
+  { icon: '🎲', text: 'ใน Reward Phase สามารถกดที่ลูกเต๋าแต่ละลูกเพื่อทอยใหม่เฉพาะลูกนั้นได้' },
+  { icon: '🔍', text: 'Scoutfly Level บน Quest Detail กำหนดว่า Monster จะใช้ Special Attack ระดับไหน' },
+  { icon: '🛡', text: 'สร้าง Armor ครบทั้ง 3 ชิ้น (Helm, Mail, Greaves) ของ Set เดียวกันเพื่อปลดล็อค Set Bonus' },
+  { icon: '📋', text: 'Quest จะถูกล็อคจนกว่าจะผ่าน Assigned Quest ของ Monster นั้นก่อน' },
+  { icon: '🏆', text: 'ใน Reward Phase เลือก Dice หลายลูกแล้วรวมค่า เพื่อ Claim Reward จากแถวที่ตรงกัน' },
+  { icon: '💡', text: 'กด Notify ที่เด้งขึ้นมาเพื่อปิดทันที หรือรอให้หายเองโดยอัตโนมัติ' },
+  { icon: '✨', text: 'Status Effect ที่ Apply แล้ว (✓) สามารถกดที่ Badge บน Monster เพื่อเอาออกได้' },
+  { icon: '❤', text: 'HP Bar ใน Hunting Panel จะเปลี่ยนสี เหลือง → แดง เมื่อ Monster เหลือ HP น้อย' },
+  { icon: '📅', text: 'Campaign Calendar บนหน้า Quest Board แสดงวันแคมเปญที่ผ่านมา — เพิ่มขึ้นทุกครั้งที่จบ Quest' },
+  { icon: '🗺', text: 'แผนที่ใน Hunting Panel แสดง Zone ที่ Monster อาศัยอยู่ ใช้วางแผนการล่าได้' },
+  { icon: '⚡', text: 'Special Rule ใน Hunting Panel คือกติกาพิเศษของ Monster นั้น อ่านให้ดีก่อนเริ่ม Hunt' },
+  { icon: '👥', text: 'ใน Reward Phase เลือกจำนวน Hunter ที่ร่วมล่าเพื่อกำหนดจำนวนลูกเต๋าที่ทอยได้' },
+  { icon: '🎯', text: 'Investigation Quest และ Tempered Quest ให้ลูกเต๋า Reward มากกว่า Assigned Quest' },
+  { icon: '🔧', text: 'Weapon บางชิ้นต้องการ Weapon ชิ้นก่อนหน้า (Required Weapon) จึงจะ Craft ได้ — ตรวจสอบใน Item Modal' },
+  { icon: '🌿', text: 'ทรัพยากรแต่ละประเภทใช้ Craft อุปกรณ์ที่แตกต่างกัน สะสมให้หลากหลายไว้ก่อน' },
+  { icon: '💎', text: 'การ Break Part ของ Monster จะทำให้มันนั้นอ่อนแอลงได้, อีกทั้งยังได้ Reward เพิ่มเติมได้ด้วย' },
+  { icon: '⭐', text: 'ระดับดาวบน Quest Card บ่งบอกความยาก — ดาวม่วง (4 ดาว) คือ Tempered ซึ่งยากที่สุดและให้ Reward มากสุด' },
+  { icon: '⏳', text: 'Time Limit ใน Quest Detail คือจำนวน Card ที่ใช้ได้ — หมดก็ถือว่า Quest Fail' },
+  { icon: '◄', text: 'กดปุ่ม Back ที่มุมบนซ้ายเพื่อย้อนกลับไปหน้าก่อนหน้าได้ทุกเมื่อ โดยข้อมูลจะยังคงอยู่' },
+  { icon: '📦', text: 'ข้อมูลทั้งหมดบันทึกใน Local Storage อัตโนมัติ — ไม่ต้องกังวลว่าจะหายเมื่อปิดหน้าเว็บ' },
+  { icon: '🔓', text: 'ผ่าน Assigned Quest ก่อน จึงจะปลดล็อค Investigation Quest และ Tempered Investigation ของ Monster นั้น' },
+  { icon: '📤', text: 'หน้า Settings มีปุ่ม Export สำหรับบันทึกข้อมูล Hunter แต่ละคนเป็นไฟล์ .json — เก็บไว้สำรองข้อมูลก่อนเริ่มแคมเปญ' },
+  { icon: '📥', text: 'นำเข้า Hunter จากไฟล์ .json ได้จากหน้าเลือก Hunter — ระบบจะเพิ่มหรืออัปเดต Hunter โดยไม่กระทบตัวอื่น' },
+  { icon: '💾', text: 'ชื่อไฟล์ Export จะมี วันที่, ชื่อ Hunter, Class และ Campaign Day เพื่อง่ายต่อการจำแนก เช่น 2025-01-15_Alon_Great_Sword_Day12.json' },
+  { icon: '🏕', text: 'หน้า HQ มี 6 Location ให้เลือก — กดที่การ์ดเพื่อเข้าสู่ Activity นั้น กด ‹ กลับ เพื่อออก' },
+  { icon: '🎲', text: 'Resource Center ใน HQ: ทอย 2 เต๋า เลือก/รวมเต๋าเพื่อ Claim Reward จาก Reward Table แล้วกด "รับรางวัลและปิด" เพื่อเพิ่มลง Inventory' },
+  { icon: '⚖', text: 'Provisions Stockpile ใน HQ: Trade Common 3 ชิ้น → รับ Common 1 ชิ้น หรือ Trade Resource 10 ชิ้น → รับ Monster Part จาก Monster ที่ผ่านมาแล้ว' },
+  { icon: '🍖', text: 'Meowscular Chef ใน HQ: เลือก Element เพื่อรับ Token — วางบนอาวุธเพื่อบ่งบอกว่า Quest ถัดไปจะได้ต้านทาน Element นั้น' },
+  { icon: '🐱', text: "Hunter's Lodge ใน HQ: มี Palico → เปลี่ยน Palico ที่ร่วมเดินทาง | ไม่มี → ใช้ Resource 3 ชิ้นเพื่อจ้าง Palico ชั่วคราว" },
+  { icon: '📋', text: 'The Handler ใน HQ: เลือก Investigation/Tempered Quest แล้วกด Reset เพื่อล้างจำนวนครั้งที่เล่น เล่นซ้ำได้ใหม่' },
+  { icon: '🐷', text: 'Pet the Poogie ใน HQ: "บางครั้งสิ่งนี้อาจนำโชคมาให้คุณ บางคนเชื่อว่ามันเป็นเพียงตำนาน"' },
+]
+
+const dismissTip = (id) => {
+  tipNotifications.value = tipNotifications.value.filter((n) => n.id !== id)
+}
+
+const showNextTip = () => {
+  if (!showTips.value) return
+  let idx
+  do { idx = Math.floor(Math.random() * tips.length) } while (idx === lastTipIndex && tips.length > 1)
+  lastTipIndex = idx
+  const tip = tips[idx]
+  const id = `tip_${Date.now()}`
+  tipNotifications.value = [...tipNotifications.value, { ...tip, id }]
+  setTimeout(() => dismissTip(id), 10000)
+}
+
+const startTipTimer = () => {
+  firstTipTimer = setTimeout(() => {
+    showNextTip()
+    tipTimer = setInterval(showNextTip, 3 * 15 * 1000)
+  }, 15 * 1000)
+}
+
+const stopTipTimer = () => {
+  clearTimeout(firstTipTimer)
+  clearInterval(tipTimer)
+  firstTipTimer = null
+  tipTimer = null
+}
+
+watch(showTips, (val) => {
+  if (val) {
+    startTipTimer()
+  } else {
+    stopTipTimer()
+    tipNotifications.value = []
+  }
 })
 const logo = `${import.meta.env.BASE_URL}assets/img/UI/icon.jpg`
 </script>
@@ -54,6 +144,27 @@ const logo = `${import.meta.env.BASE_URL}assets/img/UI/icon.jpg`
     <div class="content-panel">
       <router-view />
     </div>
+
+    <!-- TIP NOTIFICATIONS -->
+    <teleport to="body">
+      <div class="tip-notif-wrapper">
+        <transition-group name="tip" tag="div" class="tip-notif-list">
+          <div
+            v-for="tip in tipNotifications"
+            :key="tip.id"
+            class="tip-notif-toast"
+            @click="dismissTip(tip.id)"
+          >
+            <span class="tip-icon">{{ tip.icon }}</span>
+            <div class="tip-body">
+              <span class="tip-label">Guild Tip</span>
+              <span class="tip-text">{{ tip.text }}</span>
+            </div>
+            <div class="tip-progress"></div>
+          </div>
+        </transition-group>
+      </div>
+    </teleport>
 
     <!-- CRAFT NOTIFICATIONS -->
     <teleport to="body">
@@ -324,6 +435,96 @@ const logo = `${import.meta.env.BASE_URL}assets/img/UI/icon.jpg`
     border-radius: 10px;
     width: 100%;
   }
+}
+
+/* ══════════════════════════════════════════
+   TIP NOTIFICATIONS
+══════════════════════════════════════════ */
+.tip-notif-wrapper {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 9998;
+  pointer-events: none;
+}
+
+.tip-notif-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.tip-notif-toast {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px 10px 12px;
+  border-radius: 10px;
+  max-width: 300px;
+  pointer-events: all;
+  cursor: pointer;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(4, 12, 20, 0.97), rgba(2, 8, 16, 0.99));
+  border: 1px solid rgba(60, 160, 220, 0.45);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.8),
+    0 0 14px rgba(60, 140, 220, 0.12),
+    inset 0 0 10px rgba(60, 140, 220, 0.04);
+}
+
+.tip-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  line-height: 1.2;
+  margin-top: 1px;
+}
+
+.tip-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.tip-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #4a9fd4;
+}
+
+.tip-text {
+  font-size: 12px;
+  color: #c8dff0;
+  line-height: 1.5;
+}
+
+.tip-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(to right, #2a7ab8, #60c0ff);
+  animation: cnProgress 10s linear forwards;
+}
+
+.tip-enter-active {
+  animation: notifSlideIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.tip-leave-active {
+  animation: notifSlideOut 0.3s ease-in forwards;
+}
+
+@media (max-width: 768px) {
+  .tip-notif-wrapper {
+    top: 8px;
+    right: 8px;
+    left: 8px;
+  }
+  .tip-notif-list { align-items: stretch; }
+  .tip-notif-toast { max-width: 100%; }
 }
 
 /* ══════════════════════════════════════════

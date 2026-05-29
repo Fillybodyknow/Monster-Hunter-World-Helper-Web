@@ -17,7 +17,12 @@ const save = (data) => {
 const stored = load()
 
 export const showQuestEffects = ref(stored.showQuestEffects !== false)
+export const showTips = ref(stored.showTips !== false)
 
 watch(showQuestEffects, (val) => {
   save({ ...load(), showQuestEffects: val })
+})
+
+watch(showTips, (val) => {
+  save({ ...load(), showTips: val })
 })

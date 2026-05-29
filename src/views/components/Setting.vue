@@ -1,5 +1,41 @@
 <script setup>
-import { showQuestEffects } from '@/stores/settings'
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { showQuestEffects, showTips } from '@/stores/settings'
+import classHunterData from '@/assets/files/class_hunter.json'
+import { getHunters } from '@/services/hunterStorage'
+import { hunter } from '@/stores/hunter'
+
+const router = useRouter()
+
+const logout = () => {
+  localStorage.removeItem('hunterId')
+  hunter.value = null
+  router.push('/')
+}
+
+// ─── Export ───────────────────────────────────────────────────────────────────
+const hunters = computed(() => getHunters())
+
+const getClassName = (classId) =>
+  classHunterData.find((c) => c.hunter_class_id === classId)?.hunter_class ?? `Class${classId}`
+
+const sanitize = (str) => String(str).replace(/[^\w฀-๿]/g, '_').replace(/_+/g, '_')
+
+const exportHunter = (hunter) => {
+  const date = new Date().toISOString().slice(0, 10)
+  const name = sanitize(hunter.hunter_name)
+  const cls  = sanitize(getClassName(hunter.hunter_class_id))
+  const day  = `Day${hunter.campaign_day ?? 1}`
+  const payload = { version: '1.1', exportedAt: new Date().toISOString(), hunter }
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href = url
+  a.download = `${date}_${name}_${cls}_${day}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 </script>
 
 <template>
@@ -62,6 +98,24 @@ import { showQuestEffects } from '@/stores/settings'
               <span class="toggle-label">{{ showQuestEffects ? 'ON' : 'OFF' }}</span>
             </button>
           </div>
+
+          <div class="setting-row">
+            <div class="setting-row-info">
+              <span class="setting-row-label">💡 Tip Notifications</span>
+              <span class="setting-row-desc">แสดง Tip เป็นระยะๆ เพื่อแนะนำฟีเจอร์ต่างๆ ของแอป</span>
+            </div>
+            <button
+              class="toggle-btn"
+              :class="{ active: showTips }"
+              @click="showTips = !showTips"
+              :aria-label="showTips ? 'ปิด Tip' : 'เปิด Tip'"
+            >
+              <span class="toggle-track">
+                <span class="toggle-thumb"></span>
+              </span>
+              <span class="toggle-label">{{ showTips ? 'ON' : 'OFF' }}</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -70,13 +124,31 @@ import { showQuestEffects } from '@/stores/settings'
           <span class="ss-icon">💾</span>
           <span class="ss-title">ข้อมูลเซฟ</span>
         </div>
-        <div class="ss-body coming-soon">
-          <span class="cs-badge">เร็วๆ นี้</span>
-          <p class="cs-text">ส่งออก นำเข้า และสำรองข้อมูลเซฟของนักล่า</p>
+        <div class="ss-body">
+
+          <!-- Export per hunter -->
+          <div class="save-section-label">📤 ส่งออก Hunter</div>
+          <div v-if="hunters.length === 0" class="save-empty">ยังไม่มี Hunter — สร้าง Hunter ก่อนเพื่อ Export</div>
+          <div v-for="h in hunters" :key="h.hunter_id" class="save-hunter-row">
+            <div class="save-hunter-info">
+              <span class="save-hunter-name">{{ h.hunter_name }}</span>
+              <span class="save-hunter-meta">{{ getClassName(h.hunter_class_id) }} · Day {{ h.campaign_day ?? 1 }}</span>
+            </div>
+            <button class="save-btn save-btn-export" @click="exportHunter(h)">Export</button>
+          </div>
+
+          <p class="save-import-hint">💡 Import Hunter ทำได้จากหน้าเลือก Hunter</p>
+
         </div>
       </div>
 
     </div>
+
+    <!-- LOGOUT -->
+    <button class="logout-btn" @click="logout">
+      <span class="logout-icon">🚪</span>
+      เปลี่ยน Hunter
+    </button>
 
     <!-- VERSION FOOTER -->
     <div class="setting-footer">
@@ -317,6 +389,239 @@ import { showQuestEffects } from '@/stores/settings'
   color: #5a3d1f;
   font-style: italic;
 }
+
+/* ══════════════════════════════════════════
+   SAVE SECTION
+══════════════════════════════════════════ */
+.save-section-label {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #7c5a2b;
+  margin-bottom: 8px;
+}
+
+.save-empty {
+  font-size: 12px;
+  color: #5a3d1f;
+  font-style: italic;
+  padding: 8px 0;
+}
+
+.save-hunter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(124, 90, 43, 0.12);
+}
+.save-hunter-row:last-of-type { border-bottom: none; }
+
+.save-hunter-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.save-hunter-name {
+  font-size: 13px;
+  color: #f0ddb0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.save-hunter-meta {
+  font-size: 11px;
+  color: #7c5a2b;
+}
+
+.save-import-hint {
+  margin: 12px 0 0;
+  font-size: 11px;
+  color: #5a3d1f;
+  font-style: italic;
+}
+
+.save-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.save-divider {
+  height: 1px;
+  background: rgba(124, 90, 43, 0.2);
+  margin: 12px 0;
+}
+
+.save-btn {
+  flex-shrink: 0;
+  padding: 7px 18px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-family: 'Georgia', serif;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+}
+
+.save-btn-export {
+  border: 1px solid rgba(200, 155, 60, 0.5);
+  background: rgba(200, 155, 60, 0.07);
+  color: #c89b3c;
+}
+.save-btn-export:hover {
+  background: rgba(200, 155, 60, 0.14);
+  color: #ffd27a;
+}
+
+.save-btn-import {
+  border: 1px solid rgba(60, 160, 220, 0.5);
+  background: rgba(60, 160, 220, 0.07);
+  color: #5ab4e0;
+}
+.save-btn-import:hover {
+  background: rgba(60, 160, 220, 0.14);
+  color: #90d0f8;
+}
+
+.save-msg {
+  margin: 10px 0 0;
+  font-size: 12px;
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+.save-msg-error {
+  color: #e06060;
+  background: rgba(200, 60, 60, 0.1);
+  border: 1px solid rgba(200, 60, 60, 0.3);
+}
+.save-msg-ok {
+  color: #60c060;
+  background: rgba(60, 180, 60, 0.1);
+  border: 1px solid rgba(60, 180, 60, 0.3);
+}
+
+/* ── Import Confirm Modal ── */
+.ic-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.ic-modal {
+  background: linear-gradient(160deg, rgba(22, 16, 8, 0.99), rgba(10, 8, 4, 0.99));
+  border: 1px solid rgba(200, 155, 60, 0.4);
+  border-radius: 14px;
+  width: 360px;
+  max-width: 100%;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.9);
+}
+
+.ic-stamp {
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #e0a030;
+  text-align: center;
+}
+
+.ic-body {
+  margin: 0;
+  font-size: 13px;
+  color: #c4a060;
+  line-height: 1.6;
+  text-align: center;
+}
+.ic-body strong { color: #e06060; }
+
+.ic-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: rgba(200, 155, 60, 0.06);
+  border: 1px solid rgba(200, 155, 60, 0.2);
+  border-radius: 7px;
+  font-size: 11px;
+  color: #a88040;
+}
+
+.ic-btns {
+  display: flex;
+  gap: 10px;
+}
+
+.ic-btn-ok {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(200, 60, 60, 0.5);
+  background: rgba(200, 60, 60, 0.1);
+  color: #e08080;
+  font-size: 13px;
+  font-family: 'Georgia', serif;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.ic-btn-ok:hover { background: rgba(200, 60, 60, 0.18); color: #ff9090; }
+
+.ic-btn-cancel {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(124, 90, 43, 0.4);
+  background: rgba(124, 90, 43, 0.08);
+  color: #a88040;
+  font-size: 13px;
+  font-family: 'Georgia', serif;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.ic-btn-cancel:hover { background: rgba(124, 90, 43, 0.15); color: #f0ddb0; }
+
+/* ══════════════════════════════════════════
+   LOGOUT
+══════════════════════════════════════════ */
+.logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(200, 60, 60, 0.35);
+  background: rgba(200, 60, 60, 0.06);
+  color: #c06060;
+  font-size: 13px;
+  font-family: 'Georgia', serif;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.logout-btn:hover {
+  border-color: rgba(200, 60, 60, 0.6);
+  background: rgba(200, 60, 60, 0.12);
+  color: #e08080;
+}
+
+.logout-icon { font-size: 16px; }
 
 /* ══════════════════════════════════════════
    FOOTER

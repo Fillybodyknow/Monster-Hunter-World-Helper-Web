@@ -1,13 +1,14 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 
-import { getHunterById } from '@/services/hunterStorage'
+import { getHunterById, saveHunter } from '@/services/hunterStorage'
 import { getHunterClassById } from '@/services/hunterService'
 import { getArmors, getWeapons } from '@/services/equipService'
 import elementalData from '@/assets/files/elemental.json'
 import bonusAbilityData from '@/assets/files/bonus_ability.json'
 
-const hunter = ref(null)
+const hunter    = ref(null)
+const rawHunter = ref(null)
 
 const totalArmor = computed(() => {
   if (!hunter.value) return 0
@@ -75,48 +76,99 @@ const bonusAbilities = computed(() => {
 
 const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 
-onMounted(async () => {
+const loadState = async () => {
   const HunterID = parseInt(localStorage.getItem('hunterId'))
   const Hunter = getHunterById(HunterID)
+  rawHunter.value = Hunter
   const Weapon = Hunter.equipments.weapons.find((i) => i.is_equip)
   const Armors = {
-    helm: Hunter.equipments.armors.helm.find((i) => i.is_equip),
-    mail: Hunter.equipments.armors.mail.find((i) => i.is_equip),
+    helm:    Hunter.equipments.armors.helm.find((i) => i.is_equip),
+    mail:    Hunter.equipments.armors.mail.find((i) => i.is_equip),
     greaves: Hunter.equipments.armors.greaves.find((i) => i.is_equip),
   }
-
-  const helm = await Promise.resolve(getArmors(Armors.helm.equip_set_id, Armors.helm.equip_id))
-  const mail = await Promise.resolve(getArmors(Armors.mail.equip_set_id, Armors.mail.equip_id))
-  const greaves = await Promise.resolve(
+  const [helm, mail, greaves, weapon] = await Promise.all([
+    getArmors(Armors.helm.equip_set_id, Armors.helm.equip_id),
+    getArmors(Armors.mail.equip_set_id, Armors.mail.equip_id),
     getArmors(Armors.greaves.equip_set_id, Armors.greaves.equip_id),
-  )
-  const weapon = await Promise.resolve(
     getWeapons(Hunter.hunter_class_id, Weapon.weapon_type_id, Weapon.item_id),
-  )
-  const Hunterinfo = {
+  ])
+  hunter.value = {
     name: Hunter.hunter_name,
-    class: await Promise.resolve(getHunterClassById(Hunter.hunter_class_id)),
+    class: await getHunterClassById(Hunter.hunter_class_id),
     palico: Hunter.palico_name,
     campaign_day: Hunter.campaign_day,
-    weapon: weapon,
-    armors: {
-      helm: helm,
-      mail: mail,
-      greaves: greaves,
-    },
+    weapon,
+    armors: { helm, mail, greaves },
     armor_set_ability:
-      helm.equip_set_id == mail.equip_set_id && helm.equip_set_id == greaves.equip_set_id
-        ? helm.set_ability_bonus
-        : 0,
+      helm.equip_set_id === mail.equip_set_id && helm.equip_set_id === greaves.equip_set_id
+        ? helm.set_ability_bonus : 0,
   }
+}
 
-  // console.log(Hunterinfo)
-  hunter.value = Hunterinfo
-})
+onMounted(loadState)
+
+// ─── Swap Equipment ───────────────────────────────────────────────────────────
+const equipType    = ref('weapon')
+const showSwapModal = ref(false)
+const modalItems   = ref([])
+const loadingModal = ref(false)
+
+const equippedOrNull = (arr) => Array.isArray(arr) ? arr.find((i) => i?.is_equip) || null : null
+
+const slotTitle = (key) =>
+  ({ weapon: 'Weapon', helm: 'Helm', mail: 'Mail', greaves: 'Greaves' }[key] ?? '')
+
+const equipArrayByType = (type) => {
+  if (!rawHunter.value?.equipments) return []
+  if (type === 'weapon') return rawHunter.value.equipments.weapons || []
+  return rawHunter.value.equipments.armors?.[type] || []
+}
+
+const openSwapModal = async (type) => {
+  equipType.value  = type
+  showSwapModal.value = true
+  modalItems.value = []
+  loadingModal.value = true
+  try {
+    const rawItems = equipArrayByType(type)
+    const results = await Promise.all(
+      rawItems.map(async (it) => {
+        if (!it) return null
+        if (type === 'weapon') {
+          const d = await getWeapons(rawHunter.value.hunter_class_id, it.weapon_type_id, it.item_id)
+          return { id: `${it.weapon_type_id}-${it.item_id}`, thumbnail: d?.thumbnail ?? null, label: d?.item || d?.weapon_type || `Weapon ${it.item_id}`, raw: it }
+        }
+        const d = await getArmors(it.equip_set_id, it.equip_id)
+        return { id: `${it.equip_set_id}-${it.equip_id}`, thumbnail: d?.thumbnail ?? null, label: d?.equip || d?.set_name || `Armor ${it.equip_id}`, raw: it }
+      })
+    )
+    modalItems.value = results.filter(Boolean)
+  } finally {
+    loadingModal.value = false
+  }
+}
+
+const setEquip = async (item) => {
+  const type = equipType.value
+  const rawItems = equipArrayByType(type)
+  rawItems.forEach((it) => {
+    if (!it) return
+    const same = type === 'weapon'
+      ? it.weapon_type_id === item.raw.weapon_type_id && it.item_id === item.raw.item_id
+      : it.equip_set_id === item.raw.equip_set_id && it.equip_id === item.raw.equip_id
+    it.is_equip = !!same
+  })
+  if (type === 'weapon') rawHunter.value.equipments.weapons = [...rawItems]
+  else rawHunter.value.equipments.armors[type] = [...rawItems]
+  saveHunter(rawHunter.value)
+  showSwapModal.value = false
+  await loadState()
+}
 </script>
 
 <template>
-  <div v-if="hunter" class="state-page">
+  <div class="state-page">
+  <template v-if="hunter">
 
     <!-- ══════════ DOSSIER HEADER ══════════ -->
     <div class="dossier-header">
@@ -162,7 +214,7 @@ onMounted(async () => {
 
         <div class="equip-grid">
           <!-- WEAPON -->
-          <div class="equip-card">
+          <div class="equip-card" @click="openSwapModal('weapon')">
             <span class="equip-slot-badge">Weapon</span>
             <div class="equip-imgs">
               <img :src="getImg(hunter.weapon.set_thumbnail)" class="equip-set-img" />
@@ -172,7 +224,7 @@ onMounted(async () => {
           </div>
 
           <!-- HELM -->
-          <div class="equip-card">
+          <div class="equip-card" @click="openSwapModal('helm')">
             <span class="equip-slot-badge">Helm</span>
             <div class="equip-imgs">
               <img :src="getImg(hunter.armors.helm.set_thumbnail)" class="equip-set-img" />
@@ -182,7 +234,7 @@ onMounted(async () => {
           </div>
 
           <!-- MAIL -->
-          <div class="equip-card">
+          <div class="equip-card" @click="openSwapModal('mail')">
             <span class="equip-slot-badge">Mail</span>
             <div class="equip-imgs">
               <img :src="getImg(hunter.armors.mail.set_thumbnail)" class="equip-set-img" />
@@ -192,7 +244,7 @@ onMounted(async () => {
           </div>
 
           <!-- GREAVES -->
-          <div class="equip-card">
+          <div class="equip-card" @click="openSwapModal('greaves')">
             <span class="equip-slot-badge">Greaves</span>
             <div class="equip-imgs">
               <img :src="getImg(hunter.armors.greaves.set_thumbnail)" class="equip-set-img" />
@@ -264,6 +316,43 @@ onMounted(async () => {
       </div>
 
     </div>
+  </template>
+
+  <!-- ══════════ SWAP MODAL ══════════ -->
+  <teleport to="body">
+    <div v-if="showSwapModal" class="swap-overlay" @click.self="showSwapModal = false">
+      <div class="swap-parchment">
+        <div class="swap-modal-top">
+          <div class="swap-title-row">
+            <span class="swap-ornament">◆</span>
+            <h3 class="swap-title">Choose {{ slotTitle(equipType) }}</h3>
+            <span class="swap-ornament">◆</span>
+          </div>
+          <button class="btn-swap-close" @click="showSwapModal = false">✕</button>
+        </div>
+        <div class="swap-modal-body">
+          <div v-if="loadingModal" class="swap-loading">
+            <span>·</span><span>·</span><span>·</span>
+          </div>
+          <div v-else class="swap-modal-grid">
+            <div
+              v-for="it in modalItems"
+              :key="it.id"
+              class="swap-modal-card"
+              @click="setEquip(it)"
+            >
+              <div class="smc-img-wrap">
+                <img v-if="it.thumbnail" :src="getImg(it.thumbnail)" class="smc-img" />
+                <div v-else class="smc-empty">?</div>
+              </div>
+              <p class="smc-label">{{ it.label }}</p>
+            </div>
+            <div v-if="!modalItems.length" class="swap-no-items">No items available</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </teleport>
   </div>
 </template>
 
@@ -453,9 +542,13 @@ onMounted(async () => {
   transition: 0.2s;
 }
 
+.equip-card {
+  cursor: pointer;
+}
+
 .equip-card:hover {
-  border-color: #7c5a2b;
-  box-shadow: inset 0 0 8px rgba(255, 200, 100, 0.06);
+  border-color: #c89b3c;
+  box-shadow: inset 0 0 10px rgba(255, 200, 100, 0.1);
 }
 
 .equip-slot-badge {
@@ -1138,5 +1231,148 @@ onMounted(async () => {
 
   text-shadow: 0 0 6px black;
   z-index: 3;
+}
+
+/* ── Swap Modal ── */
+.swap-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.swap-parchment {
+  background: linear-gradient(160deg, rgba(22, 16, 8, 0.98), rgba(10, 8, 4, 0.99));
+  border: 1px solid rgba(200, 155, 60, 0.4);
+  border-radius: 14px;
+  width: 420px;
+  max-width: 100%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.9);
+  overflow: hidden;
+}
+
+.swap-modal-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(200, 155, 60, 0.15);
+  flex-shrink: 0;
+}
+
+.swap-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.swap-ornament { font-size: 10px; color: #7c5a2b; }
+
+.swap-title {
+  margin: 0;
+  font-size: 14px;
+  color: #ffd27a;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+.btn-swap-close {
+  background: none;
+  border: none;
+  color: #5a3d1f;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  transition: color 0.15s;
+}
+.btn-swap-close:hover { color: #cc4444; }
+
+.swap-modal-body {
+  overflow-y: auto;
+  padding: 14px;
+}
+
+.swap-loading {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px;
+  color: #7c5a2b;
+  font-size: 24px;
+}
+
+.swap-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.swap-modal-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(124, 90, 43, 0.3);
+  background: rgba(20, 14, 6, 0.8);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+.swap-modal-card:hover {
+  border-color: #c89b3c;
+  background: rgba(40, 28, 12, 0.9);
+  box-shadow: 0 0 8px rgba(200, 155, 60, 0.2);
+}
+
+.smc-img-wrap {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.smc-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.smc-empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: #5a3d1f;
+  border: 1px dashed #3a2810;
+  border-radius: 6px;
+}
+
+.smc-label {
+  margin: 0;
+  font-size: 11px;
+  color: #d4b87a;
+  line-height: 1.3;
+}
+
+.swap-no-items {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 24px;
+  color: #5a3d1f;
+  font-style: italic;
+  font-size: 13px;
 }
 </style>
