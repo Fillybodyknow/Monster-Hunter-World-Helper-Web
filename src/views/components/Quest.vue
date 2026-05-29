@@ -116,7 +116,7 @@ const playOutcomeSound = (type) => {
     outcomeAudio.value = null
   }
   const audio = new Audio(`${import.meta.env.BASE_URL}assets/sounds/hunting_phase/${type === 'complete' ? 'quest_complete' : 'quest_failed'}.mp3`)
-  audio.volume = 0.5
+  audio.volume = 0.1
   audio.play().catch(() => {})
   outcomeAudio.value = audio
 }
@@ -133,7 +133,7 @@ const fadeOutOutcomeSound = () => {
       outcomeAudio.value = null
       clearInterval(fade)
     }
-  }, 50)
+  }, 200)
 }
 
 const doAction = (action) => {
@@ -165,6 +165,8 @@ const cancelAction = () => {
 
 const pendingOutcome = ref(null)
 const showResultAnim = ref(false)
+const isDismissing = ref(false)
+const pendingRewardAfterAnim = ref(false)
 const resultAnimType = ref(null)
 const resultMonsterName = ref('')
 
@@ -179,30 +181,41 @@ const cancelOutcome = () => {
 const confirmOutcome = () => {
   const type = pendingOutcome.value
   pendingOutcome.value = null
+  resultMonsterName.value = selectedMonster.value?.monster_name ?? ''
   if (type === 'complete') {
+    resultAnimType.value = 'complete'
+    showResultAnim.value = true
+    playOutcomeSound('complete')
     if (monsterHuntingData.value?.reward_table?.length) {
-      goToRewardPhase()
+      pendingRewardAfterAnim.value = true
     } else {
-      resultMonsterName.value = selectedMonster.value?.monster_name ?? ''
-      resultAnimType.value = 'complete'
-      showResultAnim.value = true
-      playOutcomeSound('complete')
       onComplete()
     }
   } else {
-    resultMonsterName.value = selectedMonster.value?.monster_name ?? ''
     resultAnimType.value = 'fail'
     showResultAnim.value = true
     playOutcomeSound('fail')
     onFail()
   }
+  setTimeout(dismissResult, 5000)
 }
 
 const dismissResult = () => {
-  fadeOutOutcomeSound()
-  showResultAnim.value = false
-  resultAnimType.value = null
-  resultMonsterName.value = ''
+  if (isDismissing.value) return
+  isDismissing.value = true
+  if (!pendingRewardAfterAnim.value) {
+    fadeOutOutcomeSound()
+  }
+  setTimeout(() => {
+    showResultAnim.value = false
+    resultAnimType.value = null
+    resultMonsterName.value = ''
+    isDismissing.value = false
+    if (pendingRewardAfterAnim.value) {
+      pendingRewardAfterAnim.value = false
+      goToRewardPhase()
+    }
+  }, 500)
 }
 
 
@@ -600,10 +613,7 @@ const confirmRewards = () => {
       loadHunter()
     }
   }
-  resultMonsterName.value = selectedMonster.value?.monster_name ?? ''
-  resultAnimType.value = 'complete'
-  showResultAnim.value = true
-  playOutcomeSound('complete')
+  fadeOutOutcomeSound()
   onComplete()
 }
 
@@ -614,6 +624,102 @@ const goToRewardPhase = () => {
   selectedDiceIds.value = []
   claimedRewards.value = []
   phase.value = 'reward'
+}
+
+// ─── Quest Pack Drawer ────────────────────────────────────────────────────────
+const showPackDrawer = ref(false)
+const packDrawerTab = ref('pack')
+const packSearch = ref('')
+const packSelectedItems = ref([])
+
+const packInventory = computed(() =>
+  resourceData
+    .map((type) => {
+      const items = (hunter.value?.inventory || [])
+        .filter((i) => i.resource_type_id === type.resource_type_id)
+        .map((inv) => {
+          const meta = type.resources.find((r) => r.item_id === inv.item_id)
+          return meta ? { ...meta, quantity: inv.quantity, resource_type_id: type.resource_type_id } : null
+        })
+        .filter(Boolean)
+      return { resource_type: type.resource_type, items }
+    })
+    .filter((g) => g.items.length)
+)
+
+const packAvailable = computed(() => {
+  const ownedKeys = new Set((hunter.value?.inventory || []).map((i) => `${i.resource_type_id}-${i.item_id}`))
+  return resourceData
+    .flatMap((type) =>
+      type.resources
+        .filter((item) => !ownedKeys.has(`${type.resource_type_id}-${item.item_id}`))
+        .map((item) => ({ ...item, resource_type_id: type.resource_type_id }))
+    )
+    .filter((i) => !packSearch.value || i.item.toLowerCase().includes(packSearch.value.toLowerCase()))
+})
+
+const packSelectedQty = (item) =>
+  packSelectedItems.value.find(
+    (s) => s.item_id === item.item_id && s.resource_type_id === item.resource_type_id
+  )?.quantity ?? 0
+
+const changePackQty = (item, delta) => {
+  const hunters = getHunters()
+  const h = hunters.find((x) => x.hunter_id === hunter.value?.hunter_id)
+  if (!h) return
+  const inv = h.inventory.find(
+    (i) => i.resource_type_id === item.resource_type_id && i.item_id === item.item_id
+  )
+  if (!inv) return
+  inv.quantity += delta
+  if (inv.quantity <= 0) {
+    h.inventory = h.inventory.filter(
+      (i) => !(i.resource_type_id === item.resource_type_id && i.item_id === item.item_id)
+    )
+  }
+  saveHunters(hunters)
+  loadHunter()
+}
+
+const packSelectItem = (item, delta) => {
+  const found = packSelectedItems.value.find(
+    (s) => s.item_id === item.item_id && s.resource_type_id === item.resource_type_id
+  )
+  if (!found) {
+    if (delta > 0) packSelectedItems.value.push({ ...item, quantity: 1 })
+    return
+  }
+  found.quantity += delta
+  if (found.quantity <= 0) {
+    packSelectedItems.value = packSelectedItems.value.filter(
+      (s) => !(s.item_id === item.item_id && s.resource_type_id === item.resource_type_id)
+    )
+  }
+}
+
+const packConfirmAdd = () => {
+  const hunters = getHunters()
+  const h = hunters.find((x) => x.hunter_id === hunter.value?.hunter_id)
+  if (!h) return
+  packSelectedItems.value.forEach((item) => {
+    h.inventory.push({
+      resource_type_id: item.resource_type_id,
+      item_id: item.item_id,
+      quantity: item.quantity,
+    })
+  })
+  saveHunters(hunters)
+  loadHunter()
+  packSelectedItems.value = []
+  packSearch.value = ''
+  packDrawerTab.value = 'pack'
+}
+
+const openPackDrawer = () => {
+  packDrawerTab.value = 'pack'
+  packSearch.value = ''
+  packSelectedItems.value = []
+  showPackDrawer.value = true
 }
 </script>
 
@@ -895,6 +1001,7 @@ const goToRewardPhase = () => {
           <span class="dialog-tag-monster">{{ selectedMonster.monster_name }}</span>
           <span class="dialog-tag-quest">{{ selectedQuest.quest_type }}</span>
         </div>
+        <button class="pack-toggle-btn" @click="openPackDrawer">🎒 Inventory</button>
       </div>
 
       <div class="dialog-parchment">
@@ -1680,7 +1787,7 @@ const goToRewardPhase = () => {
       <div
         v-if="showResultAnim"
         class="result-anim-overlay"
-        :class="`ra-${resultAnimType}`"
+        :class="[`ra-${resultAnimType}`, { 'ra-dismissing': isDismissing }]"
         @click="dismissResult"
       >
         <!-- Fail screen flash -->
@@ -1737,6 +1844,97 @@ const goToRewardPhase = () => {
 
         <p class="ra-tap-hint">Tap anywhere to continue</p>
       </div>
+    </teleport>
+
+    <!-- ═══════════ PACK DRAWER ═══════════ -->
+    <teleport to="body">
+      <transition name="pack-drawer">
+        <div v-if="showPackDrawer" class="pack-drawer-wrapper">
+          <div class="pack-backdrop" @click="showPackDrawer = false"></div>
+
+          <div class="pack-drawer">
+            <!-- Header -->
+            <div class="pack-drawer-header">
+              <span class="pack-drawer-title">🎒 Supply Pack</span>
+              <button class="pack-drawer-close" @click="showPackDrawer = false">✕</button>
+            </div>
+
+            <!-- Tabs -->
+            <div class="pack-tabs">
+              <button
+                class="pack-tab"
+                :class="{ active: packDrawerTab === 'pack' }"
+                @click="packDrawerTab = 'pack'"
+              >Pack</button>
+              <button
+                class="pack-tab"
+                :class="{ active: packDrawerTab === 'add' }"
+                @click="packDrawerTab = 'add'"
+              >+ Add Item</button>
+            </div>
+
+            <!-- Tab: Pack (current inventory) -->
+            <div v-if="packDrawerTab === 'pack'" class="pack-content">
+              <div v-if="!packInventory.length" class="pack-empty">
+                <p>Supply pack is empty.</p>
+                <button class="pack-goto-add" @click="packDrawerTab = 'add'">+ Add Item</button>
+              </div>
+              <div v-for="group in packInventory" :key="group.resource_type" class="pack-group">
+                <div class="pack-group-label">{{ group.resource_type }}</div>
+                <div
+                  v-for="item in group.items"
+                  :key="`${item.resource_type_id}-${item.item_id}`"
+                  class="pack-item"
+                >
+                  <img :src="getImg(item.thumbnail)" class="pack-item-img" />
+                  <span class="pack-item-name">{{ item.item }}</span>
+                  <div class="pack-item-ctrl">
+                    <button class="pctrl-btn" @click="changePackQty(item, -1)">−</button>
+                    <span class="pctrl-qty">{{ item.quantity }}</span>
+                    <button class="pctrl-btn" @click="changePackQty(item, 1)">+</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tab: Add Item -->
+            <div v-if="packDrawerTab === 'add'" class="pack-content">
+              <input
+                v-model="packSearch"
+                class="pack-search"
+                placeholder="Search items..."
+              />
+              <div class="pack-add-grid">
+                <div
+                  v-for="item in packAvailable"
+                  :key="`${item.resource_type_id}-${item.item_id}`"
+                  class="pack-add-item"
+                >
+                  <img :src="getImg(item.thumbnail)" class="pack-item-img" />
+                  <span class="pack-item-name">{{ item.item }}</span>
+                  <div class="pack-item-ctrl">
+                    <button class="pctrl-btn" @click="packSelectItem(item, -1)">−</button>
+                    <span class="pctrl-qty">{{ packSelectedQty(item) }}</span>
+                    <button class="pctrl-btn" @click="packSelectItem(item, 1)">+</button>
+                  </div>
+                </div>
+                <div v-if="!packAvailable.length" class="pack-empty">
+                  <p>{{ packSearch ? 'No results' : 'All items owned' }}</p>
+                </div>
+              </div>
+              <div class="pack-add-footer">
+                <button
+                  class="pack-confirm-btn"
+                  :disabled="!packSelectedItems.length"
+                  @click="packConfirmAdd"
+                >
+                  ✓ เพิ่ม {{ packSelectedItems.length }} รายการ
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
     </teleport>
   </div>
 </template>
@@ -4811,6 +5009,44 @@ const goToRewardPhase = () => {
   }
 }
 
+/* ——— Dismiss (close) animation ——— */
+.ra-dismissing {
+  animation: raFadeOut 0.5s ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes raFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.ra-dismissing .ra-cinebar-top {
+  animation: raBarExitTop 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.ra-dismissing .ra-cinebar-bottom {
+  animation: raBarExitBottom 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes raBarExitTop {
+  from { transform: translateY(0); }
+  to { transform: translateY(-100%); }
+}
+
+@keyframes raBarExitBottom {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+
+.ra-dismissing .ra-stage {
+  animation: raStageExit 0.4s ease-in forwards;
+}
+
+@keyframes raStageExit {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.88); }
+}
+
 /* ——— Dark fill (complete needs solid bg under rays) ——— */
 .ra-complete::before {
   content: '';
@@ -5428,6 +5664,285 @@ const goToRewardPhase = () => {
 }
 
 /* ══════════════════════════════════════════
+   PACK TOGGLE BUTTON
+══════════════════════════════════════════ */
+.dialog-tag-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pack-toggle-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  background: rgba(12, 9, 4, 0.9);
+  border: 1px solid rgba(200, 155, 60, 0.45);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 12px;
+  color: #c89b3c;
+  cursor: pointer;
+  font-family: 'Georgia', serif;
+  transition: all 0.15s;
+  letter-spacing: 1px;
+}
+.pack-toggle-btn:hover {
+  border-color: #c89b3c;
+  background: rgba(200, 155, 60, 0.1);
+  color: #ffd27a;
+}
+
+/* ══════════════════════════════════════════
+   PACK DRAWER
+══════════════════════════════════════════ */
+.pack-drawer-wrapper {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.pack-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.pack-drawer {
+  position: relative;
+  width: 300px;
+  max-width: 90vw;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, rgba(14, 10, 5, 0.99) 0%, rgba(10, 7, 3, 0.99) 100%);
+  border-right: 1px solid rgba(200, 155, 60, 0.3);
+  box-shadow: 8px 0 32px rgba(0, 0, 0, 0.8);
+}
+
+.pack-drawer-header {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(200, 155, 60, 0.2);
+  flex-shrink: 0;
+}
+
+.pack-drawer-title {
+  flex: 1;
+  font-size: 14px;
+  font-family: 'Georgia', serif;
+  color: #ffd27a;
+  letter-spacing: 2px;
+}
+
+.pack-drawer-close {
+  background: none;
+  border: none;
+  color: #5a3d1f;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  transition: color 0.15s;
+}
+.pack-drawer-close:hover { color: #cc4444; }
+
+/* Tabs */
+.pack-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(200, 155, 60, 0.15);
+  flex-shrink: 0;
+}
+
+.pack-tab {
+  flex: 1;
+  padding: 10px 8px;
+  background: none;
+  border: none;
+  color: #7c5a2b;
+  font-size: 12px;
+  font-family: 'Georgia', serif;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 1px;
+  border-bottom: 2px solid transparent;
+}
+.pack-tab:hover { color: #c89b3c; }
+.pack-tab.active {
+  color: #ffd27a;
+  border-bottom-color: #c89b3c;
+  background: rgba(200, 155, 60, 0.05);
+}
+
+/* Content area */
+.pack-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pack-empty {
+  text-align: center;
+  padding: 32px 16px;
+  color: #5a3d1f;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.pack-goto-add {
+  background: rgba(200, 155, 60, 0.08);
+  border: 1px solid rgba(200, 155, 60, 0.35);
+  border-radius: 6px;
+  padding: 6px 14px;
+  color: #c89b3c;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.15s;
+}
+.pack-goto-add:hover { background: rgba(200, 155, 60, 0.14); color: #ffd27a; }
+
+/* Group */
+.pack-group-label {
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #5a3d1f;
+  padding: 4px 2px 2px;
+}
+
+/* Item row */
+.pack-item, .pack-add-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  border-bottom: 1px solid rgba(200, 155, 60, 0.07);
+}
+
+.pack-item-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+.pack-item-name {
+  flex: 1;
+  font-size: 12px;
+  color: #d4b87a;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Quantity controls */
+.pack-item-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.pctrl-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid rgba(124, 90, 43, 0.4);
+  background: rgba(0, 0, 0, 0.35);
+  color: #a88040;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s;
+  line-height: 1;
+}
+.pctrl-btn:hover {
+  border-color: #c89b3c;
+  color: #ffd27a;
+  background: rgba(200, 155, 60, 0.1);
+}
+
+.pctrl-qty {
+  min-width: 22px;
+  text-align: center;
+  font-size: 13px;
+  color: #f0ddb0;
+  font-weight: bold;
+}
+
+/* Add tab */
+.pack-search {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(124, 90, 43, 0.4);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12px;
+  color: #f0ddb0;
+  outline: none;
+  flex-shrink: 0;
+}
+.pack-search:focus { border-color: rgba(200, 155, 60, 0.6); }
+.pack-search::placeholder { color: #5a3d1f; }
+
+.pack-add-grid {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.pack-add-footer {
+  flex-shrink: 0;
+  padding-top: 10px;
+  border-top: 1px solid rgba(200, 155, 60, 0.15);
+}
+
+.pack-confirm-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 229, 184, 0.5);
+  background: rgba(0, 229, 184, 0.07);
+  color: #00e5b8;
+  font-size: 13px;
+  font-family: 'Georgia', serif;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 1px;
+}
+.pack-confirm-btn:hover:not(:disabled) {
+  background: rgba(0, 229, 184, 0.14);
+}
+.pack-confirm-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  border-color: rgba(80, 80, 80, 0.4);
+  color: #666;
+}
+
+/* Drawer slide transition */
+.pack-drawer-enter-active { animation: packSlideIn 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
+.pack-drawer-leave-active { animation: packSlideIn 0.22s ease-in reverse; }
+@keyframes packSlideIn {
+  from { opacity: 0; transform: translateX(-100%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ══════════════════════════════════════════
    REWARD PHASE
 ══════════════════════════════════════════ */
 .phase-reward {
@@ -5844,4 +6359,15 @@ const goToRewardPhase = () => {
   flex-direction: column;
   gap: 12px;
 }
+
+/* ══════════════════════════════════════════
+   SCROLLBAR
+══════════════════════════════════════════ */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: rgba(10, 8, 4, 0.5); border-radius: 4px; }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #7c5a2b, #3a2c1a);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: #a67c3b; }
 </style>

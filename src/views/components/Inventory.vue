@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { getHunterById, saveHunters, getHunters } from '@/services/hunterStorage'
+import { loadHunter } from '@/stores/hunter'
 import resourceData from '@/assets/files/resource.json'
 
 const inventory = ref([])
@@ -37,6 +38,7 @@ const changeQty = (item, delta) => {
   }
 
   saveHunters(hunters)
+  loadHunter()
   loadInventory()
 }
 
@@ -131,6 +133,7 @@ const confirmAdd = () => {
   })
 
   saveHunters(hunters)
+  loadHunter()
   loadInventory()
 
   selectedItems.value = []

@@ -2,27 +2,119 @@
 import { ref, computed, onMounted } from 'vue'
 import weaponsData from '@/assets/files/weapons.json'
 import armorsData from '@/assets/files/armors.json'
-import { getHunterById, saveHunter } from '@/services/hunterStorage'
+import { hunter, loadHunter, saveHunter } from '@/stores/hunter'
 import craftingData from '@/assets/files/crafting_item.json'
 import resourceData from '@/assets/files/resource.json'
 import rarityData from '@/assets/files/equiment_rarity.json'
 import elementalData from '@/assets/files/elemental.json'
 import bonusAbilityData from '@/assets/files/bonus_ability.json'
-import { getArmors, getWeapons } from '@/services/equipService'
+import {
+  whitelist,
+  whitelistKey,
+  isWhitelisted,
+  addToWhitelist,
+  removeFromWhitelist,
+} from '@/stores/craftingWhitelist'
 
 const activeTab = ref('weapon')
 
-const hunter = ref(null)
-const selectedWeapon = ref(null)
-
 const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 
-// ===== LOAD HUNTER =====
-onMounted(() => {
-  const id = parseInt(localStorage.getItem('hunterId'))
-  hunter.value = getHunterById(id)
-  // console.log(hunter.value)
+onMounted(loadHunter)
+
+// ─── Item Modal ───────────────────────────────────────────────────────────────
+const showItemModal = ref(false)
+const modalType = ref(null)
+const modalNode = ref(null)
+const modalArmorSet = ref(null)
+const modalEquip = ref(null)
+
+const modalCanCraft = computed(() => {
+  if (!showItemModal.value) return false
+  if (modalType.value === 'weapon') return canCraft(modalNode.value)
+  return canCraftArmor(modalArmorSet.value?.equip_set_id, modalEquip.value?.equip_id)
 })
+
+const modalHasItem = computed(() => {
+  if (!showItemModal.value) return false
+  if (modalType.value === 'weapon') return hasWeapon(modalNode.value)
+  return hasArmor(modalArmorSet.value?.equip_set_id, modalEquip.value?.equip_id, modalEquip.value?.armor_part_id)
+})
+
+const modalKey = computed(() => {
+  if (!modalType.value) return ''
+  if (modalType.value === 'weapon') return whitelistKey('weapon', modalNode.value?.weapon_type_id, modalNode.value?.item_id)
+  return whitelistKey('armor', modalArmorSet.value?.equip_set_id, modalEquip.value?.equip_id)
+})
+
+const modalIsWhitelisted = computed(() => isWhitelisted(modalKey.value))
+
+const modalMaterials = computed(() => {
+  if (!showItemModal.value) return []
+  if (modalType.value === 'weapon') return getCrafting(modalNode.value)
+  return getArmorCrafting(modalArmorSet.value?.equip_set_id, modalEquip.value?.equip_id)
+})
+
+const modalRarityIcon = computed(() => {
+  if (!showItemModal.value) return ''
+  if (modalType.value === 'weapon') return getRarityIcon(modalNode.value?.rarity)
+  return getArmorRarityIcon(modalArmorSet.value?.rarity, modalEquip.value?.armor_part_id)
+})
+
+const modalName = computed(() => {
+  if (!showItemModal.value) return ''
+  return modalType.value === 'weapon' ? modalNode.value?.item : modalEquip.value?.equip
+})
+
+const openModal = (type, node, armorSet = null, equip = null) => {
+  modalType.value = type
+  modalNode.value = node
+  modalArmorSet.value = armorSet
+  modalEquip.value = equip
+  showItemModal.value = true
+}
+
+const closeModal = () => { showItemModal.value = false }
+
+const isCrafting = ref(false)
+
+const modalCraft = () => {
+  if (!modalCanCraft.value || modalHasItem.value || isCrafting.value) return
+  isCrafting.value = true
+  if (modalType.value === 'weapon') craftWeapon(modalNode.value)
+  else craftArmor(modalArmorSet.value, modalEquip.value)
+  setTimeout(() => {
+    isCrafting.value = false
+    closeModal()
+  }, 1600)
+}
+
+const modalToggleWhitelist = () => {
+  if (modalIsWhitelisted.value) {
+    removeFromWhitelist(modalKey.value)
+    return
+  }
+  if (whitelist.value.length >= 5 || modalCanCraft.value) return
+  if (modalType.value === 'weapon') {
+    addToWhitelist({
+      type: 'weapon',
+      key: modalKey.value,
+      weapon_type_id: modalNode.value.weapon_type_id,
+      item_id: modalNode.value.item_id,
+      name: modalNode.value.item,
+      thumbnail: modalNode.value.thumbnail,
+    })
+  } else {
+    addToWhitelist({
+      type: 'armor',
+      key: modalKey.value,
+      equip_set_id: modalArmorSet.value.equip_set_id,
+      equip_id: modalEquip.value.equip_id,
+      name: modalEquip.value.equip,
+      thumbnail: modalArmorSet.value.thumbnail,
+    })
+  }
+}
 
 const craftWeapon = (node) => {
   const recipe = getRecipe(node)
@@ -328,6 +420,24 @@ const armorList = computed(() => {
       </button>
     </div>
 
+    <!-- ================= WHITELIST STATUS ================= -->
+    <div class="wl-status-bar" v-if="whitelist.length > 0">
+      <span class="wl-status-label">🔔 Craft Watchlist</span>
+      <div class="wl-status-items">
+        <div
+          v-for="item in whitelist"
+          :key="item.key"
+          class="wl-status-chip"
+          :class="{ 'wl-chip-weapon': item.type === 'weapon', 'wl-chip-armor': item.type === 'armor' }"
+        >
+          <img :src="getImg(item.thumbnail)" class="wl-chip-img" />
+          <span class="wl-chip-name">{{ item.name }}</span>
+          <button class="wl-chip-remove" @click="removeFromWhitelist(item.key)">✕</button>
+        </div>
+      </div>
+      <span class="wl-status-count">{{ whitelist.length }} / 5</span>
+    </div>
+
     <!-- ================= WEAPON ================= -->
     <div v-if="activeTab === 'weapon'" class="weapon-tree">
       <div v-for="(tree, tIndex) in weaponTree" :key="tIndex" class="tree-line">
@@ -348,10 +458,13 @@ const armorList = computed(() => {
                 locked: !isEquipped(node),
                 craftable: canCraft(node),
               }"
-              @click="
-                (selectWeapon(node), canCraft(node) && !hasWeapon(node) ? craftWeapon(node) : null)
-              "
+              @click="openModal('weapon', node)"
             >
+              <div
+                v-if="isWhitelisted(whitelistKey('weapon', node.weapon_type_id, node.item_id))"
+                class="wl-pin-indicator"
+              >📌</div>
+
               <img class="rarity-icon" :src="getRarityIcon(node.rarity)" />
               <p class="weapon-name">{{ node.item }}</p>
               <!-- ⭐ RARITY -->
@@ -412,14 +525,6 @@ const armorList = computed(() => {
                 }}</span>
               </div>
 
-              <!-- 🔥 CRAFT BUTTON -->
-              <button
-                v-if="canCraft(node) && !hasWeapon(node)"
-                class="btn-craft"
-                @click="craftWeapon(node)"
-              >
-                Craft
-              </button>
             </div>
 
             <!-- 🔥 LINE -->
@@ -461,7 +566,13 @@ const armorList = computed(() => {
                 locked: !hasArmor(armorSet.equip_set_id, equip.equip_id, equip.armor_part_id),
                 craftable: canCraftArmor(armorSet.equip_set_id, equip.equip_id),
               }"
+              @click="openModal('armor', null, armorSet, equip)"
             >
+              <div
+                v-if="isWhitelisted(whitelistKey('armor', armorSet.equip_set_id, equip.equip_id))"
+                class="wl-pin-indicator"
+              >📌</div>
+
               <img
                 class="rarity-icon"
                 :src="getArmorRarityIcon(armorSet.rarity, equip.armor_part_id)"
@@ -518,23 +629,96 @@ const armorList = computed(() => {
                 <span class="ability-desc">{{ getAbility(equip.ability_id).ability }}</span>
               </div>
 
-              <!-- CRAFT BUTTON -->
-              <button
-                v-if="
-                  canCraftArmor(armorSet.equip_set_id, equip.equip_id) &&
-                  !hasArmor(armorSet.equip_set_id, equip.equip_id, equip.armor_part_id)
-                "
-                class="btn-craft"
-                @click="craftArmor(armorSet, equip)"
-              >
-                Craft
-              </button>
             </div>
           </div>
         </div>
 
       </div>
     </div>
+
+    <!-- ================= ITEM MODAL ================= -->
+    <teleport to="body">
+      <transition name="im-fade">
+        <div v-if="showItemModal" class="im-overlay" @click.self="!isCrafting && closeModal()">
+          <div class="im-card" :class="{ 'im-crafting': isCrafting }">
+
+            <!-- Forge Animation Overlay -->
+            <transition name="craft-anim">
+              <div v-if="isCrafting" class="craft-overlay">
+                <div class="forge-ambient"></div>
+
+                <div class="forge-hammer-wrap">
+                  <span class="forge-hammer">🔨</span>
+                </div>
+
+                <div class="forge-impact-zone">
+                  <div class="forge-impact-flash"></div>
+                  <span class="forge-item">{{ modalType === 'weapon' ? '⚔' : '🛡' }}</span>
+                  <span v-for="n in 12" :key="n" class="forge-spark" :style="`--i:${n}`"></span>
+                </div>
+
+                <span class="forge-done-text">✦ Crafted! ✦</span>
+              </div>
+            </transition>
+
+            <!-- Header -->
+            <div class="im-header">
+              <img :src="modalRarityIcon" class="im-rarity-icon" />
+              <div class="im-header-info">
+                <span class="im-type-badge">{{ modalType === 'weapon' ? '⚔ Weapon' : '🛡 Armor' }}</span>
+                <h3 class="im-name">{{ modalName }}</h3>
+              </div>
+              <button class="im-close" @click="closeModal">✕</button>
+            </div>
+
+            <!-- Materials -->
+            <div v-if="modalMaterials.length && !modalHasItem" class="im-materials">
+              <p class="im-section-label">— Materials Required —</p>
+              <div class="im-mat-list">
+                <div v-for="(mat, i) in modalMaterials" :key="i" class="im-mat-row">
+                  <img :src="getImg(getResource(mat.material[0], mat.material[1])?.thumbnail)" class="im-mat-img" />
+                  <span class="im-mat-name">{{ getResource(mat.material[0], mat.material[1])?.item }}</span>
+                  <span
+                    class="im-mat-count"
+                    :class="{
+                      'mat-ok': getInventoryCount(mat.material[0], mat.material[1]) >= mat.amount,
+                      'mat-short': getInventoryCount(mat.material[0], mat.material[1]) < mat.amount,
+                    }"
+                  >{{ getInventoryCount(mat.material[0], mat.material[1]) }} / {{ mat.amount }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="modalHasItem" class="im-owned-notice">✓ มีแล้ว</div>
+
+            <!-- Actions -->
+            <div class="im-actions">
+              <button
+                v-if="!modalHasItem"
+                class="im-btn im-btn-wl"
+                :class="{ 'im-wl-on': modalIsWhitelisted }"
+                :disabled="!modalIsWhitelisted && (whitelist.length >= 5 || modalCanCraft)"
+                @click="modalToggleWhitelist"
+              >
+                <span>{{ modalIsWhitelisted ? '📌 Remove Whitelist' : '🔕 Add Whitelist' }}</span>
+                <span v-if="!modalIsWhitelisted && whitelist.length >= 5" class="im-btn-hint">เต็มแล้ว</span>
+                <span v-else-if="!modalIsWhitelisted && modalCanCraft" class="im-btn-hint">Craft ได้แล้ว</span>
+              </button>
+
+              <button
+                v-if="!modalHasItem"
+                class="im-btn im-btn-craft"
+                :class="{ 'im-craft-ready': modalCanCraft }"
+                :disabled="!modalCanCraft"
+                @click="modalCraft"
+              >
+                🔨 Craft
+              </button>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </teleport>
   </div>
 </template>
 
@@ -740,12 +924,15 @@ const armorList = computed(() => {
   flex-wrap: wrap;
   gap: 8px;
   padding-left: 12px;
+  padding-top: 18px;
+  overflow: visible;
 }
 
 /* NODE WRAPPER */
 .node-wrapper {
   display: flex;
   align-items: flex-start;
+  overflow: visible;
 }
 
 /* NODE CARD */
@@ -1100,5 +1287,514 @@ const armorList = computed(() => {
   .node-card { width: 150px; }
 
   .line { width: 16px; margin-top: 40px; }
+}
+
+/* ══════════════════════════════════════════
+   WHITELIST PIN INDICATOR
+══════════════════════════════════════════ */
+.node-card {
+  position: relative;
+}
+
+.wl-pin-indicator {
+  position: absolute;
+  top: 0;
+  right: 0;
+  transform: translate(50%, -50%);
+  font-size: 20px;
+  filter: drop-shadow(0 0 6px rgba(200, 155, 60, 0.9));
+  pointer-events: none;
+  z-index: 2;
+  line-height: 1;
+}
+
+/* ══════════════════════════════════════════
+   ITEM MODAL
+══════════════════════════════════════════ */
+.im-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.im-card {
+  background: linear-gradient(160deg, rgba(22, 16, 8, 0.98), rgba(10, 8, 4, 0.99));
+  border: 1px solid rgba(200, 155, 60, 0.45);
+  border-radius: 14px;
+  width: 340px;
+  max-width: 100%;
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.9),
+    0 0 30px rgba(200, 155, 60, 0.1),
+    inset 0 0 20px rgba(200, 155, 60, 0.03);
+  overflow: hidden;
+}
+
+.im-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 16px 14px;
+  border-bottom: 1px solid rgba(200, 155, 60, 0.15);
+}
+
+.im-rarity-icon {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.im-header-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.im-type-badge {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #a88040;
+  text-transform: uppercase;
+}
+
+.im-name {
+  margin: 0;
+  font-size: 16px;
+  color: #f0ddb0;
+  font-family: 'Georgia', serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.im-close {
+  background: none;
+  border: none;
+  color: #5a3d1f;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 6px;
+  line-height: 1;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+.im-close:hover { color: #cc4444; }
+
+.im-materials {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(200, 155, 60, 0.1);
+}
+
+.im-section-label {
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: #7c5a2b;
+  text-transform: uppercase;
+  text-align: center;
+  margin: 0 0 10px;
+}
+
+.im-mat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.im-mat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.im-mat-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 4px;
+  background: rgba(0,0,0,0.3);
+  flex-shrink: 0;
+}
+
+.im-mat-name {
+  flex: 1;
+  font-size: 12px;
+  color: #d4b87a;
+}
+
+.im-mat-count {
+  font-size: 12px;
+  font-weight: bold;
+  min-width: 44px;
+  text-align: right;
+}
+.mat-ok    { color: #3cb83c; }
+.mat-short { color: #cc4444; }
+
+.im-owned-notice {
+  padding: 16px;
+  text-align: center;
+  font-size: 14px;
+  color: #c89b3c;
+  letter-spacing: 2px;
+}
+
+.im-actions {
+  display: flex;
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.im-btn {
+  flex: 1;
+  padding: 10px 8px;
+  border-radius: 8px;
+  border: 1px solid;
+  font-size: 13px;
+  font-family: 'Georgia', serif;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.im-btn-wl {
+  border-color: rgba(124, 90, 43, 0.5);
+  background: rgba(124, 90, 43, 0.08);
+  color: #a88040;
+}
+.im-btn-wl:hover:not(:disabled) {
+  border-color: #c89b3c;
+  background: rgba(200, 155, 60, 0.12);
+  color: #f0ddb0;
+}
+.im-btn-wl.im-wl-on {
+  border-color: rgba(200, 155, 60, 0.7);
+  background: rgba(200, 155, 60, 0.12);
+  color: #ffd27a;
+}
+.im-btn-wl:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.im-btn-hint {
+  font-size: 9px;
+  color: #7c5a2b;
+  letter-spacing: 1px;
+}
+
+.im-btn-craft {
+  border-color: rgba(80, 80, 80, 0.4);
+  background: rgba(40, 40, 40, 0.3);
+  color: #666;
+}
+.im-btn-craft.im-craft-ready {
+  border-color: rgba(0, 229, 184, 0.6);
+  background: rgba(0, 229, 184, 0.08);
+  color: #00e5b8;
+  box-shadow: 0 0 10px rgba(0, 229, 184, 0.2);
+}
+.im-btn-craft.im-craft-ready:hover {
+  background: rgba(0, 229, 184, 0.15);
+}
+.im-btn-craft:disabled { cursor: not-allowed; }
+
+.im-fade-enter-active { animation: imFadeIn 0.2s ease-out; }
+.im-fade-leave-active { animation: imFadeIn 0.15s ease-in reverse; }
+@keyframes imFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.im-fade-enter-active .im-card { animation: imSlideUp 0.22s cubic-bezier(0.22, 1, 0.36, 1); }
+.im-fade-leave-active .im-card { animation: imSlideUp 0.15s ease-in reverse; }
+@keyframes imSlideUp {
+  from { transform: translateY(16px) scale(0.97); }
+  to   { transform: translateY(0) scale(1); }
+}
+
+/* ── Blacksmith Forge Animation ── */
+.im-card.im-crafting {
+  border-color: rgba(255, 140, 40, 0.6);
+  box-shadow:
+    0 0 24px rgba(255, 100, 20, 0.25),
+    0 8px 40px rgba(0, 0, 0, 0.9);
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.craft-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    to bottom,
+    rgba(5, 3, 1, 0.9) 0%,
+    rgba(20, 8, 2, 0.82) 55%,
+    rgba(45, 18, 4, 0.7) 100%
+  );
+  overflow: hidden;
+}
+
+/* Forge fire ambient */
+.forge-ambient {
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 180px;
+  height: 70px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255, 100, 20, 0.45) 0%, transparent 70%);
+  animation: ambientPulse 0.38s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+@keyframes ambientPulse {
+  from { opacity: 0.5; transform: translateX(-50%) scaleX(1); }
+  to   { opacity: 1;   transform: translateX(-50%) scaleX(1.15); }
+}
+
+/* Hammer */
+.forge-hammer-wrap {
+  height: 72px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+}
+
+.forge-hammer {
+  font-size: 58px;
+  display: block;
+  transform-origin: 88% 78%;
+  animation: blacksmithStrike 1.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.9));
+}
+
+/* 3 strikes — impacts at 22%, 48%, 74% of 1.6s → 0.35s, 0.77s, 1.18s */
+@keyframes blacksmithStrike {
+  0%   { transform: rotate(-55deg); opacity: 0; }
+  5%   { transform: rotate(-55deg); opacity: 1; }
+  12%  { transform: rotate(-55deg); }
+  22%  { transform: rotate(14deg); }     /* ── IMPACT 1 ── */
+  31%  { transform: rotate(-50deg); }
+  40%  { transform: rotate(-50deg); }
+  48%  { transform: rotate(14deg); }     /* ── IMPACT 2 ── */
+  57%  { transform: rotate(-48deg); }
+  66%  { transform: rotate(-48deg); }
+  74%  { transform: rotate(14deg); }     /* ── IMPACT 3 ── */
+  85%  { transform: rotate(-22deg); }
+  100% { transform: rotate(-22deg); }
+}
+
+/* Impact zone */
+.forge-impact-zone {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 64px;
+  margin-top: -6px;
+  z-index: 1;
+}
+
+/* Item icon on anvil */
+.forge-item {
+  font-size: 38px;
+  display: block;
+  position: relative;
+  z-index: 2;
+  animation: itemForge 1.6s ease-in-out forwards;
+}
+@keyframes itemForge {
+  0%, 18% { filter: drop-shadow(0 0 4px rgba(255, 140, 40, 0.4)); }
+  22%     { filter: drop-shadow(0 0 20px rgba(255, 210, 60, 1.0)) brightness(1.5); } /* Hit 1 */
+  30%     { filter: drop-shadow(0 0 6px  rgba(255, 140, 40, 0.5)); }
+  44%, 46%{ filter: drop-shadow(0 0 4px rgba(255, 140, 40, 0.4)); }
+  48%     { filter: drop-shadow(0 0 20px rgba(255, 210, 60, 1.0)) brightness(1.5); } /* Hit 2 */
+  56%     { filter: drop-shadow(0 0 6px  rgba(255, 140, 40, 0.5)); }
+  70%, 72%{ filter: drop-shadow(0 0 4px rgba(255, 140, 40, 0.4)); }
+  74%     { filter: drop-shadow(0 0 26px rgba(255, 230, 80, 1.0)) brightness(1.7); } /* Hit 3 */
+  88%     { filter: drop-shadow(0 0 14px rgba(255, 180, 50, 0.7)); }
+  100%    { filter: drop-shadow(0 0 14px rgba(255, 180, 50, 0.7)); }
+}
+
+/* Impact flash ring */
+.forge-impact-flash {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 240, 120, 0.85) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 3;
+  animation: impactFlash 1.6s ease-out forwards;
+}
+@keyframes impactFlash {
+  0%, 18%  { opacity: 0; transform: scale(0.2); }
+  22%      { opacity: 1; transform: scale(1.6); }   /* Hit 1 */
+  28%      { opacity: 0; transform: scale(0.8); }
+  44%, 46% { opacity: 0; transform: scale(0.2); }
+  48%      { opacity: 1; transform: scale(1.5); }   /* Hit 2 */
+  54%      { opacity: 0; transform: scale(0.8); }
+  70%, 72% { opacity: 0; transform: scale(0.2); }
+  74%      { opacity: 1; transform: scale(1.8); }   /* Hit 3 */
+  82%      { opacity: 0; }
+  100%     { opacity: 0; }
+}
+
+/* Sparks — 12 total, 4 per impact */
+.forge-spark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ffd060;
+  box-shadow: 0 0 5px 2px rgba(255, 200, 50, 0.8);
+  opacity: 0;
+  animation: forgeSpark 0.55s ease-out var(--delay) both;
+}
+/* Impact 1 → delay ~0.34s (22% of 1.6s) */
+.forge-spark:nth-child(1) { --delay: 0.33s; --ax: -50px; --ay: -58px; }
+.forge-spark:nth-child(2) { --delay: 0.33s; --ax:  50px; --ay: -58px; }
+.forge-spark:nth-child(3) { --delay: 0.33s; --ax: -22px; --ay: -78px; }
+.forge-spark:nth-child(4) { --delay: 0.33s; --ax:  22px; --ay: -78px; }
+/* Impact 2 → delay ~0.75s (48% of 1.6s) */
+.forge-spark:nth-child(5) { --delay: 0.75s; --ax: -58px; --ay: -48px; }
+.forge-spark:nth-child(6) { --delay: 0.75s; --ax:  58px; --ay: -48px; }
+.forge-spark:nth-child(7) { --delay: 0.75s; --ax: -28px; --ay: -72px; }
+.forge-spark:nth-child(8) { --delay: 0.75s; --ax:  28px; --ay: -72px; }
+/* Impact 3 → delay ~1.16s (74% of 1.6s) */
+.forge-spark:nth-child(9)  { --delay: 1.16s; --ax: -68px; --ay: -42px; }
+.forge-spark:nth-child(10) { --delay: 1.16s; --ax:  68px; --ay: -42px; }
+.forge-spark:nth-child(11) { --delay: 1.16s; --ax: -34px; --ay: -68px; }
+.forge-spark:nth-child(12) { --delay: 1.16s; --ax:  34px; --ay: -68px; }
+
+@keyframes forgeSpark {
+  0%   { opacity: 1; transform: translate(-50%, -50%) translate(0, 0) scale(1.3); }
+  70%  { opacity: 0.7; }
+  100% { opacity: 0; transform: translate(-50%, -50%) translate(var(--ax), var(--ay)) scale(0); }
+}
+
+/* "Crafted!" text — appears after 3rd strike */
+.forge-done-text {
+  font-family: 'Georgia', serif;
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 5px;
+  color: #ffd27a;
+  text-shadow:
+    0 0 14px rgba(255, 200, 60, 0.9),
+    0 0 35px rgba(200, 155, 60, 0.5);
+  margin-top: 14px;
+  animation: doneTextIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) 1.1s both;
+}
+@keyframes doneTextIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.craft-anim-enter-active { animation: craftOverlayIn 0.18s ease-out; }
+.craft-anim-leave-active { animation: craftOverlayIn 0.15s ease-in reverse; }
+@keyframes craftOverlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Status bar */
+.wl-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(200, 155, 60, 0.06);
+  border: 1px solid rgba(200, 155, 60, 0.2);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.wl-status-label {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #a88040;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.wl-status-items {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.wl-status-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 6px 3px 4px;
+  border-radius: 5px;
+  font-size: 11px;
+  color: #f0ddb0;
+}
+
+.wl-chip-weapon {
+  background: rgba(60, 100, 200, 0.15);
+  border: 1px solid rgba(60, 100, 200, 0.3);
+}
+
+.wl-chip-armor {
+  background: rgba(200, 60, 60, 0.15);
+  border: 1px solid rgba(200, 60, 60, 0.3);
+}
+
+.wl-chip-img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  border-radius: 3px;
+}
+
+.wl-chip-name {
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wl-chip-remove {
+  background: none;
+  border: none;
+  color: #7c5a2b;
+  cursor: pointer;
+  font-size: 10px;
+  padding: 0 2px;
+  line-height: 1;
+  transition: color 0.1s;
+}
+
+.wl-chip-remove:hover { color: #cc4444; }
+
+.wl-status-count {
+  font-size: 11px;
+  color: #7c5a2b;
+  white-space: nowrap;
 }
 </style>
