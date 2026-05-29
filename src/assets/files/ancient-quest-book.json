@@ -45,7 +45,7 @@
                     {
                         "action_id": 1,
                         "title": "ตาม Scoutflies ไป!",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token 1 อัน",
                         "PathToDialog": 21
                     }
                 ]
@@ -60,7 +60,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "เริ่มต้นเส้นทางทันที?",
-                        "consequences": "ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "consequences": "ได้รับ Track Token 1 อัน",
                         "PathToDialog": 27
                     },
                     {
@@ -89,14 +89,14 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "ทำตามคำแนะนำของเธอ และค่อยๆ เดินหน้าไป",
-                        "consequences": "ได้รับและเปิดเผยโทเค็นรอยเท้า 1 อัน แล้วเลือกว่าจะเก็บหรือทิ้ง",
+                        "consequences": "ได้รับและเปิดเผย Track Token 1 อัน แล้วเลือกว่าจะเก็บหรือทิ้ง",
                         "PathToDialog": 26
                     },
                     {
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "ด้วยรอยเท้ามากมาย ไม่มีเวลาที่จะเสีย!",
-                        "consequences": "ได้รับโทเค็นรอยเท้า 2 อัน",
+                        "consequences": "ได้รับ Track Token  2 อัน",
                         "PathToDialog": 16
                     },
                     {
@@ -118,7 +118,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "เดินไปตามชายหาด",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token 1 อัน",
                         "PathToDialog": 22
                     },
                     {
@@ -147,7 +147,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "ตามรอยเท้าที่คุณสามารถพบได้",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 2 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token  2 อัน",
                         "PathToDialog": 13
                     },
                     {
@@ -183,7 +183,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "ไม่มีเวลาหันหลังกลับ",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 3 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token  3 อัน",
                         "PathToDialog": 18
                     },
                     {
@@ -227,14 +227,14 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "ขุดแร่แล้วเข้าไปในถ้ำ",
-                        "consequences": "ทิ้งโทเค็นรอยเท้า 1 อัน นักล่าทุกคนทอยลูกเต๋า \n 1-2 ได้รับ 1 Dragonite ore \n 3-4 ได้รับ 1 Fucium ore \n 5-6 ได้รับ 1 Firecell ore",
+                        "consequences": "ทิ้ง Track Token 1 อัน นักล่าทุกคนทอยลูกเต๋า \n 1-2 ได้รับ 1 Dragonite ore \n 3-4 ได้รับ 1 Fucium ore \n 5-6 ได้รับ 1 Firecell ore",
                         "PathToDialog": 7
                     },
                     {
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "ตามรอยเท้าที่คุณเห็น และหวังว่ามันจะยังสดใหม่",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token 1 อัน",
                         "PathToDialog": 6
                     }
                 ]
@@ -256,7 +256,7 @@
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "ขอความแนะนำจากพวกเขา",
-                        "consequences": "ได้รับและเปิดเผยโทเค็นรอยเท้า 4 อัน จากนั้นเลือกว่าจะเก็บหรือทิ้ง",
+                        "consequences": "ได้รับและเปิดเผย Track Token  4 อัน จากนั้นเลือกว่าจะเก็บหรือทิ้ง",
                         "PathToDialog": 19
                     }
                 ]
@@ -293,14 +293,14 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "เดินหน้าต่อไป!",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 2 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token  2 อัน",
                         "PathToDialog": 30
                     },
                     {
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "เดินหน้าด้วยความระมัดระวัง",
-                        "consequences": "ทิ้ง Time card 1 ใบ เปิดเผยโทเค็นรอยเท้าจากกลุ่มสูงสุด 3 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ เปิดเผย Track Token จากกลุ่มสูงสุด 3 อัน",
                         "PathToDialog": 18
                     }
                 ]
@@ -337,7 +337,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "...",
-                        "consequences": "ผู้เล่นสามารถทิ้งทรัพยากรใดก็ได้สามชิ้น และเพิ่มยารักษา 1 ขวดลงในกลุ่ม หรือรับโทเค็นรอยเท้า 1 อัน หากพวกเขาทำเช่นนั้น ทิ้ง Time card 1 ใบ",
+                        "consequences": "ผู้เล่นสามารถทิ้งทรัพยากรใดก็ได้สามชิ้น และเพิ่มยารักษา 1 ขวดลงในกลุ่ม หรือรับ Track Token 1 อัน หากพวกเขาทำเช่นนั้น ทิ้ง Time card 1 ใบ",
                         "PathToDialog": 10
                     }
                 ]
@@ -440,14 +440,14 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "ตามรอยเท้า",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token 1 อัน",
                         "PathToDialog": 28
                     },
                     {
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "หยุดเพื่อพิจารณารอยเท้าอย่างใกล้ชิด",
-                        "consequences": "ทิ้ง Time card 2 ใบ ทิ้งโทเค็นรอยเท้า 1 อัน",
+                        "consequences": "ทิ้ง Time card 2 ใบ ทิ้ง Track Token 1 อัน",
                         "PathToDialog": 15
                     }
                 ]
@@ -462,7 +462,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "...",
-                        "consequences": "หากกลุ่มมีโทเคนรอยเท้า 4 อันหรือน้อยกว่า ให้รับโทเคนรอยเท้าเพิ่ม 1 อัน",
+                        "consequences": "หากกลุ่มมี Track Token  4 อันหรือน้อยกว่า ให้รับ Track Token เพิ่ม 1 อัน",
                         "PathToDialog": 30
                     }
                 ]
@@ -499,7 +499,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "รีบตามรอยเท้าตามเส้นทาง?",
-                        "consequences": "ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "consequences": "ได้รับ Track Token 1 อัน",
                         "PathToDialog": 23
                     },
                     {
@@ -528,7 +528,7 @@
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "ลืมศพนั้นไป เน้นการติดตาม",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token 1 อัน",
                         "PathToDialog": 20
                     }
                 ]
@@ -616,7 +616,7 @@
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "ตามทางลัด.",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 2 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token  2 อัน",
                         "PathToDialog": 28
                     },
                     {
@@ -704,7 +704,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -858,14 +858,14 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "ติดตาม Scoutflies",
-                        "consequences": "ทิ้ง Time card 2 ใบ ได้รับโทเค็นรอยเท้า 4 อัน",
+                        "consequences": "ทิ้ง Time card 2 ใบ ได้รับ Track Token  4 อัน",
                         "PathToDialog": 8
                     },
                     {
                         "action_id": 2,
                         "required_dialog": "ผู้เล่นสามารถเลือกตัวเลือกนี้ได้หากพวกเขามี Tobi-Kadachi Membrane อย่างน้อย 1 ชิ้นในอินเวนทอรี่",
                         "title": "นี่ไม่ใช่ก้อนหิน—ฉันจำมันได้จากที่เคยเห็นก่อนหน้านี้ เก็บชิ้นส่วนที่ทิ้งไว้ แล้วตามรอยที่หลงเหลือไปยังสุสาน",
-                        "consequences": "ได้รับโทเค็นรอยเท้า 3 อัน และนักล่าได้รับ Tobi-Kadachi Membrane 1 ชิ้น",
+                        "consequences": "ได้รับ Track Token  3 อัน และนักล่าได้รับ Tobi-Kadachi Membrane 1 ชิ้น",
                         "PathToDialog": 25
                     },
                     {
@@ -894,7 +894,7 @@
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "หยุดเพื่อตรวจสอบสิ่งแวดล้อมรอบตัว",
-                        "consequences": "ทิ้งโทเคนรอยเท้า 1 อัน หรือ ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "consequences": "ทิ้ง Track Token  1 อัน หรือ ได้รับ Track Token 1 อัน",
                         "PathToDialog": 35
                     }
                 ]
@@ -909,14 +909,14 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "อยู่บนเส้นทางต่อไป",
-                        "consequences": "ทิ้ง Time card 2 ใบ ได้รับโทเค็นรอยเท้า 2 อัน",
+                        "consequences": "ทิ้ง Time card 2 ใบ ได้รับ Track Token  2 อัน",
                         "PathToDialog": 35
                     },
                     {
                         "action_id": 2,
                         "required_dialog": "ผู้เล่นสามารถเลือกตัวเลือกนี้ได้หากพวกเขามี Electrode อย่างน้อย 1 ชิ้นในอินเวนทอรี่",
                         "title": "อิเล็กโทรดที่ซ่อนอยู่ตอบสนองกับอิเล็กโทรดในครอบครองของคุณ ส่งเสียงฟู่ฟ่าจนทำให้หาตำแหน่งของมันได้ง่าย",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 1 อัน แต่ละนักล่าได้รับ Tobi-Kadachi Electrode 1 ชิ้น.",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token 1 อัน แต่ละนักล่าได้รับ Tobi-Kadachi Electrode 1 ชิ้น.",
                         "PathToDialog": 17
                     }
                 ]
@@ -931,14 +931,14 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "เก็บซากและออกเดินทางต่อไป!",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 2 อัน แต่ละนักล่าได้รับ 1 Monster Bone small หรือ 1 Monster Bone large.",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token  2 อัน แต่ละนักล่าได้รับ 1 Monster Bone small หรือ 1 Monster Bone large.",
                         "PathToDialog": 6
                     },
                     {
                         "action_id": 2,
                         "required_dialog": "ผู้เล่นสามารถเลือกตัวเลือกนี้ได้หากพวกเขามี Tobi-Kadachi Electrode อย่างน้อย 1 ชิ้นในอินเวนทอรี่",
                         "title": "มันมาที่นี่เพื่อที่จะตาย ดูจากชิ้นส่วนที่กระจายอยู่ทั่วพื้น.",
-                        "consequences": "ทิ้ง Time card 3 ใบ ทิ้งโทเค็นรอยเท้าทั้งหมด แต่ละนักล่าได้รับ 1 Tobi-Kadachi Claw, 1 Tobi-Kadachi Scale, 1 Electro Sac, และ 1 Thunder Sac.",
+                        "consequences": "ทิ้ง Time card 3 ใบ ทิ้ง Track Token ทั้งหมด แต่ละนักล่าได้รับ 1 Tobi-Kadachi Claw, 1 Tobi-Kadachi Scale, 1 Electro Sac, และ 1 Thunder Sac.",
                         "PathToDialog": 35
                     }
                 ]
@@ -953,7 +953,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "ปีนขึ้นไปยังตำแหน่งใหม่",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 2 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token  2 อัน",
                         "PathToDialog": 2
                     }
                 ]
@@ -975,7 +975,7 @@
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "ให้ความสำคัญกับการติดตามร่องรอย.",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 2 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token  2 อัน",
                         "PathToDialog": 22
                     }
                 ]
@@ -1012,7 +1012,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "คุณมีพอแล้ว ติดตามรอยเท้า",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token 1 อัน",
                         "PathToDialog": 23
                     },
                     {
@@ -1137,7 +1137,7 @@
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "เดินหน้าต่อไป มันคงไม่หนีไปไกล!",
-                        "consequences": "ทิ้ง Time card 1 ใบ ทิ้งโทเค็นรอยเท้า 2 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ ทิ้ง Track Token  2 อัน",
                         "PathToDialog": 20
                     }
                 ]
@@ -1152,7 +1152,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "ลองหามันอีกครั้ง",
-                        "consequences": "ทิ้งโทเคนรอยเท้าทั้งหมด. แต่ละนักล่าได้รับ Wingdrake Hide 1 ชิ้น.",
+                        "consequences": "ทิ้ง Track Token ทั้งหมด. แต่ละนักล่าได้รับ Wingdrake Hide 1 ชิ้น.",
                         "PathToDialog": 14
                     }
                 ]
@@ -1174,7 +1174,7 @@
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "ยังคงเดินตามเส้นทางเดิม",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token 1 อัน",
                         "PathToDialog": 28
                     }
                 ]
@@ -1226,7 +1226,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "รีบตามรอยเท้าต่อไป?",
-                        "consequences": "ทิ้ง Time card 1 ใบ ทิ้งโทเค็นรอยเท้า 1 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ ทิ้ง Track Token 1 อัน",
                         "PathToDialog": 9
                     },
                     {
@@ -1299,7 +1299,7 @@
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "เมินมันไป. การล่าต้องดำเนินต่อ!",
-                        "consequences": "ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "consequences": "ได้รับ Track Token 1 อัน",
                         "PathToDialog": 32
                     }
                 ]
@@ -1336,14 +1336,14 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "...",
-                        "consequences": "ถ้านักล่ามีโทเคนรอยเท้าน้อยกว่า 3 อัน ให้สับ Aimless Wandering ลงในกอง Time card",
+                        "consequences": "ถ้านักล่ามี Track Token น้อยกว่า 3 อัน ให้สับ Aimless Wandering ลงในกอง Time card",
                         "PathToDialog": 26
                     },
                     {
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "ไม่ ไม่ใช่แบบนั้น นี่คือเส้นทางที่ถูกต้อง. เดินหน้าต่อไป.",
-                        "consequences": "ทิ้ง Time card 1 ใบ เปิดเผยโทเค็นรอยเท้า 1 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ เปิดเผย Track Token 1 อัน",
                         "PathToDialog": 19
                     }
                 ]
@@ -1365,7 +1365,7 @@
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "ค้นหารอยเท้าต่อไป",
-                        "consequences": "ทิ้ง Time card 3 ใบ ได้รับและเปิดเผยโทเค็นรอยเท้า 2 อัน",
+                        "consequences": "ทิ้ง Time card 3 ใบ ได้รับและเปิดเผย Track Token  2 อัน",
                         "PathToDialog": 22
                     }
                 ]
@@ -1475,7 +1475,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "ได้รับโทเค็นรอยเท้า 2 อัน เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "ได้รับ Track Token  2 อัน เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -1490,7 +1490,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "ทิ้ง Time card 1 ใบ เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "ทิ้ง Time card 1 ใบ เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -1512,7 +1512,7 @@
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "ค้นหารอยเท้าต่อไป",
-                        "consequences": "ทิ้ง Time card 3 ใบ ได้รับและเปิดเผยโทเค็นรอยเท้า 2 อัน",
+                        "consequences": "ทิ้ง Time card 3 ใบ ได้รับและเปิดเผย Track Token  2 อัน",
                         "PathToDialog": 22
                     }
                 ]
@@ -2163,14 +2163,14 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "ตามเส้นทางทางทิศตะวันตกเฉียงใต้",
-                        "consequences": "ทิ้ง Time card 1 ใบ เปิดเผยโทเค็นรอยเท้า 1 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ เปิดเผย Track Token 1 อัน",
                         "PathToDialog": 27
                     },
                     {
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "ตามรอยเท้า",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token 1 อัน",
                         "PathToDialog": 15
                     }
                 ]
@@ -2222,7 +2222,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -2237,7 +2237,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -2252,7 +2252,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "ทิ้ง 2 time cards. ได้รับ 4 track token. เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "ทิ้ง 2 time cards. ได้รับ 4 track token. เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -2847,7 +2847,7 @@
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "ยังคงเดินต่อไปตามเส้นทางในป่า",
-                        "consequences": "ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "consequences": "ได้รับ Track Token 1 อัน",
                         "PathToDialog": 7
                     }
                 ]
@@ -2951,7 +2951,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "ทิ้ง Time card 2 ใบ เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "ทิ้ง Time card 2 ใบ เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -2966,7 +2966,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "ได้รับ 2 track token เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "ได้รับ 2 track token เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -2981,7 +2981,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -2996,7 +2996,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "นักล่าทุกคนได้รับความเสียหาย 1 หน่วย เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "นักล่าทุกคนได้รับความเสียหาย 1 หน่วย เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -3675,7 +3675,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "ได้รับ 2 track token เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "ได้รับ 2 track token เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -3690,7 +3690,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "ทิ้ง Time card 2 ใบ เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "ทิ้ง Time card 2 ใบ เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -3705,7 +3705,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -3720,7 +3720,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "ได้รับ 1 track token เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "ได้รับ 1 track token เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]

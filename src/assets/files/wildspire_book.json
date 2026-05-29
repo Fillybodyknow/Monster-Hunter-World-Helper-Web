@@ -45,7 +45,7 @@
                     {
                         "action_id": 1,
                         "title": "ได้เวลาออกล่าแล้ว!",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token  1 อัน",
                         "PathToDialog": 17
                     }
                 ]
@@ -60,7 +60,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "ออกล่าต่อทันที!",
-                        "consequences": "ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "consequences": "ได้รับ Track Token  1 อัน",
                         "PathToDialog": 8
                     },
                     {
@@ -89,14 +89,14 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "วางกับดัก ล่อ Barroth ",
-                        "consequences": "ได้รับและเปิดเผยโทเค็นรอยเท้า 1 อัน แล้วเลือกว่าจะเก็บหรือทิ้ง",
+                        "consequences": "ได้รับและเปิดเผย Track Token  1 อัน แล้วเลือกว่าจะเก็บหรือทิ้ง",
                         "PathToDialog": 20
                     },
                     {
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "มุ่งหน้าลึกเข้าไปในหนองน้ำเพื่อตามหาสัตว์ร้าย",
-                        "consequences": "ได้รับโทเค็นรอยเท้า 2 อัน",
+                        "consequences": "ได้รับ Track Token  2 อัน",
                         "PathToDialog": 10
                     },
                     {
@@ -118,7 +118,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "ตามรอยไปตามรากไม้ที่บิดเบี้ยวและกิ่งไม้ที่หัก",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token  1 อัน",
                         "PathToDialog": 26
                     },
                     {
@@ -147,7 +147,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "ศึกษาการเคลื่อนไหวของ Barroth  มีบางสิ่งที่ผลักดันมันอยู่ อาจจะหาคำตอบได้",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 2 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token  2 อัน",
                         "PathToDialog": 19
                     },
                     {
@@ -329,7 +329,7 @@
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "สำรวจพื้นที่ที่ Barroth ทำลายไว้ อาจมีบางสิ่งหลงเหลืออยู่",
-                        "consequences": "ทิ้งโทเคนรอยเท้า 1 อัน สับการ์ด Researcher's Favour ลงในกอง Time Card",
+                        "consequences": "ทิ้ง Track Token 1 อัน สับการ์ด Researcher's Favour ลงในกอง Time Card",
                         "PathToDialog": 7
                     }
                 ]
@@ -373,7 +373,7 @@
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "พวกมันดูมีความสุขในที่ที่พวกมันอยู่ แต่พวกมันอาจจะมีข้อมูลดีๆ...",
-                        "consequences": "รับและเปิดเผย 4 โทเคนรอยเท้า แล้วเลือกว่าจะเก็บหรือทิ้งโทเค็นเหล่านั้น",
+                        "consequences": "รับและเปิดเผย 4  Track Token แล้วเลือกว่าจะเก็บหรือทิ้งโทเค็นเหล่านั้น",
                         "PathToDialog": 21
                     }
                 ]
@@ -410,14 +410,14 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "ตามล่าต่อไป มันเป็นแค่เรื่องของเวลา",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 2 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token  2 อัน",
                         "PathToDialog": 30
                     },
                     {
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "สำรวจพื้นที่นี้ให้ละเอียดขึ้น  Barroth เคยอยู่ที่นี่ อาจมีเบาะแสเพิ่มเติม",
-                        "consequences": "ทิ้ง Time card 1 ใบ เปิดเผยโทเคนร้อยเท้าได้สูงสุด 3 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ เปิดเผย Track Token ได้สูงสุด 3 อัน",
                         "PathToDialog": 29
                     }
                 ]
@@ -432,7 +432,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "เดินหน้าต่อไป",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 1 อัน สับการ์ด Barroth Slayer ลงในกอง Time Card",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token  1 อัน สับการ์ด Barroth Slayer ลงในกอง Time Card",
                         "PathToDialog": 8
                     },
                     {
@@ -476,7 +476,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "...",
-                        "consequences": "ทั้งกลุ่มสามารถทิ้งทรัพยากร 3 ชิ้น และเลือกเพิ่ม 1 ยารักษาหรือรับ 1 โทเค็นรอยเท้า",
+                        "consequences": "ทั้งกลุ่มสามารถทิ้งทรัพยากร 3 ชิ้น และเลือกเพิ่ม 1 ยารักษาหรือรับ 1  Track Token ",
                         "PathToDialog": 13
                     }
                 ]
@@ -498,7 +498,7 @@
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "นั่นรอยเท้าของ Barroth หรือเปล่า?",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ 2 โทเคนรอยเท้า",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ 2  Track Token",
                         "PathToDialog": 7
                     },
                     {
@@ -520,7 +520,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "คุณกำลังเข้าใกล้ตัวอสูร",
-                        "consequences": "หากกลุ่มมีโทเค็นรอยเท้า 4 ชิ้นหรือน้อยกว่า ให้รับ 1 โทเค็นรอยเท้า",
+                        "consequences": "หากกลุ่มมี Track Token  4 ชิ้นหรือน้อยกว่า ให้รับ 1  Track Token ",
                         "PathToDialog": 30
                     }
                 ]
@@ -535,7 +535,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "ตามรอยนี้ต่อไป!",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ 3 โทเคนรอยเท้า",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ 3  Track Token",
                         "PathToDialog": 29
                     },
                     {
@@ -630,7 +630,7 @@
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "คุณมั่นใจว่าสัตว์ร้ายยังคงอยู่ในบริเวณนี้ สำรวจพื้นที่อย่างระมัดระวัง",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับโทเค็นรอยเท้า 1 อัน",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token  1 อัน",
                         "PathToDialog": 9
                     }
                 ]
@@ -645,14 +645,14 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "ใช้เวลาสักครู่เพื่อเก็บสิ่งที่มีอยู่ที่นี่",
-                        "consequences": "ทิ้งโทเคนรอยเท้า 1 อัน นักล่าทุกคนทอยลูกเต๋าตามตารางนี้:\nหากทอยได้ 1-2 ได้ Dragonite ore 1 ชิ้น\nหากทอยได้ 3-4 ได้ Fucium ore 1 ชิ้น\nหากทอยได้ 5-6 ได้ Firecell ore 1 ชิ้น",
+                        "consequences": "ทิ้ง Track Token 1 อัน นักล่าทุกคนทอยลูกเต๋าตามตารางนี้:\nหากทอยได้ 1-2 ได้ Dragonite ore 1 ชิ้น\nหากทอยได้ 3-4 ได้ Fucium ore 1 ชิ้น\nหากทอยได้ 5-6 ได้ Firecell ore 1 ชิ้น",
                         "PathToDialog": 28
                     },
                     {
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "ไม่มีเวลามากพอที่จะเสียเวลาไปแล้ว",
-                        "consequences": "ทิ้งโทเคนรอยเท้า 1 อัน",
+                        "consequences": "ทิ้ง Track Token 1 อัน",
                         "PathToDialog": 22
                     }
                 ]
@@ -689,14 +689,14 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "อาจจะเป็นรอยเท้า...",
-                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ 1 โทเคนรอยเท้า",
+                        "consequences": "ทิ้ง Time card 1 ใบ ได้รับ 1  Track Token",
                         "PathToDialog": 7
                     },
                     {
                         "action_id": 2,
                         "required_dialog": "",
                         "title": "ใช้เวลาสำรวจร่องรอยที่ Barroth ทิ้งไว้เพิ่มเติม",
-                        "consequences": "ทิ้ง 1 โทเคนรอยเท้า",
+                        "consequences": "ทิ้ง 1  Track Token",
                         "PathToDialog": 12
                     }
                 ]
@@ -711,7 +711,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -1506,7 +1506,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -1521,7 +1521,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -2205,7 +2205,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -2220,7 +2220,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -2235,7 +2235,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -2907,7 +2907,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -2922,7 +2922,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "ได้รับ track token 3 ชิ้น ,เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "ได้รับ track token 3 ชิ้น ,เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -2937,7 +2937,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "นักล่าทุกคนได้รับความเสียหาย 1 หน่วย ,เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "นักล่าทุกคนได้รับความเสียหาย 1 หน่วย ,เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -2952,7 +2952,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "ทิ้ง 1 time card ,เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "ทิ้ง 1 time card ,เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -3645,7 +3645,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -3660,7 +3660,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "นักล่าทุกคนได้รับความเสียหาย 1 หน่วย ,เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "นักล่าทุกคนได้รับความเสียหาย 1 หน่วย ,เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -3675,7 +3675,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "ได้รับ Track token 2 ชิ้น,เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "ได้รับ Track token 2 ชิ้น,เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
@@ -3690,7 +3690,7 @@
                         "action_id": 1,
                         "required_dialog": "",
                         "title": "",
-                        "consequences": "ทิ้ง Time card 1 ใบ,เปิดเผยโทเค็นรอยเท้าทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+                        "consequences": "ทิ้ง Time card 1 ใบ,เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
                         "PathToDialog": 0
                     }
                 ]
