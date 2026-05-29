@@ -350,7 +350,7 @@ const confirmTrade = () => {
   showTradeModal.value = false
   tradeGiveSelection.value = {}
   tradeChosenItem.value = null
-  Swal.fire({ icon: 'success', title: `ได้รับ ${name} แล้ว`, timer: 1200, showConfirmButton: false })
+  Swal.fire({ icon: 'success', title: `ได้รับ ${name} แล้ว`, timer: 5000, showConfirmButton: false })
 }
 
 // ─── Meowscular Chef ─────────────────────────────────────────────────────────
@@ -365,7 +365,54 @@ const chefConfirm = () => {
 const chefReset = () => { chefChosenElement.value = null; chefDone.value = false }
 
 // ─── Hunter's Lodge ──────────────────────────────────────────────────────────
-const lodgeDone = ref(false)
+const lodgeDone           = ref(false)
+const showHirePalicoModal = ref(false)
+const hireGiveSelection   = ref({})
+const hireGiveSearch      = ref('')
+
+const hireGiveTotal = computed(() =>
+  Object.values(hireGiveSelection.value).reduce((s, q) => s + q, 0)
+)
+const hireReady = computed(() => hireGiveTotal.value === 3)
+
+const filteredHireItems = computed(() => {
+  if (!hireGiveSearch.value) return inventoryAll.value
+  return inventoryAll.value.filter(i => i.item.toLowerCase().includes(hireGiveSearch.value.toLowerCase()))
+})
+
+const openHirePalicoModal = () => {
+  hireGiveSelection.value = {}
+  hireGiveSearch.value = ''
+  showHirePalicoModal.value = true
+}
+
+const adjustHireGive = (item, delta) => {
+  const key = `${item.resource_type_id}-${item.item_id}`
+  const current = hireGiveSelection.value[key] ?? 0
+  const otherTotal = hireGiveTotal.value - current
+  let newVal
+  if (delta > 0) newVal = Math.min(current + delta, item.quantity, 3 - otherTotal)
+  else newVal = Math.max(0, current + delta)
+  const updated = { ...hireGiveSelection.value }
+  if (newVal <= 0) delete updated[key]
+  else updated[key] = newVal
+  hireGiveSelection.value = updated
+}
+
+const confirmHirePalico = () => {
+  if (!hireReady.value || !hunter.value) return
+  const inv = hunter.value.inventory
+  Object.entries(hireGiveSelection.value).forEach(([key, qty]) => {
+    const [typeId, itemId] = key.split('-').map(Number)
+    const it = inv.find(i => i.resource_type_id === typeId && i.item_id === itemId)
+    if (it) it.quantity -= qty
+  })
+  hunter.value.inventory = inv.filter(i => i.quantity > 0)
+  saveHunter(hunter.value)
+  showHirePalicoModal.value = false
+  hireGiveSelection.value = {}
+  Swal.fire({ icon: 'success', title: 'จ้าง Palico สำเร็จ!', text: 'Palico จะร่วมเดินทางใน Quest ถัดไป', timer: 5000, showConfirmButton: false })
+}
 
 // ─── Pet the Poogie ──────────────────────────────────────────────────────────
 const poogiePatted = ref(false)
@@ -606,13 +653,27 @@ const poogiePat = () => { poogiePatted.value = true }
     <!-- ══════ HUNTER'S LODGE ══════ -->
     <div v-if="hunter && activeActivity === 'lodge'" class="hq-activity-card hqa-flavor">
       <div class="hqa-stamp">VISIT THE HUNTER'S LODGE</div>
-      <div v-if="hunter.palico_name">
-        <p class="hqa-desc">{{ hunter.palico_name }} รอคุณอยู่ที่ Lodge — พูดคุยกับ Palico ตัวอื่นที่นั่น เพื่อนำ Palico ที่เหมาะสมกับ Quest ถัดไปของคุณมาด้วย</p>
+      <div class="lodge-case">
+        <span class="lodge-case-label">มี Palico</span>
+        <p class="hqa-desc">{{ hunter.palico_name }} รอคุณอยู่ที่ Lodge — พูดคุยกับ Palico ตัวอื่นที่นั่น เพื่อนำ Palico ที่เหมาะสมกับ Quest ถัดไปมาด้วย</p>
         <p class="hqa-flavor-tip">🐱 วางการ์ด Palico ที่เลือกไว้ข้าง Quest Card ของคุณ</p>
       </div>
-      <div v-else>
+
+      <div class="lodge-divider"></div>
+
+      <div class="lodge-case">
+        <span class="lodge-case-label">ไม่มี Palico</span>
         <p class="hqa-desc">คุณมาคนเดียว... แต่ Felyne ที่ Lodge มองคุณด้วยตาเป็นประกาย</p>
-        <p class="hqa-flavor-tip">🐱 นำ Resource 3 อันออกจาก Inventory เพื่อจ้าง Palico ร่วมเดินทางใน Quest ถัดไป</p>
+        <div
+          class="hqa-trade-card lodge-hire-card"
+          :class="{ disabled: totalInventory < 3 }"
+          @click="totalInventory >= 3 && openHirePalicoModal()"
+        >
+          <div class="htc-cost">3 Resource</div>
+          <div class="htc-arrow">→</div>
+          <div class="htc-gain">🐱 จ้าง Palico ชั่วคราว</div>
+          <div v-if="totalInventory < 3" class="htc-lock">ไม่พอ ({{ totalInventory }}/3)</div>
+        </div>
       </div>
     </div>
 
@@ -783,6 +844,51 @@ const poogiePat = () => { poogiePatted.value = true }
               ✓ ยืนยันแลก
             </button>
             <button class="hq-btn-cancel" @click="showTradeModal = false">← ยกเลิก</button>
+          </div>
+        </div>
+      </div>
+    </teleport>
+
+    <!-- HIRE PALICO MODAL -->
+    <teleport to="body">
+      <div v-if="showHirePalicoModal" class="hq-confirm-overlay" @click.self="showHirePalicoModal = false">
+        <div class="hq-confirm-modal hq-trade-modal">
+          <div class="hq-confirm-stamp lodge-stamp">HIRE A PALICO</div>
+
+          <div class="trade-give-section">
+            <div class="trade-give-header">
+              <span class="trade-give-label">เลือก Resource ที่จะจ่าย</span>
+              <span class="trade-give-count" :class="{ full: hireGiveTotal === 3 }">
+                {{ hireGiveTotal }} / 3
+              </span>
+            </div>
+            <input v-model="hireGiveSearch" class="trade-search-input" placeholder="Search item..." />
+            <div class="trade-give-list">
+              <div v-if="filteredHireItems.length === 0" class="trade-no-give-results">ไม่พบ item</div>
+              <div
+                v-for="item in filteredHireItems"
+                :key="`${item.resource_type_id}-${item.item_id}`"
+                class="trade-give-row"
+              >
+                <img :src="getImg(item.thumbnail)" class="hq-trade-img" />
+                <span class="trade-give-name">{{ item.item }}</span>
+                <span class="trade-give-owned">มี {{ item.quantity }}</span>
+                <div class="trade-give-ctrl">
+                  <button class="tgc-btn" @click="adjustHireGive(item, -1)">−</button>
+                  <span class="tgc-qty">{{ hireGiveSelection[`${item.resource_type_id}-${item.item_id}`] ?? 0 }}</span>
+                  <button class="tgc-btn"
+                    :disabled="hireGiveTotal >= 3 || (hireGiveSelection[`${item.resource_type_id}-${item.item_id}`] ?? 0) >= item.quantity"
+                    @click="adjustHireGive(item, 1)">+</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="hq-confirm-btns">
+            <button class="hq-btn-confirm lodge-btn-confirm" :disabled="!hireReady" @click="confirmHirePalico">
+              🐱 ยืนยันจ้าง Palico
+            </button>
+            <button class="hq-btn-cancel" @click="showHirePalicoModal = false">← ยกเลิก</button>
           </div>
         </div>
       </div>
@@ -1921,6 +2027,44 @@ const poogiePat = () => { poogiePatted.value = true }
 
 .hq-trade-img  { width: 30px; height: 30px; object-fit: contain; flex-shrink: 0; }
 .hq-trade-name { font-size: 12px; color: #c4a060; line-height: 1.3; text-align: left; }
+
+/* ── Hunter's Lodge ── */
+.lodge-case {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lodge-case-label {
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #7c5a2b;
+}
+
+.lodge-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(124, 90, 43, 0.4), transparent);
+  margin: 2px 0;
+}
+
+.lodge-hire-card { margin-top: 2px; }
+
+.lodge-stamp {
+  color: #4ac4a0;
+  border-color: rgba(74, 196, 160, 0.35);
+  background: rgba(74, 196, 160, 0.07);
+}
+
+.lodge-btn-confirm {
+  border-color: #3a8c6a;
+  background: linear-gradient(to bottom, #1a3a2a, #0d1e15);
+  color: #4ac4a0;
+}
+.lodge-btn-confirm:hover:not(:disabled) {
+  border-color: #4ac4a0;
+  box-shadow: 0 0 16px rgba(74, 196, 160, 0.35);
+}
 
 /* ── Meowscular Chef ── */
 .hqa-flavor-sub  { margin: 0 0 8px; font-size: 12px; color: #a88040; }
