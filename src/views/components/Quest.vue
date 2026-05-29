@@ -197,7 +197,7 @@ const confirmOutcome = () => {
     playOutcomeSound('fail')
     onFail()
   }
-  setTimeout(dismissResult, 5000)
+  setTimeout(dismissResult, 8000)
 }
 
 const dismissResult = () => {
