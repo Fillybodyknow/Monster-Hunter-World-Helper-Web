@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onActivated } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onActivated } from 'vue'
 
 defineOptions({ name: 'Quest' })
 import ancientData from '@/assets/files/ancient-quest-book.json'
@@ -12,8 +12,73 @@ import elementalData from '@/assets/files/elemental.json'
 import statusEffectData from '@/assets/files/status_effect.json'
 import resourceData from '@/assets/files/resource.json'
 import { getHunters, saveHunters } from '@/services/hunterStorage'
+import { useRoomStore } from '@/stores/room'
+import hunterClassData from '@/assets/files/class_hunter.json'
+import CoopLobbyModal from './CoopLobbyModal.vue'
 
+const room = useRoomStore()
 const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
+const getClass = (id) => hunterClassData.find((c) => c.hunter_class_id === id)
+
+// Coop
+const showCoopLobby = ref(false)
+const showJoinInput = ref(false)
+const joinCode = ref('')
+const joinError = ref('')
+const joinLoading = ref(false)
+
+const startCoopQuest = async () => {
+  if (!hunter.value) return
+  if (!room.inRoom) await room.create(hunter.value)
+  await room.setQuestInfo({
+    monster_id: selectedMonster.value?.monster_id,
+    monster_name: selectedMonster.value?.monster_name,
+    thumbnail: selectedMonster.value?.thumbnail,
+    quest_type: selectedQuest.value?.quest_type,
+    difficulty_level: selectedQuest.value?.difficulty_level,
+  })
+  showCoopLobby.value = true
+}
+
+const onCoopStart = () => {
+  showCoopLobby.value = false
+
+  if (!selectedMonster.value && room.questInfo) {
+    const info = room.questInfo
+    const allMonsters = [...ancientData, ...wildspireData]
+    const monster = allMonsters.find((m) => m.monster_id === info.monster_id)
+    if (monster) {
+      selectedMonster.value = monster
+      selectedBook.value = ancientData.includes(monster) ? books[0] : books[1]
+      const quest = monster.quest?.find(
+        (q) => q.quest_type === info.quest_type && q.difficulty_level === info.difficulty_level,
+      )
+      if (quest) selectedQuest.value = quest
+    }
+  }
+
+  startQuest()
+}
+
+const onCoopLeave = () => {
+  showCoopLobby.value = false
+}
+
+const handleJoinQuest = async () => {
+  if (!hunter.value || !joinCode.value.trim()) return
+  joinLoading.value = true
+  joinError.value = ''
+  try {
+    await room.join(joinCode.value.trim().toUpperCase(), hunter.value)
+    showJoinInput.value = false
+    joinCode.value = ''
+    showCoopLobby.value = true
+  } catch (e) {
+    joinError.value = e.message
+  } finally {
+    joinLoading.value = false
+  }
+}
 
 onMounted(loadHunter)
 onActivated(loadHunter)
@@ -104,6 +169,7 @@ const currentDialog = computed(() => {
 })
 
 const pendingAction = ref(null)
+const tiedActions = ref([]) // actions ที่ votes เสมอกัน รอ Host ตัดสิน
 const showBattleIntro = ref(false)
 const battleIntroPhase = ref('enter') // 'enter' | 'show' | 'leave'
 const battleIntroKey = ref(0)
@@ -137,15 +203,17 @@ const fadeOutOutcomeSound = () => {
 }
 
 const doAction = (action) => {
-  pendingAction.value = action
+  if (room.inRoom) {
+    room.voteForAction(action.action_id)
+  } else {
+    pendingAction.value = action
+  }
 }
 
-const confirmAction = () => {
-  const action = pendingAction.value
-  if (!action) return
+const _executeDialog = (dialogId) => {
   pendingAction.value = null
-  currentDialogId.value = action.PathToDialog
-  if (selectedMonster.value.dialog_hunting_phase.includes(action.PathToDialog)) {
+  currentDialogId.value = dialogId
+  if (selectedMonster.value?.dialog_hunting_phase?.includes(dialogId)) {
     battleIntroKey.value++
     showBattleIntro.value = true
     battleIntroPhase.value = 'enter'
@@ -159,9 +227,87 @@ const confirmAction = () => {
   }
 }
 
+const _proceedWithAction = (action) => {
+  if (room.inRoom && room.setCurrentDialog) {
+    room.clearVotes?.()
+    room.clearProceed?.()
+    room.clearSyncedPendingAction?.()
+    room.setCurrentDialog(action.PathToDialog)
+  } else {
+    _executeDialog(action.PathToDialog)
+  }
+}
+
+const confirmAction = () => {
+  const action = pendingAction.value
+  if (!action) return
+  if (room.inRoom) {
+    room.voteProceed()
+  } else {
+    _proceedWithAction(action)
+  }
+}
+
 const cancelAction = () => {
   pendingAction.value = null
+  tiedActions.value = []
+  if (room.inRoom) { room.clearVotes(); room.clearProceed() }
 }
+
+const isTied = computed(() => tiedActions.value.length > 0)
+
+const hostPickTied = (action) => {
+  tiedActions.value = []
+  pendingAction.value = action
+  if (room.inRoom) room.setPendingAction(action.action_id)
+}
+
+// Guest: watch host's tie-breaking pick
+watch(() => room.syncedPendingActionId, (actionId) => {
+  if (!actionId || room.isHost) return
+  const action = currentDialog.value?.actions?.find(
+    (a) => String(a.action_id) === String(actionId),
+  )
+  if (action) {
+    tiedActions.value = []
+    pendingAction.value = action
+  }
+})
+
+// Co-op: wait until ALL hunters voted → find winner or detect tie
+watch(() => room.dialogVotes, (votes) => {
+  if (!room.inRoom || phase.value !== 'dialog' || pendingAction.value || tiedActions.value.length) return
+  const totalVoted = Object.keys(votes).length
+  if (totalVoted < room.hunterCount) return
+
+  const sorted = Object.entries(room.votesByAction).sort((a, b) => b[1] - a[1])
+  if (!sorted.length) return
+  const maxVotes = sorted[0][1]
+  const topIds = sorted.filter(([, c]) => c === maxVotes).map(([id]) => String(id))
+
+  const allActions = currentDialog.value?.actions ?? []
+  if (topIds.length === 1) {
+    // ชัดเจน
+    const action = allActions.find((a) => String(a.action_id) === topIds[0])
+    if (action) pendingAction.value = action
+  } else {
+    // เสมอ → Host ตัดสิน
+    tiedActions.value = allActions.filter((a) => topIds.includes(String(a.action_id)))
+  }
+}, { deep: true })
+
+// Co-op: host watches allProceeded → execute action
+watch(() => room.allProceeded, (ready) => {
+  if (!ready || !room.inRoom || !room.isHost || !pendingAction.value) return
+  _proceedWithAction(pendingAction.value)
+})
+
+// Everyone: watch syncedDialogId from Firebase → update dialog
+watch(() => room.syncedDialogId, (dialogId) => {
+  if (!dialogId || !room.inRoom) return
+  pendingAction.value = null
+  _executeDialog(dialogId)
+})
 
 const pendingOutcome = ref(null)
 const showResultAnim = ref(false)
@@ -170,17 +316,55 @@ const pendingRewardAfterAnim = ref(false)
 const resultAnimType = ref(null)
 const resultMonsterName = ref('')
 
+// Solo: confirm modal
 const requestOutcome = (type) => {
-  pendingOutcome.value = type
+  if (room.inRoom) {
+    pendingVoteType.value = type  // show confirm modal first
+  } else {
+    pendingOutcome.value = type
+  }
 }
 
 const cancelOutcome = () => {
+  if (room.inRoom) room.clearOutcome?.()
   pendingOutcome.value = null
 }
+
+// Co-op vote confirmation
+const pendingVoteType = ref(null)
+
+const confirmVote = () => {
+  if (!pendingVoteType.value) return
+  room.voteOutcome(pendingVoteType.value)
+  pendingVoteType.value = null
+}
+
+const cancelVote = () => {
+  pendingVoteType.value = null
+}
+
+const toggleVote = (type) => {
+  if (room.myOutcomeVote === type) {
+    room.unvoteOutcome()   // unvote ไม่ต้องยืนยัน
+  } else {
+    pendingVoteType.value = type  // แสดง modal ยืนยัน
+  }
+}
+
+// Co-op: watch outcomeResult → execute ทันทีโดยไม่ต้องผ่าน modal
+watch(() => room.outcomeResult, (result) => {
+  if (!result || !room.inRoom) return
+  pendingOutcome.value = result
+  confirmOutcome()
+})
 
 const confirmOutcome = () => {
   const type = pendingOutcome.value
   pendingOutcome.value = null
+  if (room.inRoom) {
+    room.clearOutcome?.()
+    room.leave()
+  }
   resultMonsterName.value = selectedMonster.value?.monster_name ?? ''
   if (type === 'complete') {
     resultAnimType.value = 'complete'
@@ -250,20 +434,24 @@ const incrementDay = () => {
   saveHunter(hunter.value)
 }
 
+const resetToBookPhase = () => {
+  currentDialogId.value = null
+  selectedQuest.value = null
+  selectedMonster.value = null
+  selectedBook.value = null
+  phase.value = 'book'
+}
+
 const onComplete = () => {
   incrementAttempted()
   incrementDay()
-  currentDialogId.value = null
-  selectedQuest.value = null
-  phase.value = 'quest'
+  resetToBookPhase()
 }
 
 const onFail = () => {
   if (selectedQuest.value.quest_id !== 1) incrementAttempted()
   incrementDay()
-  currentDialogId.value = null
-  selectedQuest.value = null
-  phase.value = 'quest'
+  resetToBookPhase()
 }
 
 const goBack = () => {
@@ -383,11 +571,13 @@ const markStatus = (statusId) => {
   } else {
     statusMarks.value = { ...statusMarks.value, [statusId]: next }
   }
+  _pushHuntState()
 }
 
 const removeStatus = (statusId) => {
   appliedStatuses.value = appliedStatuses.value.filter((id) => id !== statusId)
   statusMarks.value = { ...statusMarks.value, [statusId]: 0 }
+  _pushHuntState()
 }
 
 const markElement = (elementId) => {
@@ -399,12 +589,11 @@ const markElement = (elementId) => {
     triggeringElement.value = elementId
     elementMarks.value = { ...elementMarks.value, [elementId]: 0 }
     if (_elemAnimTimer) clearTimeout(_elemAnimTimer)
-    _elemAnimTimer = setTimeout(() => {
-      triggeringElement.value = null
-    }, 1800)
+    _elemAnimTimer = setTimeout(() => { triggeringElement.value = null }, 1800)
   } else {
     elementMarks.value = { ...elementMarks.value, [elementId]: next }
   }
+  _pushHuntState()
 }
 
 const faintCount = ref(0)
@@ -413,6 +602,7 @@ const canFail = computed(() => faintCount.value >= 3)
 
 const toggleFaint = (index) => {
   faintCount.value = faintCount.value === index ? index - 1 : index
+  _pushHuntState()
 }
 
 const initHuntingData = () => {
@@ -431,9 +621,95 @@ const initHuntingData = () => {
   if (_elemAnimTimer) clearTimeout(_elemAnimTimer)
 }
 
+// ── Damage Indicator ─────────────────────────────────────
+const damageIndicators = ref([])
+const isShaking = ref(false)
+let _dmgCounter = 0
+let _shakeTimer = null
+
+const _showDamageIndicator = (amount, type = 'dmg') => {
+  if (amount <= 0) return
+  const id = ++_dmgCounter
+  const x = 35 + Math.random() * 30
+  damageIndicators.value.push({ id, value: amount, x, type })
+  setTimeout(() => {
+    damageIndicators.value = damageIndicators.value.filter((d) => d.id !== id)
+  }, 1100)
+
+  if (type === 'dmg') {
+    isShaking.value = false
+    nextTick(() => {
+      isShaking.value = true
+      if (_shakeTimer) clearTimeout(_shakeTimer)
+      _shakeTimer = setTimeout(() => { isShaking.value = false }, 500)
+    })
+  }
+}
+
+// ── Hunt State Sync ──────────────────────────────────────
+let _remoteSyncing = false
+
+const _pushHuntState = () => {
+  if (!room.inRoom || _remoteSyncing) return
+  room.syncHuntState({
+    huntingHp: huntingHp.value,
+    partDamage: partDamage.value,
+    statusMarks: statusMarks.value,
+    appliedStatuses: appliedStatuses.value.length
+      ? appliedStatuses.value.reduce((o, id) => ({ ...o, [id]: true }), {})
+      : { _empty: true },
+    elementMarks: elementMarks.value,
+    faintCount: faintCount.value,
+    triggeringElement: triggeringElement.value ?? '_none',
+  })
+}
+
+watch(() => room.huntState, (state) => {
+  if (!state || !room.inRoom) return
+  _remoteSyncing = true
+  if (state.huntingHp !== undefined) {
+    const diff = state.huntingHp - huntingHp.value
+    if (diff < 0) _showDamageIndicator(-diff, 'dmg')
+    if (diff > 0) _showDamageIndicator(diff, 'heal')
+    huntingHp.value = state.huntingHp
+  }
+  if (state.partDamage) partDamage.value = state.partDamage
+  if (state.statusMarks) statusMarks.value = state.statusMarks
+
+  // appliedStatuses: handle empty sentinel
+  if (state.appliedStatuses) {
+    const ids = Object.keys(state.appliedStatuses)
+      .filter((k) => k !== '_empty')
+      .map(Number)
+    appliedStatuses.value = ids
+  }
+
+  if (state.elementMarks) elementMarks.value = state.elementMarks
+  if (state.faintCount !== undefined) faintCount.value = state.faintCount
+
+  // triggeringElement: sync animation to all players
+  if (state.triggeringElement !== undefined) {
+    const el = state.triggeringElement === '_none' ? null : state.triggeringElement
+    if (el !== null && el !== triggeringElement.value) {
+      triggeringElement.value = el
+      if (_elemAnimTimer) clearTimeout(_elemAnimTimer)
+      _elemAnimTimer = setTimeout(() => { triggeringElement.value = null }, 1800)
+    } else if (el === null) {
+      triggeringElement.value = null
+    }
+  }
+
+  setTimeout(() => { _remoteSyncing = false }, 50)
+}, { deep: true })
+
 const adjustHp = (delta) => {
   const max = monsterHuntingData.value?.health ?? 999
+  const prev = huntingHp.value
   huntingHp.value = Math.max(0, Math.min(max, huntingHp.value + delta))
+  const diff = huntingHp.value - prev
+  if (diff < 0) _showDamageIndicator(-diff, 'dmg')
+  if (diff > 0) _showDamageIndicator(diff, 'heal')
+  _pushHuntState()
 }
 
 const adjustPartDamage = (position, delta) => {
@@ -445,6 +721,7 @@ const adjustPartDamage = (position, delta) => {
     ...partDamage.value,
     [position]: Math.max(0, Math.min(max, current + delta)),
   }
+  _pushHuntState()
 }
 
 const goToHuntingPanel = () => {
@@ -749,6 +1026,36 @@ const openPackDrawer = () => {
       </div>
       <p class="board-subtitle">Commission Quest Board</p>
 
+      <!-- Join Quest -->
+      <div class="join-quest-bar">
+        <div v-if="room.inRoom" class="join-quest-inroom">
+          <span class="join-quest-icon">⚔</span>
+          <span>Co-op Room: <strong>{{ room.roomCode }}</strong></span>
+          <span class="join-room-count">{{ room.hunterCount }}/4 Hunters</span>
+          <button class="join-leave-btn" @click="room.leave()">ออก</button>
+        </div>
+        <div v-else-if="!showJoinInput" class="join-quest-entry">
+          <button class="join-quest-btn" @click="showJoinInput = true">
+            🚪 Join Quest (Co-op)
+          </button>
+        </div>
+        <div v-else class="join-quest-form">
+          <input
+            v-model="joinCode"
+            class="join-code-input"
+            maxlength="6"
+            placeholder="Room Code"
+            @keyup.enter="handleJoinQuest"
+            autofocus
+          />
+          <button class="join-submit-btn" @click="handleJoinQuest" :disabled="joinLoading || joinCode.length < 6">
+            {{ joinLoading ? '...' : 'เข้าร่วม' }}
+          </button>
+          <button class="join-cancel-btn" @click="showJoinInput = false; joinError = ''">ยกเลิก</button>
+        </div>
+        <p v-if="joinError" class="join-error">{{ joinError }}</p>
+      </div>
+
       <div class="cal-months-row">
         <div v-for="(_, mi) in calMonths" :key="mi" class="campaign-calendar">
           <div class="cal-header">
@@ -987,11 +1294,20 @@ const openPackDrawer = () => {
         <p class="scroll-flavor-body">{{ startingDialog.subtitle }}</p>
       </div>
 
-      <button class="btn-embark" @click="startQuest">
-        <span class="embark-icon">⚔</span>
-        Embark on Quest
-      </button>
+      <div class="embark-mode-row">
+        <button class="btn-embark btn-solo" @click="startQuest">
+          <span class="embark-icon">🗡</span>
+          Solo
+        </button>
+        <button class="btn-embark btn-coop" @click="startCoopQuest">
+          <span class="embark-icon">⚔</span>
+          Co-op
+        </button>
+      </div>
+
     </div>
+
+    <CoopLobbyModal :show="showCoopLobby" @start="onCoopStart" @leave="onCoopLeave" />
 
     <!-- ═══════════ DIALOG PHASE ═══════════ -->
     <div v-if="phase === 'dialog' && currentDialog" class="phase-dialog">
@@ -1019,16 +1335,34 @@ const openPackDrawer = () => {
       </div>
 
       <div class="dialog-choices">
-        <p class="choices-label">— Choose Your Action —</p>
+        <p class="choices-label">
+          {{ room.inRoom ? '— Vote Your Action —' : '— Choose Your Action —' }}
+        </p>
         <button
           v-for="action in currentDialog.actions"
           :key="action.action_id"
           class="choice-btn"
+          :class="{ 'voted-me': room.inRoom && room.myVote == action.action_id }"
           @click="doAction(action)"
         >
           <div class="choice-header">
             <span class="choice-num">{{ action.action_id }}</span>
             <span class="choice-title">{{ action.title }}</span>
+            <!-- Vote count badge (co-op only) -->
+            <span
+              v-if="room.inRoom && (room.votesByAction[action.action_id] ?? 0) > 0"
+              class="vote-badge"
+            >
+              {{ room.votesByAction[action.action_id] }} vote
+            </span>
+          </div>
+          <!-- Voters list -->
+          <div v-if="room.inRoom && room.votersByAction[action.action_id]?.length" class="vote-voters">
+            <span
+              v-for="name in room.votersByAction[action.action_id]"
+              :key="name"
+              class="vote-voter-chip"
+            >{{ name }}</span>
           </div>
           <div v-if="action.required_dialog" class="choice-requirement">
             <span class="req-icon">⚠</span>{{ action.required_dialog }}
@@ -1040,28 +1374,75 @@ const openPackDrawer = () => {
       </div>
     </div>
 
-    <!-- ═══════════ ACTION CONFIRM MODAL ═══════════ -->
+    <!-- ═══════════ ACTION CONFIRM DRAWER ═══════════ -->
     <teleport to="body">
-      <div v-if="pendingAction" class="action-modal-overlay">
-        <div class="action-modal">
-          <div class="am-stamp">CHOSEN ACTION</div>
-
-          <div class="am-action-title">
-            <span class="am-num">{{ pendingAction.action_id }}</span>
-            <span class="am-title">{{ pendingAction.title }}</span>
+      <transition name="drawer-slide">
+        <!-- Tie-breaking drawer: Host picks from tied actions -->
+        <div v-if="isTied" class="action-drawer">
+          <div class="action-drawer-handle"></div>
+          <div class="ad-header">
+            <span class="ad-stamp ad-stamp-tie">⚖ Vote เสมอ — Host ตัดสิน</span>
           </div>
-
-          <div v-if="pendingAction.consequences" class="am-consequences">
-            <span class="am-con-label">⚠ Effect</span>
-            <p class="am-con-text">{{ pendingAction.consequences }}</p>
+          <div v-if="room.isHost" class="ad-tied-choices">
+            <button
+              v-for="action in tiedActions"
+              :key="action.action_id"
+              class="ad-tied-btn"
+              @click="hostPickTied(action)"
+            >
+              <span class="ad-num">{{ action.action_id }}</span>
+              <span class="ad-title">{{ action.title }}</span>
+            </button>
           </div>
-
-          <div class="am-buttons">
-            <button class="am-btn-confirm" @click="confirmAction">✦ Proceed</button>
-            <button class="am-btn-cancel" @click="cancelAction">← Go Back</button>
+          <p v-else class="ad-tie-msg">รอ Host เลือก...</p>
+          <div class="ad-buttons">
+            <button class="ad-btn-cancel" @click="cancelAction">← โหวตใหม่</button>
           </div>
         </div>
-      </div>
+
+        <!-- Normal confirm drawer -->
+        <div v-else-if="pendingAction" class="action-drawer">
+          <div class="action-drawer-handle"></div>
+
+          <div class="ad-header">
+            <span class="ad-stamp">CHOSEN ACTION</span>
+            <div class="ad-title-row">
+              <span class="ad-num">{{ pendingAction.action_id }}</span>
+              <span class="ad-title">{{ pendingAction.title }}</span>
+            </div>
+          </div>
+
+          <div v-if="pendingAction.consequences" class="ad-consequences">
+            <span class="ad-con-label">⚠ Effect</span>
+            <p class="ad-con-text">{{ pendingAction.consequences }}</p>
+          </div>
+
+          <!-- Proceed votes (co-op) -->
+          <div v-if="room.inRoom" class="ad-proceed-votes">
+            <span
+              v-for="h in room.hunters"
+              :key="h.hunter_id"
+              class="ad-proceed-chip"
+              :class="{ voted: (room.proceedVotes ?? {})[h.hunter_id] }"
+            >
+              {{ h.hunter_name.split(' ')[0] }}
+              <span>{{ (room.proceedVotes ?? {})[h.hunter_id] ? ' ✓' : ' …' }}</span>
+            </span>
+          </div>
+
+          <div class="ad-buttons">
+            <button
+              class="ad-btn-confirm"
+              :class="{ 'ad-voted': room.inRoom && room.myProceedVoted }"
+              @click="confirmAction"
+              :disabled="room.inRoom && room.myProceedVoted"
+            >
+              {{ room.inRoom && room.myProceedVoted ? '✓ Ready!' : '✦ Proceed' }}
+            </button>
+            <button class="ad-btn-cancel" @click="cancelAction">← Go Back</button>
+          </div>
+        </div>
+      </transition>
     </teleport>
 
     <!-- ═══════════ HUNTING PHASE ═══════════ -->
@@ -1153,7 +1534,20 @@ const openPackDrawer = () => {
           <div class="msc-wrap">
             <!-- Monster portrait -->
             <div class="msc-portrait" :class="{ 'portrait-slain': huntingHp === 0 }">
-              <img :src="getImg(selectedMonster.thumbnail)" class="msc-monster-img" :class="{ 'monster-img-slain': huntingHp === 0 }" />
+              <img
+                :src="getImg(selectedMonster.thumbnail)"
+                class="msc-monster-img"
+                :class="{ 'monster-img-slain': huntingHp === 0, 'monster-img-shake': isShaking }"
+              />
+
+              <!-- Damage / Heal indicators -->
+              <div
+                v-for="d in damageIndicators"
+                :key="d.id"
+                class="dmg-indicator"
+                :class="d.type === 'heal' ? 'dmg-heal' : 'dmg-damage'"
+                :style="{ left: d.x + '%' }"
+              >{{ d.type === 'heal' ? '+' : '-' }}{{ d.value }}</div>
 
               <!-- Slain overlay -->
               <transition name="slain-fade">
@@ -1507,31 +1901,43 @@ const openPackDrawer = () => {
         </div>
 
         <div class="hunt-result-btns">
-          <!-- Time Out: manual trigger -->
+          <!-- Time Out -->
           <button
             v-if="!canComplete && !canFail"
             class="btn-timeout"
-            @click="requestOutcome('fail')"
+            :class="{ 'outcome-voted': room.myOutcomeVote === 'fail' }"
+            @click="room.inRoom ? toggleVote('fail') : requestOutcome('fail')"
           >
             <span class="result-icon">⏱</span>Time Out
+            <span v-if="room.inRoom && (room.outcomeVotes?.fail ?? Object.values(room.outcomeVotes ?? {}).filter(v=>v==='fail').length) > 0" class="outcome-vote-count">
+              {{ Object.values(room.outcomeVotes ?? {}).filter(v => v === 'fail').length }}/{{ room.hunterCount }}
+            </span>
           </button>
 
-          <!-- Quest Complete: only when HP = 0 -->
+          <!-- Quest Complete -->
           <button
             v-if="canComplete"
             class="btn-complete"
-            @click="requestOutcome('complete')"
+            :class="{ 'outcome-voted': room.myOutcomeVote === 'complete' }"
+            @click="room.inRoom ? toggleVote('complete') : requestOutcome('complete')"
           >
             <span class="result-icon">✦</span>Quest Complete
+            <span v-if="room.inRoom && Object.values(room.outcomeVotes ?? {}).filter(v => v === 'complete').length > 0" class="outcome-vote-count">
+              {{ Object.values(room.outcomeVotes ?? {}).filter(v => v === 'complete').length }}/{{ room.hunterCount }}
+            </span>
           </button>
 
-          <!-- Quest Failed: only when 3 faints -->
+          <!-- Quest Failed -->
           <button
             v-if="canFail"
             class="btn-fail"
-            @click="requestOutcome('fail')"
+            :class="{ 'outcome-voted': room.myOutcomeVote === 'fail' }"
+            @click="room.inRoom ? toggleVote('fail') : requestOutcome('fail')"
           >
             <span class="result-icon">✕</span>Quest Failed
+            <span v-if="room.inRoom && Object.values(room.outcomeVotes ?? {}).filter(v => v === 'fail').length > 0" class="outcome-vote-count">
+              {{ Object.values(room.outcomeVotes ?? {}).filter(v => v === 'fail').length }}/{{ room.hunterCount }}
+            </span>
           </button>
         </div>
       </div>
@@ -1704,9 +2110,13 @@ const openPackDrawer = () => {
 
         <div class="rw-confirm-row">
           <p v-if="!allDiceSpent" class="rw-skip-hint">
-            ยังมีเต๋าเหลือ {{ rolledDice.filter((d) => !d.spent).length }} ลูก
+            🎲 ใช้เต๋าให้หมดก่อน — ยังเหลืออีก {{ rolledDice.filter((d) => !d.spent).length }} ลูก
           </p>
-          <button class="rw-btn-primary rw-btn-confirm" @click="confirmRewards">
+          <button
+            class="rw-btn-primary rw-btn-confirm"
+            :disabled="!allDiceSpent"
+            @click="confirmRewards"
+          >
             ✦ รับรางวัลและปิด Quest
           </button>
         </div>
@@ -1751,6 +2161,33 @@ const openPackDrawer = () => {
         <!-- Vignette -->
         <div class="bi-vignette"></div>
       </div>
+    </teleport>
+
+    <!-- ═══════════ VOTE CONFIRM MODAL (Co-op) ═══════════ -->
+    <teleport to="body">
+      <transition name="slain-fade">
+        <div v-if="pendingVoteType" class="outcome-confirm-overlay" @click.self="cancelVote">
+          <div class="outcome-confirm-modal" :class="pendingVoteType === 'complete' ? 'ocm-complete' : 'ocm-fail'">
+            <div class="am-stamp ocm-stamp">VOTE</div>
+            <p class="ocm-question">ยืนยันการ Vote หรือไม่?</p>
+            <p class="ocm-desc">
+              {{ pendingVoteType === 'complete'
+                ? 'Vote Quest Complete — มอนสเตอร์ถูกสังหาร'
+                : 'Vote Quest Failed / Time Out — การล่าสิ้นสุดลง' }}
+            </p>
+            <div class="am-buttons">
+              <button
+                class="am-btn-confirm ocm-btn-result"
+                :class="pendingVoteType === 'complete' ? 'ocm-result-complete' : 'ocm-result-fail'"
+                @click="confirmVote"
+              >
+                {{ pendingVoteType === 'complete' ? '✦ Vote Complete' : '✕ Vote Failed' }}
+              </button>
+              <button class="am-btn-cancel" @click="cancelVote">← ยกเลิก</button>
+            </div>
+          </div>
+        </div>
+      </transition>
     </teleport>
 
     <!-- ═══════════ OUTCOME CONFIRM MODAL ═══════════ -->
@@ -2708,6 +3145,132 @@ const openPackDrawer = () => {
   font-size: 20px;
 }
 
+.embark-mode-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.btn-solo {
+  border-color: #c89b3c;
+  color: #ffd27a;
+}
+
+.btn-coop {
+  border-color: #5a9fff;
+  background: linear-gradient(to bottom, #1a2c3a, #0d1520);
+  color: #7ab3ff;
+}
+.btn-coop:hover {
+  background: linear-gradient(to bottom, #1e3448, #101c28);
+  box-shadow: 0 0 20px rgba(90,159,255,0.5);
+  transform: translateY(-2px);
+}
+
+/* ── Join Quest bar ── */
+.join-quest-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(60,100,200,0.06);
+  border: 1px solid rgba(60,100,200,0.2);
+}
+.join-quest-entry {
+  display: flex;
+  justify-content: center;
+}
+.join-quest-btn {
+  background: none;
+  border: 1px dashed rgba(90,159,255,0.4);
+  border-radius: 8px;
+  color: #7ab3ff;
+  font-size: 13px;
+  padding: 10px 24px;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 1px;
+  transition: 0.2s;
+}
+.join-quest-btn:hover { background: rgba(60,100,200,0.1); border-style: solid; }
+
+.join-quest-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.join-code-input {
+  flex: 1;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(90,159,255,0.4);
+  border-radius: 6px;
+  color: #7ab3ff;
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 6px;
+  text-align: center;
+  padding: 8px;
+  font-family: monospace;
+  text-transform: uppercase;
+}
+.join-code-input:focus { outline: none; border-color: #5a9fff; }
+
+.join-submit-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid rgba(90,159,255,0.5);
+  background: rgba(60,100,200,0.15);
+  color: #7ab3ff;
+  font-family: inherit;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.join-submit-btn:hover:not(:disabled) { background: rgba(60,100,200,0.3); }
+.join-submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.join-cancel-btn {
+  background: none;
+  border: none;
+  color: #7c5a2b;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.join-quest-inroom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #7ab3ff;
+}
+.join-quest-icon { font-size: 16px; }
+.join-room-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: #7cfc00;
+}
+.join-leave-btn {
+  background: none;
+  border: 1px solid rgba(180,60,60,0.4);
+  border-radius: 4px;
+  color: #ff6b6b;
+  font-size: 11px;
+  padding: 3px 10px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.15s;
+}
+.join-leave-btn:hover { background: rgba(180,60,60,0.15); }
+
+.join-error {
+  font-size: 11px;
+  color: #ff6b6b;
+  margin: 0;
+  text-align: center;
+}
+
 /* ══════════════════════════════════════════
    DIALOG PHASE
 ══════════════════════════════════════════ */
@@ -2827,111 +3390,126 @@ const openPackDrawer = () => {
 /* ══════════════════════════════════════════
    ACTION CONFIRM MODAL
 ══════════════════════════════════════════ */
-.action-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(5, 4, 2, 0.72);
-  backdrop-filter: blur(10px) brightness(0.55);
+/* ── Vote badges on action buttons ── */
+.choice-btn.voted-me {
+  border-color: rgba(90, 159, 255, 0.7);
+  background: rgba(60, 100, 200, 0.08);
+}
+.vote-badge {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: bold;
+  color: #7ab3ff;
+  background: rgba(60, 100, 200, 0.2);
+  border: 1px solid rgba(60, 100, 200, 0.4);
+  border-radius: 10px;
+  padding: 2px 8px;
+  letter-spacing: 0;
+}
+.vote-voters {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 300;
-  padding: 16px;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.vote-voter-chip {
+  font-size: 10px;
+  color: #7ab3ff;
+  background: rgba(60, 100, 200, 0.12);
+  border-radius: 4px;
+  padding: 1px 6px;
+  letter-spacing: 0;
 }
 
-.action-modal {
-  width: min(440px, 100%);
-  padding: 24px;
-  border-radius: 12px;
-  background: linear-gradient(160deg, #1c1508, #13100a, #1c1508);
-  border: 2px solid #7c5a2b;
-  box-shadow:
-    0 0 40px rgba(0, 0, 0, 0.9),
-    0 0 20px rgba(200, 155, 60, 0.12);
+/* ── Action Bottom Drawer ── */
+.action-drawer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 300;
+  background: linear-gradient(to top, #13100a 80%, rgba(19,16,10,0.95));
+  border-top: 2px solid #c89b3c;
+  padding: 8px 20px 28px;
+  box-shadow: 0 -10px 40px rgba(0,0,0,0.7), 0 -2px 0 rgba(200,155,60,0.2);
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  animation: popIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  gap: 12px;
   font-family: 'Georgia', serif;
 }
+.drawer-slide-enter-active { transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1); }
+.drawer-slide-leave-active { transition: transform 0.25s ease-in; }
+.drawer-slide-enter-from, .drawer-slide-leave-to { transform: translateY(100%); }
 
-@keyframes popIn {
-  from {
-    transform: scale(0.85);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
+.action-drawer-handle {
+  width: 36px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(200, 155, 60, 0.3);
+  margin: 0 auto 4px;
 }
 
-.am-stamp {
-  text-align: center;
+.ad-header { display: flex; flex-direction: column; gap: 8px; }
+
+.ad-stamp {
   font-size: 9px;
   letter-spacing: 5px;
   text-transform: uppercase;
   color: #c89b3c;
   border: 1px solid rgba(200, 155, 60, 0.35);
   border-radius: 4px;
-  padding: 4px 12px;
+  padding: 3px 10px;
   width: fit-content;
-  margin: 0 auto;
   background: rgba(200, 155, 60, 0.06);
 }
 
-.am-action-title {
+.ad-title-row {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 12px;
+  padding: 10px 12px;
   border-radius: 8px;
   background: rgba(10, 8, 4, 0.6);
   border: 1px solid rgba(124, 90, 43, 0.4);
   border-left: 3px solid #c89b3c;
 }
-
-.am-num {
-  width: 26px;
-  height: 26px;
+.ad-num {
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: rgba(200, 155, 60, 0.15);
   border: 1px solid #7c5a2b;
   color: #c89b3c;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
-
-.am-title {
-  font-size: 15px;
+.ad-title {
+  font-size: 14px;
   color: #ffd27a;
   line-height: 1.4;
-  text-shadow: 0 0 10px rgba(255, 200, 80, 0.3);
   padding-top: 2px;
 }
 
-.am-consequences {
-  padding: 12px 14px;
+.ad-consequences {
+  padding: 10px 14px;
   border-radius: 8px;
   background: rgba(139, 90, 20, 0.08);
   border: 1px solid rgba(200, 130, 40, 0.3);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
-
-.am-con-label {
+.ad-con-label {
   font-size: 9px;
   letter-spacing: 3px;
   text-transform: uppercase;
   color: #a88040;
 }
-
-.am-con-text {
+.ad-con-text {
   margin: 0;
   font-size: 13px;
   color: #f0ddb0;
@@ -2939,12 +3517,75 @@ const openPackDrawer = () => {
   font-style: italic;
 }
 
-.am-buttons {
+.ad-stamp-tie {
+  border-color: rgba(255, 153, 85, 0.4);
+  color: #ff9955;
+  background: rgba(255, 153, 85, 0.06);
+}
+.ad-tied-choices {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 8px;
+}
+.ad-tied-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(200, 155, 60, 0.4);
+  background: rgba(10, 8, 4, 0.5);
+  color: #ffd27a;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: 0.2s;
+  text-align: left;
+}
+.ad-tied-btn:hover {
+  border-color: #c89b3c;
+  background: rgba(200, 155, 60, 0.1);
+  box-shadow: 0 0 10px rgba(200, 155, 60, 0.2);
 }
 
-.am-btn-confirm {
+.ad-tie-msg {
+  text-align: center;
+  font-size: 11px;
+  color: #ff9955;
+  letter-spacing: 1px;
+  margin: 0;
+}
+
+.ad-proceed-votes {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.ad-proceed-chip {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(124,90,43,0.35);
+  color: #7c5a2b;
+  background: rgba(0,0,0,0.2);
+  transition: 0.2s;
+}
+.ad-proceed-chip.voted {
+  border-color: rgba(100,220,100,0.5);
+  color: #7cfc00;
+  background: rgba(60,180,60,0.1);
+}
+
+.ad-btn-confirm.ad-voted {
+  border-color: #7cfc00;
+  background: rgba(60,180,60,0.15);
+  color: #7cfc00;
+}
+
+.ad-buttons { display: flex; gap: 10px; }
+
+.ad-btn-confirm {
   flex: 1;
   padding: 12px;
   border-radius: 8px;
@@ -2958,14 +3599,13 @@ const openPackDrawer = () => {
   transition: 0.2s;
   min-height: 48px;
 }
-
-.am-btn-confirm:hover {
+.ad-btn-confirm:hover:not(:disabled) {
   border-color: #c89b3c;
   box-shadow: 0 0 14px rgba(200, 155, 60, 0.35);
-  color: #fff;
 }
+.ad-btn-confirm:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.am-btn-cancel {
+.ad-btn-cancel {
   padding: 12px 18px;
   border-radius: 8px;
   border: 1px solid rgba(124, 90, 43, 0.4);
@@ -2977,11 +3617,7 @@ const openPackDrawer = () => {
   transition: 0.2s;
   min-height: 48px;
 }
-
-.am-btn-cancel:hover {
-  color: #a88040;
-  border-color: #7c5a2b;
-}
+.ad-btn-cancel:hover { color: #a88040; border-color: #7c5a2b; }
 
 @media (max-width: 480px) {
   .action-modal {
@@ -3302,6 +3938,17 @@ const openPackDrawer = () => {
 
 
 
+.outcome-vote-count {
+  font-size: 11px;
+  opacity: 0.75;
+  margin-left: 6px;
+  letter-spacing: 0;
+}
+.outcome-voted {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .btn-timeout {
   display: flex;
   align-items: center;
@@ -3514,6 +4161,51 @@ const openPackDrawer = () => {
   object-fit: contain;
   padding: 6%;
   transition: filter 0.6s ease, opacity 0.6s ease;
+}
+.monster-img-shake {
+  animation: monster-shake 0.45s ease;
+}
+@keyframes monster-shake {
+  0%,100% { transform: translate(0,0) rotate(0deg); }
+  12%  { transform: translate(-9px,-5px) rotate(-2deg); }
+  25%  { transform: translate(9px, 5px) rotate( 2deg); }
+  37%  { transform: translate(-6px, 3px) rotate(-1deg); }
+  50%  { transform: translate( 6px,-3px) rotate( 1deg); }
+  62%  { transform: translate(-3px, 2px); }
+  75%  { transform: translate( 3px,-2px); }
+  87%  { transform: translate(-1px, 1px); }
+}
+
+/* Damage / Heal floating number */
+.dmg-indicator {
+  position: absolute;
+  top: 30%;
+  transform: translateX(-50%);
+  font-size: clamp(20px, 5vw, 30px);
+  font-weight: 900;
+  pointer-events: none;
+  z-index: 10;
+  white-space: nowrap;
+  animation: dmg-float 1.1s cubic-bezier(0.2,0,0.8,1) forwards;
+}
+.dmg-damage {
+  color: #ff3333;
+  text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 0 0 12px rgba(255,50,50,0.9);
+}
+.dmg-heal {
+  color: #44ff88;
+  text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 0 0 12px rgba(60,255,120,0.9);
+  animation: heal-float 1.1s cubic-bezier(0.2,0,0.8,1) forwards;
+}
+@keyframes dmg-float {
+  0%   { opacity: 1; transform: translateX(-50%) translateY(0)    scale(1.5); }
+  20%  { opacity: 1; transform: translateX(-50%) translateY(-20px) scale(1);   }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-70px) scale(0.8); }
+}
+@keyframes heal-float {
+  0%   { opacity: 1; transform: translateX(-50%) translateY(0)    scale(1.3); }
+  20%  { opacity: 1; transform: translateX(-50%) translateY(-15px) scale(1);   }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-60px) scale(0.9); }
 }
 .monster-img-slain {
   filter: grayscale(100%) brightness(0.4);
@@ -4912,6 +5604,7 @@ const openPackDrawer = () => {
     0 0 20px rgba(200, 60, 60, 0.15);
 }
 
+
 .ocm-stamp {
   text-align: center;
   font-size: 9px;
@@ -4975,6 +5668,48 @@ const openPackDrawer = () => {
 
 .ocm-result-fail:hover {
   box-shadow: 0 0 18px rgba(255, 80, 80, 0.45) !important;
+}
+
+.am-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.am-btn-confirm {
+  flex: 1;
+  padding: 12px;
+  border-radius: 8px;
+  border: 2px solid #7c5a2b;
+  background: linear-gradient(to bottom, #3a2c1a, #1a1208);
+  color: #ffd27a;
+  font-family: 'Georgia', serif;
+  font-size: 14px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: 0.2s;
+  min-height: 48px;
+}
+.am-btn-confirm:hover {
+  border-color: #c89b3c;
+  box-shadow: 0 0 14px rgba(200, 155, 60, 0.35);
+  color: #fff;
+}
+
+.am-btn-cancel {
+  padding: 12px 18px;
+  border-radius: 8px;
+  border: 1px solid rgba(124, 90, 43, 0.4);
+  background: rgba(10, 8, 4, 0.6);
+  color: #7c5a2b;
+  font-family: 'Georgia', serif;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.2s;
+  min-height: 48px;
+}
+.am-btn-cancel:hover {
+  color: #a88040;
+  border-color: #7c5a2b;
 }
 
 /* ══════════════════════════════════════════
@@ -6352,6 +7087,13 @@ const openPackDrawer = () => {
 }
 .rw-btn-confirm {
   margin-top: 4px;
+  transition: opacity 0.2s, box-shadow 0.2s;
+}
+.rw-btn-confirm:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 
 .rw-hunter-select {

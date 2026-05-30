@@ -46,6 +46,7 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
         <span class="nav-label">{{ item.label ?? item.menu }}</span>
         <div v-if="activeMenu === item.menu" class="nav-underline"></div>
       </div>
+
     </nav>
 
     <!-- ══════════ SECTION TITLE BAR ══════════ -->
@@ -121,6 +122,7 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
   color: #c89b3c;
   background: rgba(255, 200, 100, 0.06);
 }
+
 
 /* ACTIVE */
 .nav-item.active {
