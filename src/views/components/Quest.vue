@@ -1092,8 +1092,27 @@ const _doConfirmRewards = () => {
   onComplete()
 }
 
+const _saveRewardsToInventory = () => {
+  if (!claimedRewards.value.length) return
+  const hunters = getHunters()
+  const h = hunters.find((x) => x.hunter_id === hunter.value?.hunter_id)
+  if (!h) return
+  if (!h.inventory) h.inventory = []
+  claimedRewards.value.forEach((r) => {
+    const existing = h.inventory.find(
+      (i) => i.resource_type_id === r.resource_type_id && i.item_id === r.item_id,
+    )
+    if (existing) { existing.quantity += r.quantity }
+    else { h.inventory.push({ ...r }) }
+  })
+  saveHunters(hunters)
+  loadHunter()
+  claimedRewards.value = []
+}
+
 const confirmRewards = () => {
   if (room.inRoom) {
+    _saveRewardsToInventory()  // บันทึก reward เข้า inventory ก่อนเข้า trade
     room.clearAllPartyRewards?.()
     room.clearTrade?.()
     rewardPhase.value = 'trade'
