@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool } from '@/services/roomService'
+import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts } from '@/services/roomService'
 
 export const useRoomStore = defineStore('room', () => {
   const roomCode = ref(null)
@@ -46,6 +46,7 @@ export const useRoomStore = defineStore('room', () => {
   const syncedPendingActionId = computed(() => roomData.value?.pendingActionId ?? null)
 
   const huntState = computed(() => roomData.value?.huntState ?? null)
+  const myDialogCounts = computed(() => roomData.value?.dialogCounts?.[myHunterId.value] ?? null)
   const partyDice = computed(() => roomData.value?.partyDice ?? {})
   const partyRewards = computed(() => roomData.value?.partyRewards ?? {})
   const tradePool = computed(() => {
@@ -217,6 +218,16 @@ export const useRoomStore = defineStore('room', () => {
     return clearTradePool(roomCode.value)
   }
 
+  const setMyDialogCounts = (counts) => {
+    if (!roomCode.value || !myHunterId.value) return
+    return pushDialogCounts(roomCode.value, myHunterId.value, counts)
+  }
+
+  const clearDialogCounts = () => {
+    if (!roomCode.value) return
+    return clearAllDialogCounts(roomCode.value)
+  }
+
   const voteAction = (action) => {
     if (!roomCode.value || !myHunterId.value) return
     return pushActionVote(roomCode.value, myHunterId.value, action)
@@ -250,7 +261,7 @@ export const useRoomStore = defineStore('room', () => {
     dialogVotes, votesByAction, votersByAction, myVote, syncedDialogId,
     proceedVotes, allProceeded, myProceedVoted,
     syncedPendingActionId,
-    huntState, partyDice, partyRewards, tradePool,
+    huntState, partyDice, partyRewards, tradePool, myDialogCounts,
     actionVotes, myActionVote, actionVoteCount, isActionComplete,
     outcomeVotes, outcomeResult, myOutcomeVote,
     create, join, leave, setReady, triggerQuestStart, setQuestInfo,
@@ -261,6 +272,7 @@ export const useRoomStore = defineStore('room', () => {
     pushMyDice, clearAllPartyDice,
     pushMyRewards, clearAllPartyRewards,
     addToTradePool, removeFromTradePool, clearTrade,
+    setMyDialogCounts, clearDialogCounts,
     voteAction, clearActionVote, kick, reset,
   }
 })

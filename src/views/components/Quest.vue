@@ -56,9 +56,16 @@ const onCoopStart = () => {
     }
   }
 
-  // ถ้า quest ดำเนินอยู่แล้ว (reconnect) ให้ sync ไปหน้าปัจจุบัน แทนที่จะ reset ไป dialog แรก
   if (room.syncedDialogId && !room.isHost) {
-    _syncToPhase(room.syncedDialogId)
+    // Quest ดำเนินอยู่แล้ว → sync ไปหน้าปัจจุบันโดยไม่ reset
+    _syncToPhase(room.syncedDialogId, true)
+  } else if (!room.isHost) {
+    // Guest ที่ยังไม่ได้รับ syncedDialogId → รอ Firebase โหลดก่อน
+    const stop = watch(() => room.syncedDialogId, (id) => {
+      if (!id) return
+      stop()
+      _syncToPhase(id, true)
+    }, { immediate: true })
   } else {
     startQuest()
   }
@@ -167,6 +174,10 @@ const startQuest = () => {
   phase.value = selectedMonster.value.dialog_hunting_phase.includes(currentDialogId.value)
     ? 'hunting'
     : 'dialog'
+  // Co-op: push initial dialog to Firebase so guests can sync
+  if (room.inRoom && room.isHost) {
+    room.setCurrentDialog?.(currentDialogId.value)
+  }
 }
 
 const currentDialog = computed(() => {
@@ -220,6 +231,8 @@ const _executeDialog = (dialogId) => {
   pendingAction.value = null
   currentDialogId.value = dialogId
   if (selectedMonster.value?.dialog_hunting_phase?.includes(dialogId)) {
+    _saveDialogCountsToInventory()
+    if (room.inRoom) room.clearDialogCounts?.()
     battleIntroKey.value++
     showBattleIntro.value = true
     battleIntroPhase.value = 'enter'
@@ -238,6 +251,11 @@ const _proceedWithAction = (action) => {
     room.clearVotes?.()
     room.clearProceed?.()
     room.clearSyncedPendingAction?.()
+    // ถ้า path ไปหน้า hunting → init และ push state ก่อน notify guests
+    if (selectedMonster.value?.dialog_hunting_phase?.includes(action.PathToDialog)) {
+      initHuntingData()
+      _pushHuntState()
+    }
     room.setCurrentDialog(action.PathToDialog)
   } else {
     _executeDialog(action.PathToDialog)
@@ -324,11 +342,14 @@ const _resolveQuestFromRoom = () => {
 }
 
 // Silent sync — ไม่มี animation ใช้ตอน reconnect
-const _syncToPhase = (dialogId) => {
+const _syncToPhase = (dialogId, applyHuntState = false) => {
   currentDialogId.value = dialogId
   if (selectedMonster.value?.dialog_hunting_phase?.includes(dialogId)) {
-    // Reconnect ไปตรงหน้า huntingPanel พร้อม sync state ทันที
-    _applyCurrentHuntState()
+    if (applyHuntState && room.huntState) {
+      _applyCurrentHuntState() // reconnect: ใช้ state จาก Firebase
+    } else {
+      initHuntingData()        // first-time: init ก่อน รอ huntState watch override
+    }
     phase.value = 'huntingPanel'
   } else {
     phase.value = 'dialog'
@@ -498,6 +519,7 @@ const resetToBookPhase = () => {
   selectedQuest.value = null
   selectedMonster.value = null
   selectedBook.value = null
+  potionCount.value = 0
   phase.value = 'book'
 }
 
@@ -657,6 +679,7 @@ const markElement = (elementId) => {
 }
 
 const faintCount = ref(0)
+const potionCount = ref(0)
 const canComplete = computed(() => huntingHp.value === 0)
 const canFail = computed(() => faintCount.value >= 3)
 
@@ -665,10 +688,16 @@ const toggleFaint = (index) => {
   _pushHuntState()
 }
 
+const togglePotion = (index) => {
+  potionCount.value = potionCount.value === index ? index - 1 : index
+  _pushHuntState()
+}
+
 const initHuntingData = () => {
   if (!monsterHuntingData.value) return
   huntingHp.value = monsterHuntingData.value.health
   faintCount.value = 0
+  // potionCount ไม่ reset เพราะยาที่ได้จาก Dialog Phase ควรพกมาด้วย
   const parts = {}
   Object.keys(activeParts.value).forEach((pos) => {
     parts[pos] = 0
@@ -720,6 +749,7 @@ const _pushHuntState = () => {
       : { _empty: true },
     elementMarks: elementMarks.value,
     faintCount: faintCount.value,
+    potionCount: potionCount.value,
     triggeringElement: triggeringElement.value ?? '_none',
   })
 }
@@ -746,6 +776,7 @@ watch(() => room.huntState, (state) => {
 
   if (state.elementMarks) elementMarks.value = state.elementMarks
   if (state.faintCount !== undefined) faintCount.value = state.faintCount
+  if (state.potionCount !== undefined) potionCount.value = state.potionCount
 
   // triggeringElement: sync animation to all players
   if (state.triggeringElement !== undefined) {
@@ -797,6 +828,7 @@ const _applyCurrentHuntState = () => {
   }
   if (state.elementMarks) elementMarks.value = state.elementMarks
   if (state.faintCount !== undefined) faintCount.value = state.faintCount
+  if (state.potionCount !== undefined) potionCount.value = state.potionCount
 }
 
 const goToHuntingPanel = () => {
@@ -804,6 +836,8 @@ const goToHuntingPanel = () => {
     _applyCurrentHuntState()
   } else {
     initHuntingData()
+    // Host pushes fresh state to Firebase so all guests sync correctly
+    _pushHuntState()
   }
   phase.value = 'huntingPanel'
 }
@@ -863,26 +897,14 @@ const getResourceItem = (resource_type_id, item_id) => {
 const dialogResourceCounts = ref({})
 const showDialogResources = ref(false)
 
+const _pushDialogCounts = () => {
+  if (room.inRoom) room.setMyDialogCounts?.(dialogResourceCounts.value)
+}
+
 const addDialogResource = (resource_type_id, item_id) => {
   const key = `${resource_type_id}-${item_id}`
-  dialogResourceCounts.value = {
-    ...dialogResourceCounts.value,
-    [key]: (dialogResourceCounts.value[key] ?? 0) + 1,
-  }
-  const hunters = getHunters()
-  const h = hunters.find((x) => x.hunter_id === hunter.value?.hunter_id)
-  if (!h) return
-  if (!h.inventory) h.inventory = []
-  const existing = h.inventory.find(
-    (i) => i.resource_type_id === resource_type_id && i.item_id === item_id,
-  )
-  if (existing) {
-    existing.quantity += 1
-  } else {
-    h.inventory.push({ resource_type_id, item_id, quantity: 1 })
-  }
-  saveHunters(hunters)
-  loadHunter()
+  dialogResourceCounts.value = { ...dialogResourceCounts.value, [key]: (dialogResourceCounts.value[key] ?? 0) + 1 }
+  _pushDialogCounts()
 }
 
 const removeDialogResource = (resource_type_id, item_id) => {
@@ -890,16 +912,33 @@ const removeDialogResource = (resource_type_id, item_id) => {
   const cur = dialogResourceCounts.value[key] ?? 0
   if (cur <= 0) return
   dialogResourceCounts.value = { ...dialogResourceCounts.value, [key]: cur - 1 }
+  _pushDialogCounts()
+}
+
+// Save dialog resource counts to inventory when dialog phase ends
+const _saveDialogCountsToInventory = () => {
+  const counts = dialogResourceCounts.value
+  if (!Object.keys(counts).length) return
   const hunters = getHunters()
   const h = hunters.find((x) => x.hunter_id === hunter.value?.hunter_id)
-  if (!h?.inventory) return
-  const inv = h.inventory.find((i) => i.resource_type_id === resource_type_id && i.item_id === item_id)
-  if (!inv) return
-  inv.quantity -= 1
-  if (inv.quantity <= 0) h.inventory = h.inventory.filter((i) => !(i.resource_type_id === resource_type_id && i.item_id === item_id))
+  if (!h) return
+  if (!h.inventory) h.inventory = []
+  Object.entries(counts).forEach(([key, qty]) => {
+    if (!qty) return
+    const [rtid, iid] = key.split('-').map(Number)
+    const existing = h.inventory.find((i) => i.resource_type_id === rtid && i.item_id === iid)
+    if (existing) { existing.quantity += qty }
+    else { h.inventory.push({ resource_type_id: rtid, item_id: iid, quantity: qty }) }
+  })
   saveHunters(hunters)
   loadHunter()
 }
+
+// Restore dialog counts from Firebase (reconnect)
+watch(() => room.myDialogCounts, (counts) => {
+  if (!counts || !room.inRoom) return
+  dialogResourceCounts.value = counts
+}, { immediate: true })
 
 const isPartBrokenById = (partId) => {
   if (!partId) return false
@@ -1567,6 +1606,20 @@ const openPackDrawer = () => {
           <span class="dialog-tag-monster">{{ selectedMonster.monster_name }}</span>
           <span class="dialog-tag-quest">{{ selectedQuest.quest_type }}</span>
         </div>
+        <!-- Potion tracker (compact) -->
+        <div class="dialog-potion-tracker">
+          <div
+            v-for="i in 3"
+            :key="i"
+            class="dialog-potion-slot"
+            :class="{ 'potion-empty': i > potionCount }"
+            @click="togglePotion(i)"
+            title="คลิกเพื่อใช้ / เพิ่ม Potion"
+          >
+            <img :src="getImg('assets/img/UI/potion_icon.png')" class="dialog-potion-img" />
+            <span v-if="i > potionCount" class="dialog-potion-x">✕</span>
+          </div>
+        </div>
         <button class="pack-toggle-btn" @click="openPackDrawer">🎒 Inventory</button>
       </div>
 
@@ -2190,6 +2243,24 @@ const openPackDrawer = () => {
           </div>
         </div>
 
+        <!-- Potion Tracker -->
+        <div class="faint-tracker">
+          <span class="faint-label">Potion</span>
+          <div class="faint-icons">
+            <div
+              v-for="i in 3"
+              :key="i"
+              class="faint-slot potion-slot"
+              :class="{ 'potion-empty': i > potionCount }"
+              @click="togglePotion(i)"
+              title="คลิกเพื่อใช้ / เพิ่ม Potion"
+            >
+              <img :src="getImg('assets/img/UI/potion_icon.png')" class="faint-icon-img" />
+              <span v-if="i > potionCount" class="faint-x">✕</span>
+            </div>
+          </div>
+        </div>
+
         <div class="hunt-result-btns">
           <!-- Time Out -->
           <button
@@ -2399,6 +2470,11 @@ const openPackDrawer = () => {
               <span class="rw-item-name">{{
                 getResourceItem(row.reward.resource_type_id, row.reward.item_id)?.item ?? '?'
               }}</span>
+              <button
+                class="rw-craft-btn"
+                @click.stop="openCraftLookup(row.reward.resource_type_id, row.reward.item_id, getResourceItem(row.reward.resource_type_id, row.reward.item_id)?.item)"
+                title="ดูสูตรคราฟ"
+              >🔨</button>
             </div>
             <div
               v-if="row.part_break_reward?.part_id"
@@ -4513,6 +4589,48 @@ const openPackDrawer = () => {
 .faint-used .faint-icon-img {
   opacity: 0.35;
   filter: grayscale(70%);
+}
+.potion-empty .faint-icon-img {
+  opacity: 0.3;
+  filter: grayscale(80%);
+}
+
+/* Dialog phase compact potion tracker */
+.dialog-potion-tracker {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.dialog-potion-slot {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.dialog-potion-slot:hover { transform: scale(1.1); }
+.dialog-potion-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0.9;
+  transition: opacity 0.2s, filter 0.2s;
+}
+.dialog-potion-slot.potion-empty .dialog-potion-img {
+  opacity: 0.3;
+  filter: grayscale(80%);
+}
+.dialog-potion-x {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: bold;
+  color: #ff4444;
+  text-shadow: 0 0 6px rgba(255,60,60,0.8), 0 0 2px #000;
+  pointer-events: none;
 }
 .faint-x {
   position: absolute;
@@ -7790,6 +7908,20 @@ const openPackDrawer = () => {
   color: #c8a060;
   flex: 1;
 }
+.rw-craft-btn {
+  background: rgba(200,155,60,0.1);
+  border: 1px solid rgba(200,155,60,0.35);
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+  min-width: 34px;
+  min-height: 30px;
+  transition: background 0.15s;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.rw-craft-btn:hover { background: rgba(200,155,60,0.25); }
 .rw-row-claimable .rw-item-name {
   color: #ffd27a;
 }

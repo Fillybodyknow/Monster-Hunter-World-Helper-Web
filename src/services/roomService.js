@@ -157,6 +157,12 @@ export const pushPartyDice = (code, hunterId, rolls) =>
 export const clearPartyDice = (code) =>
   remove(ref(db, `rooms/${code}/partyDice`))
 
+export const pushDialogCounts = (code, hunterId, counts) =>
+  set(ref(db, `rooms/${code}/dialogCounts/${hunterId}`), counts)
+
+export const clearAllDialogCounts = (code) =>
+  remove(ref(db, `rooms/${code}/dialogCounts`))
+
 export const pushActionVote = (code, hunterId, action) =>
   set(ref(db, `rooms/${code}/actionVotes/${hunterId}`), action)
 
