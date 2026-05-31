@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRoomStore } from '@/stores/room'
+import CraftLookupModal from './components/CraftLookupModal.vue'
 
 const room = useRoomStore()
 
@@ -167,6 +168,9 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
         </div>
       </transition>
     </teleport>
+
+    <!-- ── Craft Lookup Modal ── -->
+    <CraftLookupModal />
 
     <!-- ── Notifications ── -->
     <teleport to="body">

@@ -14,6 +14,7 @@ import resourceData from '@/assets/files/resource.json'
 import { getHunters, saveHunters } from '@/services/hunterStorage'
 import { useRoomStore } from '@/stores/room'
 import CoopLobbyModal from './CoopLobbyModal.vue'
+import { openCraftLookup } from '@/composables/useCraftLookup'
 
 const room = useRoomStore()
 const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
@@ -970,6 +971,7 @@ const initAssignPhase = () => {
     }
   })
   claimedRewards.value = auto
+  if (room.inRoom && auto.length) room.pushMyRewards?.(auto)
   rewardPhase.value = 'assign'
 }
 
@@ -1597,6 +1599,11 @@ const openPackDrawer = () => {
                   class="dr-count"
                 >{{ dialogResourceCounts[`${r.resource_type_id}-${r.item_id}`] }}</span>
                 <button class="dr-add-btn" @click="addDialogResource(r.resource_type_id, r.item_id)">+</button>
+                <button
+                  class="dr-add-btn dr-craft-btn"
+                  @click="openCraftLookup(r.resource_type_id, r.item_id, getResourceItem(r.resource_type_id, r.item_id)?.item)"
+                  title="ดูสูตรคราฟ"
+                >🔨</button>
               </div>
             </div>
           </div>
@@ -3842,6 +3849,12 @@ const openPackDrawer = () => {
   color: #ff8080;
 }
 .dr-sub-btn:hover { background: rgba(180, 60, 60, 0.2); }
+.dr-craft-btn {
+  border-color: rgba(200,155,60,0.35) !important;
+  background: rgba(200,155,60,0.08) !important;
+  font-size: 12px !important;
+}
+.dr-craft-btn:hover { background: rgba(200,155,60,0.2) !important; }
 .dr-add-btn {
   width: 26px;
   height: 26px;

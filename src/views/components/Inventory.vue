@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { getHunterById, saveHunters, getHunters } from '@/services/hunterStorage'
 import { loadHunter } from '@/stores/hunter'
 import resourceData from '@/assets/files/resource.json'
+import { openCraftLookup } from '@/composables/useCraftLookup'
 
 const inventory = ref([])
 
@@ -174,6 +175,7 @@ const confirmAdd = () => {
           <div class="control">
             <button @click="changeQty(item, -1)">−</button>
             <button @click="changeQty(item, 1)">+</button>
+            <button class="craft-lookup-btn" @click="openCraftLookup(item.resource_type_id, item.item_id, item.item)" title="ดูสูตรคราฟ">🔨</button>
           </div>
           <p class="card-name">{{ item.item }}</p>
         </div>
@@ -435,6 +437,15 @@ const confirmAdd = () => {
   display: flex;
   justify-content: center;
   gap: 4px;
+}
+
+.craft-lookup-btn {
+  font-size: 12px !important;
+  background: rgba(200,155,60,0.08) !important;
+  border-color: rgba(200,155,60,0.35) !important;
+}
+.craft-lookup-btn:hover {
+  background: rgba(200,155,60,0.2) !important;
 }
 
 .control button {
