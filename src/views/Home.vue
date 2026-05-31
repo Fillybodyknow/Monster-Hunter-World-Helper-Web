@@ -1,5 +1,53 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { useRoomStore } from '@/stores/room'
+
+const room = useRoomStore()
+
+// ── Notification system ───────────────────────────────────
+let _notifId = 0
+const notifications = ref([])
+
+const addNotif = (message, type = 'info') => {
+  const id = ++_notifId
+  notifications.value.push({ id, message, type })
+  setTimeout(() => {
+    notifications.value = notifications.value.filter((n) => n.id !== id)
+  }, 4000)
+}
+
+// Watch: ตรวจ connected state ของสมาชิก
+const _connectedCache = ref({}) // { hunterId: boolean }
+watch(() => room.hunters, (hunters) => {
+  if (!room.inRoom) return
+  hunters.forEach((h) => {
+    if (h.hunter_id === room.myHunterId) return
+    const wasConnected = _connectedCache.value[h.hunter_id]
+    const isConnected = h.connected !== false
+    if (wasConnected === true && !isConnected) {
+      addNotif(`🔌 ${h.hunter_name} ขาดการเชื่อมต่อ — รอการกลับมา`, 'warn')
+    } else if (wasConnected === false && isConnected) {
+      addNotif(`✅ ${h.hunter_name} กลับมาเชื่อมต่อแล้ว`, 'info')
+    }
+    _connectedCache.value[h.hunter_id] = isConnected
+  })
+}, { deep: true })
+
+// Watch: ตรวจว่าตัวเองถูก reset (host ลบตี้)
+watch(() => room.inRoom, (inRoom, wasInRoom) => {
+  if (wasInRoom && !inRoom) {
+    addNotif('🔌 ตี้ถูกยุบ หรือคุณถูกเตะออก', 'error')
+    _connectedCache.value = {}
+  }
+  if (inRoom) {
+    room.hunters.forEach((h) => {
+      _connectedCache.value[h.hunter_id] = h.connected !== false
+    })
+  }
+})
+
+// Party panel
+const showPartyPanel = ref(false)
 import Quest from './components/Quest.vue'
 import State from './components/State.vue'
 import Inventory from './components/Inventory.vue'
@@ -68,6 +116,73 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
         </keep-alive>
       </transition>
     </div>
+
+    <!-- ── Floating Party Button ── -->
+    <teleport to="body">
+      <button v-if="room.inRoom" class="party-fab" @click="showPartyPanel = true">
+        ⚔
+        <span class="party-fab-count">{{ room.hunterCount }}</span>
+      </button>
+
+      <transition name="notif-slide">
+        <div v-if="showPartyPanel" class="party-panel-overlay" @click.self="showPartyPanel = false">
+          <div class="party-panel">
+            <div class="party-panel-header">
+              <span class="party-panel-title">⚔ ตี้</span>
+              <span class="party-panel-code">{{ room.roomCode }}</span>
+              <button class="party-panel-close" @click="showPartyPanel = false">✕</button>
+            </div>
+
+            <div class="party-panel-list">
+              <div
+                v-for="h in room.hunters"
+                :key="h.hunter_id"
+                class="party-member"
+                :class="{ offline: h.connected === false }"
+              >
+                <div class="party-member-info">
+                  <span class="party-conn-dot" :class="h.connected === false ? 'dot-offline' : 'dot-online'"></span>
+                  <span class="party-member-name">{{ h.hunter_name }}</span>
+                  <span v-if="h.isHost" class="party-host-badge">HOST</span>
+                  <span v-if="h.hunter_id === room.myHunterId" class="party-me-badge">YOU</span>
+                  <span v-if="h.connected === false" class="party-offline-label">ขาดการเชื่อมต่อ</span>
+                </div>
+                <button
+                  v-if="room.isHost && h.hunter_id !== room.myHunterId"
+                  class="party-kick-btn"
+                  @click="room.kick(h.hunter_id)"
+                >เตะ</button>
+              </div>
+            </div>
+
+            <div class="party-panel-actions">
+              <button v-if="room.isHost" class="party-btn-disband" @click="room.leave(); showPartyPanel = false">
+                🗑 ยุบตี้
+              </button>
+              <button v-else class="party-btn-leave" @click="room.leave(); showPartyPanel = false">
+                🚪 ออกจากตี้
+              </button>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </teleport>
+
+    <!-- ── Notifications ── -->
+    <teleport to="body">
+      <div class="notif-container">
+        <transition-group name="notif-slide">
+          <div
+            v-for="n in notifications"
+            :key="n.id"
+            class="notif-item"
+            :class="`notif-${n.type}`"
+          >
+            {{ n.message }}
+          </div>
+        </transition-group>
+      </div>
+    </teleport>
   </div>
 </template>
 
@@ -326,4 +441,209 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
     padding: 12px 0 0;
   }
 }
+</style>
+
+<style>
+/* ── Floating Party Button ── */
+.party-fab {
+  position: fixed;
+  bottom: 24px;
+  left: 20px;
+  z-index: 200;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2a1e10, #1a1208);
+  border: 2px solid #c89b3c;
+  color: #ffd27a;
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6), 0 0 12px rgba(200,155,60,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.2s;
+}
+.party-fab:hover { box-shadow: 0 4px 24px rgba(0,0,0,0.7), 0 0 20px rgba(200,155,60,0.5); }
+.party-fab-count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #7cfc00;
+  color: #000;
+  font-size: 10px;
+  font-weight: bold;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Party Panel ── */
+.party-panel-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(6px);
+  z-index: 600;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: 16px;
+}
+.party-panel {
+  background: linear-gradient(160deg, #1c1508, #13100a);
+  border: 2px solid #7c5a2b;
+  border-radius: 14px;
+  width: min(340px, 100%);
+  overflow: hidden;
+  box-shadow: 0 0 40px rgba(0,0,0,0.8);
+  margin-bottom: 70px;
+}
+.party-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(200,155,60,0.06);
+  border-bottom: 1px solid rgba(124,90,43,0.4);
+}
+.party-panel-title { font-size: 14px; font-weight: bold; color: #ffd27a; flex: 1; }
+.party-panel-code {
+  font-size: 13px;
+  font-family: monospace;
+  letter-spacing: 3px;
+  color: #c89b3c;
+}
+.party-panel-close {
+  background: none;
+  border: none;
+  color: #7c5a2b;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  transition: color 0.15s;
+}
+.party-panel-close:hover { color: #ffd27a; }
+
+.party-panel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+}
+.party-member {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(200,155,60,0.05);
+  border: 1px solid rgba(124,90,43,0.3);
+  transition: opacity 0.3s;
+}
+.party-member.offline { opacity: 0.6; }
+.party-member-info { display: flex; align-items: center; gap: 7px; flex: 1; }
+.party-conn-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot-online  { background: #7cfc00; box-shadow: 0 0 6px #7cfc00; }
+.dot-offline { background: #ff6b6b; animation: blink 1.2s ease-in-out infinite; }
+@keyframes blink {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+.party-member-name { font-size: 13px; color: #ffd27a; }
+.party-host-badge, .party-me-badge {
+  font-size: 9px;
+  letter-spacing: 1px;
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+.party-host-badge { color: #ffd27a; background: rgba(200,155,60,0.15); border: 1px solid rgba(200,155,60,0.35); }
+.party-me-badge   { color: #7ab3ff; background: rgba(60,100,200,0.15); border: 1px solid rgba(60,100,200,0.3); }
+.party-offline-label { font-size: 10px; color: #ff6b6b; margin-left: 2px; }
+.party-kick-btn {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(180,60,60,0.4);
+  background: rgba(180,60,60,0.08);
+  color: #ff6b6b;
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.15s;
+}
+.party-kick-btn:hover { background: rgba(180,60,60,0.2); }
+
+.party-panel-actions {
+  padding: 10px 14px 14px;
+  border-top: 1px solid rgba(124,90,43,0.25);
+}
+.party-btn-disband, .party-btn-leave {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.party-btn-disband {
+  background: rgba(180,60,60,0.08);
+  border: 1px solid rgba(180,60,60,0.4);
+  color: #ff6b6b;
+}
+.party-btn-disband:hover { background: rgba(180,60,60,0.18); }
+.party-btn-leave {
+  background: rgba(124,90,43,0.08);
+  border: 1px solid rgba(124,90,43,0.35);
+  color: #a88040;
+}
+.party-btn-leave:hover { background: rgba(124,90,43,0.18); }
+
+.notif-container {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+.notif-item {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  max-width: 280px;
+  pointer-events: auto;
+}
+.notif-info {
+  background: rgba(30, 22, 8, 0.95);
+  border: 1px solid rgba(200,155,60,0.5);
+  color: #ffd27a;
+}
+.notif-warn {
+  background: rgba(60, 30, 0, 0.95);
+  border: 1px solid rgba(255,150,0,0.6);
+  color: #ffb347;
+}
+.notif-error {
+  background: rgba(50, 0, 0, 0.95);
+  border: 1px solid rgba(255,60,60,0.6);
+  color: #ff6b6b;
+}
+.notif-slide-enter-active { transition: all 0.3s cubic-bezier(0.2,0,0,1); }
+.notif-slide-leave-active  { transition: all 0.25s ease-in; }
+.notif-slide-enter-from    { opacity: 0; transform: translateX(60px); }
+.notif-slide-leave-to      { opacity: 0; transform: translateX(60px); }
 </style>

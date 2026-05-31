@@ -1,5 +1,5 @@
 import { db } from './firebase'
-import { ref, set, get, update, onValue, remove, onDisconnect } from 'firebase/database'
+import { ref, set, get, update, onValue, remove, onDisconnect, push } from 'firebase/database'
 
 const generateRoomCode = () => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -136,8 +136,45 @@ export const listenRoom = (code, callback) => {
 
 // ── Auto-remove hunter on disconnect ────────────────────
 export const registerDisconnect = (code, hunterId, isHost) => {
-  const target = isHost
-    ? ref(db, `rooms/${code}`)
-    : ref(db, `rooms/${code}/hunters/${hunterId}`)
-  onDisconnect(target).remove()
+  if (isHost) {
+    onDisconnect(ref(db, `rooms/${code}`)).remove()
+  } else {
+    const connRef = ref(db, `rooms/${code}/hunters/${hunterId}/connected`)
+    set(connRef, true)
+    onDisconnect(connRef).set(false)
+  }
 }
+
+export const setConnected = (code, hunterId, connected) =>
+  set(ref(db, `rooms/${code}/hunters/${hunterId}/connected`), connected)
+
+export const kickHunter = (code, hunterId) =>
+  remove(ref(db, `rooms/${code}/hunters/${hunterId}`))
+
+export const pushPartyDice = (code, hunterId, rolls) =>
+  set(ref(db, `rooms/${code}/partyDice/${hunterId}`), rolls)
+
+export const clearPartyDice = (code) =>
+  remove(ref(db, `rooms/${code}/partyDice`))
+
+export const pushActionVote = (code, hunterId, action) =>
+  set(ref(db, `rooms/${code}/actionVotes/${hunterId}`), action)
+
+export const clearActionVotes = (code) =>
+  remove(ref(db, `rooms/${code}/actionVotes`))
+
+export const pushPartyRewards = (code, hunterId, rewards) =>
+  set(ref(db, `rooms/${code}/partyRewards/${hunterId}`), rewards)
+
+export const clearPartyRewards = (code) =>
+  remove(ref(db, `rooms/${code}/partyRewards`))
+
+// ── Trade Pool ────────────────────────────────────────────
+export const addTradeItem = (code, item) =>
+  push(ref(db, `rooms/${code}/tradePool`), item)
+
+export const removeTradeItem = (code, key) =>
+  remove(ref(db, `rooms/${code}/tradePool/${key}`))
+
+export const clearTradePool = (code) =>
+  remove(ref(db, `rooms/${code}/tradePool`))

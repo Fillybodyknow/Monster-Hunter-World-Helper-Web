@@ -16,7 +16,19 @@
                 "difficulty_level": 1,
                 "time_limit": 35,
                 "scoutfly_level": [2, 5],
-                "starting_point": [1]
+                "starting_point": [1],
+                "dialog_resources": [
+                    { "resource_type_id": 1, "item_id": 9 },
+                    { "resource_type_id": 1, "item_id": 8 },
+                    { "resource_type_id": 1, "item_id": 7 },
+                    { "resource_type_id": 1, "item_id": 1 },
+                    { "resource_type_id": 1, "item_id": 2 },
+                    { "resource_type_id": 1, "item_id": 3 },
+                    { "resource_type_id": 1, "item_id": 4 },
+                    { "resource_type_id": 1, "item_id": 14 },
+                    { "resource_type_id": 2, "item_id": 2 },
+                    { "resource_type_id": 2, "item_id": 3 }
+                ]
             },
             {
                 "quest_id": 2,
@@ -24,7 +36,26 @@
                 "difficulty_level": 2,
                 "time_limit": 30,
                 "scoutfly_level": [3, 6],
-                "starting_point": [2,3,4,5]
+                "starting_point": [2,3,4,5],
+                "dialog_resources": [
+                    { "resource_type_id": 3, "item_id": 1 },
+                    { "resource_type_id": 3, "item_id": 2 },
+                    { "resource_type_id": 3, "item_id": 3 },
+                    { "resource_type_id": 3, "item_id": 4 },
+                    { "resource_type_id": 1, "item_id": 9 },
+                    { "resource_type_id": 1, "item_id": 10 },
+                    { "resource_type_id": 1, "item_id": 8 },
+                    { "resource_type_id": 1, "item_id": 13 },
+                    { "resource_type_id": 2, "item_id": 1 },
+                    { "resource_type_id": 1, "item_id": 7 },
+                    { "resource_type_id": 1, "item_id": 1 },
+                    { "resource_type_id": 1, "item_id": 2 },
+                    { "resource_type_id": 1, "item_id": 3 },
+                    { "resource_type_id": 1, "item_id": 4 },
+                    { "resource_type_id": 1, "item_id": 14 },
+                    { "resource_type_id": 2, "item_id": 2 },
+                    { "resource_type_id": 2, "item_id": 3 }
+                ]
             },
             {
                 "quest_id": 3,
@@ -32,7 +63,26 @@
                 "difficulty_level": 3,
                 "time_limit": 30,
                 "scoutfly_level": [4, 7],
-                "starting_point": [2,3,4,5]
+                "starting_point": [2,3,4,5],
+                "dialog_resources": [
+                    { "resource_type_id": 3, "item_id": 1 },
+                    { "resource_type_id": 3, "item_id": 2 },
+                    { "resource_type_id": 3, "item_id": 3 },
+                    { "resource_type_id": 3, "item_id": 4 },
+                    { "resource_type_id": 1, "item_id": 9 },
+                    { "resource_type_id": 1, "item_id": 10 },
+                    { "resource_type_id": 1, "item_id": 8 },
+                    { "resource_type_id": 1, "item_id": 13 },
+                    { "resource_type_id": 2, "item_id": 1 },
+                    { "resource_type_id": 1, "item_id": 7 },
+                    { "resource_type_id": 1, "item_id": 1 },
+                    { "resource_type_id": 1, "item_id": 2 },
+                    { "resource_type_id": 1, "item_id": 3 },
+                    { "resource_type_id": 1, "item_id": 4 },
+                    { "resource_type_id": 1, "item_id": 14 },
+                    { "resource_type_id": 2, "item_id": 2 },
+                    { "resource_type_id": 2, "item_id": 3 }
+                ]
             }
         ],
         "quest_dialogs": [

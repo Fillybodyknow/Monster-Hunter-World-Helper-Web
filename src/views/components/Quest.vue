@@ -13,12 +13,10 @@ import statusEffectData from '@/assets/files/status_effect.json'
 import resourceData from '@/assets/files/resource.json'
 import { getHunters, saveHunters } from '@/services/hunterStorage'
 import { useRoomStore } from '@/stores/room'
-import hunterClassData from '@/assets/files/class_hunter.json'
 import CoopLobbyModal from './CoopLobbyModal.vue'
 
 const room = useRoomStore()
 const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
-const getClass = (id) => hunterClassData.find((c) => c.hunter_class_id === id)
 
 // Coop
 const showCoopLobby = ref(false)
@@ -57,7 +55,12 @@ const onCoopStart = () => {
     }
   }
 
-  startQuest()
+  // ถ้า quest ดำเนินอยู่แล้ว (reconnect) ให้ sync ไปหน้าปัจจุบัน แทนที่จะ reset ไป dialog แรก
+  if (room.syncedDialogId && !room.isHost) {
+    _syncToPhase(room.syncedDialogId)
+  } else {
+    startQuest()
+  }
 }
 
 const onCoopLeave = () => {
@@ -156,6 +159,8 @@ const startingDialog = computed(() => {
 })
 
 const startQuest = () => {
+  dialogResourceCounts.value = {}
+  showDialogResources.value = false
   const attempted = getAttempted(selectedMonster.value.monster_id, selectedQuest.value.quest_id)
   currentDialogId.value = selectedQuest.value.starting_point[attempted]
   phase.value = selectedMonster.value.dialog_hunting_phase.includes(currentDialogId.value)
@@ -302,12 +307,43 @@ watch(() => room.allProceeded, (ready) => {
   _proceedWithAction(pendingAction.value)
 })
 
-// Everyone: watch syncedDialogId from Firebase → update dialog
+// Resolve monster/quest จาก questInfo (ใช้ตอน reconnect / guest join)
+const _resolveQuestFromRoom = () => {
+  if (selectedMonster.value || !room.questInfo) return
+  const info = room.questInfo
+  const allMonsters = [...ancientData, ...wildspireData]
+  const monster = allMonsters.find((m) => m.monster_id === info.monster_id)
+  if (!monster) return
+  selectedMonster.value = monster
+  selectedBook.value = ancientData.includes(monster) ? books[0] : books[1]
+  const quest = monster.quest?.find(
+    (q) => q.quest_type === info.quest_type && q.difficulty_level === info.difficulty_level,
+  )
+  if (quest) selectedQuest.value = quest
+}
+
+// Silent sync — ไม่มี animation ใช้ตอน reconnect
+const _syncToPhase = (dialogId) => {
+  currentDialogId.value = dialogId
+  if (selectedMonster.value?.dialog_hunting_phase?.includes(dialogId)) {
+    // Reconnect ไปตรงหน้า huntingPanel พร้อม sync state ทันที
+    _applyCurrentHuntState()
+    phase.value = 'huntingPanel'
+  } else {
+    phase.value = 'dialog'
+  }
+}
+
+// Host proceeds → guests follow
 watch(() => room.syncedDialogId, (dialogId) => {
   if (!dialogId || !room.inRoom) return
+  _resolveQuestFromRoom()
+  if (!selectedMonster.value) return
   pendingAction.value = null
+  tiedActions.value = []
   _executeDialog(dialogId)
 })
+
 
 const pendingOutcome = ref(null)
 const showResultAnim = ref(false)
@@ -351,6 +387,28 @@ const toggleVote = (type) => {
   }
 }
 
+// Co-op: watch action votes → ครบทุกคน → execute
+watch(() => room.actionVotes, () => {
+  if (!room.inRoom) return
+  if (room.isActionComplete('goReward')) {
+    room.clearActionVote()
+    initAssignPhase()
+  }
+  if (room.isActionComplete('confirmReward')) {
+    room.clearActionVote()
+    _doConfirmRewards()
+  }
+  if (room.isActionComplete('goTrade')) {
+    room.clearActionVote()
+    confirmRewards()
+  }
+  if (room.isActionComplete('closeTrade')) {
+    room.clearActionVote()
+    room.clearTrade?.()
+    _doConfirmRewards()
+  }
+}, { deep: true })
+
 // Co-op: watch outcomeResult → execute ทันทีโดยไม่ต้องผ่าน modal
 watch(() => room.outcomeResult, (result) => {
   if (!result || !room.inRoom) return
@@ -361,10 +419,7 @@ watch(() => room.outcomeResult, (result) => {
 const confirmOutcome = () => {
   const type = pendingOutcome.value
   pendingOutcome.value = null
-  if (room.inRoom) {
-    room.clearOutcome?.()
-    room.leave()
-  }
+  if (room.inRoom) room.clearOutcome?.()
   resultMonsterName.value = selectedMonster.value?.monster_name ?? ''
   if (type === 'complete') {
     resultAnimType.value = 'complete'
@@ -384,12 +439,10 @@ const confirmOutcome = () => {
   setTimeout(dismissResult, 8000)
 }
 
-const dismissResult = () => {
+const _doDismissResult = () => {
   if (isDismissing.value) return
   isDismissing.value = true
-  if (!pendingRewardAfterAnim.value) {
-    fadeOutOutcomeSound()
-  }
+  if (!pendingRewardAfterAnim.value) fadeOutOutcomeSound()
   setTimeout(() => {
     showResultAnim.value = false
     resultAnimType.value = null
@@ -400,6 +453,11 @@ const dismissResult = () => {
       goToRewardPhase()
     }
   }, 500)
+}
+
+const dismissResult = () => {
+  if (isDismissing.value) return
+  _doDismissResult()
 }
 
 
@@ -451,6 +509,7 @@ const onComplete = () => {
 const onFail = () => {
   if (selectedQuest.value.quest_id !== 1) incrementAttempted()
   incrementDay()
+  if (room.inRoom) room.leave()
   resetToBookPhase()
 }
 
@@ -485,7 +544,7 @@ const goBack = () => {
   map[phase.value]?.()
 }
 
-const starColor = (difficulty, index) => {
+const starColor = (difficulty) => {
   if (difficulty === 4) return '#cc77ff'
   if (difficulty > 1) return '#ff4444'
   return '#ffffff'
@@ -724,8 +783,27 @@ const adjustPartDamage = (position, delta) => {
   _pushHuntState()
 }
 
+const _applyCurrentHuntState = () => {
+  const state = room.huntState
+  if (!state) return
+  if (state.huntingHp !== undefined) huntingHp.value = state.huntingHp
+  if (state.partDamage) partDamage.value = state.partDamage
+  if (state.statusMarks) statusMarks.value = state.statusMarks
+  if (state.appliedStatuses) {
+    appliedStatuses.value = Object.keys(state.appliedStatuses)
+      .filter((k) => k !== '_empty')
+      .map(Number)
+  }
+  if (state.elementMarks) elementMarks.value = state.elementMarks
+  if (state.faintCount !== undefined) faintCount.value = state.faintCount
+}
+
 const goToHuntingPanel = () => {
-  initHuntingData()
+  if (room.inRoom && !room.isHost && room.huntState) {
+    _applyCurrentHuntState()
+  } else {
+    initHuntingData()
+  }
   phase.value = 'huntingPanel'
 }
 
@@ -780,6 +858,48 @@ const getResourceItem = (resource_type_id, item_id) => {
   return type?.resources.find((r) => r.item_id === item_id) ?? null
 }
 
+// ── Dialog Resources quick-add ────────────────────────────
+const dialogResourceCounts = ref({})
+const showDialogResources = ref(false)
+
+const addDialogResource = (resource_type_id, item_id) => {
+  const key = `${resource_type_id}-${item_id}`
+  dialogResourceCounts.value = {
+    ...dialogResourceCounts.value,
+    [key]: (dialogResourceCounts.value[key] ?? 0) + 1,
+  }
+  const hunters = getHunters()
+  const h = hunters.find((x) => x.hunter_id === hunter.value?.hunter_id)
+  if (!h) return
+  if (!h.inventory) h.inventory = []
+  const existing = h.inventory.find(
+    (i) => i.resource_type_id === resource_type_id && i.item_id === item_id,
+  )
+  if (existing) {
+    existing.quantity += 1
+  } else {
+    h.inventory.push({ resource_type_id, item_id, quantity: 1 })
+  }
+  saveHunters(hunters)
+  loadHunter()
+}
+
+const removeDialogResource = (resource_type_id, item_id) => {
+  const key = `${resource_type_id}-${item_id}`
+  const cur = dialogResourceCounts.value[key] ?? 0
+  if (cur <= 0) return
+  dialogResourceCounts.value = { ...dialogResourceCounts.value, [key]: cur - 1 }
+  const hunters = getHunters()
+  const h = hunters.find((x) => x.hunter_id === hunter.value?.hunter_id)
+  if (!h?.inventory) return
+  const inv = h.inventory.find((i) => i.resource_type_id === resource_type_id && i.item_id === item_id)
+  if (!inv) return
+  inv.quantity -= 1
+  if (inv.quantity <= 0) h.inventory = h.inventory.filter((i) => !(i.resource_type_id === resource_type_id && i.item_id === item_id))
+  saveHunters(hunters)
+  loadHunter()
+}
+
 const isPartBrokenById = (partId) => {
   if (!partId) return false
   return Object.entries(activeParts.value).some(
@@ -800,9 +920,16 @@ const rollAllDice = () => {
   finalValues.forEach((val, i) => {
     setTimeout(() => animateDie(i, val, 650), i * 100)
   })
+  // Co-op: push ผลเต๋าไป Firebase หลัง animation จบ
+  if (room.inRoom) {
+    setTimeout(() => {
+      room.pushMyDice(finalValues)
+    }, count * 100 + 700)
+  }
 }
 
 const rerollDie = (id) => {
+  if (room.inRoom) return // ไม่อนุญาต reroll ใน co-op
   if (rollingDiceIds.value.has(id)) return
   animateDie(id, Math.ceil(Math.random() * 6), 550)
 }
@@ -868,9 +995,79 @@ const claimReward = (row) => {
     selectedDiceIds.value.includes(d.id) ? { ...d, spent: true } : d,
   )
   selectedDiceIds.value = []
+
+  // Co-op: push rewards ไป Firebase ให้คนอื่นเห็น
+  if (room.inRoom) room.pushMyRewards?.(claimedRewards.value)
 }
 
-const confirmRewards = () => {
+// Trade functions
+const tradePicker = ref(null) // { resource_type_id, item_id, max, qty }
+const tradeSearch = ref('')
+const filteredInventory = computed(() => {
+  const inv = hunter.value?.inventory ?? []
+  if (!tradeSearch.value.trim()) return inv
+  const q = tradeSearch.value.toLowerCase()
+  return inv.filter((r) =>
+    getResourceItem(r.resource_type_id, r.item_id)?.item?.toLowerCase().includes(q)
+  )
+})
+
+const openTradePicker = (r) => {
+  tradePicker.value = { resource_type_id: r.resource_type_id, item_id: r.item_id, max: r.quantity, qty: 1 }
+}
+
+const confirmOfferTrade = () => {
+  const p = tradePicker.value
+  if (!p || p.qty <= 0) return
+  room.addToTradePool?.({ resource_type_id: p.resource_type_id, item_id: p.item_id, quantity: p.qty })
+  // ลด inventory
+  const hunters = getHunters()
+  const h = hunters.find((x) => x.hunter_id === hunter.value?.hunter_id)
+  if (h?.inventory) {
+    const inv = h.inventory.find((i) => i.resource_type_id === p.resource_type_id && i.item_id === p.item_id)
+    if (inv) {
+      inv.quantity -= p.qty
+      if (inv.quantity <= 0) h.inventory = h.inventory.filter((i) => !(i.resource_type_id === p.resource_type_id && i.item_id === p.item_id))
+      saveHunters(hunters)
+      loadHunter()
+    }
+  }
+  tradePicker.value = null
+}
+
+const takeFromTrade = (item) => {
+  room.removeFromTradePool?.(item.key)
+  // เพิ่มลง inventory โดยตรง
+  const hunters = getHunters()
+  const h = hunters.find((x) => x.hunter_id === hunter.value?.hunter_id)
+  if (h) {
+    if (!h.inventory) h.inventory = []
+    const inv = h.inventory.find((i) => i.resource_type_id === item.resource_type_id && i.item_id === item.item_id)
+    if (inv) { inv.quantity += item.quantity }
+    else { h.inventory.push({ resource_type_id: item.resource_type_id, item_id: item.item_id, quantity: item.quantity }) }
+    saveHunters(hunters)
+    loadHunter()
+  }
+}
+
+const returnFromTrade = (item) => {
+  room.removeFromTradePool?.(item.key)
+  // คืนลง inventory
+  const hunters = getHunters()
+  const h = hunters.find((x) => x.hunter_id === hunter.value?.hunter_id)
+  if (h) {
+    if (!h.inventory) h.inventory = []
+    const inv = h.inventory.find((i) => i.resource_type_id === item.resource_type_id && i.item_id === item.item_id)
+    if (inv) { inv.quantity += item.quantity }
+    else { h.inventory.push({ resource_type_id: item.resource_type_id, item_id: item.item_id, quantity: item.quantity }) }
+    saveHunters(hunters)
+    loadHunter()
+  }
+}
+
+const voteCloseTrade = () => room.voteAction('closeTrade')
+
+const _doConfirmRewards = () => {
   if (claimedRewards.value.length > 0) {
     const hunters = getHunters()
     const h = hunters.find((x) => x.hunter_id === hunter.value?.hunter_id)
@@ -891,16 +1088,37 @@ const confirmRewards = () => {
     }
   }
   fadeOutOutcomeSound()
+  if (room.inRoom) room.leave()
   onComplete()
 }
 
+const confirmRewards = () => {
+  if (room.inRoom) {
+    room.clearAllPartyRewards?.()
+    room.clearTrade?.()
+    rewardPhase.value = 'trade'
+    return
+  }
+  _doConfirmRewards()
+}
+
 const goToRewardPhase = () => {
-  rewardPhase.value = 'hunterSelect'
-  rewardHunterCount.value = 2
   rolledDice.value = []
   selectedDiceIds.value = []
   claimedRewards.value = []
+  if (room.inRoom) {
+    room.clearAllPartyDice?.()
+    room.clearAllPartyRewards?.()
+  }
   phase.value = 'reward'
+  if (room.inRoom && room.hunterCount >= 2) {
+    rewardHunterCount.value = room.hunterCount
+    rewardPhase.value = 'diceRoll'
+    rollAllDice()
+  } else {
+    rewardHunterCount.value = 2
+    rewardPhase.value = 'hunterSelect'
+  }
 }
 
 // ─── Quest Pack Drawer ────────────────────────────────────────────────────────
@@ -1035,6 +1253,17 @@ const openPackDrawer = () => {
           <button class="join-leave-btn" @click="room.leave()">ออก</button>
         </div>
         <div v-else-if="!showJoinInput" class="join-quest-entry">
+          <!-- Reconnect button ถ้ามี saved room code -->
+          <div v-if="room.savedRoomCode" class="reconnect-bar">
+            <span class="reconnect-label">🔌 ห้องล่าสุด</span>
+            <span class="reconnect-code">{{ room.savedRoomCode }}</span>
+            <button
+              class="reconnect-btn"
+              @click="joinCode = room.savedRoomCode; handleJoinQuest()"
+              :disabled="joinLoading"
+            >{{ joinLoading ? '...' : 'Reconnect' }}</button>
+            <button class="reconnect-clear" @click="room.clearSavedRoom()">✕</button>
+          </div>
           <button class="join-quest-btn" @click="showJoinInput = true">
             🚪 Join Quest (Co-op)
           </button>
@@ -1318,6 +1547,41 @@ const openPackDrawer = () => {
           <span class="dialog-tag-quest">{{ selectedQuest.quest_type }}</span>
         </div>
         <button class="pack-toggle-btn" @click="openPackDrawer">🎒 Inventory</button>
+      </div>
+
+      <!-- Dialog Resource Quick-Add -->
+      <div v-if="selectedQuest.dialog_resources?.length" class="dr-panel">
+        <button class="dr-toggle" @click="showDialogResources = !showDialogResources">
+          <span>📦 Resources ที่อาจได้ระหว่าง Dialog</span>
+          <span class="dr-toggle-arrow">{{ showDialogResources ? '▲' : '▼' }}</span>
+        </button>
+        <transition name="dr-slide">
+          <div v-if="showDialogResources" class="dr-grid">
+            <div
+              v-for="r in selectedQuest.dialog_resources"
+              :key="`${r.resource_type_id}-${r.item_id}`"
+              class="dr-item"
+            >
+              <img
+                :src="getImg(getResourceItem(r.resource_type_id, r.item_id)?.thumbnail)"
+                class="dr-item-img"
+              />
+              <span class="dr-item-name">{{ getResourceItem(r.resource_type_id, r.item_id)?.item }}</span>
+              <div class="dr-item-right">
+                <button
+                  v-if="dialogResourceCounts[`${r.resource_type_id}-${r.item_id}`]"
+                  class="dr-add-btn dr-sub-btn"
+                  @click="removeDialogResource(r.resource_type_id, r.item_id)"
+                >−</button>
+                <span
+                  v-if="dialogResourceCounts[`${r.resource_type_id}-${r.item_id}`]"
+                  class="dr-count"
+                >{{ dialogResourceCounts[`${r.resource_type_id}-${r.item_id}`] }}</span>
+                <button class="dr-add-btn" @click="addDialogResource(r.resource_type_id, r.item_id)">+</button>
+              </div>
+            </div>
+          </div>
+        </transition>
       </div>
 
       <div class="dialog-parchment">
@@ -1994,14 +2258,16 @@ const openPackDrawer = () => {
           {{ rewardDiceCount }} ลูกเต๋า · {{ rewardHunterCount }} Hunters ·
           {{ selectedQuest.quest_type }}
         </p>
+        <!-- My dice -->
+        <p class="rw-section-label">🎲 เต๋าของคุณ</p>
         <div class="rw-dice-row">
           <div
             v-for="die in rolledDice"
             :key="die.id"
             class="rw-die"
-            :class="{ rolling: rollingDiceIds.has(die.id) }"
+            :class="{ rolling: rollingDiceIds.has(die.id), 'no-click': room.inRoom }"
             @click="rerollDie(die.id)"
-            title="คลิกเพื่อทอยใหม่"
+            :title="room.inRoom ? '' : 'คลิกเพื่อทอยใหม่'"
           >
             <div class="die-face">
               <span
@@ -2013,9 +2279,47 @@ const openPackDrawer = () => {
             </div>
           </div>
         </div>
+
+        <!-- Party dice (co-op) -->
+        <div v-if="room.inRoom && Object.keys(room.partyDice ?? {}).length" class="rw-party-dice">
+          <p class="rw-section-label">👥 เต๋าของปาร์ตี้</p>
+          <div
+            v-for="h in room.hunters.filter(h => h.hunter_id !== room.myHunterId && room.partyDice[h.hunter_id])"
+            :key="h.hunter_id"
+            class="rw-party-row"
+          >
+            <span class="rw-party-name">{{ h.hunter_name }}</span>
+            <div class="rw-dice-row rw-dice-row-sm">
+              <div
+                v-for="(val, idx) in room.partyDice[h.hunter_id]"
+                :key="idx"
+                class="rw-die rw-die-sm no-click"
+              >
+                <div class="die-face">
+                  <span
+                    v-for="pos in 9"
+                    :key="pos"
+                    class="die-dot"
+                    :class="{ visible: dotPatterns[val]?.includes(pos - 1) }"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="rw-roll-actions">
-          <button class="rw-btn-secondary" @click="rollAllDice()" :disabled="isAnyRolling">🎲 ทอยใหม่ทั้งหมด</button>
-          <button class="rw-btn-primary" @click="initAssignPhase()" :disabled="isAnyRolling">ใช้ผลนี้ →</button>
+          <button v-if="!room.inRoom" class="rw-btn-secondary" @click="rollAllDice()" :disabled="isAnyRolling">🎲 ทอยใหม่ทั้งหมด</button>
+          <button
+            class="rw-btn-primary"
+            :disabled="isAnyRolling || (room.inRoom && room.myActionVote === 'goReward')"
+            @click="room.inRoom ? room.voteAction('goReward') : initAssignPhase()"
+          >
+            <span v-if="room.inRoom && room.actionVoteCount('goReward') > 0">
+              ใช้ผลนี้ → ({{ room.actionVoteCount('goReward') }}/{{ room.hunterCount }})
+            </span>
+            <span v-else>ใช้ผลนี้ →</span>
+          </button>
         </div>
       </div>
 
@@ -2108,16 +2412,135 @@ const openPackDrawer = () => {
           </div>
         </div>
 
+        <!-- Party rewards (co-op) -->
+        <div
+          v-if="room.inRoom && room.hunters.some(h => h.hunter_id !== room.myHunterId && (room.partyRewards?.[h.hunter_id]?.length ?? 0) > 0)"
+          class="rw-party-rewards"
+        >
+          <p class="rw-section-label">👥 รางวัลของปาร์ตี้</p>
+          <div
+            v-for="h in room.hunters.filter(h => h.hunter_id !== room.myHunterId && (room.partyRewards?.[h.hunter_id]?.length ?? 0) > 0)"
+            :key="h.hunter_id"
+            class="rw-party-reward-row"
+          >
+            <span class="rw-party-name">{{ h.hunter_name }}</span>
+            <div class="rw-claimed-list">
+              <div
+                v-for="r in room.partyRewards[h.hunter_id]"
+                :key="`${r.resource_type_id}-${r.item_id}`"
+                class="rw-claimed-item"
+              >
+                <img
+                  v-if="getResourceItem(r.resource_type_id, r.item_id)"
+                  :src="getImg(getResourceItem(r.resource_type_id, r.item_id).thumbnail)"
+                  class="rw-claimed-img"
+                />
+                <span class="rw-claimed-qty">×{{ r.quantity }}</span>
+                <span class="rw-claimed-name">{{ getResourceItem(r.resource_type_id, r.item_id)?.item }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="rw-confirm-row">
           <p v-if="!allDiceSpent" class="rw-skip-hint">
             🎲 ใช้เต๋าให้หมดก่อน — ยังเหลืออีก {{ rolledDice.filter((d) => !d.spent).length }} ลูก
           </p>
           <button
             class="rw-btn-primary rw-btn-confirm"
-            :disabled="!allDiceSpent"
-            @click="confirmRewards"
+            :disabled="!allDiceSpent || (room.inRoom && room.myActionVote === 'goTrade')"
+            @click="room.inRoom ? room.voteAction('goTrade') : confirmRewards()"
           >
-            ✦ รับรางวัลและปิด Quest
+            <span v-if="room.inRoom && room.actionVoteCount('goTrade') > 0">
+              ⚔ รับรางวัลและ Trade ของกัน ({{ room.actionVoteCount('goTrade') }}/{{ room.hunterCount }})
+            </span>
+            <span v-else-if="room.inRoom">⚔ รับรางวัลและ Trade ของกัน</span>
+            <span v-else>✦ รับรางวัลและปิด Quest</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Trade Phase ── -->
+      <div v-else-if="rewardPhase === 'trade'" class="rw-trade">
+        <p class="rw-title">⚔ Trade ของกัน</p>
+        <p class="rw-sub">โยน Item ลงกองกลาง หรือหยิบ Item ของคนอื่น</p>
+
+        <!-- My inventory -->
+        <div class="trade-section">
+          <div class="trade-inv-header">
+            <p class="rw-section-label">🎒 Inventory ของฉัน</p>
+            <input
+              v-model="tradeSearch"
+              class="trade-search-input"
+              placeholder="🔍 ค้นหา..."
+              @click.stop
+            />
+          </div>
+          <div v-if="filteredInventory.length" class="trade-item-list trade-item-list-scroll">
+            <div v-for="r in filteredInventory" :key="`${r.resource_type_id}-${r.item_id}`" class="trade-item">
+              <img :src="getImg(getResourceItem(r.resource_type_id, r.item_id)?.thumbnail)" class="trade-item-img" />
+              <span class="trade-item-name">{{ getResourceItem(r.resource_type_id, r.item_id)?.item }}</span>
+              <span class="trade-item-qty">×{{ r.quantity }}</span>
+              <button class="trade-offer-btn" @click="openTradePicker(r)">↓ Trade</button>
+            </div>
+          </div>
+          <p v-else class="trade-empty">
+            {{ tradeSearch ? 'ไม่พบ Item ที่ค้นหา' : 'ไม่มี Item ใน Inventory' }}
+          </p>
+
+          <!-- Quantity picker -->
+          <div v-if="tradePicker" class="trade-picker">
+            <span class="trade-picker-name">{{ getResourceItem(tradePicker.resource_type_id, tradePicker.item_id)?.item }}</span>
+            <div class="trade-picker-qty">
+              <button @click="tradePicker.qty = Math.max(1, tradePicker.qty - 1)">−</button>
+              <span>{{ tradePicker.qty }}</span>
+              <button @click="tradePicker.qty = Math.min(tradePicker.max, tradePicker.qty + 1)">+</button>
+              <span class="trade-picker-max">/ {{ tradePicker.max }}</span>
+            </div>
+            <div class="trade-picker-btns">
+              <button class="trade-offer-btn" @click="confirmOfferTrade">✓ ยืนยัน Trade</button>
+              <button class="trade-cancel-btn" @click="tradePicker = null">ยกเลิก</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Trade pool -->
+        <div class="trade-section trade-pool-section">
+          <p class="rw-section-label">🔄 กองกลาง Trade</p>
+          <div v-if="room.tradePool.length" class="trade-item-list">
+            <div v-for="item in room.tradePool" :key="item.key" class="trade-item"
+              :class="{ 'trade-mine': item.fromHunterId === room.myHunterId }">
+              <img :src="getImg(getResourceItem(item.resource_type_id, item.item_id)?.thumbnail)" class="trade-item-img" />
+              <span class="trade-item-name">{{ getResourceItem(item.resource_type_id, item.item_id)?.item }}</span>
+              <span class="trade-item-qty">×{{ item.quantity }}</span>
+              <span class="trade-from">{{ item.fromHunterName }}</span>
+              <button
+                v-if="item.fromHunterId !== room.myHunterId"
+                class="trade-take-btn"
+                @click="takeFromTrade(item)"
+              >↑ รับ</button>
+              <button
+                v-else
+                class="trade-cancel-btn"
+                @click="returnFromTrade(item)"
+              >↩ คืน</button>
+            </div>
+          </div>
+          <p v-else class="trade-empty">ยังไม่มีใครโยน Item ลงกองกลาง</p>
+        </div>
+
+        <!-- Close trade vote -->
+        <div class="trade-close-row">
+          <button
+            class="rw-btn-primary"
+            :class="{ 'outcome-voted': room.myActionVote === 'closeTrade' }"
+            :disabled="room.myActionVote === 'closeTrade'"
+            @click="voteCloseTrade"
+          >
+            <span v-if="room.actionVoteCount('closeTrade') > 0">
+              ✦ ปิดเควส ({{ room.actionVoteCount('closeTrade') }}/{{ room.hunterCount }})
+            </span>
+            <span v-else>✦ ปิดเควส</span>
           </button>
         </div>
       </div>
@@ -2225,7 +2648,7 @@ const openPackDrawer = () => {
         v-if="showResultAnim"
         class="result-anim-overlay"
         :class="[`ra-${resultAnimType}`, { 'ra-dismissing': isDismissing }]"
-        @click="dismissResult"
+        @click="resultAnimType === 'fail' ? dismissResult() : null"
       >
         <!-- Fail screen flash -->
         <div v-if="resultAnimType === 'fail'" class="ra-fail-flash"></div>
@@ -2279,7 +2702,7 @@ const openPackDrawer = () => {
           <span v-for="n in 16" :key="n" class="ra-particle" :style="`--i:${n}`"></span>
         </div>
 
-        <p class="ra-tap-hint">Tap anywhere to continue</p>
+        <p v-if="resultAnimType === 'fail'" class="ra-tap-hint">Tap anywhere to continue</p>
       </div>
     </teleport>
 
@@ -3181,6 +3604,55 @@ const openPackDrawer = () => {
   display: flex;
   justify-content: center;
 }
+.reconnect-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(60, 100, 200, 0.08);
+  border: 1px solid rgba(60, 100, 200, 0.3);
+  width: 100%;
+}
+.reconnect-label {
+  font-size: 11px;
+  color: #7ab3ff;
+  white-space: nowrap;
+}
+.reconnect-code {
+  font-family: monospace;
+  font-size: 16px;
+  font-weight: bold;
+  color: #ffd27a;
+  letter-spacing: 3px;
+  flex: 1;
+}
+.reconnect-btn {
+  padding: 5px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(90,159,255,0.5);
+  background: rgba(60,100,200,0.15);
+  color: #7ab3ff;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.15s;
+  white-space: nowrap;
+}
+.reconnect-btn:hover:not(:disabled) { background: rgba(60,100,200,0.3); }
+.reconnect-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.reconnect-clear {
+  background: none;
+  border: none;
+  color: rgba(124,90,43,0.5);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 4px;
+  transition: color 0.15s;
+}
+.reconnect-clear:hover { color: #ff6b6b; }
+
 .join-quest-btn {
   background: none;
   border: 1px dashed rgba(90,159,255,0.4);
@@ -3279,6 +3751,103 @@ const openPackDrawer = () => {
   flex-direction: column;
   gap: 16px;
 }
+
+/* ── Dialog Resource Panel ── */
+.dr-panel {
+  border-radius: 10px;
+  border: 1px solid rgba(124, 90, 43, 0.35);
+  background: rgba(10, 8, 4, 0.5);
+  overflow: hidden;
+}
+.dr-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(200, 155, 60, 0.06);
+  border: none;
+  color: #a88040;
+  font-size: 12px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.dr-toggle:hover { background: rgba(200, 155, 60, 0.1); }
+.dr-toggle-arrow { font-size: 10px; }
+
+.dr-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 8px 10px;
+  max-height: 220px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.dr-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(30, 22, 8, 0.6);
+}
+.dr-item-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.dr-item-name {
+  flex: 1;
+  font-size: 12px;
+  color: #d4c090;
+}
+.dr-item-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dr-count {
+  font-size: 12px;
+  font-weight: bold;
+  color: #ffd27a;
+  min-width: 20px;
+  text-align: center;
+}
+.dr-sub-btn {
+  border-color: rgba(180, 60, 60, 0.4);
+  background: rgba(180, 60, 60, 0.08);
+  color: #ff8080;
+}
+.dr-sub-btn:hover { background: rgba(180, 60, 60, 0.2); }
+.dr-add-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(200, 155, 60, 0.5);
+  background: rgba(200, 155, 60, 0.1);
+  color: #ffd27a;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.15s;
+  font-family: inherit;
+}
+.dr-add-btn:hover {
+  background: rgba(200, 155, 60, 0.25);
+  border-color: #c89b3c;
+}
+
+.dr-slide-enter-active { transition: max-height 0.25s ease, opacity 0.2s; }
+.dr-slide-leave-active { transition: max-height 0.2s ease, opacity 0.15s; }
+.dr-slide-enter-from, .dr-slide-leave-to { max-height: 0; opacity: 0; overflow: hidden; }
+.dr-slide-enter-to, .dr-slide-leave-from { max-height: 600px; opacity: 1; }
 
 .dialog-tag-row {
   display: flex;
@@ -6879,6 +7448,187 @@ const openPackDrawer = () => {
   background: #000000;
   box-shadow: 0 0 4px rgba(255, 210, 122, 0.7);
 }
+/* ── Trade Phase ── */
+.rw-trade { display: flex; flex-direction: column; gap: 14px; }
+
+.trade-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(10, 8, 4, 0.5);
+  border: 1px solid rgba(124,90,43,0.3);
+}
+.trade-pool-section {
+  border-color: rgba(90,159,255,0.35);
+  background: rgba(60,100,200,0.05);
+}
+
+.trade-item-list { display: flex; flex-direction: column; gap: 6px; }
+.trade-item-list-scroll {
+  max-height: 200px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+.trade-inv-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.trade-inv-header .rw-section-label { margin: 0; }
+.trade-search-input {
+  flex: 1;
+  max-width: 150px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(124,90,43,0.4);
+  border-radius: 6px;
+  color: #d4c090;
+  font-size: 11px;
+  padding: 4px 8px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.trade-search-input:focus { border-color: #c89b3c; }
+.trade-search-input::placeholder { color: rgba(124,90,43,0.5); }
+.trade-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(200,155,60,0.06);
+  border: 1px solid rgba(124,90,43,0.2);
+}
+.trade-item.trade-mine {
+  border-color: rgba(200,155,60,0.4);
+  background: rgba(200,155,60,0.08);
+}
+.trade-item-img { width: 28px; height: 28px; object-fit: contain; flex-shrink: 0; }
+.trade-item-name { flex: 1; font-size: 12px; color: #d4c090; }
+.trade-item-qty { font-size: 12px; font-weight: bold; color: #ffd27a; min-width: 28px; text-align: right; }
+.trade-from { font-size: 10px; color: #7ab3ff; }
+
+.trade-offer-btn, .trade-take-btn, .trade-cancel-btn {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.15s;
+  white-space: nowrap;
+}
+.trade-offer-btn {
+  border: 1px solid rgba(255,150,0,0.45);
+  background: rgba(255,150,0,0.08);
+  color: #ffb347;
+}
+.trade-offer-btn:hover { background: rgba(255,150,0,0.2); }
+.trade-take-btn {
+  border: 1px solid rgba(100,220,100,0.45);
+  background: rgba(60,180,60,0.08);
+  color: #7cfc00;
+}
+.trade-take-btn:hover { background: rgba(60,180,60,0.2); }
+.trade-cancel-btn {
+  border: 1px solid rgba(124,90,43,0.4);
+  background: rgba(0,0,0,0.2);
+  color: #7c5a2b;
+}
+.trade-cancel-btn:hover { color: #a88040; }
+
+.trade-empty { font-size: 11px; color: rgba(124,90,43,0.4); text-align: center; margin: 0; padding: 8px 0; }
+
+.trade-picker {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(200,155,60,0.08);
+  border: 1px solid rgba(200,155,60,0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.trade-picker-name { font-size: 13px; color: #ffd27a; font-weight: bold; }
+.trade-picker-qty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.trade-picker-qty button {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(200,155,60,0.4);
+  background: rgba(200,155,60,0.1);
+  color: #ffd27a;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.15s;
+}
+.trade-picker-qty button:hover { background: rgba(200,155,60,0.25); }
+.trade-picker-qty span { font-size: 18px; font-weight: bold; color: #ffd27a; min-width: 24px; text-align: center; }
+.trade-picker-max { font-size: 12px; color: #7c5a2b; }
+.trade-picker-btns { display: flex; gap: 8px; }
+
+.trade-close-row { display: flex; justify-content: flex-end; }
+
+.rw-party-rewards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: rgba(60,100,200,0.05);
+  border: 1px solid rgba(60,100,200,0.2);
+}
+.rw-party-reward-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rw-party-dice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rw-party-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rw-party-name {
+  font-size: 11px;
+  color: #a88040;
+  min-width: 60px;
+  letter-spacing: 1px;
+}
+.rw-dice-row-sm {
+  padding: 8px;
+  gap: 6px;
+}
+.rw-die-sm {
+  width: 44px;
+  height: 44px;
+  padding: 4px;
+  opacity: 0.85;
+}
+.rw-die.no-click {
+  cursor: default;
+}
+.rw-die.no-click:hover {
+  border-color: #c89b3c;
+  box-shadow: 0 0 10px rgba(200,155,60,0.2);
+}
+
 .rw-roll-actions {
   display: flex;
   gap: 10px;
