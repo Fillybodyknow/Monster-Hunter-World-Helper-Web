@@ -176,10 +176,10 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
     <!-- ── Disconnect Overlay ── -->
     <teleport to="body">
       <Transition name="notif-slide">
-        <div v-if="room.inRoom && !isFirebaseConnected" class="disconnect-overlay">
+        <div v-if="room.inRoom && (!isFirebaseConnected || !room.hostConnected)" class="disconnect-overlay">
           <div class="disconnect-box">
             <div class="disconnect-spinner"></div>
-            <p class="disconnect-title">ขาดการเชื่อมต่อ</p>
+            <p class="disconnect-title">Host ขาดการเชื่อมต่อ</p>
             <p class="disconnect-sub">กำลัง Reconnect...</p>
           </div>
         </div>

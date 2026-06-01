@@ -137,7 +137,10 @@ export const listenRoom = (code, callback) => {
 // ── Auto-remove hunter on disconnect ────────────────────
 export const registerDisconnect = (code, hunterId, isHost) => {
   if (isHost) {
-    onDisconnect(ref(db, `rooms/${code}`)).remove()
+    // Host disconnect: mark as disconnected instead of deleting room
+    const connRef = ref(db, `rooms/${code}/hostConnected`)
+    set(connRef, true)
+    onDisconnect(connRef).set(false)
   } else {
     const connRef = ref(db, `rooms/${code}/hunters/${hunterId}/connected`)
     set(connRef, true)
@@ -147,6 +150,9 @@ export const registerDisconnect = (code, hunterId, isHost) => {
 
 export const setConnected = (code, hunterId, connected) =>
   set(ref(db, `rooms/${code}/hunters/${hunterId}/connected`), connected)
+
+export const setHostConnected = (code, val) =>
+  set(ref(db, `rooms/${code}/hostConnected`), val)
 
 export const kickHunter = (code, hunterId) =>
   remove(ref(db, `rooms/${code}/hunters/${hunterId}`))

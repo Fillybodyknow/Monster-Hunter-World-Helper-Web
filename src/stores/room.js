@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts } from '@/services/roomService'
+import { ref, computed, watch } from 'vue'
+import { isFirebaseConnected } from '@/services/firebase'
+import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, setHostConnected } from '@/services/roomService'
 
 export const useRoomStore = defineStore('room', () => {
   const roomCode = ref(null)
@@ -46,6 +47,7 @@ export const useRoomStore = defineStore('room', () => {
   const syncedPendingActionId = computed(() => roomData.value?.pendingActionId ?? null)
 
   const huntState = computed(() => roomData.value?.huntState ?? null)
+  const hostConnected = computed(() => roomData.value?.hostConnected !== false)
   const myDialogCounts = computed(() => roomData.value?.dialogCounts?.[myHunterId.value] ?? null)
   const partyDice = computed(() => roomData.value?.partyDice ?? {})
   const partyRewards = computed(() => roomData.value?.partyRewards ?? {})
@@ -83,6 +85,20 @@ export const useRoomStore = defineStore('room', () => {
     })
   }
 
+  const reregisterHostConnected = () => {
+    if (!roomCode.value || !isHost.value) return
+    setHostConnected(roomCode.value, true)
+    registerDisconnect(roomCode.value, myHunterId.value, true)
+  }
+
+  // Auto re-register when Firebase reconnects (handles host disconnect overlay)
+  watch(isFirebaseConnected, (connected) => {
+    if (connected && roomCode.value && isHost.value) {
+      setHostConnected(roomCode.value, true)
+      registerDisconnect(roomCode.value, myHunterId.value, true)
+    }
+  })
+
   const create = async (hunter) => {
     const code = await createRoom(hunter)
     roomCode.value = code
@@ -90,18 +106,28 @@ export const useRoomStore = defineStore('room', () => {
     myHunterId.value = hunter.hunter_id
     _listen(code)
     registerDisconnect(code, hunter.hunter_id, true)
+    localStorage.setItem('lastRoomCode', code); savedRoomCode.value = code
     return code
   }
 
   const join = async (code, hunter) => {
-    await joinRoom(code, hunter)
+    const roomSnap = await joinRoom(code, hunter)
     roomCode.value = code
-    isHost.value = false
     myHunterId.value = hunter.hunter_id
     _listen(code)
-    registerDisconnect(code, hunter.hunter_id, false)
-    setConnected(code, hunter.hunter_id, true)
-    localStorage.setItem('lastRoomCode', code)
+
+    // Check if this hunter is the original host reconnecting
+    const rejoiningAsHost = roomSnap?.hostId === hunter.hunter_id
+    isHost.value = rejoiningAsHost
+
+    if (rejoiningAsHost) {
+      setHostConnected(code, true)
+      registerDisconnect(code, hunter.hunter_id, true)
+    } else {
+      registerDisconnect(code, hunter.hunter_id, false)
+      setConnected(code, hunter.hunter_id, true)
+    }
+    localStorage.setItem('lastRoomCode', code); savedRoomCode.value = code
     joinSignal.value++
   }
 
@@ -115,6 +141,7 @@ export const useRoomStore = defineStore('room', () => {
     if (_unsub) _unsub()
     await leaveRoom(roomCode.value, myHunterId.value, isHost.value)
     localStorage.removeItem('lastRoomCode')
+    savedRoomCode.value = null
     reset()
   }
 
@@ -251,8 +278,11 @@ export const useRoomStore = defineStore('room', () => {
     _unsub = null
   }
 
-  const savedRoomCode = localStorage.getItem('lastRoomCode') ?? null
-  const clearSavedRoom = () => localStorage.removeItem('lastRoomCode')
+  const savedRoomCode = ref(localStorage.getItem('lastRoomCode') ?? null)
+  const clearSavedRoom = () => {
+    localStorage.removeItem('lastRoomCode')
+    savedRoomCode.value = null
+  }
 
   return {
     roomCode, roomData, isHost, myHunterId,
@@ -261,13 +291,14 @@ export const useRoomStore = defineStore('room', () => {
     dialogVotes, votesByAction, votersByAction, myVote, syncedDialogId,
     proceedVotes, allProceeded, myProceedVoted,
     syncedPendingActionId,
-    huntState, partyDice, partyRewards, tradePool, myDialogCounts,
+    huntState, hostConnected, partyDice, partyRewards, tradePool, myDialogCounts,
     actionVotes, myActionVote, actionVoteCount, isActionComplete,
     outcomeVotes, outcomeResult, myOutcomeVote,
     create, join, leave, setReady, triggerQuestStart, setQuestInfo,
     voteForAction, clearVotes, setCurrentDialog, voteProceed, clearProceed,
     setPendingAction, clearSyncedPendingAction,
     joinSignal, savedRoomCode, clearSavedRoom,
+    reregisterHostConnected,
     syncHuntState, voteOutcome, unvoteOutcome, clearOutcome,
     pushMyDice, clearAllPartyDice,
     pushMyRewards, clearAllPartyRewards,

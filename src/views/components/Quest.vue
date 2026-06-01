@@ -56,8 +56,8 @@ const onCoopStart = () => {
     }
   }
 
-  if (room.syncedDialogId && !room.isHost) {
-    // Quest ดำเนินอยู่แล้ว → sync ไปหน้าปัจจุบันโดยไม่ reset
+  if (room.syncedDialogId) {
+    // Quest ดำเนินอยู่แล้ว (host reconnect หรือ guest) → sync โดยไม่ reset
     _syncToPhase(room.syncedDialogId, true)
   } else if (!room.isHost) {
     // Guest ที่ยังไม่ได้รับ syncedDialogId → รอ Firebase โหลดก่อน
@@ -67,6 +67,7 @@ const onCoopStart = () => {
       _syncToPhase(id, true)
     }, { immediate: true })
   } else {
+    // Host เริ่มเควสใหม่
     startQuest()
   }
 }
