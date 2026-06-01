@@ -121,6 +121,11 @@
                         "id": 6,
                         "name": "Charge Blade",
                         "thumbnail": "assets/img/equiments/weapons/charge-bladeR1.png"
+                    },
+                    {
+                        "id": 7,
+                        "name": "Longsword",
+                        "thumbnail": "assets/img/equiments/weapons/longswordR1.png"
                     }
                 ]
             },
@@ -156,6 +161,11 @@
                         "id": 6,
                         "name": "Charge Blade",
                         "thumbnail": "assets/img/equiments/weapons/charge-bladeR2.png"
+                    },
+                    {
+                        "id": 7,
+                        "name": "Longsword",
+                        "thumbnail": "assets/img/equiments/weapons/longswordR2.png"
                     }
                 ]
             },
@@ -191,6 +201,11 @@
                         "id": 6,
                         "name": "Charge Blade",
                         "thumbnail": "assets/img/equiments/weapons/charge-bladeR3.png"
+                    },
+                    {
+                        "id": 7,
+                        "name": "Longsword",
+                        "thumbnail": "assets/img/equiments/weapons/longswordR3.png"
                     }
                 ]
             },
@@ -226,6 +241,11 @@
                         "id": 6,
                         "name": "Charge Blade",
                         "thumbnail": "assets/img/equiments/weapons/charge-bladeR4.png"
+                    },
+                    {
+                        "id": 7,
+                        "name": "Longsword",
+                        "thumbnail": "assets/img/equiments/weapons/longswordR4.png"
                     }
                 ]
             }

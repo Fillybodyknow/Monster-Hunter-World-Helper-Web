@@ -1756,5 +1756,298 @@
         ]
       }
     ]
+  },
+  {
+    "hunter_class_id": 7,
+    "weapons_list": [
+      {
+        "weapon_type_id": 1,
+        "weapon_type": "Ore",
+        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Iron Katana",
+            "rarity": 1,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 9,
+              "damage_2": 3,
+              "damage_3": 0,
+              "damage_4": 0
+            },
+            "remove": "",
+            "add": ""
+          },
+          {
+            "item_id": 2,
+            "item": "Iron Grace",
+            "rarity": 2,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 7,
+              "damage_2": 5,
+              "damage_3": 0,
+              "damage_4": 0
+            },
+            "remove": "2 Spirit Thrust",
+            "add": "2 Enhanced Spirit Thrust"
+          },
+          {
+            "item_id": 3,
+            "item": "Iron Gospel",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 5,
+              "damage_2": 5,
+              "damage_3": 2,
+              "damage_4": 0
+            },
+            "remove": "2 Spirit Thrust\n2 Overhead Slash",
+            "add": "2 Enhanced Spirit Thrust\n2 Enhanced Overhead Slash"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 2,
+        "weapon_type": "Monster Bone",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Bone Shotel",
+            "rarity": 1,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 6,
+              "damage_2": 4,
+              "damage_3": 0,
+              "damage_4": 0
+            },
+            "remove": "",
+            "add": ""
+          },
+          {
+            "item_id": 2,
+            "item": "Hard Bone Shotel",
+            "rarity": 2,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 4,
+              "damage_2": 5,
+              "damage_3": 1,
+              "damage_4": 0
+            },
+            "remove": "2 Foresight Slash",
+            "add": "2 Enhanced Foresight Slash"
+          },
+          {
+            "item_id": 3,
+            "item": "Bone Reaper",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 5,
+              "damage_3": 2,
+              "damage_4": 0
+            },
+            "remove": "2 Foresight Slash\n3 Thrust",
+            "add": "2 Enhanced Foresight Slash\n3 Enhanced Thrust"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 3,
+        "weapon_type": "Tobi-Kadachi",
+        "thumbnail": "assets/img/equiments/sets/Tobi-Kadachi.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Pulsar Shotel",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 1,
+              "damage_2": 7,
+              "damage_3": 2,
+              "damage_4": 0
+            },
+            "remove": "2 Fade Slash",
+            "add": "2 Thunder Fade Slash"
+          },
+          {
+            "item_id": 2,
+            "item": "Kadachi Fang",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 1,
+              "damage_2": 8,
+              "damage_3": 3,
+              "damage_4": 0
+            },
+            "remove": "2 Fade Slash\n2 Rising Slash",
+            "add": "2 Thunder Fade Slash\n2 Shocking Rising Slash"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 4,
+        "weapon_type": "Anjanath",
+        "thumbnail": "assets/img/equiments/sets/Anjanath.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Blazing Shotel",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 1,
+              "damage_2": 9,
+              "damage_3": 2,
+              "damage_4": 0
+            },
+            "remove": "2 Ready Stance",
+            "add": "2 Poised Stance"
+          },
+          {
+            "item_id": 2,
+            "item": "Anja Scimitar",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 1,
+              "damage_2": 9,
+              "damage_3": 4,
+              "damage_4": 0
+            },
+            "remove": "2 Ready Stance\n2 Helm Breaker",
+            "add": "2 Poised Stance\n2 Flaming Helm Breaker"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 5,
+        "weapon_type": "Rathalos",
+        "thumbnail": "assets/img/equiments/sets/Rathalos.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Wyvern Blade 'Fall'",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 2,
+              "damage_2": 8,
+              "damage_3": 2,
+              "damage_4": 0
+            },
+            "remove": "2 Rising Slash",
+            "add": "2 Blazing Rising Slash"
+          },
+          {
+            "item_id": 2,
+            "item": "Wyvern Blade 'Blood'",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 1,
+              "damage_2": 8,
+              "damage_3": 4,
+              "damage_4": 0
+            },
+            "remove": "2 Rising Slash\n2 Spirit Helm Breaker",
+            "add": "2 Blazing Rising Slash\n2 Blazing Helm Breaker"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 6,
+        "weapon_type": "Jyuratodus",
+        "thumbnail": "assets/img/equiments/sets/jyuratodus.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Jyura Shotel",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 1,
+              "damage_2": 6,
+              "damage_3": 2,
+              "damage_4": 0
+            },
+            "remove": "2 Helm Breaker",
+            "add": "2 Mud Helm Breaker"
+          },
+          {
+            "item_id": 2,
+            "item": "Dipterus",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 2,
+              "damage_2": 7,
+              "damage_3": 3,
+              "damage_4": 0
+            },
+            "remove": "2 Helm Breaker\n2 Spirit Thrust",
+            "add": "2 Mud Helm Breaker\n2 Water Spirit Thrust"
+          }
+        ]
+      }
+    ],
+    "weapon_priority_set": [
+      {
+        "weapon_type_id": 1,
+        "priority": [
+          [1, 1],
+          [1, 2],
+          [1, 3]
+        ]
+      },
+      {
+        "weapon_type_id": 2,
+        "priority": [
+          [2, 1],
+          [2, 2],
+          [2, 3]
+        ]
+      },
+      {
+        "weapon_type_id": 3,
+        "priority": [
+          [2, 1],
+          [3, 1],
+          [3, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 4,
+        "priority": [
+          [2, 1],
+          [4, 1],
+          [4, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 5,
+        "priority": [
+          [1, 1],
+          [5, 1],
+          [5, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 6,
+        "priority": [
+          [2, 1],
+          [6, 1],
+          [6, 2]
+        ]
+      }
+    ]
   }
 ]
