@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useRoomStore } from '@/stores/room'
 import CraftLookupModal from './components/CraftLookupModal.vue'
+import { isFirebaseConnected } from '@/services/firebase'
 
 const room = useRoomStore()
 
@@ -171,6 +172,19 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 
     <!-- ── Craft Lookup Modal ── -->
     <CraftLookupModal />
+
+    <!-- ── Disconnect Overlay ── -->
+    <teleport to="body">
+      <Transition name="notif-slide">
+        <div v-if="room.inRoom && !isFirebaseConnected" class="disconnect-overlay">
+          <div class="disconnect-box">
+            <div class="disconnect-spinner"></div>
+            <p class="disconnect-title">ขาดการเชื่อมต่อ</p>
+            <p class="disconnect-sub">กำลัง Reconnect...</p>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
 
     <!-- ── Notifications ── -->
     <teleport to="body">
@@ -610,6 +624,50 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
   color: #a88040;
 }
 .party-btn-leave:hover { background: rgba(124,90,43,0.18); }
+
+.disconnect-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(8px);
+  z-index: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.disconnect-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 40px;
+  background: linear-gradient(160deg, #1c1508, #13100a);
+  border: 2px solid rgba(200,155,60,0.5);
+  border-radius: 16px;
+  box-shadow: 0 0 40px rgba(0,0,0,0.8);
+}
+.disconnect-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(200,155,60,0.2);
+  border-top-color: #c89b3c;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.disconnect-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #ffd27a;
+  margin: 0;
+  letter-spacing: 2px;
+}
+.disconnect-sub {
+  font-size: 12px;
+  color: #a88040;
+  margin: 0;
+  letter-spacing: 1px;
+}
 
 .notif-container {
   position: fixed;

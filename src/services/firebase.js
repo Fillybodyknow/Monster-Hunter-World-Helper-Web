@@ -1,5 +1,8 @@
 import { initializeApp } from 'firebase/app'
-import { getDatabase } from 'firebase/database'
+import { getDatabase, ref, onValue } from 'firebase/database'
+import { ref as vRef } from 'vue'
+
+export const isFirebaseConnected = vRef(true)
 
 const firebaseConfig = {
   apiKey: 'AIzaSyAwDjWUYl-_NGLX07jkv3B9StKk0ng720M',
@@ -13,3 +16,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig)
 export const db = getDatabase(app)
+
+// Track Firebase connection state
+onValue(ref(db, '.info/connected'), (snap) => {
+  isFirebaseConnected.value = snap.val() === true
+})
