@@ -392,6 +392,17 @@ const armorList = computed(() => {
       equips: set.equips,
     }))
 })
+
+// Collapse/Expand — openSets เก็บ key ที่เปิดอยู่ (default ทุก set ซ่อน)
+const openSets = ref(new Set())
+const toggleSet = (key) => {
+  if (openSets.value.has(key)) {
+    openSets.value = new Set([...openSets.value].filter(k => k !== key))
+  } else {
+    openSets.value = new Set([...openSets.value, key])
+  }
+}
+const isCollapsed = (key) => !openSets.value.has(key)
 </script>
 
 <template>
@@ -441,14 +452,20 @@ const armorList = computed(() => {
     <!-- ================= WEAPON ================= -->
     <div v-if="activeTab === 'weapon'" class="weapon-tree">
       <div v-for="(tree, tIndex) in weaponTree" :key="tIndex" class="tree-line">
-        <!-- 🔥 LEFT: TREE INFO -->
-        <div class="tree-info">
+        <!-- 🔥 LEFT: TREE INFO (clickable to collapse) -->
+        <div class="tree-info set-toggle" @click="toggleSet('w-' + tIndex)">
           <img :src="getImg(tree.typeThumbnail)" />
           <p>{{ tree.typeName }}</p>
+          <span class="set-toggle-arrow">{{ isCollapsed('w-' + tIndex) ? '▶' : '▼' }}</span>
+        </div>
+
+        <!-- Collapsed indicator -->
+        <div v-if="isCollapsed('w-' + tIndex)" class="tree-collapsed-hint">
+          Weapon Set ถูกซ่อนอยู่กดที่ Icon เพื่อแสดง
         </div>
 
         <!-- 🔥 RIGHT: WEAPON TIERS -->
-        <div class="tree-nodes">
+        <div class="tree-nodes" v-show="!isCollapsed('w-' + tIndex)">
           <div v-for="(node, i) in tree.nodes" :key="i" class="node-wrapper">
             <!-- NODE -->
             <div
@@ -537,14 +554,15 @@ const armorList = computed(() => {
     <!-- ================= ARMOR ================= -->
     <div v-if="activeTab === 'armor'" class="weapon-tree">
       <div v-for="armorSet in armorList" :key="armorSet.equip_set_id" class="tree-line armor-tree-line">
-        <!-- LEFT: SET INFO -->
-        <div class="tree-info">
+        <!-- LEFT: SET INFO (clickable to collapse) -->
+        <div class="tree-info set-toggle" @click="toggleSet('a-' + armorSet.equip_set_id)">
           <img :src="getImg(armorSet.thumbnail)" />
           <p>{{ armorSet.set_name }}</p>
+          <span class="set-toggle-arrow">{{ isCollapsed('a-' + armorSet.equip_set_id) ? '▶' : '▼' }}</span>
         </div>
 
         <!-- CENTER: SET BONUS -->
-        <div class="set-bonus-col">
+        <div class="set-bonus-col" v-if="!isCollapsed('a-' + armorSet.equip_set_id)">
           <div
             v-if="armorSet.set_ability_bonus !== 0 && getAbility(armorSet.set_ability_bonus)"
             class="set-bonus-bar"
@@ -556,8 +574,13 @@ const armorList = computed(() => {
           </div>
         </div>
 
+        <!-- Collapsed indicator -->
+        <div v-if="isCollapsed('a-' + armorSet.equip_set_id)" class="tree-collapsed-hint armor-collapsed-hint" @click="toggleSet('a-' + armorSet.equip_set_id)">
+          ▶ Armor Set ถูกซ่อนอยู่กดที่ Icon เพื่อแสดง
+        </div>
+
         <!-- RIGHT: ARMOR PIECES -->
-        <div class="tree-nodes">
+        <div class="tree-nodes" v-show="!isCollapsed('a-' + armorSet.equip_set_id)">
           <div v-for="equip in armorSet.equips" :key="equip.equip_id" class="node-wrapper">
             <div
               class="node-card"
@@ -848,6 +871,33 @@ const armorList = computed(() => {
   border-right: 1px solid rgba(200, 155, 60, 0.15);
   padding: 4px 12px 4px 0;
 }
+.set-toggle {
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.15s;
+}
+.set-toggle:hover { opacity: 0.8; }
+.set-toggle-arrow {
+  font-size: 10px;
+  color: rgba(200, 155, 60, 0.6);
+}
+.tree-collapsed-hint {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  font-size: 11px;
+  color: rgba(200, 155, 60, 0.4);
+  letter-spacing: 2px;
+  border: 1px dashed rgba(200, 155, 60, 0.15);
+  border-radius: 8px;
+  padding: 8px;
+  min-height: 40px;
+}
+.armor-collapsed-hint {
+  grid-column: 2 / -1;
+}
 
 .tree-info img {
   width: 80px;
@@ -920,7 +970,8 @@ const armorList = computed(() => {
 /* NODE AREA */
 .tree-nodes {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: center;
   flex-wrap: wrap;
   gap: 8px;
   padding-left: 12px;
@@ -1235,7 +1286,7 @@ const armorList = computed(() => {
 /* ══════════════════════════════════════════
    RESPONSIVE — iPad (≤768px)
 ══════════════════════════════════════════ */
-@media (max-width: 768px) {
+@media (max-width: 1080px) {
   .tree-line {
     grid-template-columns: 1fr !important;
     gap: 10px;
@@ -1258,16 +1309,30 @@ const armorList = computed(() => {
     padding: 0 0 10px;
   }
 
+  /* Vertical tree layout for weapon and armor */
   .tree-nodes {
     padding-left: 0;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    flex-wrap: nowrap;
+    padding-top: 8px;
   }
 
-  .node-card { width: 180px; }
+  .node-wrapper {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .node-card { width: min(280px, 100%); }
 
   .line {
-    width: 24px;
-    margin-top: 44px;
+    width: 2px;
+    height: 24px;
+    background: linear-gradient(to bottom, #c89b3c, rgba(124, 90, 43, 0.4));
+    margin: 0;
+    margin-top: 0;
+    align-self: center;
   }
 }
 
@@ -1283,10 +1348,7 @@ const armorList = computed(() => {
   .tree-line { padding: 10px; border-radius: 10px; }
   .tree-info img { width: 50px; height: 50px; }
 
-  .tree-nodes { gap: 6px; }
-  .node-card { width: 150px; }
-
-  .line { width: 16px; margin-top: 40px; }
+  .node-card { width: min(240px, 100%); }
 }
 
 /* ══════════════════════════════════════════
