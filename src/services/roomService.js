@@ -99,6 +99,10 @@ export const clearDialogVotes = (code) =>
 export const pushCurrentDialog = (code, dialogId) =>
   set(ref(db, `rooms/${code}/currentDialog`), dialogId)
 
+// ── Current game phase sync ───────────────────────────────
+export const pushGamePhase = (code, phase) =>
+  set(ref(db, `rooms/${code}/gamePhase`), phase)
+
 // ── Hunt state (any player pushes, all sync) ─────────────
 export const pushHuntState = (code, state) =>
   update(ref(db, `rooms/${code}/huntState`), state)
@@ -156,6 +160,16 @@ export const setHostConnected = (code, val) =>
 
 export const kickHunter = (code, hunterId) =>
   remove(ref(db, `rooms/${code}/hunters/${hunterId}`))
+
+// ── Reroll Request ────────────────────────────────────────
+export const pushRerollRequest = (code, hunterId, hunterName) =>
+  set(ref(db, `rooms/${code}/rerollRequest`), { requesterId: hunterId, requesterName: hunterName, approvals: {} })
+
+export const setRerollApproval = (code, hunterId, approved) =>
+  set(ref(db, `rooms/${code}/rerollRequest/approvals/${hunterId}`), approved)
+
+export const clearRerollRequest = (code) =>
+  remove(ref(db, `rooms/${code}/rerollRequest`))
 
 export const pushPartyDice = (code, hunterId, rolls) =>
   set(ref(db, `rooms/${code}/partyDice/${hunterId}`), rolls)

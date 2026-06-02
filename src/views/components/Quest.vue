@@ -347,15 +347,55 @@ const _syncToPhase = (dialogId, applyHuntState = false) => {
   currentDialogId.value = dialogId
   if (selectedMonster.value?.dialog_hunting_phase?.includes(dialogId)) {
     if (applyHuntState && room.huntState) {
-      _applyCurrentHuntState() // reconnect: ใช้ state จาก Firebase
+      _applyCurrentHuntState()
     } else {
-      initHuntingData()        // first-time: init ก่อน รอ huntState watch override
+      initHuntingData()
     }
-    phase.value = 'huntingPanel'
+    // เช็ค syncedPhase ก่อน — อาจอยู่ใน reward/trade phase อยู่แล้ว
+    const sp = room.syncedPhase
+    if (sp === 'reward') {
+      phase.value = 'reward'
+      rewardPhase.value = 'diceRoll'
+      // Restore dice from Firebase
+      const myDice = room.partyDice?.[room.myHunterId]
+      if (myDice?.length) {
+        rolledDice.value = myDice.map((val, i) => ({ id: i, value: val, spent: false }))
+        rewardHunterCount.value = room.hunterCount
+      }
+    } else if (sp === 'assign') {
+      phase.value = 'reward'
+      rewardPhase.value = 'assign'
+      // Restore dice from Firebase
+      const myDice = room.partyDice?.[room.myHunterId]
+      if (myDice?.length && !rolledDice.value.length) {
+        rolledDice.value = myDice.map((val, i) => ({ id: i, value: val, spent: false }))
+        rewardHunterCount.value = room.hunterCount
+      }
+    } else if (sp === 'trade') {
+      phase.value = 'reward'
+      rewardPhase.value = 'trade'
+    } else {
+      phase.value = 'huntingPanel'
+    }
   } else {
     phase.value = 'dialog'
   }
 }
+
+// Sync phase for reconnecting guests (reward/trade)
+watch(() => room.syncedPhase, (syncPhase) => {
+  if (!syncPhase || !room.inRoom || room.isHost) return
+  if (syncPhase === 'reward' && phase.value !== 'reward') {
+    phase.value = 'reward'
+    rewardPhase.value = 'diceRoll'
+  } else if (syncPhase === 'assign' && rewardPhase.value !== 'assign') {
+    phase.value = 'reward'
+    rewardPhase.value = 'assign'
+  } else if (syncPhase === 'trade' && rewardPhase.value !== 'trade') {
+    phase.value = 'reward'
+    rewardPhase.value = 'trade'
+  }
+})
 
 // Host proceeds → guests follow
 watch(() => room.syncedDialogId, (dialogId) => {
@@ -409,6 +449,22 @@ const toggleVote = (type) => {
     pendingVoteType.value = type  // แสดง modal ยืนยัน
   }
 }
+
+// Co-op: watch reroll request → all approved → execute / any denied → cancel
+watch(() => room.rerollRequest, (req) => {
+  if (!req || !room.inRoom) return
+  const approvals = Object.values(req.approvals ?? {})
+  const others = room.hunters.filter(h => h.hunter_id !== req.requesterId)
+  // All approved
+  if (others.length > 0 && others.every(h => req.approvals?.[h.hunter_id] === true)) {
+    room.cancelReroll()
+    if (req.requesterId === room.myHunterId) rollAllDice()
+  }
+  // Any denied
+  if (approvals.some(v => v === false)) {
+    room.cancelReroll()
+  }
+}, { deep: true })
 
 // Co-op: watch action votes → ครบทุกคน → execute
 watch(() => room.actionVotes, () => {
@@ -1013,6 +1069,7 @@ const initAssignPhase = () => {
   claimedRewards.value = auto
   if (room.inRoom && auto.length) room.pushMyRewards?.(auto)
   rewardPhase.value = 'assign'
+  if (room.inRoom) room.syncPhase?.('assign')
 }
 
 const claimReward = (row) => {
@@ -1158,6 +1215,7 @@ const confirmRewards = () => {
     room.clearAllPartyRewards?.()
     room.clearTrade?.()
     rewardPhase.value = 'trade'
+    room.syncPhase?.('trade')
     return
   }
   _doConfirmRewards()
@@ -1172,6 +1230,7 @@ const goToRewardPhase = () => {
     room.clearAllPartyRewards?.()
   }
   phase.value = 'reward'
+  if (room.inRoom) room.syncPhase?.('reward')
   if (room.inRoom && room.hunterCount >= 2) {
     rewardHunterCount.value = room.hunterCount
     rewardPhase.value = 'diceRoll'
@@ -2406,8 +2465,26 @@ const openPackDrawer = () => {
           </div>
         </div>
 
+        <!-- Reroll request status (co-op) -->
+        <div v-if="room.inRoom && room.rerollRequest" class="rw-reroll-status">
+          <div v-if="room.rerollRequest.requesterId === room.myHunterId" class="rw-reroll-waiting">
+            🎲 รอการอนุมัติ Reroll...
+            ({{ Object.values(room.rerollRequest.approvals ?? {}).filter(v => v === true).length }}/{{ room.hunterCount - 1 }})
+            <button class="rw-reroll-cancel" @click="room.cancelReroll()">ยกเลิก</button>
+          </div>
+          <div v-else-if="room.myRerollApproval === null" class="rw-reroll-ask">
+            <span><strong>{{ room.rerollRequest.requesterName }}</strong> ขอ Reroll</span>
+            <div class="rw-reroll-btns">
+              <button class="rw-reroll-approve" @click="room.respondReroll(true)">✓ อนุมัติ</button>
+              <button class="rw-reroll-deny" @click="room.respondReroll(false)">✕ ปฏิเชน</button>
+            </div>
+          </div>
+          <p v-else class="rw-reroll-voted">{{ room.myRerollApproval ? 'คุณอนุมัติแล้ว' : 'คุณปฏิเสธแล้ว' }}</p>
+        </div>
+
         <div class="rw-roll-actions">
           <button v-if="!room.inRoom" class="rw-btn-secondary" @click="rollAllDice()" :disabled="isAnyRolling">🎲 ทอยใหม่ทั้งหมด</button>
+          <button v-if="room.inRoom && !room.rerollRequest" class="rw-btn-secondary" @click="room.requestReroll()" :disabled="isAnyRolling">🎲 ขอ Reroll</button>
           <button
             class="rw-btn-primary"
             :disabled="isAnyRolling || (room.inRoom && room.myActionVote === 'goReward')"
@@ -7779,6 +7856,51 @@ const openPackDrawer = () => {
   border-color: #c89b3c;
   box-shadow: 0 0 10px rgba(200,155,60,0.2);
 }
+
+.rw-reroll-status {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(60,100,200,0.08);
+  border: 1px solid rgba(60,100,200,0.25);
+}
+.rw-reroll-waiting {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #7ab3ff;
+}
+.rw-reroll-ask {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: #d4c090;
+}
+.rw-reroll-ask strong { color: #ffd27a; }
+.rw-reroll-btns { display: flex; gap: 6px; }
+.rw-reroll-approve, .rw-reroll-deny, .rw-reroll-cancel {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.15s;
+}
+.rw-reroll-approve {
+  border: 1px solid rgba(100,220,100,0.5);
+  background: rgba(60,180,60,0.1);
+  color: #7cfc00;
+}
+.rw-reroll-approve:hover { background: rgba(60,180,60,0.2); }
+.rw-reroll-deny, .rw-reroll-cancel {
+  border: 1px solid rgba(180,60,60,0.4);
+  background: rgba(180,60,60,0.08);
+  color: #ff6b6b;
+}
+.rw-reroll-deny:hover, .rw-reroll-cancel:hover { background: rgba(180,60,60,0.2); }
+.rw-reroll-voted { font-size: 11px; color: #a88040; margin: 0; text-align: center; }
 
 .rw-roll-actions {
   display: flex;

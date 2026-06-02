@@ -126,6 +126,11 @@
                         "id": 7,
                         "name": "Longsword",
                         "thumbnail": "assets/img/equiments/weapons/longswordR1.png"
+                    },
+                    {
+                        "id": 8,
+                        "name": "Lance",
+                        "thumbnail": "assets/img/equiments/weapons/lanceR1.png"
                     }
                 ]
             },
@@ -166,6 +171,11 @@
                         "id": 7,
                         "name": "Longsword",
                         "thumbnail": "assets/img/equiments/weapons/longswordR2.png"
+                    },
+                    {
+                        "id": 8,
+                        "name": "Lance",
+                        "thumbnail": "assets/img/equiments/weapons/lanceR2.png"
                     }
                 ]
             },
@@ -206,6 +216,11 @@
                         "id": 7,
                         "name": "Longsword",
                         "thumbnail": "assets/img/equiments/weapons/longswordR3.png"
+                    },
+                    {
+                        "id": 8,
+                        "name": "Lance",
+                        "thumbnail": "assets/img/equiments/weapons/lanceR3.png"
                     }
                 ]
             },
@@ -246,6 +261,11 @@
                         "id": 7,
                         "name": "Longsword",
                         "thumbnail": "assets/img/equiments/weapons/longswordR4.png"
+                    },
+                    {
+                        "id": 8,
+                        "name": "Lance",
+                        "thumbnail": "assets/img/equiments/weapons/lanceR4.png"
                     }
                 ]
             }

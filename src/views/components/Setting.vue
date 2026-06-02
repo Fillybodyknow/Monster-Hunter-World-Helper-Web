@@ -1,28 +1,39 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showQuestEffects, showTips } from '@/stores/settings'
 import classHunterData from '@/assets/files/class_hunter.json'
-import { getHunters } from '@/services/hunterStorage'
 import { hunter } from '@/stores/hunter'
 
 const router = useRouter()
 
+const showLogoutConfirm = ref(false)
+
 const logout = () => {
+  showLogoutConfirm.value = false
   localStorage.removeItem('hunterId')
   hunter.value = null
   router.push('/')
 }
 
 // ─── Export ───────────────────────────────────────────────────────────────────
-const hunters = computed(() => getHunters())
-
 const getClassName = (classId) =>
   classHunterData.find((c) => c.hunter_class_id === classId)?.hunter_class ?? `Class${classId}`
 
 const sanitize = (str) => String(str).replace(/[^\w฀-๿]/g, '_').replace(/_+/g, '_')
 
-const exportHunter = (hunter) => {
+const showExportConfirm = ref(false)
+
+const confirmExport = () => {
+  showExportConfirm.value = false
+  doExport(hunter.value)
+}
+
+const exportHunter = () => {
+  showExportConfirm.value = true
+}
+
+const doExport = (hunter) => {
   const date = new Date().toISOString().slice(0, 10)
   const name = sanitize(hunter.hunter_name)
   const cls  = sanitize(getClassName(hunter.hunter_class_id))
@@ -39,6 +50,7 @@ const exportHunter = (hunter) => {
 </script>
 
 <template>
+<div>
   <div class="setting-page">
 
     <!-- HEADER -->
@@ -126,15 +138,17 @@ const exportHunter = (hunter) => {
         </div>
         <div class="ss-body">
 
-          <!-- Export per hunter -->
+          <!-- Export current hunter -->
           <div class="save-section-label">📤 ส่งออก Hunter</div>
-          <div v-if="hunters.length === 0" class="save-empty">ยังไม่มี Hunter — สร้าง Hunter ก่อนเพื่อ Export</div>
-          <div v-for="h in hunters" :key="h.hunter_id" class="save-hunter-row">
-            <div class="save-hunter-info">
-              <span class="save-hunter-name">{{ h.hunter_name }}</span>
-              <span class="save-hunter-meta">{{ getClassName(h.hunter_class_id) }} · Day {{ h.campaign_day ?? 1 }}</span>
+          <div v-if="!hunter" class="save-empty">ยังไม่มี Hunter ที่ Login — สร้าง Hunter ก่อนเพื่อ Export</div>
+          <div v-else class="export-hunter-card">
+            <div class="export-hunter-info">
+              <span class="export-hunter-name">{{ hunter.hunter_name }}</span>
+              <span class="export-hunter-meta">{{ getClassName(hunter.hunter_class_id) }} · Day {{ hunter.campaign_day ?? 1 }}</span>
             </div>
-            <button class="save-btn save-btn-export" @click="exportHunter(h)">Export</button>
+            <button class="save-btn save-btn-export export-btn-full" @click="exportHunter">
+              📤 Export
+            </button>
           </div>
 
           <p class="save-import-hint">💡 Import Hunter ทำได้จากหน้าเลือก Hunter</p>
@@ -145,7 +159,7 @@ const exportHunter = (hunter) => {
     </div>
 
     <!-- LOGOUT -->
-    <button class="logout-btn" @click="logout">
+    <button class="logout-btn" @click="showLogoutConfirm = true">
       <span class="logout-icon">🚪</span>
       เปลี่ยน Hunter
     </button>
@@ -158,6 +172,43 @@ const exportHunter = (hunter) => {
     </div>
 
   </div>
+
+  <!-- Change Hunter Confirm Modal -->
+  <Teleport to="body">
+    <Transition name="slain-fade">
+      <div v-if="showLogoutConfirm" class="export-confirm-overlay" @click.self="showLogoutConfirm = false">
+        <div class="export-confirm-modal">
+          <p class="export-confirm-title">🚪 เปลี่ยน Hunter</p>
+          <p class="export-confirm-desc">
+            ออกจาก <strong>{{ hunter?.hunter_name }}</strong> และกลับไปหน้าเลือก Hunter ใช่หรือไม่?
+          </p>
+          <div class="export-confirm-btns">
+            <button class="save-btn save-btn-export" @click="logout">✓ ยืนยัน</button>
+            <button class="export-cancel-btn" @click="showLogoutConfirm = false">ยกเลิก</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+
+  <!-- Export Confirm Modal -->
+  <Teleport to="body">
+    <Transition name="slain-fade">
+      <div v-if="showExportConfirm" class="export-confirm-overlay" @click.self="showExportConfirm = false">
+        <div class="export-confirm-modal">
+          <p class="export-confirm-title">📤 ยืนยันการ Export</p>
+          <p class="export-confirm-desc">
+            Export ข้อมูลของ <strong>{{ hunter?.hunter_name }}</strong> เป็นไฟล์ .json ใช่หรือไม่?
+          </p>
+          <div class="export-confirm-btns">
+            <button class="save-btn save-btn-export" @click="confirmExport">✓ ยืนยัน</button>
+            <button class="export-cancel-btn" @click="showExportConfirm = false">ยกเลิก</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+</div>
 </template>
 
 <style scoped>
@@ -438,6 +489,41 @@ const exportHunter = (hunter) => {
   color: #7c5a2b;
 }
 
+.export-hunter-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 10px;
+  background: rgba(200, 155, 60, 0.06);
+  border: 1px solid rgba(124, 90, 43, 0.3);
+}
+
+.export-hunter-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  text-align: center;
+}
+
+.export-hunter-name {
+  font-size: 15px;
+  font-weight: bold;
+  color: #ffd27a;
+}
+
+.export-hunter-meta {
+  font-size: 12px;
+  color: #a88040;
+}
+
+.export-btn-full {
+  width: 100%;
+  justify-content: center;
+  gap: 6px;
+}
+
 .save-import-hint {
   margin: 12px 0 0;
   font-size: 11px;
@@ -656,4 +742,62 @@ const exportHunter = (hunter) => {
   .ss-body.coming-soon { flex-direction: column; align-items: flex-start; gap: 6px; }
   .notice-text { font-size: 12px; }
 }
+</style>
+
+<style>
+.export-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(6px);
+  z-index: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.export-confirm-modal {
+  background: linear-gradient(160deg, #1c1508, #13100a);
+  border: 2px solid #7c5a2b;
+  border-radius: 14px;
+  padding: 24px 20px;
+  width: min(340px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 0 40px rgba(0,0,0,0.8);
+}
+.export-confirm-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #ffd27a;
+  text-align: center;
+  margin: 0;
+}
+.export-confirm-desc {
+  font-size: 13px;
+  color: #d4c090;
+  text-align: center;
+  margin: 0;
+  line-height: 1.6;
+}
+.export-confirm-desc strong { color: #ffd27a; }
+.export-confirm-btns {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+.export-confirm-btns > * { flex: 1; }
+.export-cancel-btn {
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(124,90,43,0.4);
+  background: rgba(10,8,4,0.6);
+  color: #7c5a2b;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.export-cancel-btn:hover { color: #a88040; border-color: #7c5a2b; }
 </style>
