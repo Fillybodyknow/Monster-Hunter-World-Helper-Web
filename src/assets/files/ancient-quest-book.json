@@ -788,13 +788,15 @@
                     { "resource_type_id": 1, "item_id": 6 },
                     { "resource_type_id": 1, "item_id": 7 },
                     { "resource_type_id": 1, "item_id": 8 },
+                    { "resource_type_id": 1, "item_id": 9 },
                     { "resource_type_id": 1, "item_id": 10 },
                     { "resource_type_id": 1, "item_id": 11 },
                     { "resource_type_id": 1, "item_id": 12 },
                     { "resource_type_id": 1, "item_id": 13 },
                     { "resource_type_id": 1, "item_id": 14 },
                     { "resource_type_id": 2, "item_id": 2 },
-                    { "resource_type_id": 2, "item_id": 5 }
+                    { "resource_type_id": 2, "item_id": 5 },
+                    { "resource_type_id": 2, "item_id": 6 }
                 ]
             },
             {
@@ -1661,9 +1663,12 @@
                     { "resource_type_id": 1, "item_id": 6 },
                     { "resource_type_id": 1, "item_id": 7 },
                     { "resource_type_id": 1, "item_id": 10 },
+                    { "resource_type_id": 1, "item_id": 11 },
                     { "resource_type_id": 1, "item_id": 12 },
                     { "resource_type_id": 1, "item_id": 13 },
-                    { "resource_type_id": 2, "item_id": 2 }
+                    { "resource_type_id": 2, "item_id": 2 },
+                    { "resource_type_id": 2, "item_id": 5 },
+                    { "resource_type_id": 2, "item_id": 8 }
                 ]
             },
             {
@@ -1708,10 +1713,13 @@
                     { "resource_type_id": 1, "item_id": 6 },
                     { "resource_type_id": 1, "item_id": 7 },
                     { "resource_type_id": 1, "item_id": 10 },
+                    { "resource_type_id": 1, "item_id": 11 },
                     { "resource_type_id": 1, "item_id": 12 },
                     { "resource_type_id": 1, "item_id": 13 },
                     { "resource_type_id": 2, "item_id": 2 },
-                    { "resource_type_id": 2, "item_id": 3 }
+                    { "resource_type_id": 2, "item_id": 3 },
+                    { "resource_type_id": 2, "item_id": 5 },
+                    { "resource_type_id": 2, "item_id": 8 }
                 ]
             }
         ],
@@ -2439,12 +2447,14 @@
                 "starting_point": [1],
                 "dialog_resources": [
                     { "resource_type_id": 1, "item_id": 2 },
+                    { "resource_type_id": 1, "item_id": 3 },
                     { "resource_type_id": 1, "item_id": 5 },
                     { "resource_type_id": 1, "item_id": 6 },
                     { "resource_type_id": 1, "item_id": 7 },
                     { "resource_type_id": 1, "item_id": 8 },
                     { "resource_type_id": 1, "item_id": 11 },
-                    { "resource_type_id": 1, "item_id": 14 }
+                    { "resource_type_id": 1, "item_id": 14 },
+                    { "resource_type_id": 2, "item_id": 2 }
                 ]
             },
             {
@@ -2455,6 +2465,7 @@
                 "scoutfly_level": [3, 6],
                 "starting_point": [2,3,4,5],
                 "dialog_resources": [
+                    { "resource_type_id": 3, "item_id": 16 },
                     { "resource_type_id": 3, "item_id": 17 },
                     { "resource_type_id": 3, "item_id": 18 },
                     { "resource_type_id": 3, "item_id": 19 },
@@ -2493,12 +2504,14 @@
                     { "resource_type_id": 2, "item_id": 5 },
                     { "resource_type_id": 2, "item_id": 9 },
                     { "resource_type_id": 1, "item_id": 2 },
+                    { "resource_type_id": 1, "item_id": 3 },
                     { "resource_type_id": 1, "item_id": 5 },
                     { "resource_type_id": 1, "item_id": 6 },
                     { "resource_type_id": 1, "item_id": 7 },
                     { "resource_type_id": 1, "item_id": 8 },
                     { "resource_type_id": 1, "item_id": 11 },
-                    { "resource_type_id": 1, "item_id": 14 }
+                    { "resource_type_id": 1, "item_id": 14 },
+                    { "resource_type_id": 2, "item_id": 2 }
                 ]
             }
         ],
@@ -3235,7 +3248,8 @@
                     { "resource_type_id": 1, "item_id": 7 },
                     { "resource_type_id": 1, "item_id": 8 },
                     { "resource_type_id": 1, "item_id": 11 },
-                    { "resource_type_id": 1, "item_id": 14 }
+                    { "resource_type_id": 1, "item_id": 14 },
+                    { "resource_type_id": 2, "item_id": 3 }
                 ]
             },
             {
@@ -3246,9 +3260,11 @@
                 "scoutfly_level": [3, 6],
                 "starting_point": [2,3,4,5],
                 "dialog_resources": [
+                    { "resource_type_id": 3, "item_id": 26 },
                     { "resource_type_id": 3, "item_id": 27 },
                     { "resource_type_id": 3, "item_id": 28 },
                     { "resource_type_id": 3, "item_id": 29 },
+                    { "resource_type_id": 3, "item_id": 30 },
                     { "resource_type_id": 3, "item_id": 31 },
                     { "resource_type_id": 2, "item_id": 3 },
                     { "resource_type_id": 2, "item_id": 9 },
@@ -3272,6 +3288,7 @@
                     { "resource_type_id": 3, "item_id": 27 },
                     { "resource_type_id": 3, "item_id": 28 },
                     { "resource_type_id": 3, "item_id": 29 },
+                    { "resource_type_id": 3, "item_id": 30 },
                     { "resource_type_id": 3, "item_id": 31 },
                     { "resource_type_id": 2, "item_id": 3 },
                     { "resource_type_id": 2, "item_id": 9 },
