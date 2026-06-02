@@ -161,6 +161,14 @@ export const setHostConnected = (code, val) =>
 export const kickHunter = (code, hunterId) =>
   remove(ref(db, `rooms/${code}/hunters/${hunterId}`))
 
+// ── Behavior Deck Sync ───────────────────────────────────
+export const pushBehaviorDeck = (code, deckState) =>
+  set(ref(db, `rooms/${code}/behaviorDeck`), deckState)
+
+// ── Track Token Sync ──────────────────────────────────────
+export const pushTrackTokens = (code, pool, tokens) =>
+  set(ref(db, `rooms/${code}/trackTokens`), { pool, tokens })
+
 // ── Reroll Request ────────────────────────────────────────
 export const pushRerollRequest = (code, hunterId, hunterName) =>
   set(ref(db, `rooms/${code}/rerollRequest`), { requesterId: hunterId, requesterName: hunterName, approvals: {} })

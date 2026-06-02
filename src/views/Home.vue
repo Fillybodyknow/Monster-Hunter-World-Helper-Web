@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { useRoomStore } from '@/stores/room'
 import CraftLookupModal from './components/CraftLookupModal.vue'
 import { isFirebaseConnected } from '@/services/firebase'
+import { hunter } from '@/stores/hunter'
 
 const room = useRoomStore()
 
@@ -17,6 +18,22 @@ const addNotif = (message, type = 'info') => {
     notifications.value = notifications.value.filter((n) => n.id !== id)
   }, 4000)
 }
+
+// Auto-reconnect เมื่อ Firebase reconnect และมี savedRoomCode
+let _autoReconnecting = false
+watch(isFirebaseConnected, async (connected, wasConnected) => {
+  if (!connected || wasConnected) return
+  if (room.inRoom || !room.savedRoomCode || !hunter.value || _autoReconnecting) return
+  _autoReconnecting = true
+  try {
+    await room.join(room.savedRoomCode, hunter.value)
+    addNotif('✅ Reconnect สำเร็จ', 'info')
+  } catch {
+    addNotif('❌ Auto-reconnect ล้มเหลว กรุณากด Reconnect เอง', 'warn')
+  } finally {
+    _autoReconnecting = false
+  }
+})
 
 // Watch: ตรวจ connected state ของสมาชิก
 const _connectedCache = ref({}) // { hunterId: boolean }

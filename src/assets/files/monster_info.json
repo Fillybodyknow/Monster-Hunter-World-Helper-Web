@@ -587,7 +587,90 @@
           }
         ]
       }
-    ]
+    ],
+    "behavior_deck": [
+      {
+        "behavior_id": 1,
+        "behavior_name": "Headbutt",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/headbutt_front.png",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/headbutt_back.png"
+      },
+      {
+        "behavior_id": 2,
+        "behavior_name": "Belly Roll Right",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/belly_roll_right_front.png",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/belly_roll_right_back.png"
+      },
+      {
+        "behavior_id": 3,
+        "behavior_name": "Heavy Bite",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/heavy_bite_front.png",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/heavy_bite_back.png"
+      },
+      {
+        "behavior_id": 4,
+        "behavior_name": "Belly Slam",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/belly_slam_front.png",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/belly_slam_back.png"
+      },
+      {
+        "behavior_id": 5,
+        "behavior_name": "Spit Up",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/spit_up_front.png",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/spit_up_back.png"
+      },
+      {
+        "behavior_id": 6,
+        "behavior_name": "Front Claw Smash",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/front_claw_smash_front.png",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/front_claw_smash_back.png"
+      },
+      {
+        "behavior_id": 7,
+        "behavior_name": "Belly Charge",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/belly_charge_front.png",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/belly_charge_back.png"
+      },
+      {
+        "behavior_id": 8,
+        "behavior_name": "Head Slam",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/head_slam_front.png",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/head_slam_back.png"
+      },
+      {
+        "behavior_id": 9,
+        "behavior_name": "Belly Roll Left",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/belly_roll_left_front.png",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/belly_roll_left_back.png"
+      },
+      {
+        "behavior_id": 10,
+        "behavior_name": "Forward Swing",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/forward_swing_front.png",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/forward_swing_back.png"
+      }
+    ],
+    "behavior_special_card": [
+      {
+        "behavior_id": 11,
+        "behavior_name": "Forward Roll",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/forward_roll_front.png",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/forward_roll_back.png"
+      },
+      {
+        "behavior_id": 12,
+        "behavior_name": "Jagras Spit",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/jagras_spit_front.png",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/jagras_spit_back.png"
+      },
+      {
+        "behavior_id": 13,
+        "behavior_name": "Retreat Swing",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/retreat_swing_front.png",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/retreat_swing_back.png"
+      }
+    ],
+    "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2]
   },
   {
     "monster_id": 2,
@@ -1179,7 +1262,8 @@
           }
         ]
       }
-    ]
+    ],
+    "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2]
   },
   {
     "monster_id": 3,
@@ -1798,7 +1882,8 @@
           }
         ]
       }
-    ]
+    ],
+    "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2]
   },
   {
     "monster_id": 4,
@@ -2417,7 +2502,8 @@
           }
         ]
       }
-    ]
+    ],
+    "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2]
   },
   {
     "monster_id": 5,
@@ -3036,6 +3122,7 @@
           }
         ]
       }
-    ]
+    ],
+    "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2]
   }
 ]

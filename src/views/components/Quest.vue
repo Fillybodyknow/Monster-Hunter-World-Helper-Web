@@ -170,6 +170,7 @@ const startingDialog = computed(() => {
 const startQuest = () => {
   dialogResourceCounts.value = {}
   showDialogResources.value = false
+  initTrackTokens()
   const attempted = getAttempted(selectedMonster.value.monster_id, selectedQuest.value.quest_id)
   currentDialogId.value = selectedQuest.value.starting_point[attempted]
   phase.value = selectedMonster.value.dialog_hunting_phase.includes(currentDialogId.value)
@@ -189,6 +190,45 @@ const currentDialog = computed(() => {
 const pendingAction = ref(null)
 const tiedActions = ref([]) // actions ที่ votes เสมอกัน รอ Host ตัดสิน
 const showBattleIntro = ref(false)
+const showSpecialCardOverlay = ref(false)
+const specialCardOverlayCard = ref(null)
+
+// Token Reveal Overlay
+const showTokenReveal = ref(false)
+const tokenRevealVisual = ref([]) // [{...token, showValue: bool}]
+const tokenRevealDone = ref(false)
+
+const tokenRevealTotal = computed(() =>
+  tokenRevealVisual.value
+    .filter(t => t.showValue)
+    .reduce((sum, t) => sum + (t.value ?? 0), 0),
+)
+
+const startTokenReveal = (onDone) => {
+  if (!trackTokens.value.length) { onDone(); return }
+
+  // Reveal all tokens immediately (update state + push Firebase)
+  trackTokens.value = trackTokens.value.map(t => ({ ...t, revealed: true }))
+  _pushTokenState()
+
+  showTokenReveal.value = true
+  tokenRevealDone.value = false
+  tokenRevealVisual.value = trackTokens.value.map(t => ({ ...t, showValue: false }))
+
+  // Animate flip one by one
+  trackTokens.value.forEach((_, i) => {
+    setTimeout(() => {
+      if (tokenRevealVisual.value[i]) tokenRevealVisual.value[i].showValue = true
+    }, 500 + i * 600)
+  })
+  const total = 500 + trackTokens.value.length * 600 + 800
+  setTimeout(() => { tokenRevealDone.value = true }, total)
+  const finalTotal = trackTokens.value.reduce((s, t) => s + (t.value ?? 0), 0)
+  setTimeout(() => {
+    showTokenReveal.value = false
+    onDone(finalTotal)
+  }, total + 2000)
+}
 const battleIntroPhase = ref('enter') // 'enter' | 'show' | 'leave'
 const battleIntroKey = ref(0)
 
@@ -242,7 +282,31 @@ const _executeDialog = (dialogId) => {
     setTimeout(() => {
       showBattleIntro.value = false
       battleIntroPhase.value = 'enter'
-      phase.value = 'hunting'
+      startTokenReveal((total) => {
+        if (room.isHost || !room.inRoom) {
+          buildBehaviorDeck(total)
+          // หา special card ที่เพิ่งใส่เข้า deck
+          const info = monsterInfoData.find(m => m.monster_id === selectedMonster.value?.monster_id)
+          const [min, max] = selectedQuest.value?.scoutfly_level ?? [0, 0]
+          let specialName = null
+          if (total < min) specialName = selectedMonster.value?.special_attack_card?.[0]
+          else if (total <= max) specialName = selectedMonster.value?.special_attack_card?.[1]
+          else specialName = selectedMonster.value?.special_attack_card?.[2]
+          const specialCard = specialName
+            ? info?.behavior_special_card?.find(c => c.behavior_name === specialName)
+            : null
+          if (specialCard) {
+            specialCardOverlayCard.value = specialCard
+            showSpecialCardOverlay.value = true
+            setTimeout(() => {
+              showSpecialCardOverlay.value = false
+              phase.value = 'huntingPanel'
+            }, 4000)
+            return
+          }
+        }
+        phase.value = 'huntingPanel'
+      })
     }, 2800)
   }
 }
@@ -397,6 +461,51 @@ watch(() => room.syncedPhase, (syncPhase) => {
   }
 })
 
+// Auto-reconnect: joinSignal fires → รอ Firebase โหลด → navigate และ restore deck
+watch(() => room.joinSignal, () => {
+  if (!room.inRoom) return
+
+  const restoreDeck = (state) => {
+    if (!state) return
+    behaviorDeck.value = state.deck ?? []
+    behaviorDiscard.value = state.discard ?? []
+    behaviorBanished.value = state.banished ?? []
+    currentBehaviorCard.value = state.current ?? null
+  }
+
+  // Restore track tokens จาก sessionStorage (สำหรับ host reconnect)
+  if (room.isHost) {
+    try {
+      const local = JSON.parse(sessionStorage.getItem('tt_local') ?? '{}')
+      if (local.pool?.length) trackTokenPool.value = local.pool
+      if (local.tokens?.length) {
+        trackTokens.value = local.tokens
+        _tokenIdCounter = Math.max(...local.tokens.map(t => t.id), 0)
+      }
+    } catch {}
+  }
+
+  const doNav = (dialogId) => {
+    _resolveQuestFromRoom()
+    if (!selectedMonster.value) return
+    // Restore behavior deck for ALL (host+guest) on reconnect
+    restoreDeck(room.behaviorDeckState)
+    pendingAction.value = null
+    tiedActions.value = []
+    _syncToPhase(dialogId, true)
+  }
+
+  if (room.syncedDialogId) {
+    doNav(room.syncedDialogId)
+  } else {
+    const stop = watch(() => room.syncedDialogId, (id) => {
+      if (!id) return
+      stop()
+      doNav(id)
+    })
+  }
+})
+
 // Host proceeds → guests follow
 watch(() => room.syncedDialogId, (dialogId) => {
   if (!dialogId || !room.inRoom) return
@@ -404,7 +513,15 @@ watch(() => room.syncedDialogId, (dialogId) => {
   if (!selectedMonster.value) return
   pendingAction.value = null
   tiedActions.value = []
-  _executeDialog(dialogId)
+  const isHuntingDialog = selectedMonster.value?.dialog_hunting_phase?.includes(dialogId)
+  if (isHuntingDialog && phase.value !== 'dialog') {
+    // Reconnect: ไปหน้า huntingPanel โดยตรง ข้าม animation
+    currentDialogId.value = dialogId
+    _applyCurrentHuntState()
+    phase.value = 'huntingPanel'
+  } else {
+    _executeDialog(dialogId)
+  }
 })
 
 
@@ -552,6 +669,157 @@ const scoutflySummary = computed(() => {
   ]
 })
 
+// ── Behavior Deck ─────────────────────────────────────────
+const behaviorDeck = ref([])       // cards in draw pile
+const behaviorDiscard = ref([])    // cards already used
+const behaviorBanished = ref([])   // cards removed from game
+const currentBehaviorCard = ref(null)  // card currently showing
+const showMonsterAttack = ref(false)   // animation overlay
+const monsterAttackCard = ref(null)    // card being drawn
+const showDeckManager = ref(false)
+const deckManagerTab = ref('deck')     // 'deck' | 'discard' | 'banished'
+
+const _shuffle = (arr) => {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
+const _getMonsterInfo = () =>
+  monsterInfoData.find((m) => m.monster_id === selectedMonster.value?.monster_id)
+
+const buildBehaviorDeck = (tokenTotal) => {
+  const info = _getMonsterInfo()
+  if (!info) return
+  const [min, max] = selectedQuest.value?.scoutfly_level ?? [0, 0]
+  // Determine which special card to add based on Scoutfly tier
+  let specialName = null
+  if (tokenTotal < min) specialName = selectedMonster.value?.special_attack_card?.[0]
+  else if (tokenTotal <= max) specialName = selectedMonster.value?.special_attack_card?.[1]
+  else specialName = selectedMonster.value?.special_attack_card?.[2]
+
+  const special = specialName
+    ? info.behavior_special_card?.find(c => c.behavior_name === specialName)
+    : null
+
+  const deck = [...(info.behavior_deck ?? [])]
+  if (special) deck.push(special)
+
+  behaviorDeck.value = _shuffle(deck)
+  behaviorDiscard.value = []
+  currentBehaviorCard.value = null
+  _pushDeckState(special ?? null)
+}
+
+const _pushDeckState = (specialCard = undefined) => {
+  if (!room.inRoom) return
+  const payload = {
+    deck: behaviorDeck.value,
+    discard: behaviorDiscard.value,
+    banished: behaviorBanished.value,
+    current: currentBehaviorCard.value,
+  }
+  if (specialCard !== undefined) payload.specialCard = specialCard
+  room.syncBehaviorDeck?.(payload)
+}
+
+// Banish card permanently from game (from deck or discard)
+const banishCard = (card) => {
+  behaviorDeck.value = behaviorDeck.value.filter(c => c.behavior_id !== card.behavior_id)
+  behaviorDiscard.value = behaviorDiscard.value.filter(c => c.behavior_id !== card.behavior_id)
+  behaviorBanished.value = [...behaviorBanished.value, card]
+  _pushDeckState()
+}
+
+// Restore banished card back to deck
+const restoreCard = (card) => {
+  behaviorBanished.value = behaviorBanished.value.filter(c => c.behavior_id !== card.behavior_id)
+  behaviorDeck.value = _shuffle([...behaviorDeck.value, card])
+  _pushDeckState()
+}
+
+// Add a special card (that's not already in game) to deck
+const addSpecialCardToDeck = (card) => {
+  const allInGame = [...behaviorDeck.value, ...behaviorDiscard.value, ...behaviorBanished.value,
+    ...(currentBehaviorCard.value ? [currentBehaviorCard.value] : [])]
+  if (allInGame.find(c => c.behavior_id === card.behavior_id)) return
+  behaviorDeck.value = _shuffle([...behaviorDeck.value, card])
+  _pushDeckState()
+}
+
+// Get all special cards for this monster (for add panel)
+const allSpecialCards = computed(() => {
+  const info = _getMonsterInfo()
+  return info?.behavior_special_card ?? []
+})
+
+const isCardInGame = (card) => {
+  const all = [...behaviorDeck.value, ...behaviorDiscard.value, ...behaviorBanished.value,
+    ...(currentBehaviorCard.value ? [currentBehaviorCard.value] : [])]
+  return all.some(c => c.behavior_id === card.behavior_id)
+}
+
+const drawBehaviorCard = () => {
+  if (!room.isHost && room.inRoom) return
+  if (behaviorDeck.value.length === 0) return
+
+  const card = behaviorDeck.value[0]
+  behaviorDeck.value = behaviorDeck.value.slice(1)
+  if (currentBehaviorCard.value) behaviorDiscard.value = [...behaviorDiscard.value, currentBehaviorCard.value]
+  currentBehaviorCard.value = card
+
+  monsterAttackCard.value = card
+  showMonsterAttack.value = true
+  _pushDeckState()
+
+}
+
+const removeCardFromDeck = (behavior_name) => {
+  behaviorDeck.value = behaviorDeck.value.filter(c => c.behavior_name !== behavior_name)
+  behaviorDiscard.value = behaviorDiscard.value.filter(c => c.behavior_name !== behavior_name)
+  _pushDeckState()
+}
+
+const reshuffleDiscardIntoDeck = () => {
+  behaviorDeck.value = _shuffle([...behaviorDeck.value, ...behaviorDiscard.value])
+  behaviorDiscard.value = []
+  _pushDeckState()
+}
+
+// Watch Firebase deck state for guests
+watch(() => room.behaviorDeckState, (state, prev) => {
+  if (!state || !room.inRoom || room.isHost) return
+  behaviorDeck.value = state.deck ?? []
+  behaviorDiscard.value = state.discard ?? []
+  behaviorBanished.value = state.banished ?? []
+
+  const newCard = state.current ?? null
+  const oldCard = prev?.current ?? currentBehaviorCard.value
+
+  // Special card overlay: แสดงเมื่อ deck ถูก build ใหม่
+  const prevSpecial = prev?.specialCard
+  const newSpecial = state.specialCard
+  if (newSpecial && newSpecial?.behavior_id !== prevSpecial?.behavior_id) {
+    specialCardOverlayCard.value = newSpecial
+    showSpecialCardOverlay.value = true
+    setTimeout(() => {
+      showSpecialCardOverlay.value = false
+      if (phase.value !== 'huntingPanel') phase.value = 'huntingPanel'
+    }, 4000)
+  }
+
+  // ถ้าการ์ดเปลี่ยน → แสดง animation เหมือน Host
+  if (newCard && newCard.behavior_id !== oldCard?.behavior_id) {
+    monsterAttackCard.value = newCard
+    showMonsterAttack.value = true
+    }
+
+  currentBehaviorCard.value = newCard
+}, { immediate: true, deep: true })
+
 const incrementAttempted = () => {
   const monster_id = selectedMonster.value.monster_id
   const quest_id = selectedQuest.value.quest_id
@@ -577,6 +845,15 @@ const resetToBookPhase = () => {
   selectedMonster.value = null
   selectedBook.value = null
   potionCount.value = 0
+  // Reset track tokens
+  trackTokens.value = []
+  trackTokenPool.value = []
+  sessionStorage.removeItem('tt_local')
+  // Reset behavior deck
+  behaviorDeck.value = []
+  behaviorDiscard.value = []
+  behaviorBanished.value = []
+  currentBehaviorCard.value = null
   phase.value = 'book'
 }
 
@@ -736,6 +1013,97 @@ const markElement = (elementId) => {
 }
 
 const faintCount = ref(0)
+
+// ── Track Token System ────────────────────────────────────
+const trackTokenPool = ref([])  // ค่าที่เหลือในกอง
+const trackTokens = ref([])     // token ที่ hunter มี [{id, revealed, value}]
+let _tokenIdCounter = 0
+
+const _getMonsterTokenData = () =>
+  monsterInfoData.find((m) => m.monster_id === selectedMonster.value?.monster_id)?.track_token ?? []
+
+const initTrackTokens = () => {
+  trackTokenPool.value = [..._getMonsterTokenData()]
+  trackTokens.value = []
+  _tokenIdCounter = 0
+  _pushTokenState()  // sync pool ไป Firebase ให้ guest เห็นทันที
+}
+
+const selectedToken = ref(null) // token ที่คลิกเพื่อแสดง modal
+
+const _pushTokenState = () => {
+  // บันทึกค่าจริงไว้ใน sessionStorage เพื่อ restore หลัง reconnect
+  const localData = { pool: trackTokenPool.value, tokens: trackTokens.value }
+  sessionStorage.setItem('tt_local', JSON.stringify(localData))
+
+  if (!room.inRoom) return
+  // Firebase: ใช้ number เสมอ (ไม่มี null/undefined) เพราะ Firebase จะลบ null field ออก
+  const serialized = trackTokens.value.map(t => ({
+    id: t.id,
+    revealed: t.revealed ?? false,
+    value: t.revealed ? (t.value ?? 0) : 0,
+  }))
+  room.syncTrackTokens?.(trackTokenPool.value, serialized)
+}
+
+const addTrackToken = () => {
+  if (trackTokenPool.value.length === 0) return
+  const idx = Math.floor(Math.random() * trackTokenPool.value.length)
+  const val = trackTokenPool.value[idx]
+  trackTokenPool.value = trackTokenPool.value.filter((_, i) => i !== idx)
+  trackTokens.value = [...trackTokens.value, { id: ++_tokenIdCounter, revealed: false, value: val }]
+  _pushTokenState()
+}
+
+const revealTrackToken = (id) => {
+  const token = trackTokens.value.find((t) => t.id === id)
+  if (!token || token.revealed) return
+  trackTokens.value = trackTokens.value.map((t) =>
+    t.id === id ? { ...t, revealed: true } : t,
+  )
+  _pushTokenState()
+}
+
+const discardTrackToken = (id) => {
+  const token = trackTokens.value.find((t) => t.id === id)
+  if (!token) return
+  if (token.value !== null) {
+    trackTokenPool.value = [...trackTokenPool.value, token.value]
+  }
+  trackTokens.value = trackTokens.value.filter((t) => t.id !== id)
+  _pushTokenState()
+}
+
+// Watch Firebase → sync token state from others (guests only, host manages own state)
+watch(() => room.trackTokenState, (state) => {
+  if (!room.inRoom || room.isHost) return
+  if (!state) {
+    trackTokens.value = []
+    trackTokenPool.value = []
+    return
+  }
+  // ดึงค่า local (sessionStorage) เพื่อ restore unrevealed token values
+  let localTokenMap = {}
+  try {
+    const local = JSON.parse(sessionStorage.getItem('tt_local') ?? '{}')
+    localTokenMap = Object.fromEntries((local.tokens ?? []).map(t => [t.id, t.value]))
+    // Restore pool จาก local ถ้า Firebase pool ตรงกัน
+    if (local.pool?.length === (state.pool?.length ?? 0)) {
+      trackTokenPool.value = local.pool
+    } else {
+      trackTokenPool.value = state.pool ?? []
+    }
+  } catch { trackTokenPool.value = state.pool ?? [] }
+
+  const remote = Array.isArray(state.tokens) ? state.tokens : []
+  trackTokens.value = remote.map(t => ({
+    id: t.id,
+    revealed: t.revealed,
+    value: t.revealed
+      ? (t.value ?? 0)
+      : (localTokenMap[t.id] ?? trackTokens.value.find(lt => lt.id === t.id)?.value ?? null),
+  }))
+}, { deep: true, immediate: true })
 const potionCount = ref(0)
 const canComplete = computed(() => huntingHp.value === 0)
 const canFail = computed(() => faintCount.value >= 3)
@@ -1427,11 +1795,17 @@ const openPackDrawer = () => {
           v-for="book in books"
           :key="book.id"
           class="book-card"
+          :class="{ 'book-wip': book.id === 'wildspire' }"
           :style="{ '--book-accent': book.accent, '--book-bg': book.color }"
-          @click="selectBook(book)"
+          @click="book.id !== 'wildspire' && selectBook(book)"
         >
           <div class="book-spine"></div>
           <div class="book-body">
+            <!-- WIP overlay -->
+            <div v-if="book.id === 'wildspire'" class="book-wip-overlay">
+              <span class="book-wip-icon">🔨</span>
+              <span class="book-wip-text">กำลังพัฒนา</span>
+            </div>
             <div class="book-seal">
               <img
                 class="seal-inner"
@@ -1446,7 +1820,7 @@ const openPackDrawer = () => {
             <h2 class="book-title-text">{{ book.name }}</h2>
             <div class="book-divider"></div>
             <p class="book-meta">{{ book.data.length }} Monsters Available</p>
-            <div class="book-cta">Open Book ▶</div>
+            <div class="book-cta">{{ book.id === 'wildspire' ? '🔒 Coming Soon' : 'Open Book ▶' }}</div>
           </div>
         </div>
       </div>
@@ -1673,6 +2047,7 @@ const openPackDrawer = () => {
             :key="i"
             class="dialog-potion-slot"
             :class="{ 'potion-empty': i > potionCount }"
+            :style="room.inRoom && !room.isHost ? { pointerEvents: 'none', cursor: 'default' } : {}"
             @click="togglePotion(i)"
             title="คลิกเพื่อใช้ / เพิ่ม Potion"
           >
@@ -1721,6 +2096,65 @@ const openPackDrawer = () => {
             </div>
           </div>
         </transition>
+      </div>
+
+      <!-- Track Token Panel -->
+      <div class="tt-panel">
+        <div class="tt-header">
+          <span class="tt-label">🔍 Track Token</span>
+          <span class="tt-pool">Pool: {{ trackTokenPool.length }}</span>
+          <div class="tt-actions">
+            <button v-if="!room.inRoom || room.isHost" class="tt-btn tt-btn-add" @click="addTrackToken" title="รับ Token">+ รับ</button>
+          </div>
+        </div>
+        <div v-if="trackTokens.length" class="tt-tokens">
+          <div
+            v-for="token in trackTokens"
+            :key="token.id"
+            class="tt-token"
+            :class="{ revealed: token.revealed }"
+            @click="(!room.inRoom || room.isHost) && (selectedToken = token)"
+            title="คลิกเพื่อดูตัวเลือก"
+          >
+            <div class="tt-token-face">
+              <span v-if="token.revealed" class="tt-value" :class="token.value > 0 ? 'val-pos' : token.value < 0 ? 'val-neg' : 'val-zero'">
+                {{ token.value > 0 ? '+' : '' }}{{ token.value }}
+              </span>
+              <span v-else class="tt-hidden">?</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Token Action Modal -->
+        <Teleport to="body">
+          <Transition name="slain-fade">
+            <div v-if="selectedToken" class="tt-modal-overlay" @click.self="selectedToken = null">
+              <div class="tt-modal">
+                <p class="tt-modal-title">Track Token</p>
+                <div class="tt-modal-token">
+                  <span v-if="selectedToken.revealed" class="tt-value tt-modal-val"
+                    :class="selectedToken.value > 0 ? 'val-pos' : selectedToken.value < 0 ? 'val-neg' : 'val-zero'">
+                    {{ selectedToken.value > 0 ? '+' : '' }}{{ selectedToken.value }}
+                  </span>
+                  <span v-else class="tt-hidden tt-modal-val">?</span>
+                </div>
+                <div class="tt-modal-btns">
+                  <button
+                    v-if="!selectedToken.revealed"
+                    class="tt-modal-btn tt-modal-reveal"
+                    @click="revealTrackToken(selectedToken.id); selectedToken = null"
+                  >🔍 เปิดเผย</button>
+                  <button
+                    class="tt-modal-btn tt-modal-discard"
+                    @click="discardTrackToken(selectedToken.id); selectedToken = null"
+                  >🗑 ทิ้ง</button>
+                  <button class="tt-modal-btn tt-modal-cancel" @click="selectedToken = null">ยกเลิก</button>
+                </div>
+              </div>
+            </div>
+          </Transition>
+        </Teleport>
+        <p v-if="!trackTokens.length" class="tt-empty">ยังไม่มี Track Token</p>
       </div>
 
       <div class="dialog-parchment">
@@ -1893,6 +2327,32 @@ const openPackDrawer = () => {
         </div>
       </div>
 
+      <!-- TRACK TOKEN TOTAL -->
+      <div v-if="trackTokens.length" class="token-total-bar">
+        <span class="token-total-label">🔍 Track Token รวม</span>
+        <div class="token-total-tokens">
+          <div
+            v-for="token in trackTokens"
+            :key="token.id"
+            class="token-total-chip"
+            :class="token.revealed ? (token.value > 0 ? 'chip-pos' : token.value < 0 ? 'chip-neg' : 'chip-zero') : 'chip-hidden'"
+          >
+            <span v-if="token.revealed">{{ token.value > 0 ? '+' : '' }}{{ token.value }}</span>
+            <span v-else>?</span>
+          </div>
+        </div>
+        <div class="token-total-sum">
+          <span class="token-total-sum-label">= </span>
+          <span
+            class="token-total-sum-val"
+            :class="trackTokens.filter(t=>t.revealed).reduce((s,t)=>s+t.value,0) > 0 ? 'val-pos' : trackTokens.filter(t=>t.revealed).reduce((s,t)=>s+t.value,0) < 0 ? 'val-neg' : 'val-zero'"
+          >
+            {{ trackTokens.filter(t=>t.revealed).reduce((s,t)=>s+(t.value??0),0) > 0 ? '+' : '' }}{{ trackTokens.filter(t=>t.revealed).reduce((s,t)=>s+(t.value??0),0) }}
+            <span class="token-total-hidden" v-if="trackTokens.some(t=>!t.revealed)"> + ?×{{ trackTokens.filter(t=>!t.revealed).length }}</span>
+          </span>
+        </div>
+      </div>
+
       <!-- ENTER HUNTING PANEL -->
       <div class="hunt-enter-section">
         <button class="btn-enter-hunt" @click="goToHuntingPanel">
@@ -1928,6 +2388,109 @@ const openPackDrawer = () => {
       >
         <img :src="getImg(monsterHuntingData.map_image)" class="hpanel-map-img" />
       </div>
+
+      <!-- Monster Turn (after map) -->
+      <div v-if="behaviorDeck.length > 0 || currentBehaviorCard" class="monster-turn-section">
+        <p class="hunt-result-label">— Monster Turn —</p>
+
+        <div class="mt-cards">
+          <!-- Current card (front) -->
+          <div class="mt-card-wrap">
+            <p class="mt-card-label">การโจมตีปัจจุบัน</p>
+            <div class="mt-card">
+              <img v-if="currentBehaviorCard" :src="getImg(currentBehaviorCard.front_card_img)" class="mt-card-img" />
+              <div v-else class="mt-card-empty">—</div>
+            </div>
+            <p v-if="currentBehaviorCard" class="mt-card-name">{{ currentBehaviorCard.behavior_name }}</p>
+          </div>
+
+          <!-- Next card (back) -->
+          <div class="mt-card-wrap">
+            <p class="mt-card-label">การ์ดถัดไป</p>
+            <div class="mt-card mt-card-back">
+              <img v-if="behaviorDeck.length" :src="getImg(behaviorDeck[0].back_card_img)" class="mt-card-img" />
+              <div v-else class="mt-card-empty">หมด</div>
+            </div>
+            <p class="mt-card-name">เหลือ {{ behaviorDeck.length }} ใบ / ทิ้ง {{ behaviorDiscard.length }} ใบ</p>
+          </div>
+        </div>
+
+        <!-- Monster Turn button (Host only) -->
+        <button
+          v-if="room.isHost || !room.inRoom"
+          class="mt-draw-btn"
+          :disabled="behaviorDeck.length === 0"
+          @click="drawBehaviorCard"
+        >
+          ⚔ Monster Turn
+        </button>
+        <p v-else class="mt-guest-hint">รอ Host จั๋วการ์ด Monster</p>
+
+        <!-- Deck management (Host only) -->
+        <div v-if="room.isHost || !room.inRoom" class="mt-management">
+          <button class="mt-mgmt-btn" @click="reshuffleDiscardIntoDeck" :disabled="behaviorDiscard.length === 0">
+            🔀 สับกองทิ้งเข้า Deck
+          </button>
+          <button class="mt-mgmt-btn" @click="showDeckManager = true">
+            📋 จัดการ Deck
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Deck Manager Modal (Teleport) -->
+      <Teleport to="body">
+        <Transition name="slain-fade">
+          <div v-if="showDeckManager" class="dm-overlay" @click.self="showDeckManager = false">
+            <div class="dm-modal">
+              <div class="dm-header">
+                <span class="dm-title">📋 จัดการ Deck</span>
+                <button class="dm-close" @click="showDeckManager = false">✕</button>
+              </div>
+              <div class="dm-tabs">
+                <button :class="['dm-tab', { active: deckManagerTab === 'deck' }]" @click="deckManagerTab = 'deck'">Deck ({{ behaviorDeck.length }})</button>
+                <button :class="['dm-tab', { active: deckManagerTab === 'discard' }]" @click="deckManagerTab = 'discard'">ทิ้งแล้ว ({{ behaviorDiscard.length }})</button>
+                <button :class="['dm-tab', { active: deckManagerTab === 'banished' }]" @click="deckManagerTab = 'banished'">นอกเกม ({{ behaviorBanished.length }})</button>
+                <button :class="['dm-tab', { active: deckManagerTab === 'special' }]" @click="deckManagerTab = 'special'">Special</button>
+              </div>
+              <div class="dm-list">
+                <div v-if="deckManagerTab === 'deck'">
+                  <div v-if="!behaviorDeck.length" class="dm-empty">ไม่มีการ์ดใน Deck</div>
+                  <div v-for="card in behaviorDeck" :key="card.behavior_id" class="dm-card-row">
+                    <img :src="getImg(card.front_card_img)" class="dm-card-thumb" />
+                    <span class="dm-card-name">{{ card.behavior_name }}</span>
+                    <button class="dm-btn dm-btn-banish" @click="banishCard(card)">นำออกจากเกม</button>
+                  </div>
+                </div>
+                <div v-if="deckManagerTab === 'discard'">
+                  <div v-if="!behaviorDiscard.length" class="dm-empty">ไม่มีการ์ดในกองทิ้ง</div>
+                  <div v-for="card in behaviorDiscard" :key="card.behavior_id" class="dm-card-row">
+                    <img :src="getImg(card.front_card_img)" class="dm-card-thumb" />
+                    <span class="dm-card-name">{{ card.behavior_name }}</span>
+                    <button class="dm-btn dm-btn-banish" @click="banishCard(card)">นำออกจากเกม</button>
+                  </div>
+                </div>
+                <div v-if="deckManagerTab === 'banished'">
+                  <div v-if="!behaviorBanished.length" class="dm-empty">ไม่มีการ์ดนอกเกม</div>
+                  <div v-for="card in behaviorBanished" :key="card.behavior_id" class="dm-card-row">
+                    <img :src="getImg(card.front_card_img)" class="dm-card-thumb dm-card-banished" />
+                    <span class="dm-card-name dm-card-name-banished">{{ card.behavior_name }}</span>
+                    <button class="dm-btn dm-btn-restore" @click="restoreCard(card)">คืนเข้า Deck</button>
+                  </div>
+                </div>
+                <div v-if="deckManagerTab === 'special'">
+                  <div v-for="card in allSpecialCards" :key="card.behavior_id" class="dm-card-row">
+                    <img :src="getImg(card.front_card_img)" class="dm-card-thumb" :class="{ 'dm-card-banished': !isCardInGame(card) }" />
+                    <span class="dm-card-name">{{ card.behavior_name }}</span>
+                    <button v-if="isCardInGame(card)" class="dm-btn dm-btn-banish" @click="banishCard(card)">นำออก</button>
+                    <button v-else class="dm-btn dm-btn-restore" @click="addSpecialCardToDeck(card)">เพิ่มเข้า Deck</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </Teleport>
 
       <!-- Info + Parts Row -->
       <div class="info-parts-row">
@@ -2726,6 +3289,78 @@ const openPackDrawer = () => {
       </div>
     </div>
 
+    <!-- ═══════════ MONSTER ATTACK OVERLAY ═══════════ -->
+    <teleport to="body">
+      <Transition name="ma-trans">
+        <div v-if="showMonsterAttack" class="ma-overlay" @click="showMonsterAttack = false">
+          <div class="ma-content">
+            <p class="ma-label">⚔ Monster Attack!</p>
+            <div class="ma-card-flip">
+              <div class="ma-card-inner">
+                <div class="ma-card-back">
+                  <img v-if="monsterAttackCard" :src="getImg(monsterAttackCard.back_card_img)" class="ma-card-img" />
+                </div>
+                <div class="ma-card-front">
+                  <img v-if="monsterAttackCard" :src="getImg(monsterAttackCard.front_card_img)" class="ma-card-img" />
+                </div>
+              </div>
+            </div>
+            <p v-if="monsterAttackCard" class="ma-card-name">{{ monsterAttackCard.behavior_name }}</p>
+            <p class="ma-hint">แตะเพื่อปิด</p>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ SPECIAL CARD OVERLAY ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="showSpecialCardOverlay" class="sc-overlay" @click="showSpecialCardOverlay = false; phase = 'huntingPanel'">
+          <div class="sc-content">
+            <p class="sc-label">⚔ Special Attack Added!</p>
+            <div class="sc-card">
+              <img v-if="specialCardOverlayCard" :src="getImg(specialCardOverlayCard.front_card_img)" class="sc-card-img" />
+            </div>
+            <p v-if="specialCardOverlayCard" class="sc-card-name">{{ specialCardOverlayCard.behavior_name }}</p>
+            <p class="sc-hint">แตะเพื่อเริ่มการต่อสู้</p>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ TOKEN REVEAL OVERLAY ═══════════ -->
+    <teleport to="body">
+      <transition name="slain-fade">
+        <div v-if="showTokenReveal" class="tr-overlay" @click="if (tokenRevealDone) { showTokenReveal = false; phase = 'hunting' }">
+          <p class="tr-title">🔍 Track Token</p>
+          <div class="tr-tokens">
+            <div
+              v-for="token in tokenRevealVisual"
+              :key="token.id"
+              class="tr-token"
+              :class="{ flipped: token.showValue }"
+            >
+              <div class="tr-token-inner">
+                <div class="tr-token-back">?</div>
+                <div class="tr-token-front" :class="token.value > 0 ? 'val-pos' : token.value < 0 ? 'val-neg' : 'val-zero'">
+                  {{ token.value > 0 ? '+' : '' }}{{ token.value }}
+                </div>
+              </div>
+            </div>
+          </div>
+          <transition name="slain-fade">
+            <div v-if="tokenRevealDone" class="tr-total-wrap">
+              <p class="tr-total-label">รวม</p>
+              <p class="tr-total" :class="tokenRevealTotal > 0 ? 'val-pos' : tokenRevealTotal < 0 ? 'val-neg' : 'val-zero'">
+                {{ tokenRevealTotal > 0 ? '+' : '' }}{{ tokenRevealTotal }}
+              </p>
+              <p class="tr-hint">แตะเพื่อดำเนินต่อ</p>
+            </div>
+          </transition>
+        </div>
+      </transition>
+    </teleport>
+
     <!-- ═══════════ BATTLE INTRO CINEMATIC ═══════════ -->
     <teleport to="body">
       <div
@@ -3167,6 +3802,31 @@ const openPackDrawer = () => {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
   transition: 0.25s;
   min-height: 180px;
+}
+.book-wip {
+  cursor: not-allowed;
+  filter: grayscale(60%) brightness(0.7);
+  border-color: rgba(124,90,43,0.3);
+}
+.book-wip:hover { transform: none !important; box-shadow: 0 4px 20px rgba(0,0,0,0.6) !important; }
+.book-wip-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(0,0,0,0.45);
+}
+.book-wip-icon { font-size: 28px; }
+.book-wip-text {
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: rgba(200,155,60,0.7);
+  text-transform: uppercase;
+  font-weight: bold;
 }
 
 .book-card:hover {
@@ -3933,6 +4593,550 @@ const openPackDrawer = () => {
 }
 
 /* ── Dialog Resource Panel ── */
+/* ── Special Card Overlay ── */
+.sc-overlay {
+  position: fixed; inset: 0;
+  background: rgba(5,2,0,0.92);
+  backdrop-filter: blur(6px);
+  z-index: 488;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.sc-content {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 14px;
+}
+.sc-label {
+  font-size: 13px; letter-spacing: 5px; color: #ffd27a;
+  text-transform: uppercase; margin: 0;
+  text-shadow: 0 0 12px rgba(255,210,122,0.6);
+}
+.sc-card {
+  border-radius: 10px; overflow: hidden;
+  border: 2px solid #c89b3c;
+  box-shadow: 0 0 40px rgba(200,155,60,0.5);
+  animation: sc-pop 0.5s cubic-bezier(0.2,1.4,0.4,1) forwards;
+}
+@keyframes sc-pop {
+  0%   { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+.sc-card-img {
+  width: min(320px, 85vw);
+  height: auto;
+  display: block;
+}
+.sc-card-name { font-size: 18px; font-weight: bold; color: #ffd27a; margin: 0; letter-spacing: 2px; }
+.sc-hint { font-size: 10px; color: rgba(124,90,43,0.5); letter-spacing: 2px; margin: 0; animation: cml-pulse 1.5s ease-in-out infinite; }
+
+/* ── Current Attack Card (below msc-wrap) ── */
+.current-attack-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(140,58,58,0.08);
+  border: 1px solid rgba(180,60,60,0.3);
+}
+.cac-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #ff6b6b;
+  text-transform: uppercase;
+  margin: 0;
+}
+.cac-img {
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  border-radius: 6px;
+  object-fit: cover;
+}
+.cac-name {
+  font-size: 12px;
+  color: #ffd27a;
+  margin: 0;
+  font-weight: bold;
+}
+
+/* ── Monster Turn ── */
+.monster-turn-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mt-cards {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.mt-card-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 140px;
+}
+.mt-card-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #7c5a2b;
+  text-transform: uppercase;
+  margin: 0;
+}
+.mt-card {
+  width: min(300px, 42vw);
+  height: min(212px, 30vw);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(124,90,43,0.4);
+  background: rgba(10,8,4,0.6);
+}
+.mt-card-img { width: 100%; height: 100%; object-fit: cover; }
+.mt-card-empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(124,90,43,0.3);
+  font-size: 20px;
+}
+.mt-card-back { filter: brightness(0.85); }
+.mt-card-name { font-size: 11px; color: #a88040; margin: 0; text-align: center; }
+.mt-draw-btn {
+  padding: 14px;
+  border-radius: 8px;
+  border: 2px solid #8c3a3a;
+  background: linear-gradient(to bottom, #3a1a1a, #1a0d0d);
+  color: #ff6b6b;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 1px;
+  transition: 0.2s;
+}
+.mt-draw-btn:hover:not(:disabled) { box-shadow: 0 0 20px rgba(255,80,80,0.5); }
+.mt-draw-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.mt-guest-hint { font-size: 11px; color: #7c5a2b; text-align: center; margin: 0; }
+.mt-management { display: flex; gap: 8px; }
+.mt-mgmt-btn {
+  flex: 1;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(90,159,255,0.35);
+  background: rgba(60,100,200,0.08);
+  color: #7ab3ff;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.15s;
+}
+.mt-mgmt-btn:hover:not(:disabled) { background: rgba(60,100,200,0.18); }
+.mt-mgmt-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ── Deck Manager ── */
+.dm-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(6px);
+  z-index: 600;
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+}
+.dm-modal {
+  background: linear-gradient(160deg, #1c1508, #13100a);
+  border: 2px solid #7c5a2b;
+  border-radius: 14px;
+  width: min(600px, 96vw);
+  max-height: 90vh;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 0 40px rgba(0,0,0,0.8);
+}
+.dm-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(124,90,43,0.4);
+  background: rgba(200,155,60,0.06);
+  flex-shrink: 0;
+}
+.dm-title { font-size: 14px; font-weight: bold; color: #ffd27a; }
+.dm-close { background: none; border: none; color: #7c5a2b; font-size: 16px; cursor: pointer; }
+.dm-close:hover { color: #ffd27a; }
+.dm-tabs {
+  display: flex; border-bottom: 1px solid rgba(124,90,43,0.25);
+  flex-shrink: 0;
+}
+.dm-tab {
+  flex: 1; padding: 12px 6px;
+  font-size: 13px; font-family: inherit;
+  background: none; border: none;
+  color: #7c5a2b; cursor: pointer;
+  transition: 0.15s; letter-spacing: 0.5px;
+}
+.dm-tab.active { color: #ffd27a; border-bottom: 2px solid #c89b3c; }
+.dm-tab:hover { color: #a88040; }
+.dm-list { overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.dm-card-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 12px; border-radius: 8px;
+  background: rgba(200,155,60,0.05);
+  border: 1px solid rgba(124,90,43,0.2);
+}
+.dm-card-thumb { width: 100px; height: 72px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+.dm-card-banished { filter: grayscale(80%) opacity(0.5); }
+.dm-card-name { flex: 1; font-size: 14px; color: #d4c090; font-weight: bold; }
+.dm-card-name-banished { color: #7c5a2b; }
+.dm-btn {
+  font-size: 13px; padding: 10px 16px; border-radius: 8px;
+  cursor: pointer; font-family: inherit; white-space: nowrap;
+  transition: 0.15s; font-weight: bold;
+}
+.dm-btn-banish {
+  border: 1px solid rgba(180,60,60,0.4);
+  background: rgba(180,60,60,0.08); color: #ff6b6b;
+}
+.dm-btn-banish:hover { background: rgba(180,60,60,0.2); }
+.dm-btn-restore {
+  border: 1px solid rgba(100,220,100,0.4);
+  background: rgba(60,180,60,0.08); color: #7cfc00;
+}
+.dm-btn-restore:hover { background: rgba(60,180,60,0.2); }
+.dm-empty { font-size: 11px; color: rgba(124,90,43,0.4); text-align: center; padding: 12px 0; }
+
+/* ── Monster Attack Transition ── */
+.ma-trans-enter-active { animation: ma-bg-flash 0.6s ease forwards; }
+.ma-trans-leave-active { transition: opacity 0.08s ease; }
+.ma-trans-leave-to     { opacity: 0; }
+
+/* ── Monster Attack Animation Overlay ── */
+.ma-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 480;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+}
+@keyframes ma-bg-flash {
+  0%   { background: #5a0a00; }
+  15%  { background: #120000; }
+  100% { background: rgba(8,2,2,0.97); }
+}
+
+
+/* Impact lines */
+.ma-overlay::after {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background: repeating-conic-gradient(
+    rgba(180,40,0,0.07) 0deg 3deg,
+    transparent 3deg 10deg
+  );
+  animation: ma-lines 0.4s ease forwards;
+  pointer-events: none;
+  z-index: 0;
+}
+@keyframes ma-lines {
+  0%   { opacity: 1; transform: scale(0.3) rotate(0deg); }
+  60%  { opacity: 0.6; transform: scale(1.5) rotate(15deg); }
+  100% { opacity: 0; transform: scale(2) rotate(20deg); }
+}
+
+.ma-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  z-index: 1;
+  animation: ma-shake 0.4s 0.05s ease;
+}
+@keyframes ma-shake {
+  0%,100% { transform: translate(0,0); }
+  15%  { transform: translate(-12px,-8px) rotate(-1.5deg); }
+  30%  { transform: translate(12px,6px) rotate(1.5deg); }
+  45%  { transform: translate(-8px,4px) rotate(-0.8deg); }
+  60%  { transform: translate(8px,-4px) rotate(0.8deg); }
+  75%  { transform: translate(-4px,2px); }
+}
+
+.ma-label {
+  font-size: 14px;
+  letter-spacing: 6px;
+  color: #ff3333;
+  text-transform: uppercase;
+  margin: 0;
+  font-weight: 900;
+  text-shadow: 0 0 12px rgba(200,50,50,0.7), 0 0 4px #000;
+  animation: ma-label-in 0.3s 0.15s ease both;
+}
+@keyframes ma-label-in {
+  0% { opacity: 0; transform: scaleX(2); letter-spacing: 20px; }
+  100% { opacity: 1; transform: scaleX(1); }
+}
+
+.ma-card-flip {
+  width: min(360px, 90vw);
+  height: min(256px, 64vw);
+}
+.ma-card-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  animation: ma-slam 0.5s 0.1s cubic-bezier(0.15, 1.5, 0.4, 1) both;
+}
+@keyframes ma-slam {
+  0%   { transform: translateY(-120%) scale(1.4); opacity: 0; filter: brightness(3); }
+  60%  { transform: translateY(6%) scale(0.97); opacity: 1; filter: brightness(1); }
+  80%  { transform: translateY(-2%) scale(1.02); }
+  100% { transform: translateY(0) scale(1); filter: brightness(1); }
+}
+.ma-card-back, .ma-card-front {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid rgba(255,60,0,0.8);
+  box-shadow: 0 0 40px rgba(255,60,0,0.7), 0 8px 32px rgba(0,0,0,0.8);
+}
+.ma-card-front {
+  animation: ma-reveal 0.35s 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+@keyframes ma-reveal {
+  0%   { opacity: 0; transform: scale(1.15); filter: brightness(3) saturate(0); }
+  40%  { opacity: 1; filter: brightness(1.6) saturate(1.2); }
+  100% { opacity: 1; transform: scale(1); filter: brightness(1) saturate(1); }
+}
+.ma-card-back { animation: ma-hide 0.1s 0.65s ease both; }
+@keyframes ma-hide {
+  to { opacity: 0; }
+}
+.ma-card-img { width: 100%; height: 100%; object-fit: cover; }
+.ma-card-name {
+  font-size: 18px;
+  font-weight: 900;
+  color: #fff;
+  margin: 0;
+  letter-spacing: 3px;
+  text-shadow: 0 0 16px rgba(255,80,0,0.9), 0 0 4px #000;
+  animation: ma-label-in 0.3s 0.7s ease both;
+}
+.ma-hint { font-size: 10px; color: rgba(124,90,43,0.5); letter-spacing: 2px; margin: 0; animation: cml-pulse 1.5s ease-in-out infinite; }
+
+/* ── Token Total Bar (Scoutfly page) ── */
+.token-total-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(10,8,4,0.5);
+  border: 1px solid rgba(124,90,43,0.3);
+  flex-wrap: wrap;
+}
+.token-total-label {
+  font-size: 11px;
+  color: #a88040;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+.token-total-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
+}
+.token-total-chip {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  border: 1px solid;
+}
+.chip-pos   { border-color: rgba(100,220,100,0.5); color: #7cfc00; background: rgba(60,180,60,0.1); }
+.chip-neg   { border-color: rgba(255,80,80,0.5);   color: #ff6b6b; background: rgba(180,60,60,0.1); }
+.chip-zero  { border-color: rgba(200,155,60,0.4);  color: #ffd27a; background: rgba(200,155,60,0.08); }
+.chip-hidden{ border-color: rgba(124,90,43,0.3);   color: rgba(200,155,60,0.4); background: rgba(30,22,8,0.6); }
+.token-total-sum { display: flex; align-items: baseline; gap: 2px; white-space: nowrap; }
+.token-total-sum-label { font-size: 12px; color: #7c5a2b; }
+.token-total-sum-val { font-size: 20px; font-weight: bold; }
+.token-total-hidden { font-size: 12px; opacity: 0.6; }
+
+/* ── Track Token Panel ── */
+.tt-panel {
+  border-radius: 10px;
+  border: 1px solid rgba(124, 90, 43, 0.35);
+  background: rgba(10, 8, 4, 0.5);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tt-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tt-label {
+  font-size: 12px;
+  color: #a88040;
+  letter-spacing: 1px;
+  flex: 1;
+}
+.tt-pool {
+  font-size: 11px;
+  color: #7c5a2b;
+}
+.tt-actions { display: flex; gap: 6px; }
+.tt-btn {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.15s;
+}
+.tt-btn-add {
+  border: 1px solid rgba(200,155,60,0.45);
+  background: rgba(200,155,60,0.1);
+  color: #ffd27a;
+}
+.tt-btn-add:hover { background: rgba(200,155,60,0.22); }
+
+.tt-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tt-token {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.tt-token-face {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid rgba(124,90,43,0.5);
+  background: rgba(30,22,8,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.tt-token-face:hover { border-color: #c89b3c; }
+.tt-token.revealed .tt-token-face {
+  cursor: default;
+  border-color: #c89b3c;
+  background: rgba(50,35,10,0.9);
+}
+.tt-hidden { font-size: 18px; color: rgba(200,155,60,0.4); font-weight: bold; }
+.tt-value { font-size: 16px; font-weight: bold; }
+.val-pos { color: #7cfc00; }
+.val-zero { color: #ffd27a; }
+.val-neg { color: #ff6b6b; }
+.tt-token { cursor: pointer; }
+.tt-token:hover .tt-token-face { border-color: #c89b3c; }
+.tt-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(6px);
+  z-index: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.tt-modal {
+  background: linear-gradient(160deg, #1c1508, #13100a);
+  border: 2px solid #7c5a2b;
+  border-radius: 14px;
+  padding: 24px 20px;
+  width: min(280px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 0 40px rgba(0,0,0,0.8);
+}
+.tt-modal-title {
+  font-size: 13px;
+  letter-spacing: 3px;
+  color: #a88040;
+  text-transform: uppercase;
+  margin: 0;
+}
+.tt-modal-token {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 2px solid #c89b3c;
+  background: rgba(50,35,10,0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tt-modal-val { font-size: 24px !important; }
+.tt-modal-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+.tt-modal-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.15s;
+}
+.tt-modal-reveal {
+  border: 1px solid rgba(100,220,100,0.5);
+  background: rgba(60,180,60,0.1);
+  color: #7cfc00;
+}
+.tt-modal-reveal:hover { background: rgba(60,180,60,0.2); }
+.tt-modal-discard {
+  border: 1px solid rgba(180,60,60,0.4);
+  background: rgba(180,60,60,0.08);
+  color: #ff6b6b;
+}
+.tt-modal-discard:hover { background: rgba(180,60,60,0.2); }
+.tt-modal-cancel {
+  border: 1px solid rgba(124,90,43,0.3);
+  background: rgba(10,8,4,0.5);
+  color: #7c5a2b;
+}
+.tt-modal-cancel:hover { color: #a88040; }
+
+.tt-empty {
+  font-size: 11px;
+  color: rgba(124,90,43,0.35);
+  margin: 0;
+  text-align: center;
+}
+
 .dr-panel {
   border-radius: 10px;
   border: 1px solid rgba(124, 90, 43, 0.35);
@@ -4375,6 +5579,25 @@ const openPackDrawer = () => {
 .ad-btn-cancel:hover { color: #a88040; border-color: #7c5a2b; }
 
 @media (max-width: 480px) {
+  /* Monster Turn responsive */
+  .mt-cards { flex-direction: column; align-items: center; gap: 12px; }
+  .mt-card {
+    width: min(92vw, 340px);
+    height: min(65vw, 240px);
+  }
+  .mt-card-wrap { min-width: unset; width: 100%; }
+  .mt-draw-btn { font-size: 16px; padding: 16px; }
+  .mt-management { flex-direction: column; }
+  .sc-card-img { width: min(90vw, 320px); }
+  .ma-card-flip {
+    width: min(92vw, 360px);
+    height: min(65vw, 256px);
+  }
+  .dm-modal { width: 96vw; max-height: 92vh; }
+  .dm-card-thumb { width: 80px; height: 56px; }
+  .dm-card-name { font-size: 13px; }
+  .dm-btn { font-size: 12px; padding: 8px 12px; }
+
   .action-modal {
     padding: 18px 16px;
     gap: 12px;
@@ -6135,6 +7358,99 @@ const openPackDrawer = () => {
 </style>
 
 <style>
+/* ══════════════════════════════════════════
+   TOKEN REVEAL OVERLAY
+══════════════════════════════════════════ */
+.tr-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5,4,2,0.92);
+  z-index: 490;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  cursor: default;
+}
+.tr-title {
+  font-size: 14px;
+  letter-spacing: 5px;
+  color: #c89b3c;
+  text-transform: uppercase;
+  margin: 0;
+}
+.tr-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+  max-width: 360px;
+}
+.tr-token {
+  width: 64px;
+  height: 64px;
+  perspective: 400px;
+}
+.tr-token-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.5s ease;
+}
+.tr-token.flipped .tr-token-inner {
+  transform: rotateY(180deg);
+}
+.tr-token-back, .tr-token-front {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: bold;
+  backface-visibility: hidden;
+}
+.tr-token-back {
+  background: rgba(30,22,8,0.9);
+  border: 2px solid rgba(124,90,43,0.5);
+  color: rgba(200,155,60,0.3);
+}
+.tr-token-front {
+  background: rgba(50,35,10,0.95);
+  border: 2px solid #c89b3c;
+  transform: rotateY(180deg);
+  box-shadow: 0 0 16px rgba(200,155,60,0.4);
+}
+.tr-total-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.tr-total-label {
+  font-size: 11px;
+  letter-spacing: 4px;
+  color: #7c5a2b;
+  margin: 0;
+  text-transform: uppercase;
+}
+.tr-total {
+  font-size: 48px;
+  font-weight: 900;
+  margin: 0;
+  text-shadow: 0 0 24px currentColor;
+}
+.tr-hint {
+  font-size: 11px;
+  color: rgba(124,90,43,0.5);
+  letter-spacing: 2px;
+  margin: 8px 0 0;
+  animation: cml-pulse 1.5s ease-in-out infinite;
+}
+
 /* ══════════════════════════════════════════
    BATTLE INTRO CINEMATIC
 ══════════════════════════════════════════ */
