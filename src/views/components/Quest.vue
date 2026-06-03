@@ -61,6 +61,7 @@ const onCoopStart = () => {
 
   if (room.syncedDialogId) {
     // Quest ดำเนินอยู่แล้ว (host reconnect หรือ guest) → sync โดยไม่ reset
+    if (room.inRoom) _startSuppressAnimations()
     _syncToPhase(room.syncedDialogId, true)
   } else if (!room.isHost) {
     // Guest ที่ยังไม่ได้รับ syncedDialogId → รอ Firebase โหลดก่อน
@@ -465,9 +466,18 @@ watch(() => room.syncedPhase, (syncPhase) => {
   }
 })
 
+let _suppressAnimations = false
+let _suppressTimer = null
+const _startSuppressAnimations = () => {
+  _suppressAnimations = true
+  clearTimeout(_suppressTimer)
+  _suppressTimer = setTimeout(() => { _suppressAnimations = false }, 2000)
+}
+
 // Auto-reconnect: joinSignal fires → รอ Firebase โหลด → navigate และ restore deck
 watch(() => room.joinSignal, () => {
   if (!room.inRoom) return
+  _startSuppressAnimations()
 
   const restoreDeck = (state) => {
     if (!state) return
@@ -817,10 +827,10 @@ watch(() => room.behaviorDeckState, (state, prev) => {
   const newCard = state.current ?? null
   const oldCard = prev?.current ?? currentBehaviorCard.value
 
-  // Special card overlay: แสดงเมื่อ deck ถูก build ใหม่
+  // Special card overlay: แสดงเมื่อ deck ถูก build ใหม่ (ไม่แสดงตอน reconnect)
   const prevSpecial = prev?.specialCard
   const newSpecial = state.specialCard
-  if (newSpecial && newSpecial?.behavior_id !== prevSpecial?.behavior_id) {
+  if (!_suppressAnimations && newSpecial && newSpecial?.behavior_id !== prevSpecial?.behavior_id) {
     specialCardOverlayCard.value = newSpecial
     showSpecialCardOverlay.value = true
     setTimeout(() => {
@@ -1217,6 +1227,10 @@ const _queueReveal = (hunterName, card, hunterClassId) => {
 
 const _processTcRevealQueue = () => {
   if (showTcReveal.value || !tcRevealQueue.value.length) return
+  if (!['huntingPanel', 'hunting'].includes(phase.value)) {
+    tcRevealQueue.value = []
+    return
+  }
   tcRevealCurrent.value = tcRevealQueue.value[0]
   tcRevealQueue.value = tcRevealQueue.value.slice(1)
   showTcReveal.value = true
@@ -1265,6 +1279,7 @@ const endTurn = () => {
 // Host watches for guest pending requests; all watch for drawn cards to animate
 watch(() => room.tcTurnEnds, (ends) => {
   if (!room.inRoom) return
+  if (phase.value !== 'huntingPanel') return
 
   if (!ends) {
     _tcAnimatedKeys.clear()
@@ -1280,11 +1295,13 @@ watch(() => room.tcTurnEnds, (ends) => {
       if (card) room.markTcDrawn?.(hunterId, data.hunterName, card)
     }
 
-    // All: queue animation for newly drawn cards
-    if (data.card && !_tcAnimatedKeys.has(hunterId)) {
+    // All: queue animation for newly drawn cards (ไม่แสดงตอน reconnect)
+    if (!_suppressAnimations && data.card && !_tcAnimatedKeys.has(hunterId)) {
       _tcAnimatedKeys.add(hunterId)
       const h = room.hunters.find(hh => String(hh.hunter_id) === hunterId)
       _queueReveal(data.hunterName, data.card, h?.hunter_class_id)
+    } else if (data.card) {
+      _tcAnimatedKeys.add(hunterId)
     }
   })
 
