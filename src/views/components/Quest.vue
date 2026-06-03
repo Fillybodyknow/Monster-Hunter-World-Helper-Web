@@ -1141,6 +1141,8 @@ const showTimeCardManage = ref(false)
 const redCardCounts = ref({})
 const showLastDiscard = ref(false)
 const showConfirmTurn = ref(false)
+const showDiscardCount = ref(false)
+const discardCountInput = ref(1)
 
 const _buildBaseTimeCardDeck = () => {
   const deck = []
@@ -3133,15 +3135,24 @@ const openPackDrawer = () => {
             </div>
             <span class="tct-deck-label">ทิ้งแล้ว</span>
           </div>
-          <button
-            class="tct-end-btn"
-            :class="{ ended: myTurnEnded }"
-            :disabled="myTurnEnded || !timeCardDeck.length"
-            @click="showConfirmTurn = true"
-          >
-            <span v-if="!myTurnEnded">🃏 จบเทิร์น</span>
-            <span v-else>✓ รอคนอื่น</span>
-          </button>
+          <div class="tct-btn-col">
+            <button
+              class="tct-end-btn"
+              :class="{ ended: myTurnEnded }"
+              :disabled="myTurnEnded || !timeCardDeck.length"
+              @click="showConfirmTurn = true"
+            >
+              <span v-if="!myTurnEnded">🃏 จบเทิร์น</span>
+              <span v-else>✓ รอคนอื่น</span>
+            </button>
+            <button
+              v-if="!room.inRoom || room.isHost"
+              class="tct-discard-btn"
+              :disabled="!timeCardDeck.length"
+              @click="discardCountInput = 1; showDiscardCount = true"
+              title="ทิ้งการ์ดจาก Time Card Deck"
+            >🗑 ทิ้ง</button>
+          </div>
         </div>
 
         <!-- Hunter status list (co-op only) -->
@@ -3639,6 +3650,27 @@ const openPackDrawer = () => {
             </div>
             <p class="tcr-card-name">{{ tcRevealCurrent.card?.card_name }}</p>
             <p class="tcr-remaining">เหลือ {{ timeCardDeck.length }} ใบ</p>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ DISCARD COUNT MODAL ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="showDiscardCount" class="dc-overlay" @click.self="showDiscardCount = false">
+          <div class="dc-modal">
+            <p class="dc-title">🗑 ทิ้ง Time Card</p>
+            <p class="dc-sub">เหลือใน Deck: <strong>{{ timeCardDeck.length }}</strong> ใบ</p>
+            <div class="dc-counter">
+              <button class="dc-counter-btn" :disabled="discardCountInput <= 1" @click="discardCountInput--">−</button>
+              <span class="dc-counter-val">{{ discardCountInput }}</span>
+              <button class="dc-counter-btn" :disabled="discardCountInput >= timeCardDeck.length" @click="discardCountInput++">+</button>
+            </div>
+            <div class="dc-btns">
+              <button class="dc-btn dc-confirm" @click="for(let i=0;i<discardCountInput;i++) discardTimeCard(); showDiscardCount=false">ยืนยัน</button>
+              <button class="dc-btn dc-cancel" @click="showDiscardCount = false">ยกเลิก</button>
+            </div>
           </div>
         </div>
       </Transition>
@@ -5228,6 +5260,91 @@ const openPackDrawer = () => {
 }
 .tct-deck-stack.empty { opacity: 0.3; }
 .tct-discard-stack { opacity: 0.8; }
+.dc-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.dc-modal {
+  background: #1a1304;
+  border: 1px solid rgba(201,162,39,0.4);
+  border-radius: 14px;
+  padding: 24px 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: min(300px, 90vw);
+}
+.dc-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #e07060;
+  margin: 0;
+}
+.dc-sub {
+  font-size: 13px;
+  color: rgba(201,162,39,0.6);
+  margin: 0;
+}
+.dc-counter {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.dc-counter-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid rgba(201,162,39,0.4);
+  background: rgba(201,162,39,0.1);
+  color: #c9a227;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.dc-counter-btn:hover:not(:disabled) { background: rgba(201,162,39,0.25); }
+.dc-counter-btn:disabled { opacity: 0.3; cursor: default; }
+.dc-counter-val {
+  font-size: 28px;
+  font-weight: 700;
+  color: #f0d080;
+  min-width: 40px;
+  text-align: center;
+}
+.dc-btns {
+  display: flex;
+  gap: 10px;
+}
+.dc-btn {
+  padding: 10px 24px;
+  border-radius: 9px;
+  border: none;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.dc-confirm {
+  background: rgba(180,60,40,0.25);
+  color: #e07060;
+  border: 1px solid rgba(180,60,40,0.4);
+}
+.dc-confirm:hover { background: rgba(180,60,40,0.42); }
+.dc-cancel {
+  background: rgba(120,120,120,0.15);
+  color: rgba(200,200,200,0.6);
+  border: 1px solid rgba(120,120,120,0.3);
+}
+.dc-cancel:hover { background: rgba(120,120,120,0.28); }
 .ct-overlay {
   position: fixed;
   inset: 0;
@@ -5365,9 +5482,28 @@ const openPackDrawer = () => {
   color: rgba(201,162,39,0.5);
   margin-top: 6px;
 }
-.tct-end-btn {
+.tct-btn-col {
   margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
   align-self: center;
+}
+.tct-discard-btn {
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(180,60,40,0.4);
+  background: rgba(180,60,40,0.15);
+  color: #e07060;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.tct-discard-btn:hover:not(:disabled) { background: rgba(180,60,40,0.32); }
+.tct-discard-btn:disabled { opacity: 0.35; cursor: default; }
+.tct-end-btn {
   padding: 12px 22px;
   border-radius: 10px;
   border: 2px solid rgba(201,162,39,0.5);
