@@ -169,6 +169,20 @@ export const pushBehaviorDeck = (code, deckState) =>
 export const pushTrackTokens = (code, pool, tokens) =>
   set(ref(db, `rooms/${code}/trackTokens`), { pool, tokens })
 
+// ── Time Card Deck Sync ───────────────────────────────────
+export const pushTimeCards = (code, deckState) =>
+  set(ref(db, `rooms/${code}/timeCards`), deckState)
+
+// ── Time Card Turn Ends ───────────────────────────────────
+export const pushTcPending = (code, hunterId, hunterName) =>
+  set(ref(db, `rooms/${code}/tcTurnEnds/${hunterId}`), { hunterName, pending: true })
+
+export const pushTcDrawn = (code, hunterId, hunterName, card) =>
+  set(ref(db, `rooms/${code}/tcTurnEnds/${hunterId}`), { hunterName, card })
+
+export const clearTcTurnEnds = (code) =>
+  remove(ref(db, `rooms/${code}/tcTurnEnds`))
+
 // ── Reroll Request ────────────────────────────────────────
 export const pushRerollRequest = (code, hunterId, hunterName) =>
   set(ref(db, `rooms/${code}/rerollRequest`), { requesterId: hunterId, requesterName: hunterName, approvals: {} })

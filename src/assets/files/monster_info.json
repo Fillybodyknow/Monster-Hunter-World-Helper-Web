@@ -1263,6 +1263,88 @@
         ]
       }
     ],
+    "behavior_deck": [
+      {
+        "behavior_id": 1,
+        "behavior_name": "Tail Spin",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_spin_front.png",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_spin_back.png"
+      },
+      {
+        "behavior_id": 2,
+        "behavior_name": "Backflip Slam",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/backflip_slam_front.png",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/backflip_slam_back.png"
+      },
+      {
+        "behavior_id": 3,
+        "behavior_name": "Tail Swing",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_swing_front.png",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_swing_back.png"
+      },
+      {
+        "behavior_id": 4,
+        "behavior_name": "Tail Spark",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_spark_front.png",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_spark_back.png"
+      },
+      {
+        "behavior_id": 5,
+        "behavior_name": "Tail Slash",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_slash_front.png",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_slash_back.png"
+      },
+      {
+        "behavior_id": 6,
+        "behavior_name": "Backslash Swoop",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/backslash_swoop_front.png",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/backslash_swoop_back.png"
+      },
+      {
+        "behavior_id": 7,
+        "behavior_name": "Leaping Bite",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/leaping_bite_front.png",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/leaping_bite_back.png"
+      },
+      {
+        "behavior_id": 8,
+        "behavior_name": "Tail Shock Pulse",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_shock_pulse_front.png",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_shock_pulse_back.png"
+      },
+      {
+        "behavior_id": 9,
+        "behavior_name": "Rapid Bite",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/rapid_bite_front.png",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/rapid_bite_back.png"
+      },
+      {
+        "behavior_id": 10,
+        "behavior_name": "Gliding Tail Slam",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/gliding_tail_slam_front.png",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/gliding_tail_slam_back.png"
+      }
+    ],
+    "behavior_special_card": [
+      {
+        "behavior_id": 11,
+        "behavior_name": "Front Flip Slam",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/front_flip_slam_front.png",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/front_flip_slam_back.png"
+      },
+      {
+        "behavior_id": 12,
+        "behavior_name": "Leap Quick Bite",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/leap_quick_bite_front.png",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/leap_quick_bite_back.png"
+      },
+      {
+        "behavior_id": 13,
+        "behavior_name": "Gliding Tail Cleave",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/gliding_tail_cleave_front.png",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/gliding_tail_cleave_back.png"
+      }
+    ],
     "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2]
   },
   {
@@ -1881,6 +1963,88 @@
             }
           }
         ]
+      }
+    ],
+    "behavior_deck": [
+      {
+        "behavior_id": 1,
+        "behavior_name": "Flame Jet",
+        "front_card_img": "assets/img/behavior_deck/anjanath/flame_jet_front.png",
+        "back_card_img": "assets/img/behavior_deck/anjanath/flame_jet_back.png"
+      },
+      {
+        "behavior_id": 2,
+        "behavior_name": "Bludgeon",
+        "front_card_img": "assets/img/behavior_deck/anjanath/bludgeon_front.png",
+        "back_card_img": "assets/img/behavior_deck/anjanath/bludgeon_back.png"
+      },
+      {
+        "behavior_id": 3,
+        "behavior_name": "Flame Spray",
+        "front_card_img": "assets/img/behavior_deck/anjanath/flame_spray_front.png",
+        "back_card_img": "assets/img/behavior_deck/anjanath/flame_spray_back.png"
+      },
+      {
+        "behavior_id": 4,
+        "behavior_name": "Head Plunge",
+        "front_card_img": "assets/img/behavior_deck/anjanath/head_plunge_front.png",
+        "back_card_img": "assets/img/behavior_deck/anjanath/head_plunge_back.png"
+      },
+      {
+        "behavior_id": 5,
+        "behavior_name": "Charge",
+        "front_card_img": "assets/img/behavior_deck/anjanath/charge_front.png",
+        "back_card_img": "assets/img/behavior_deck/anjanath/charge_back.png"
+      },
+      {
+        "behavior_id": 6,
+        "behavior_name": "Crush",
+        "front_card_img": "assets/img/behavior_deck/anjanath/crush_front.png",
+        "back_card_img": "assets/img/behavior_deck/anjanath/crush_back.png"
+      },
+      {
+        "behavior_id": 7,
+        "behavior_name": "Bite",
+        "front_card_img": "assets/img/behavior_deck/anjanath/bite_front.png",
+        "back_card_img": "assets/img/behavior_deck/anjanath/bite_back.png"
+      },
+      {
+        "behavior_id": 8,
+        "behavior_name": "Slam",
+        "front_card_img": "assets/img/behavior_deck/anjanath/slam_front.png",
+        "back_card_img": "assets/img/behavior_deck/anjanath/slam_back.png"
+      },
+      {
+        "behavior_id": 9,
+        "behavior_name": "Tail Swing",
+        "front_card_img": "assets/img/behavior_deck/anjanath/tail_swing_front.png",
+        "back_card_img": "assets/img/behavior_deck/anjanath/tail_swing_back.png"
+      },
+      {
+        "behavior_id": 10,
+        "behavior_name": "Fire Snort",
+        "front_card_img": "assets/img/behavior_deck/anjanath/fire_snort_front.png",
+        "back_card_img": "assets/img/behavior_deck/anjanath/fire_snort_back.png"
+      }
+    ],
+    "behavior_special_card": [
+      {
+        "behavior_id": 11,
+        "behavior_name": "Crushing Charge",
+        "front_card_img": "assets/img/behavior_deck/anjanath/crushing_charge_front.png",
+        "back_card_img": "assets/img/behavior_deck/anjanath/crushing_charge_back.png"
+      },
+      {
+        "behavior_id": 12,
+        "behavior_name": "Deadly Bludgeon",
+        "front_card_img": "assets/img/behavior_deck/anjanath/deadly_bludgeon_front.png",
+        "back_card_img": "assets/img/behavior_deck/anjanath/deadly_bludgeon_back.png"
+      },
+      {
+        "behavior_id": 13,
+        "behavior_name": "Right Flame Spray",
+        "front_card_img": "assets/img/behavior_deck/anjanath/right_flame_spray_front.png",
+        "back_card_img": "assets/img/behavior_deck/anjanath/right_flame_spray_back.png"
       }
     ],
     "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2]
@@ -2503,7 +2667,24 @@
         ]
       }
     ],
-    "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2]
+    "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2],
+    "behavior_deck": [
+      { "behavior_id": 1,  "behavior_name": "Claw Drop",        "front_card_img": "assets/img/behavior_deck/rathalos/claw_drop_front.png",        "back_card_img": "assets/img/behavior_deck/rathalos/claw_drop_back.png" },
+      { "behavior_id": 2,  "behavior_name": "Fire Spin",         "front_card_img": "assets/img/behavior_deck/rathalos/fire_spin_front.png",         "back_card_img": "assets/img/behavior_deck/rathalos/fire_spin_back.png" },
+      { "behavior_id": 3,  "behavior_name": "Flame Burst",       "front_card_img": "assets/img/behavior_deck/rathalos/flame_burst_front.png",       "back_card_img": "assets/img/behavior_deck/rathalos/flame_burst_back.png" },
+      { "behavior_id": 4,  "behavior_name": "Flamethrower",      "front_card_img": "assets/img/behavior_deck/rathalos/flamethrower_front.png",      "back_card_img": "assets/img/behavior_deck/rathalos/flamethrower_back.png" },
+      { "behavior_id": 5,  "behavior_name": "Flying Fire Ball",  "front_card_img": "assets/img/behavior_deck/rathalos/flying_fire_ball_front.png",  "back_card_img": "assets/img/behavior_deck/rathalos/flying_fire_ball_back.png" },
+      { "behavior_id": 6,  "behavior_name": "Raging Charge",     "front_card_img": "assets/img/behavior_deck/rathalos/raging_charge_front.png",     "back_card_img": "assets/img/behavior_deck/rathalos/raging_charge_back.png" },
+      { "behavior_id": 7,  "behavior_name": "Swooping Evade",    "front_card_img": "assets/img/behavior_deck/rathalos/swooping_evade_front.png",    "back_card_img": "assets/img/behavior_deck/rathalos/swooping_evade_back.png" },
+      { "behavior_id": 8,  "behavior_name": "Tackle",            "front_card_img": "assets/img/behavior_deck/rathalos/tackle_front.png",            "back_card_img": "assets/img/behavior_deck/rathalos/tackle_back.png" },
+      { "behavior_id": 9,  "behavior_name": "Tail Swing",        "front_card_img": "assets/img/behavior_deck/rathalos/tail_swing_front.png",        "back_card_img": "assets/img/behavior_deck/rathalos/tail_swing_back.png" },
+      { "behavior_id": 10, "behavior_name": "Take Off Blast",    "front_card_img": "assets/img/behavior_deck/rathalos/take_off_blast_front.png",    "back_card_img": "assets/img/behavior_deck/rathalos/take_off_blast_back.png" }
+    ],
+    "behavior_special_card": [
+      { "behavior_id": 11, "behavior_name": "Stunning Spin",   "front_card_img": "assets/img/behavior_deck/rathalos/stunning_spin_front.png",   "back_card_img": "assets/img/behavior_deck/rathalos/stunning_spin_back.png" },
+      { "behavior_id": 12, "behavior_name": "Molten Bite",     "front_card_img": "assets/img/behavior_deck/rathalos/molten_bite_front.png",     "back_card_img": "assets/img/behavior_deck/rathalos/molten_bite_back.png" },
+      { "behavior_id": 13, "behavior_name": "Charging Swoop",  "front_card_img": "assets/img/behavior_deck/rathalos/charging_swoop_front.png",  "back_card_img": "assets/img/behavior_deck/rathalos/charging_swoop_back.png" }
+    ]
   },
   {
     "monster_id": 5,
@@ -3123,6 +3304,23 @@
         ]
       }
     ],
-    "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2]
+    "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2],
+    "behavior_deck": [
+      { "behavior_id": 1,  "behavior_name": "Claw Drop",         "front_card_img": "assets/img/behavior_deck/azure_rathalos/claw_drop_front.png",         "back_card_img": "assets/img/behavior_deck/azure_rathalos/claw_drop_back.png" },
+      { "behavior_id": 2,  "behavior_name": "Fire Spray",        "front_card_img": "assets/img/behavior_deck/azure_rathalos/fire_spray_front.png",        "back_card_img": "assets/img/behavior_deck/azure_rathalos/fire_spray_back.png" },
+      { "behavior_id": 3,  "behavior_name": "Left Flame Burst",  "front_card_img": "assets/img/behavior_deck/azure_rathalos/left_flame_burst_front.png",  "back_card_img": "assets/img/behavior_deck/azure_rathalos/left_flame_burst_back.png" },
+      { "behavior_id": 4,  "behavior_name": "Retreating Sweep",  "front_card_img": "assets/img/behavior_deck/azure_rathalos/retreating_sweep_front.png",  "back_card_img": "assets/img/behavior_deck/azure_rathalos/retreating_sweep_back.png" },
+      { "behavior_id": 5,  "behavior_name": "Right Flame Burst", "front_card_img": "assets/img/behavior_deck/azure_rathalos/right_flame_burst_front.png", "back_card_img": "assets/img/behavior_deck/azure_rathalos/right_flame_burst_back.png" },
+      { "behavior_id": 6,  "behavior_name": "Swooping Evade",    "front_card_img": "assets/img/behavior_deck/azure_rathalos/swooping_evade_front.png",    "back_card_img": "assets/img/behavior_deck/azure_rathalos/swooping_evade_back.png" },
+      { "behavior_id": 7,  "behavior_name": "Tackle",            "front_card_img": "assets/img/behavior_deck/azure_rathalos/tackle_front.png",            "back_card_img": "assets/img/behavior_deck/azure_rathalos/tackle_back.png" },
+      { "behavior_id": 8,  "behavior_name": "Tail Swing",        "front_card_img": "assets/img/behavior_deck/azure_rathalos/tail_swing_front.png",        "back_card_img": "assets/img/behavior_deck/azure_rathalos/tail_swing_back.png" },
+      { "behavior_id": 9,  "behavior_name": "Take Off Blast",    "front_card_img": "assets/img/behavior_deck/azure_rathalos/take_off_blast_front.png",    "back_card_img": "assets/img/behavior_deck/azure_rathalos/take_off_blast_back.png" },
+      { "behavior_id": 10, "behavior_name": "Talon Charge",      "front_card_img": "assets/img/behavior_deck/azure_rathalos/talon_charge_front.png",      "back_card_img": "assets/img/behavior_deck/azure_rathalos/talon_charge_back.png" }
+    ],
+    "behavior_special_card": [
+      { "behavior_id": 11, "behavior_name": "Fire Spin",   "front_card_img": "assets/img/behavior_deck/azure_rathalos/fire_spin_front.png",   "back_card_img": "assets/img/behavior_deck/azure_rathalos/fire_spin_back.png" },
+      { "behavior_id": 12, "behavior_name": "Fireball",    "front_card_img": "assets/img/behavior_deck/azure_rathalos/fireball_front.png",    "back_card_img": "assets/img/behavior_deck/azure_rathalos/fireball_back.png" },
+      { "behavior_id": 13, "behavior_name": "Talon Dive",  "front_card_img": "assets/img/behavior_deck/azure_rathalos/talon_dive_front.png",  "back_card_img": "assets/img/behavior_deck/azure_rathalos/talon_dive_back.png" }
+    ]
   }
 ]

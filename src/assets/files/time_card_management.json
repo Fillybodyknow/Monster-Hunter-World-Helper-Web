@@ -1,0 +1,181 @@
+{
+    "time_cards": [
+        {
+            "time_card_id": 1,
+            "card_name": "Wiggle Litchi",
+            "card_img": "assets/img/time_cards/normal_time_cards/1_wiggly_litchi.png",
+            "copies": 1
+        },
+        {
+            "time_card_id": 2,
+            "card_name": "Misread",
+            "card_img": "assets/img/time_cards/normal_time_cards/2_misread.png",
+            "copies": 2
+        },
+        {
+            "time_card_id": 3,
+            "card_name": "Monster Retreats",
+            "card_img": "assets/img/time_cards/normal_time_cards/2_monster_retreats.png",
+            "copies": 2
+        },
+        {
+            "time_card_id": 4,
+            "card_name": "Monster Sleeps",
+            "card_img": "assets/img/time_cards/normal_time_cards/2_monster_sleeps.png",
+            "copies": 2
+        },
+        {
+            "time_card_id": 5,
+            "card_name": "Nitrotoad",
+            "card_img": "assets/img/time_cards/normal_time_cards/2_nitrotoad.png",
+            "copies": 2
+        },
+        {
+            "time_card_id": 6,
+            "card_name": "Paratoad",
+            "card_img": "assets/img/time_cards/normal_time_cards/2_paratoad.png",
+            "copies": 2
+        },
+        {
+            "time_card_id": 7,
+            "card_name": "Poisoncup",
+            "card_img": "assets/img/time_cards/normal_time_cards/2_poisoncup.png",
+            "copies": 2
+        },
+        {
+            "time_card_id": 8,
+            "card_name": "Rampage",
+            "card_img": "assets/img/time_cards/normal_time_cards/2_rampage.png",
+            "copies": 2
+        },
+        {
+            "time_card_id": 9,
+            "card_name": "Roar",
+            "card_img": "assets/img/time_cards/normal_time_cards/2_roar.png",
+            "copies": 2
+        },
+        {
+            "time_card_id": 10,
+            "card_name": "Sleeptoad",
+            "card_img": "assets/img/time_cards/normal_time_cards/2_sleeptoad.png",
+            "copies": 2
+        },
+        {
+            "time_card_id": 11,
+            "card_name": "Suspended Boulder",
+            "card_img": "assets/img/time_cards/normal_time_cards/2_suspended_boulder.png",
+            "copies": 2
+        },
+        {
+            "time_card_id": 12,
+            "card_name": "Vespoid Attack",
+            "card_img": "assets/img/time_cards/normal_time_cards/2_vespoid_attack.png",
+            "copies": 2
+        },
+        {
+            "time_card_id": 13,
+            "card_name": "Brief Respite",
+            "card_img": "assets/img/time_cards/normal_time_cards/4_brief_respite.png",
+            "copies": 4
+        },
+        {
+            "time_card_id": 14,
+            "card_name": "Keep Hunting",
+            "card_img": "assets/img/time_cards/normal_time_cards/5_keep_hunting.png",
+            "copies": 5
+        },
+        {
+            "time_card_id": 15,
+            "card_name": "Tactical Shift",
+            "card_img": "assets/img/time_cards/normal_time_cards/5_tactical_shift.png",
+            "copies": 5
+        },
+        {
+            "time_card_id": 16,
+            "card_name": "Threat Shift",
+            "card_img": "assets/img/time_cards/normal_time_cards/8_threat_shift.png",
+            "copies": 8
+        }
+    ],
+    "red_time_cards": [
+        {
+            "time_card_id": 17,
+            "card_name": "Aimless Wandering",
+            "card_img": "assets/img/time_cards/red_time_cards/aimless_wandering.png",
+            "copies": 1
+        },
+        {
+            "time_card_id": 18,
+            "card_name": "Ancient Guardian",
+            "card_img": "assets/img/time_cards/red_time_cards/ancient_guardian.png",
+            "copies": 1
+        },
+        {
+            "time_card_id": 19,
+            "card_name": "Exhaustion",
+            "card_img": "assets/img/time_cards/red_time_cards/exhaustion.png",
+            "copies": 1
+        },
+        {
+            "time_card_id": 20,
+            "card_name": "Fumbled Carving",
+            "card_img": "assets/img/time_cards/red_time_cards/fumbled_carving.png",
+            "copies": 1
+        },
+        {
+            "time_card_id": 21,
+            "card_name": "Jagras Slayer",
+            "card_img": "assets/img/time_cards/red_time_cards/jagras_slayer.png",
+            "copies": 1
+        },
+        {
+            "time_card_id": 22,
+            "card_name": "Palico Assistant",
+            "card_img": "assets/img/time_cards/red_time_cards/palico_assistant.png",
+            "copies": 1
+        },
+        {
+            "time_card_id": 23,
+            "card_name": "Recovery",
+            "card_img": "assets/img/time_cards/red_time_cards/recovery.png",
+            "copies": 1
+        },
+        {
+            "time_card_id": 24,
+            "card_name": "Researcher's Favour",
+            "card_img": "assets/img/time_cards/red_time_cards/researcher_s_favour.png",
+            "copies": 1
+        },
+        {
+            "time_card_id": 25,
+            "card_name": "Rushed Advance",
+            "card_img": "assets/img/time_cards/red_time_cards/rushed_advance.png",
+            "copies": 1
+        },
+        {
+            "time_card_id": 26,
+            "card_name": "Time Waster",
+            "card_img": "assets/img/time_cards/red_time_cards/time_waster.png",
+            "copies": 1
+        },
+        {
+            "time_card_id": 27,
+            "card_name": "Turf War",
+            "card_img": "assets/img/time_cards/red_time_cards/turf_war.png",
+            "copies": 1
+        },
+        {
+            "time_card_id": 28,
+            "card_name": "Unavenged",
+            "card_img": "assets/img/time_cards/red_time_cards/unavenged.png",
+            "copies": 1
+        },
+        {
+            "time_card_id": 29,
+            "card_name": "Wake Up!",
+            "card_img": "assets/img/time_cards/red_time_cards/wake_up.png",
+            "copies": 1
+        }
+    ],
+    "back_time_card_img": "assets/img/time_cards/back_time_card.png"
+}

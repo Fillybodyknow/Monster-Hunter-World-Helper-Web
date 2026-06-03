@@ -7,6 +7,9 @@ import wildspireData from '@/assets/files/wildspire_book.json'
 import { showQuestEffects } from '@/stores/settings'
 import { hunter, loadHunter, saveHunter } from '@/stores/hunter'
 import monsterInfoData from '@/assets/files/monster_info.json'
+import timeCardData from '@/assets/files/time_card_management.json'
+import hunterClassData from '@/assets/files/class_hunter.json'
+const getHunterClass = (id) => hunterClassData.find((c) => c.hunter_class_id === id)
 import monsterPartsData from '@/assets/files/monster_parts.json'
 import elementalData from '@/assets/files/elemental.json'
 import statusEffectData from '@/assets/files/status_effect.json'
@@ -171,6 +174,7 @@ const startQuest = () => {
   dialogResourceCounts.value = {}
   showDialogResources.value = false
   initTrackTokens()
+  buildTimeCardDeck()
   const attempted = getAttempted(selectedMonster.value.monster_id, selectedQuest.value.quest_id)
   currentDialogId.value = selectedQuest.value.starting_point[attempted]
   phase.value = selectedMonster.value.dialog_hunting_phase.includes(currentDialogId.value)
@@ -490,6 +494,12 @@ watch(() => room.joinSignal, () => {
     if (!selectedMonster.value) return
     // Restore behavior deck for ALL (host+guest) on reconnect
     restoreDeck(room.behaviorDeckState)
+    // Restore time card deck from Firebase
+    const tcState = room.timeCardState
+    if (tcState) {
+      timeCardDeck.value = tcState.deck ?? []
+      timeCardDiscard.value = tcState.discard ?? []
+    }
     pendingAction.value = null
     tiedActions.value = []
     _syncToPhase(dialogId, true)
@@ -789,6 +799,14 @@ const reshuffleDiscardIntoDeck = () => {
   _pushDeckState()
 }
 
+const discardTopBehaviorCard = () => {
+  if (!behaviorDeck.value.length) return
+  const [top, ...rest] = behaviorDeck.value
+  behaviorDeck.value = rest
+  behaviorDiscard.value = [...behaviorDiscard.value, top]
+  _pushDeckState()
+}
+
 // Watch Firebase deck state for guests
 watch(() => room.behaviorDeckState, (state, prev) => {
   if (!state || !room.inRoom || room.isHost) return
@@ -854,6 +872,17 @@ const resetToBookPhase = () => {
   behaviorDiscard.value = []
   behaviorBanished.value = []
   currentBehaviorCard.value = null
+  // Reset time cards
+  timeCardDeck.value = []
+  timeCardDiscard.value = []
+  showTimeCardManage.value = false
+  redCardCounts.value = {}
+  _soloTurnEnded.value = false
+  tcRevealQueue.value = []
+  showTcReveal.value = false
+  tcRevealCurrent.value = null
+  _tcAnimatedKeys.clear()
+  _tcProcessedKeys.clear()
   phase.value = 'book'
 }
 
@@ -1104,6 +1133,173 @@ watch(() => room.trackTokenState, (state) => {
       : (localTokenMap[t.id] ?? trackTokens.value.find(lt => lt.id === t.id)?.value ?? null),
   }))
 }, { deep: true, immediate: true })
+
+// ── Time Card System ──────────────────────────────────────
+const timeCardDeck = ref([])
+const timeCardDiscard = ref([])
+const showTimeCardManage = ref(false)
+const redCardCounts = ref({})
+const showLastDiscard = ref(false)
+const showConfirmTurn = ref(false)
+
+const _buildBaseTimeCardDeck = () => {
+  const deck = []
+  timeCardData.time_cards.forEach((card) => {
+    for (let i = 0; i < card.copies; i++) {
+      deck.push({ ...card, uid: `tc_${card.time_card_id}_${i}` })
+    }
+  })
+  return deck
+}
+
+const buildTimeCardDeck = () => {
+  if (!room.inRoom || room.isHost) {
+    const timeLimit = selectedQuest.value?.time_limit ?? 45
+    let deck = _buildBaseTimeCardDeck()
+    deck = _shuffle(deck)
+    timeCardDeck.value = deck.slice(0, timeLimit)
+    timeCardDiscard.value = []
+    _pushTimeCardState()
+  }
+}
+
+const discardTimeCard = () => {
+  if (!timeCardDeck.value.length) return
+  const [top, ...rest] = timeCardDeck.value
+  timeCardDiscard.value = [top, ...timeCardDiscard.value]
+  timeCardDeck.value = rest
+  _pushTimeCardState()
+}
+
+const addRedCardsAndShuffle = () => {
+  const toAdd = []
+  timeCardData.red_time_cards.forEach((card) => {
+    if (redCardCounts.value[card.time_card_id]) {
+      toAdd.push({ ...card, uid: `rc_${card.time_card_id}_${Date.now()}` })
+    }
+  })
+  timeCardDeck.value = _shuffle([...timeCardDeck.value, ...toAdd])
+  redCardCounts.value = {}
+  showTimeCardManage.value = false
+  _pushTimeCardState()
+}
+
+const _pushTimeCardState = () => {
+  if (!room.inRoom) return
+  room.syncTimeCards?.({ deck: timeCardDeck.value, discard: timeCardDiscard.value })
+}
+
+watch(() => room.timeCardState, (state) => {
+  if (!state || !room.inRoom || room.isHost) return
+  timeCardDeck.value = state.deck ?? []
+  timeCardDiscard.value = state.discard ?? []
+}, { deep: true, immediate: true })
+
+// ── Time Card Turn System (Hunting Phase) ─────────────────
+const _soloTurnEnded = ref(false)
+const tcRevealQueue = ref([])
+const showTcReveal = ref(false)
+const tcRevealCurrent = ref(null)
+const _tcAnimatedKeys = new Set()
+const _tcProcessedKeys = new Set()
+
+const myTurnEnded = computed(() => {
+  if (!room.inRoom) return _soloTurnEnded.value
+  return !!(room.tcTurnEnds?.[room.myHunterId])
+})
+
+const _queueReveal = (hunterName, card, hunterClassId) => {
+  tcRevealQueue.value = [...tcRevealQueue.value, { hunterName, card, hunterClassId }]
+  _processTcRevealQueue()
+}
+
+const _processTcRevealQueue = () => {
+  if (showTcReveal.value || !tcRevealQueue.value.length) return
+  tcRevealCurrent.value = tcRevealQueue.value[0]
+  tcRevealQueue.value = tcRevealQueue.value.slice(1)
+  showTcReveal.value = true
+}
+
+const dismissTcReveal = () => {
+  showTcReveal.value = false
+  tcRevealCurrent.value = null
+  setTimeout(_processTcRevealQueue, 300)
+}
+
+const _drawTcCard = (hunterName) => {
+  if (!timeCardDeck.value.length) return null
+  const [card, ...rest] = timeCardDeck.value
+  timeCardDeck.value = rest
+  timeCardDiscard.value = [card, ...timeCardDiscard.value]
+  _pushTimeCardState()
+  return card
+}
+
+const endTurn = () => {
+  if (myTurnEnded.value || !timeCardDeck.value.length) return
+
+  if (!room.inRoom) {
+    // Solo: draw and immediately reset (1-hunter round)
+    const card = _drawTcCard(hunter.value?.hunter_name ?? 'Hunter')
+    if (!card) return
+    _soloTurnEnded.value = true
+    _queueReveal(hunter.value?.hunter_name ?? 'Hunter', card, hunter.value?.hunter_class_id)
+    setTimeout(() => { _soloTurnEnded.value = false }, 200)
+    return
+  }
+
+  const myName = room.myHunter?.hunter_name ?? 'Hunter'
+
+  if (room.isHost) {
+    const card = _drawTcCard(myName)
+    if (!card) return
+    _tcProcessedKeys.add(String(room.myHunterId))
+    room.markTcDrawn?.(room.myHunterId, myName, card)
+  } else {
+    room.markTcPending?.(room.myHunterId, myName)
+  }
+}
+
+// Host watches for guest pending requests; all watch for drawn cards to animate
+watch(() => room.tcTurnEnds, (ends) => {
+  if (!room.inRoom) return
+
+  if (!ends) {
+    _tcAnimatedKeys.clear()
+    _tcProcessedKeys.clear()
+    return
+  }
+
+  Object.entries(ends).forEach(([hunterId, data]) => {
+    // Host: fulfill pending guest requests
+    if (room.isHost && data.pending && !_tcProcessedKeys.has(hunterId)) {
+      _tcProcessedKeys.add(hunterId)
+      const card = _drawTcCard(data.hunterName)
+      if (card) room.markTcDrawn?.(hunterId, data.hunterName, card)
+    }
+
+    // All: queue animation for newly drawn cards
+    if (data.card && !_tcAnimatedKeys.has(hunterId)) {
+      _tcAnimatedKeys.add(hunterId)
+      const h = room.hunters.find(hh => String(hh.hunter_id) === hunterId)
+      _queueReveal(data.hunterName, data.card, h?.hunter_class_id)
+    }
+  })
+
+  // Host: clear when all hunters have drawn
+  if (room.isHost) {
+    const total = room.hunters.length
+    const drawn = Object.values(ends).filter(d => d.card).length
+    if (drawn >= total && total > 0) {
+      setTimeout(() => {
+        room.clearAllTurnEnds?.()
+        _tcAnimatedKeys.clear()
+        _tcProcessedKeys.clear()
+      }, 200)
+    }
+  }
+}, { deep: true })
+
 const potionCount = ref(0)
 const canComplete = computed(() => huntingHp.value === 0)
 const canFail = computed(() => faintCount.value >= 3)
@@ -2157,6 +2353,73 @@ const openPackDrawer = () => {
         <p v-if="!trackTokens.length" class="tt-empty">ยังไม่มี Track Token</p>
       </div>
 
+      <!-- Time Card Panel -->
+      <div class="tc-panel">
+        <div class="tc-header">
+          <span class="tc-label">⏳ Time Cards</span>
+          <div class="tc-deck-display">
+            <div class="tc-deck-stack" :class="{ empty: !timeCardDeck.length }">
+              <img :src="getImg(timeCardData.back_time_card_img)" class="tc-back-img" />
+              <span class="tc-count-badge">{{ timeCardDeck.length }}</span>
+            </div>
+            <span class="tc-discard-label">ทิ้งแล้ว: {{ timeCardDiscard.length }}</span>
+          </div>
+          <div class="tc-actions">
+            <button
+              v-if="!room.inRoom || room.isHost"
+              class="tc-btn tc-btn-discard"
+              :disabled="!timeCardDeck.length"
+              @click="discardTimeCard"
+              title="ทิ้ง Time Card 1 ใบ"
+            >🗑 ทิ้ง</button>
+            <button
+              v-if="!room.inRoom || room.isHost"
+              class="tc-btn tc-btn-manage"
+              @click="showTimeCardManage = true"
+              title="จัดการ Deck"
+            >⚙ Deck</button>
+          </div>
+        </div>
+        <!-- Last discarded preview -->
+        <div v-if="timeCardDiscard.length" class="tc-last-discard">
+          <span class="tc-discard-label-sm">ล่าสุด:</span>
+          <img :src="getImg(timeCardDiscard[0].card_img)" class="tc-discard-preview" />
+          <span class="tc-discard-name">{{ timeCardDiscard[0].card_name }}</span>
+        </div>
+      </div>
+
+      <!-- Time Card Manage Modal (Host only) -->
+      <Teleport to="body">
+        <Transition name="slain-fade">
+          <div v-if="showTimeCardManage" class="tc-modal-overlay" @click.self="showTimeCardManage = false">
+            <div class="tc-modal">
+              <p class="tc-modal-title">⚙ จัดการ Time Card Deck</p>
+              <p class="tc-modal-sub">Deck ปัจจุบัน: <strong>{{ timeCardDeck.length }}</strong> ใบ</p>
+              <p class="tc-modal-section">เลือก Red Time Card เพื่อเพิ่มเข้า Deck</p>
+              <div class="tc-red-grid">
+                <div
+                  v-for="card in timeCardData.red_time_cards"
+                  :key="card.time_card_id"
+                  class="tc-red-card"
+                  :class="{ selected: redCardCounts[card.time_card_id] }"
+                  @click="redCardCounts = redCardCounts[card.time_card_id] ? {} : { [card.time_card_id]: 1 }"
+                >
+                  <div class="tc-red-check">✓</div>
+                  <img :src="getImg(card.card_img)" class="tc-red-img" />
+                  <span class="tc-red-name">{{ card.card_name }}</span>
+                </div>
+              </div>
+              <div class="tc-modal-btns">
+                <button class="tc-modal-btn tc-modal-add" @click="addRedCardsAndShuffle">
+                  🔀 เพิ่มและสับ Deck
+                </button>
+                <button class="tc-modal-btn tc-modal-cancel" @click="showTimeCardManage = false">ยกเลิก</button>
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </Teleport>
+
       <div class="dialog-parchment">
         <div class="parchment-notch top"></div>
 
@@ -2428,6 +2691,9 @@ const openPackDrawer = () => {
 
         <!-- Deck management (Host only) -->
         <div v-if="room.isHost || !room.inRoom" class="mt-management">
+          <button class="mt-mgmt-btn" @click="discardTopBehaviorCard" :disabled="behaviorDeck.length === 0">
+            🗑 ทิ้งใบบนสุด
+          </button>
           <button class="mt-mgmt-btn" @click="reshuffleDiscardIntoDeck" :disabled="behaviorDiscard.length === 0">
             🔀 สับกองทิ้งเข้า Deck
           </button>
@@ -2844,6 +3110,64 @@ const openPackDrawer = () => {
       </div>
       <!-- end info-parts-row -->
 
+      <!-- Time Card Turn -->
+      <div v-if="timeCardDeck.length > 0 || timeCardDiscard.length > 0" class="tct-section">
+        <p class="hunt-result-label">— Time Card —</p>
+        <div class="tct-deck-row">
+          <div class="tct-deck-wrap">
+            <div class="tct-deck-stack" :class="{ empty: !timeCardDeck.length }">
+              <img :src="getImg(timeCardData.back_time_card_img)" class="tct-back-img" />
+              <span class="tct-count-badge">{{ timeCardDeck.length }}</span>
+            </div>
+            <span class="tct-deck-label">เหลือ</span>
+          </div>
+          <div class="tct-deck-wrap">
+            <div
+              class="tct-deck-stack tct-discard-stack"
+              :class="{ 'tct-clickable': timeCardDiscard.length }"
+              @click="timeCardDiscard.length && (showLastDiscard = true)"
+            >
+              <img v-if="timeCardDiscard.length" :src="getImg(timeCardDiscard[0].card_img)" class="tct-back-img" />
+              <div v-else class="tct-deck-empty-slot"></div>
+              <span class="tct-count-badge tct-badge-discard">{{ timeCardDiscard.length }}</span>
+            </div>
+            <span class="tct-deck-label">ทิ้งแล้ว</span>
+          </div>
+          <button
+            class="tct-end-btn"
+            :class="{ ended: myTurnEnded }"
+            :disabled="myTurnEnded || !timeCardDeck.length"
+            @click="showConfirmTurn = true"
+          >
+            <span v-if="!myTurnEnded">🃏 จบเทิร์น</span>
+            <span v-else>✓ รอคนอื่น</span>
+          </button>
+        </div>
+
+        <!-- Hunter status list (co-op only) -->
+        <div v-if="room.inRoom" class="tct-hunter-list">
+          <div
+            v-for="h in room.hunters"
+            :key="h.hunter_id"
+            class="tct-hunter-row"
+            :class="{ 'turn-done': room.tcTurnEnds?.[h.hunter_id] }"
+          >
+            <span class="tct-hunter-mark">
+              {{ room.tcTurnEnds?.[h.hunter_id] ? '✓' : '⏳' }}
+            </span>
+            <img
+              v-if="getHunterClass(h.hunter_class_id)?.thumbnail"
+              :src="getImg(getHunterClass(h.hunter_class_id).thumbnail)"
+              class="tct-class-icon"
+              :title="getHunterClass(h.hunter_class_id)?.hunter_class"
+            />
+            <span class="tct-hunter-name">{{ h.hunter_name }}</span>
+            <span class="tct-class-name">{{ getHunterClass(h.hunter_class_id)?.hunter_class }}</span>
+            <span v-if="room.tcTurnEnds?.[h.hunter_id]?.pending" class="tct-pending-label">รอจั๋ว…</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Quest Outcome -->
       <div class="hunt-result-section">
         <p class="hunt-result-label">— Quest Outcome —</p>
@@ -2887,7 +3211,7 @@ const openPackDrawer = () => {
         <div class="hunt-result-btns">
           <!-- Time Out -->
           <button
-            v-if="!canComplete && !canFail"
+            v-if="!canComplete && !canFail && timeCardDeck.length === 0"
             class="btn-timeout"
             :class="{ 'outcome-voted': room.myOutcomeVote === 'fail' }"
             @click="room.inRoom ? toggleVote('fail') : requestOutcome('fail')"
@@ -3288,6 +3612,67 @@ const openPackDrawer = () => {
         </div>
       </div>
     </div>
+
+    <!-- ═══════════ TIME CARD REVEAL OVERLAY ═══════════ -->
+    <teleport to="body">
+      <Transition name="ma-trans">
+        <div v-if="showTcReveal && tcRevealCurrent" class="tcr-overlay" @click="dismissTcReveal">
+          <div class="tcr-content">
+            <div class="tcr-hunter-header">
+              <img
+                v-if="getHunterClass(tcRevealCurrent.hunterClassId)?.thumbnail"
+                :src="getImg(getHunterClass(tcRevealCurrent.hunterClassId).thumbnail)"
+                class="tcr-class-icon"
+              />
+              <p class="tcr-hunter-name">{{ tcRevealCurrent.hunterName }}</p>
+            </div>
+            <p class="tcr-label">จบเทิร์น</p>
+            <div class="tcr-card-flip">
+              <div class="tcr-card-inner">
+                <div class="tcr-card-back">
+                  <img :src="getImg(timeCardData.back_time_card_img)" class="tcr-card-img" />
+                </div>
+                <div class="tcr-card-front">
+                  <img v-if="tcRevealCurrent.card" :src="getImg(tcRevealCurrent.card.card_img)" class="tcr-card-img" />
+                </div>
+              </div>
+            </div>
+            <p class="tcr-card-name">{{ tcRevealCurrent.card?.card_name }}</p>
+            <p class="tcr-remaining">เหลือ {{ timeCardDeck.length }} ใบ</p>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ LAST DISCARD PREVIEW ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="showLastDiscard && timeCardDiscard.length" class="ld-overlay" @click.self="showLastDiscard = false">
+          <div class="ld-modal">
+            <p class="ld-title">ใบล่าสุดที่ทิ้ง</p>
+            <img :src="getImg(timeCardDiscard[0].card_img)" class="ld-card-img" />
+            <p class="ld-card-name">{{ timeCardDiscard[0].card_name }}</p>
+            <button class="ld-close" @click="showLastDiscard = false">ปิด</button>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ END TURN CONFIRM ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="showConfirmTurn" class="ct-overlay" @click.self="showConfirmTurn = false">
+          <div class="ct-modal">
+            <p class="ct-title">🃏 จบเทิร์น?</p>
+            <p class="ct-sub">จั๋ว Time Card 1 ใบจากกอง (เหลือ {{ timeCardDeck.length }} ใบ)</p>
+            <div class="ct-btns">
+              <button class="ct-btn ct-confirm" @click="endTurn(); showConfirmTurn = false">ยืนยัน</button>
+              <button class="ct-btn ct-cancel" @click="showConfirmTurn = false">ยกเลิก</button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
 
     <!-- ═══════════ MONSTER ATTACK OVERLAY ═══════════ -->
     <teleport to="body">
@@ -4689,7 +5074,7 @@ const openPackDrawer = () => {
   margin: 0;
 }
 .mt-card {
-  width: min(300px, 42vw);
+  width: min(320px, 42vw);
   height: min(212px, 30vw);
   border-radius: 8px;
   overflow: hidden;
@@ -4706,7 +5091,7 @@ const openPackDrawer = () => {
   color: rgba(124,90,43,0.3);
   font-size: 20px;
 }
-.mt-card-back { filter: brightness(0.85); }
+.mt-card-back { filter: brightness(0.95); }
 .mt-card-name { font-size: 11px; color: #a88040; margin: 0; text-align: center; }
 .mt-draw-btn {
   padding: 14px;
@@ -4811,11 +5196,327 @@ const openPackDrawer = () => {
 .dm-empty { font-size: 11px; color: rgba(124,90,43,0.4); text-align: center; padding: 12px 0; }
 
 /* ── Monster Attack Transition ── */
-.ma-trans-enter-active { animation: ma-bg-flash 0.6s ease forwards; }
+.ma-trans-enter-active { transition: opacity 0.25s ease; }
+.ma-trans-enter-from   { opacity: 0; }
 .ma-trans-leave-active { transition: opacity 0.08s ease; }
 .ma-trans-leave-to     { opacity: 0; }
 
 /* ── Monster Attack Animation Overlay ── */
+/* ── Time Card Turn Section ── */
+.tct-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 4px;
+}
+.tct-deck-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.tct-deck-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.tct-deck-stack {
+  position: relative;
+  width: min(140px, 38vw);
+  height: min(192px, 52vw);
+}
+.tct-deck-stack.empty { opacity: 0.3; }
+.tct-discard-stack { opacity: 0.8; }
+.ct-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.ct-modal {
+  background: #1a1304;
+  border: 1px solid rgba(201,162,39,0.4);
+  border-radius: 14px;
+  padding: 24px 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: min(320px, 90vw);
+}
+.ct-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #c9a227;
+  margin: 0;
+}
+.ct-sub {
+  font-size: 13px;
+  color: rgba(201,162,39,0.6);
+  margin: 0;
+  text-align: center;
+}
+.ct-btns {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+.ct-btn {
+  padding: 10px 26px;
+  border-radius: 9px;
+  border: none;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.ct-confirm {
+  background: rgba(80,200,120,0.25);
+  color: #6fcf97;
+  border: 1px solid rgba(80,200,120,0.4);
+}
+.ct-confirm:hover { background: rgba(80,200,120,0.42); }
+.ct-cancel {
+  background: rgba(120,120,120,0.15);
+  color: rgba(200,200,200,0.6);
+  border: 1px solid rgba(120,120,120,0.3);
+}
+.ct-cancel:hover { background: rgba(120,120,120,0.28); }
+.tct-clickable { cursor: pointer; transition: transform 0.12s, opacity 0.12s; }
+.tct-clickable:hover { opacity: 1; transform: scale(1.04); }
+.ld-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.ld-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.ld-title {
+  font-size: 13px;
+  color: rgba(201,162,39,0.6);
+  margin: 0;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.ld-card-img {
+  width: min(280px, 78vw);
+  border-radius: 10px;
+  box-shadow: 0 0 30px rgba(0,0,0,0.8);
+}
+.ld-card-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f0d080;
+  margin: 0;
+}
+.ld-close {
+  margin-top: 4px;
+  padding: 8px 24px;
+  border-radius: 8px;
+  border: 1px solid rgba(201,162,39,0.4);
+  background: rgba(201,162,39,0.1);
+  color: #c9a227;
+  font-size: 13px;
+  cursor: pointer;
+}
+.tct-back-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 5px;
+}
+.tct-deck-empty-slot {
+  width: 100%;
+  height: 100%;
+  border-radius: 5px;
+  border: 1px dashed rgba(201,162,39,0.3);
+}
+.tct-count-badge {
+  position: absolute;
+  bottom: -9px;
+  right: -10px;
+  background: #c9a227;
+  color: #1a1000;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 12px;
+  padding: 2px 8px;
+  min-width: 24px;
+  text-align: center;
+  line-height: 1.4;
+}
+.tct-badge-discard { background: rgba(150,120,60,0.85); color: #fff; }
+.tct-deck-label {
+  font-size: 10px;
+  color: rgba(201,162,39,0.5);
+  margin-top: 6px;
+}
+.tct-end-btn {
+  margin-left: auto;
+  align-self: center;
+  padding: 12px 22px;
+  border-radius: 10px;
+  border: 2px solid rgba(201,162,39,0.5);
+  background: rgba(201,162,39,0.12);
+  color: #c9a227;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.tct-end-btn:hover:not(:disabled) {
+  background: rgba(201,162,39,0.25);
+  border-color: #c9a227;
+}
+.tct-end-btn.ended, .tct-end-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  background: rgba(120,120,120,0.1);
+  border-color: rgba(120,120,120,0.3);
+  color: rgba(200,200,200,0.5);
+}
+.tct-hunter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.tct-hunter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-radius: 7px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(201,162,39,0.1);
+  transition: background 0.2s, border-color 0.2s;
+}
+.tct-hunter-row.turn-done {
+  background: rgba(201,162,39,0.08);
+  border-color: rgba(201,162,39,0.3);
+}
+.tct-hunter-mark {
+  font-size: 14px;
+  width: 20px;
+  text-align: center;
+}
+.tct-hunter-name {
+  font-size: 13px;
+  color: #dba860;
+  flex: 1;
+}
+.tct-class-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+.tct-class-name {
+  font-size: 11px;
+  color: rgba(201,162,39,0.5);
+  white-space: nowrap;
+}
+.tct-pending-label {
+  font-size: 10px;
+  color: rgba(201,162,39,0.45);
+  font-style: italic;
+}
+
+/* ── Time Card Reveal Overlay ── */
+.tcr-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.82);
+  z-index: 1500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.tcr-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.tcr-hunter-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tcr-class-icon {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 4px rgba(201,162,39,0.5));
+}
+.tcr-hunter-name {
+  font-size: 22px;
+  font-weight: 700;
+  color: #c9a227;
+  margin: 0;
+  letter-spacing: 0.03em;
+}
+.tcr-label {
+  font-size: 12px;
+  color: rgba(201,162,39,0.55);
+  margin: 0;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tcr-card-flip {
+  width: min(300px, 72vw);
+  height: min(410px, 98vw);
+  perspective: 900px;
+  margin: 8px 0;
+}
+.tcr-card-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  animation: ma-flip 0.9s 0.3s ease both;
+}
+.tcr-card-back, .tcr-card-front {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.tcr-card-back  { animation: ma-back-hide  0s 0.845s step-end  both; }
+.tcr-card-front {
+  opacity: 0;
+  transform: scaleX(-1);
+  animation: ma-front-show 0s 0.845s step-start both, ma-glow 0.5s 1s ease both;
+}
+.tcr-card-img { width: 100%; height: 100%; object-fit: cover; }
+.tcr-card-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #f0d080;
+  margin: 0;
+}
+.tcr-remaining {
+  font-size: 11px;
+  color: rgba(201,162,39,0.4);
+  margin: 0;
+}
+
 .ma-overlay {
   position: fixed;
   inset: 0;
@@ -4827,32 +5528,6 @@ const openPackDrawer = () => {
   cursor: pointer;
   overflow: hidden;
 }
-@keyframes ma-bg-flash {
-  0%   { background: #5a0a00; }
-  15%  { background: #120000; }
-  100% { background: rgba(8,2,2,0.97); }
-}
-
-
-/* Impact lines */
-.ma-overlay::after {
-  content: '';
-  position: absolute;
-  inset: -50%;
-  background: repeating-conic-gradient(
-    rgba(180,40,0,0.07) 0deg 3deg,
-    transparent 3deg 10deg
-  );
-  animation: ma-lines 0.4s ease forwards;
-  pointer-events: none;
-  z-index: 0;
-}
-@keyframes ma-lines {
-  0%   { opacity: 1; transform: scale(0.3) rotate(0deg); }
-  60%  { opacity: 0.6; transform: scale(1.5) rotate(15deg); }
-  100% { opacity: 0; transform: scale(2) rotate(20deg); }
-}
-
 .ma-content {
   display: flex;
   flex-direction: column;
@@ -4860,77 +5535,66 @@ const openPackDrawer = () => {
   gap: 14px;
   position: relative;
   z-index: 1;
-  animation: ma-shake 0.4s 0.05s ease;
-}
-@keyframes ma-shake {
-  0%,100% { transform: translate(0,0); }
-  15%  { transform: translate(-12px,-8px) rotate(-1.5deg); }
-  30%  { transform: translate(12px,6px) rotate(1.5deg); }
-  45%  { transform: translate(-8px,4px) rotate(-0.8deg); }
-  60%  { transform: translate(8px,-4px) rotate(0.8deg); }
-  75%  { transform: translate(-4px,2px); }
 }
 
 .ma-label {
   font-size: 14px;
   letter-spacing: 6px;
-  color: #ff3333;
+  color: #ffd27a;
   text-transform: uppercase;
   margin: 0;
-  font-weight: 900;
-  text-shadow: 0 0 12px rgba(200,50,50,0.7), 0 0 4px #000;
-  animation: ma-label-in 0.3s 0.15s ease both;
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(200,155,60,0.6), 0 0 4px #000;
 }
-@keyframes ma-label-in {
-  0% { opacity: 0; transform: scaleX(2); letter-spacing: 20px; }
-  100% { opacity: 1; transform: scaleX(1); }
-}
-
 .ma-card-flip {
-  width: min(360px, 90vw);
-  height: min(256px, 64vw);
+  width: min(450px, 92vw);
+  height: min(300px, 70vw);
+  perspective: 1000px;
 }
 .ma-card-inner {
   width: 100%;
   height: 100%;
   position: relative;
-  animation: ma-slam 0.5s 0.1s cubic-bezier(0.15, 1.5, 0.4, 1) both;
+  animation: ma-flip 0.9s 0.1s ease both;
 }
-@keyframes ma-slam {
-  0%   { transform: translateY(-120%) scale(1.4); opacity: 0; filter: brightness(3); }
-  60%  { transform: translateY(6%) scale(0.97); opacity: 1; filter: brightness(1); }
-  80%  { transform: translateY(-2%) scale(1.02); }
-  100% { transform: translateY(0) scale(1); filter: brightness(1); }
+@keyframes ma-flip {
+  0%   { transform: scale(0.8) rotateY(0deg);  opacity: 0; }
+  15%  { transform: scale(1)   rotateY(0deg);  opacity: 1; }
+  45%  { transform: scale(1)   rotateY(89deg); }
+  55%  { transform: scale(1)   rotateY(91deg); }
+  100% { transform: scale(1)   rotateY(180deg); }
 }
 .ma-card-back, .ma-card-front {
   position: absolute;
   inset: 0;
   border-radius: 10px;
   overflow: hidden;
-  border: 2px solid rgba(255,60,0,0.8);
-  box-shadow: 0 0 40px rgba(255,60,0,0.7), 0 8px 32px rgba(0,0,0,0.8);
+  border: 2px solid rgba(200,155,60,0.7);
+  box-shadow: 0 0 30px rgba(200,155,60,0.4), 0 8px 32px rgba(0,0,0,0.8);
 }
+/* ซ่อน/แสดงด้วย opacity ตอนการ์ดตั้งตรง (แทน backface-visibility) */
+.ma-card-back  { animation: ma-back-hide  0s 0.545s step-end  both; }
+.ma-card-front { opacity: 0; animation: ma-front-show 0s 0.545s step-start both; }
+@keyframes ma-back-hide  { to { opacity: 0; } }
+@keyframes ma-front-show { to { opacity: 1; } }
+/* Glow + counter-rotate ป้องกันภาพกลับด้าน */
 .ma-card-front {
-  animation: ma-reveal 0.35s 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  animation: ma-front-show 0s 0.545s step-start both, ma-glow 0.5s 0.7s ease both;
+  transform: scaleX(-1);
 }
-@keyframes ma-reveal {
-  0%   { opacity: 0; transform: scale(1.15); filter: brightness(3) saturate(0); }
-  40%  { opacity: 1; filter: brightness(1.6) saturate(1.2); }
-  100% { opacity: 1; transform: scale(1); filter: brightness(1) saturate(1); }
-}
-.ma-card-back { animation: ma-hide 0.1s 0.65s ease both; }
-@keyframes ma-hide {
-  to { opacity: 0; }
+@keyframes ma-glow {
+  0%   { box-shadow: 0 0 30px rgba(200,155,60,0.4), 0 8px 32px rgba(0,0,0,0.8); }
+  50%  { box-shadow: 0 0 70px rgba(255,210,100,0.9), 0 0 30px rgba(200,155,60,0.7), 0 8px 32px rgba(0,0,0,0.8); }
+  100% { box-shadow: 0 0 30px rgba(200,155,60,0.5), 0 8px 32px rgba(0,0,0,0.8); }
 }
 .ma-card-img { width: 100%; height: 100%; object-fit: cover; }
 .ma-card-name {
   font-size: 18px;
-  font-weight: 900;
-  color: #fff;
+  font-weight: bold;
+  color: #ffd27a;
   margin: 0;
-  letter-spacing: 3px;
-  text-shadow: 0 0 16px rgba(255,80,0,0.9), 0 0 4px #000;
-  animation: ma-label-in 0.3s 0.7s ease both;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px rgba(200,155,60,0.6), 0 0 4px #000;
 }
 .ma-hint { font-size: 10px; color: rgba(124,90,43,0.5); letter-spacing: 2px; margin: 0; animation: cml-pulse 1.5s ease-in-out infinite; }
 
@@ -5136,6 +5800,235 @@ const openPackDrawer = () => {
   margin: 0;
   text-align: center;
 }
+
+/* ── Time Card Panel ── */
+.tc-panel {
+  border-radius: 10px;
+  border: 1px solid rgba(124, 90, 43, 0.35);
+  background: rgba(10, 8, 4, 0.5);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tc-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.tc-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #c9a227;
+  white-space: nowrap;
+}
+.tc-deck-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+.tc-deck-stack {
+  position: relative;
+  width: 38px;
+  height: 52px;
+  flex-shrink: 0;
+}
+.tc-deck-stack.empty { opacity: 0.35; }
+.tc-back-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
+  display: block;
+}
+.tc-count-badge {
+  position: absolute;
+  bottom: -6px;
+  right: -8px;
+  background: #c9a227;
+  color: #1a1000;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 1px 5px;
+  min-width: 18px;
+  text-align: center;
+  line-height: 1.4;
+}
+.tc-discard-label {
+  font-size: 11px;
+  color: rgba(201, 162, 39, 0.6);
+}
+.tc-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.tc-btn {
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+.tc-btn:disabled { opacity: 0.4; cursor: default; }
+.tc-btn-discard {
+  background: rgba(180, 60, 40, 0.25);
+  color: #e07060;
+  border: 1px solid rgba(180, 60, 40, 0.4);
+}
+.tc-btn-discard:hover:not(:disabled) { background: rgba(180, 60, 40, 0.45); }
+.tc-btn-manage {
+  background: rgba(80, 80, 200, 0.2);
+  color: #9090f0;
+  border: 1px solid rgba(80, 80, 200, 0.4);
+}
+.tc-btn-manage:hover { background: rgba(80, 80, 200, 0.38); }
+.tc-last-discard {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tc-discard-label-sm {
+  font-size: 10px;
+  color: rgba(201, 162, 39, 0.45);
+  white-space: nowrap;
+}
+.tc-discard-preview {
+  width: 28px;
+  height: 38px;
+  object-fit: cover;
+  border-radius: 3px;
+  opacity: 0.75;
+}
+.tc-discard-name {
+  font-size: 11px;
+  color: rgba(201, 162, 39, 0.65);
+}
+
+/* Time Card Manage Modal */
+.tc-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.72);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.tc-modal {
+  background: #1a1304;
+  border: 1px solid rgba(201,162,39,0.4);
+  border-radius: 14px;
+  padding: 20px 18px;
+  width: min(480px, 96vw);
+  max-height: 85vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tc-modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #c9a227;
+  margin: 0;
+  text-align: center;
+}
+.tc-modal-sub {
+  font-size: 12px;
+  color: rgba(201,162,39,0.65);
+  margin: 0;
+  text-align: center;
+}
+.tc-modal-section {
+  font-size: 12px;
+  color: rgba(201,162,39,0.55);
+  margin: 0;
+  font-style: italic;
+}
+.tc-red-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 10px;
+}
+.tc-red-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 8px 4px 6px;
+  border: 2px solid rgba(201,162,39,0.15);
+  background: rgba(255,255,255,0.03);
+  transition: border-color 0.15s, background 0.15s;
+  user-select: none;
+}
+.tc-red-grid:has(.selected) .tc-red-card:not(.selected) {
+  opacity: 0.35;
+}
+.tc-red-card:hover { border-color: rgba(201,162,39,0.4); background: rgba(201,162,39,0.07); }
+.tc-red-card.selected {
+  border-color: #c9a227;
+  background: rgba(201,162,39,0.14);
+}
+.tc-red-check {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #c9a227;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.tc-red-card.selected .tc-red-check { opacity: 1; }
+.tc-red-img {
+  width: 54px;
+  height: 74px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.tc-red-name {
+  font-size: 10px;
+  color: #dba860;
+  text-align: center;
+  line-height: 1.3;
+}
+.tc-modal-btns {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 4px;
+}
+.tc-modal-btn {
+  padding: 9px 18px;
+  border-radius: 8px;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.tc-modal-add {
+  background: rgba(80, 200, 120, 0.25);
+  color: #6fcf97;
+  border: 1px solid rgba(80, 200, 120, 0.4);
+}
+.tc-modal-add:hover { background: rgba(80, 200, 120, 0.42); }
+.tc-modal-cancel {
+  background: rgba(120,120,120,0.15);
+  color: rgba(200,200,200,0.6);
+  border: 1px solid rgba(120,120,120,0.3);
+}
+.tc-modal-cancel:hover { background: rgba(120,120,120,0.28); }
 
 .dr-panel {
   border-radius: 10px;
@@ -5582,7 +6475,7 @@ const openPackDrawer = () => {
   /* Monster Turn responsive */
   .mt-cards { flex-direction: column; align-items: center; gap: 12px; }
   .mt-card {
-    width: min(92vw, 340px);
+    width: min(102vw, 340px);
     height: min(65vw, 240px);
   }
   .mt-card-wrap { min-width: unset; width: 100%; }

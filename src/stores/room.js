@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { isFirebaseConnected } from '@/services/firebase'
-import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck } from '@/services/roomService'
+import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds } from '@/services/roomService'
 
 export const useRoomStore = defineStore('room', () => {
   const roomCode = ref(null)
@@ -50,6 +50,8 @@ export const useRoomStore = defineStore('room', () => {
   const huntState = computed(() => roomData.value?.huntState ?? null)
   const behaviorDeckState = computed(() => roomData.value?.behaviorDeck ?? null)
   const trackTokenState = computed(() => roomData.value?.trackTokens ?? null)
+  const timeCardState = computed(() => roomData.value?.timeCards ?? null)
+  const tcTurnEnds = computed(() => roomData.value?.tcTurnEnds ?? null)
 
   // Reroll request
   const rerollRequest = computed(() => roomData.value?.rerollRequest ?? null)
@@ -264,6 +266,26 @@ export const useRoomStore = defineStore('room', () => {
     return pushBehaviorDeck(roomCode.value, deckState)
   }
 
+  const syncTimeCards = (deckState) => {
+    if (!roomCode.value) return
+    return pushTimeCards(roomCode.value, deckState)
+  }
+
+  const markTcPending = (hunterId, hunterName) => {
+    if (!roomCode.value) return
+    return pushTcPending(roomCode.value, hunterId, hunterName)
+  }
+
+  const markTcDrawn = (hunterId, hunterName, card) => {
+    if (!roomCode.value) return
+    return pushTcDrawn(roomCode.value, hunterId, hunterName, card)
+  }
+
+  const clearAllTurnEnds = () => {
+    if (!roomCode.value) return
+    return clearTcTurnEnds(roomCode.value)
+  }
+
   const syncTrackTokens = (pool, tokens) => {
     if (!roomCode.value) return
     return pushTrackTokens(roomCode.value, pool, tokens)
@@ -337,7 +359,7 @@ export const useRoomStore = defineStore('room', () => {
     proceedVotes, allProceeded, myProceedVoted,
     syncedPendingActionId,
     huntState, behaviorDeckState, hostConnected, partyDice, partyRewards, tradePool, myDialogCounts,
-    trackTokenState,
+    trackTokenState, timeCardState, tcTurnEnds,
     rerollRequest, myRerollApproval, rerollAllApproved,
     syncedPhase,
     actionVotes, myActionVote, actionVoteCount, isActionComplete,
@@ -350,6 +372,7 @@ export const useRoomStore = defineStore('room', () => {
     syncHuntState, voteOutcome, unvoteOutcome, clearOutcome,
     syncBehaviorDeck,
     syncTrackTokens,
+    syncTimeCards, markTcPending, markTcDrawn, clearAllTurnEnds,
     syncPhase,
     requestReroll, respondReroll, cancelReroll,
     pushMyDice, clearAllPartyDice,
