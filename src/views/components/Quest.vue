@@ -135,12 +135,12 @@ const selectBook = (book) => {
 
 const WILDSPIRE_ENABLED_MONSTERS = [6]
 
-const monsters = computed(() => {
-  if (!selectedBook.value) return []
-  if (selectedBook.value.id === 'wildspire')
-    return selectedBook.value.data.filter(m => WILDSPIRE_ENABLED_MONSTERS.includes(m.monster_id))
-  return selectedBook.value.data
-})
+const monsters = computed(() => selectedBook.value?.data || [])
+
+const isMonsterEnabled = (monster_id) => {
+  if (selectedBook.value?.id !== 'wildspire') return true
+  return WILDSPIRE_ENABLED_MONSTERS.includes(monster_id)
+}
 
 const selectMonster = (monster) => {
   selectedMonster.value = monster
@@ -472,7 +472,7 @@ const _syncToPhase = (dialogId, applyHuntState = false) => {
 }
 
 // Sync phase for reconnecting guests (reward/trade)
-watch(() => room.syncedPhase, (syncPhase) => {
+watch([() => room.syncedPhase, () => room.joinSignal], ([syncPhase]) => {
   if (!syncPhase || !room.inRoom || room.isHost) return
   if (syncPhase === 'reward' && phase.value !== 'reward') {
     phase.value = 'reward'
@@ -838,7 +838,7 @@ const discardTopBehaviorCard = () => {
 }
 
 // Watch Firebase deck state for guests
-watch(() => room.behaviorDeckState, (state, prev) => {
+watch([() => room.behaviorDeckState, () => room.joinSignal], ([state], [prev]) => {
   if (!state || !room.inRoom || room.isHost) return
   behaviorDeck.value = state.deck ?? []
   behaviorDiscard.value = state.discard ?? []
@@ -1114,7 +1114,8 @@ const discardTrackToken = (id) => {
 }
 
 // Watch Firebase → sync token state from others (guests only, host manages own state)
-watch(() => room.trackTokenState, (state) => {
+// joinSignal เป็น dependency เพื่อให้ re-process ทุกครั้งที่ join แม้ trackTokenState ไม่เปลี่ยน
+watch([() => room.trackTokenState, () => room.joinSignal], ([state]) => {
   if (!room.inRoom || room.isHost) return
   if (!state) {
     trackTokens.value = []
@@ -1201,7 +1202,7 @@ const _pushTimeCardState = () => {
   room.syncTimeCards?.({ deck: timeCardDeck.value, discard: timeCardDiscard.value })
 }
 
-watch(() => room.timeCardState, (state) => {
+watch([() => room.timeCardState, () => room.joinSignal], ([state]) => {
   if (!state || !room.inRoom || room.isHost) return
   timeCardDeck.value = state.deck ?? []
   timeCardDiscard.value = state.discard ?? []
@@ -1394,13 +1395,13 @@ const _pushHuntState = () => {
   })
 }
 
-watch(() => room.huntState, (state) => {
+watch([() => room.huntState, () => room.joinSignal], ([state]) => {
   if (!state || !room.inRoom) return
   _remoteSyncing = true
   if (state.huntingHp !== undefined) {
     const diff = state.huntingHp - huntingHp.value
-    if (diff < 0) _showDamageIndicator(-diff, 'dmg')
-    if (diff > 0) _showDamageIndicator(diff, 'heal')
+    if (!_suppressAnimations && diff < 0) _showDamageIndicator(-diff, 'dmg')
+    if (!_suppressAnimations && diff > 0) _showDamageIndicator(diff, 'heal')
     huntingHp.value = state.huntingHp
   }
   if (state.partDamage) partDamage.value = state.partDamage
@@ -1575,7 +1576,7 @@ const _saveDialogCountsToInventory = () => {
 }
 
 // Restore dialog counts from Firebase (reconnect)
-watch(() => room.myDialogCounts, (counts) => {
+watch([() => room.myDialogCounts, () => room.joinSignal], ([counts]) => {
   if (!counts || !room.inRoom) return
   dialogResourceCounts.value = counts
 }, { immediate: true })
@@ -2047,9 +2048,15 @@ const openPackDrawer = () => {
           v-for="monster in monsters"
           :key="monster.monster_id"
           class="wanted-card"
-          :class="{ cleared: isAssignedComplete(monster.monster_id) }"
-          @click="selectMonster(monster)"
+          :class="{
+            cleared: isAssignedComplete(monster.monster_id),
+            'monster-wip': !isMonsterEnabled(monster.monster_id)
+          }"
+          @click="isMonsterEnabled(monster.monster_id) && selectMonster(monster)"
         >
+          <div v-if="!isMonsterEnabled(monster.monster_id)" class="monster-wip-overlay">
+            <span class="monster-wip-icon">🔨</span>
+          </div>
           <div class="wanted-top">
             <span class="wanted-label">MONSTER FILE</span>
             <span v-if="isAssignedComplete(monster.monster_id)" class="cleared-stamp">CLEARED</span>
@@ -4385,6 +4392,26 @@ const openPackDrawer = () => {
 .wanted-card.cleared {
   border-color: #3a7a3a;
 }
+
+.wanted-card.monster-wip {
+  cursor: not-allowed;
+  filter: grayscale(70%) brightness(0.6);
+}
+.wanted-card.monster-wip:hover {
+  border-color: #7c5a2b;
+  box-shadow: none;
+  transform: none;
+}
+.monster-wip-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.35);
+}
+.monster-wip-icon { font-size: 22px; }
 
 .wanted-top {
   display: flex;
