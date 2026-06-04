@@ -3322,5 +3322,339 @@
       { "behavior_id": 12, "behavior_name": "Fireball",    "front_card_img": "assets/img/behavior_deck/azure_rathalos/fireball_front.png",    "back_card_img": "assets/img/behavior_deck/azure_rathalos/fireball_back.png" },
       { "behavior_id": 13, "behavior_name": "Talon Dive",  "front_card_img": "assets/img/behavior_deck/azure_rathalos/talon_dive_front.png",  "back_card_img": "assets/img/behavior_deck/azure_rathalos/talon_dive_back.png" }
     ]
+  },
+  {
+    "monster_id": 6,
+    "monster_name": "Barroth",
+    "thumbnail": "assets/img/barroth_Icon.png",
+    "difficulty": [
+      {
+        "difficulty_id": 1,
+        "level": 1,
+        "health": 50,
+        "map_image": "assets/img/maps/barroth/barroth_1_star_map.png",
+        "special_rule": {
+          "title": "Mud Coating",
+          "description": "ครั้งแรกที่ Barroth เคลื่อนที่เข้าไปยังพื้นที่ Pond, ให้เอา Break Token 1 อันออกจากทุก Part ที่ยังไม่ถูกทำลาย"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 3,
+            "armor": 1,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Head การเคลื่อนที่ของการ์ดนั้นจะ -1 หน่วย"
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 2,
+            "armor": 0,
+            "part_break_rule": ""
+          },
+          "left": {
+            "part_id": 3,
+            "connect_part_position": ["right"],
+            "part_break_threshold": 2,
+            "armor": 0,
+            "part_break_rule": ""
+          },
+          "right": {
+            "part_id": 2,
+            "connect_part_position": ["left"],
+            "part_break_threshold": 3,
+            "armor": 0,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Water ระยะโจมตีและค่าหลบหลีกลดลง -1 หน่วย"
+          }
+        },
+        "element_resistance": [
+          {
+            "element_id": 1,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 2,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 3,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 5,
+            "level": 0,
+            "immune": true
+          }
+        ],
+        "status_resistance": [
+          {
+            "status_id": 1,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "status_id": 2,
+            "level": 1,
+            "immune": false
+          },
+          {
+            "status_id": 3,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 4,
+            "level": 1,
+            "immune": false
+          },
+          {
+            "status_id": 5,
+            "level": 1,
+            "immune": false
+          }
+        ],
+        "reward_table": [
+          { "rolled_number": 1,  "reward": { "resource_type_id": 1, "item_id": 8  }, "part_break_reward": {} },
+          { "rolled_number": 2,  "reward": { "resource_type_id": 3, "item_id": 35 }, "part_break_reward": {} },
+          { "rolled_number": 3,  "reward": { "resource_type_id": 3, "item_id": 36 }, "part_break_reward": {} },
+          { "rolled_number": 4,  "reward": { "resource_type_id": 3, "item_id": 37 }, "part_break_reward": {} },
+          { "rolled_number": 5,  "reward": { "resource_type_id": 3, "item_id": 34 }, "part_break_reward": {} },
+          { "rolled_number": 6,  "reward": { "resource_type_id": 3, "item_id": 35 }, "part_break_reward": {} },
+          { "rolled_number": 7,  "reward": { "resource_type_id": 1, "item_id": 8  }, "part_break_reward": {} },
+          { "rolled_number": 8,  "reward": { "resource_type_id": 3, "item_id": 35 }, "part_break_reward": {} },
+          { "rolled_number": 9,  "reward": { "resource_type_id": 3, "item_id": 34 }, "part_break_reward": { "part_id": 2, "gain_additional": 1 } },
+          { "rolled_number": 10, "reward": { "resource_type_id": 3, "item_id": 37 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
+          { "rolled_number": 11, "reward": { "resource_type_id": 3, "item_id": 36 }, "part_break_reward": { "part_id": 1, "gain_additional": 1 } },
+          { "rolled_number": 12, "reward": { "resource_type_id": 3, "item_id": 35 }, "part_break_reward": { "part_id": 3, "gain_additional": 1 } }
+        ]
+      },
+      {
+        "difficulty_id": 2,
+        "level": 2,
+        "health": 60,
+        "map_image": "assets/img/maps/barroth/barroth_2_star_map.png",
+        "special_rule": {
+          "title": "Mud Cladding",
+          "description": "ทุกครั้งที่ Barroth เคลื่อนที่เข้าไปยังพื้นที่ Pond, ให้เอา Break Token 1 อันออกจากทุก Part ที่ยังไม่ถูกทำลาย"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 4,
+            "armor": 2,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Head การเคลื่อนที่ของการ์ดนั้นจะ -1 หน่วย"
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 3,
+            "armor": 0,
+            "part_break_rule": ""
+          },
+          "left": {
+            "part_id": 3,
+            "connect_part_position": ["right"],
+            "part_break_threshold": 3,
+            "armor": 0,
+            "part_break_rule": "ทิ้งการ์ดใบบนสุดของกองการ์ดพฤติกรรมของ Barroth"
+          },
+          "right": {
+            "part_id": 2,
+            "connect_part_position": ["left"],
+            "part_break_threshold": 4,
+            "armor": 1,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Water ระยะโจมตีและค่าหลบหลีกลดลง -1 หน่วย"
+          }
+        },
+        "element_resistance": [
+          {
+            "element_id": 1,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 2,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 3,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 5,
+            "level": 0,
+            "immune": true
+          }
+        ],
+        "status_resistance": [
+          {
+            "status_id": 1,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "status_id": 2,
+            "level": 1,
+            "immune": false
+          },
+          {
+            "status_id": 3,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 4,
+            "level": 1,
+            "immune": false
+          },
+          {
+            "status_id": 5,
+            "level": 1,
+            "immune": false
+          }
+        ],
+        "reward_table": [
+          { "rolled_number": 1,  "reward": { "resource_type_id": 1, "item_id": 8  }, "part_break_reward": {} },
+          { "rolled_number": 2,  "reward": { "resource_type_id": 3, "item_id": 35 }, "part_break_reward": {} },
+          { "rolled_number": 3,  "reward": { "resource_type_id": 3, "item_id": 36 }, "part_break_reward": {} },
+          { "rolled_number": 4,  "reward": { "resource_type_id": 3, "item_id": 37 }, "part_break_reward": {} },
+          { "rolled_number": 5,  "reward": { "resource_type_id": 3, "item_id": 34 }, "part_break_reward": {} },
+          { "rolled_number": 6,  "reward": { "resource_type_id": 3, "item_id": 35 }, "part_break_reward": {} },
+          { "rolled_number": 7,  "reward": { "resource_type_id": 1, "item_id": 8  }, "part_break_reward": {} },
+          { "rolled_number": 8,  "reward": { "resource_type_id": 3, "item_id": 35 }, "part_break_reward": {} },
+          { "rolled_number": 9,  "reward": { "resource_type_id": 3, "item_id": 34 }, "part_break_reward": { "part_id": 2, "gain_additional": 1 } },
+          { "rolled_number": 10, "reward": { "resource_type_id": 3, "item_id": 37 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
+          { "rolled_number": 11, "reward": { "resource_type_id": 3, "item_id": 36 }, "part_break_reward": { "part_id": 1, "gain_additional": 1 } },
+          { "rolled_number": 12, "reward": { "resource_type_id": 3, "item_id": 35 }, "part_break_reward": { "part_id": 3, "gain_additional": 1 } }
+        ]
+      },
+      {
+        "difficulty_id": 3,
+        "level": 3,
+        "health": 65,
+        "map_image": "assets/img/maps/barroth/barroth_3_star_map.png",
+        "special_rule": {
+          "title": "Mud Armour",
+          "description": "ทุกครั้งที่ Barroth เคลื่อนที่เข้าไปยังพื้นที่ Pond, ให้เอา Break Token 1 อันออกจากทุก Part ที่ยังไม่ถูกทำลาย, การ์ดพฤติกรรมทุกใบจะ สร้างความเสียหาย เพิ่มเติม +1 หน่วย"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 5,
+            "armor": 3,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Head การเคลื่อนที่ของการ์ดนั้นจะ -1 หน่วย"
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 4,
+            "armor": 1,
+            "part_break_rule": "Barroth จะไม่นำ Break Token ออกอีกต่อไป เมื่อเคลื่อนที่เข้าไปยังพื้นที่ Pond"
+          },
+          "left": {
+            "part_id": 3,
+            "connect_part_position": ["right"],
+            "part_break_threshold": 4,
+            "armor": 1,
+            "part_break_rule": "ทิ้งการ์ดใบบนสุดของกองการ์ดพฤติกรรมของ Barroth"
+          },
+          "right": {
+            "part_id": 2,
+            "connect_part_position": ["left"],
+            "part_break_threshold": 5,
+            "armor": 2,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Water ระยะโจมตีและค่าหลบหลีกลดลง -1 หน่วย"
+          }
+        },
+        "element_resistance": [
+          {
+            "element_id": 1,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 2,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 3,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "element_id": 4,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "element_id": 5,
+            "level": 0,
+            "immune": true
+          }
+        ],
+        "status_resistance": [
+          {
+            "status_id": 1,
+            "level": 0,
+            "immune": true
+          },
+          {
+            "status_id": 2,
+            "level": 1,
+            "immune": false
+          },
+          {
+            "status_id": 3,
+            "level": 2,
+            "immune": false
+          },
+          {
+            "status_id": 4,
+            "level": 1,
+            "immune": false
+          },
+          {
+            "status_id": 5,
+            "level": 1,
+            "immune": false
+          }
+        ],
+        "reward_table": [
+          { "rolled_number": 1,  "reward": { "resource_type_id": 1, "item_id": 8  }, "part_break_reward": {} },
+          { "rolled_number": 2,  "reward": { "resource_type_id": 3, "item_id": 35 }, "part_break_reward": {} },
+          { "rolled_number": 3,  "reward": { "resource_type_id": 3, "item_id": 36 }, "part_break_reward": {} },
+          { "rolled_number": 4,  "reward": { "resource_type_id": 3, "item_id": 37 }, "part_break_reward": {} },
+          { "rolled_number": 5,  "reward": { "resource_type_id": 3, "item_id": 34 }, "part_break_reward": {} },
+          { "rolled_number": 6,  "reward": { "resource_type_id": 3, "item_id": 35 }, "part_break_reward": {} },
+          { "rolled_number": 7,  "reward": { "resource_type_id": 1, "item_id": 8  }, "part_break_reward": {} },
+          { "rolled_number": 8,  "reward": { "resource_type_id": 3, "item_id": 35 }, "part_break_reward": {} },
+          { "rolled_number": 9,  "reward": { "resource_type_id": 3, "item_id": 34 }, "part_break_reward": { "part_id": 2, "gain_additional": 1 } },
+          { "rolled_number": 10, "reward": { "resource_type_id": 3, "item_id": 37 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
+          { "rolled_number": 11, "reward": { "resource_type_id": 3, "item_id": 36 }, "part_break_reward": { "part_id": 1, "gain_additional": 1 } },
+          { "rolled_number": 12, "reward": { "resource_type_id": 3, "item_id": 35 }, "part_break_reward": { "part_id": 3, "gain_additional": 1 } }
+        ]
+      }
+    ],
+    "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2],
+    "behavior_deck": [],
+    "behavior_special_card": []
   }
 ]

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { showQuestEffects, showTips } from '@/stores/settings'
+import { showQuestEffects, soundEnabled, soundVolume } from '@/stores/settings'
 import classHunterData from '@/assets/files/class_hunter.json'
 import { hunter } from '@/stores/hunter'
 
@@ -90,6 +90,41 @@ const doExport = (hunter) => {
       <div class="setting-section">
         <div class="ss-header">
           <span class="ss-icon">🔊</span>
+          <span class="ss-title">เสียง</span>
+        </div>
+        <div class="ss-body">
+          <div class="setting-row">
+            <div class="setting-row-info">
+              <span class="setting-row-label">เสียงเควส</span>
+              <span class="setting-row-desc">เล่นเสียงเมื่อ Quest สำเร็จหรือล้มเหลว</span>
+            </div>
+            <button
+              class="toggle-btn"
+              :class="{ active: soundEnabled }"
+              @click="soundEnabled = !soundEnabled"
+            >
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">{{ soundEnabled ? 'ON' : 'OFF' }}</span>
+            </button>
+          </div>
+          <div v-if="soundEnabled" class="setting-row">
+            <div class="setting-row-info">
+              <span class="setting-row-label">ระดับเสียง</span>
+              <span class="setting-row-desc">{{ Math.round(soundVolume * 100) }}%</span>
+            </div>
+            <input
+              type="range" min="0" max="1" step="0.05"
+              :value="soundVolume"
+              @input="soundVolume = +$event.target.value"
+              class="volume-slider"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div class="setting-section">
+        <div class="ss-header">
+          <span class="ss-icon">🖼</span>
           <span class="ss-title">การแสดงผล</span>
         </div>
         <div class="ss-body">
@@ -111,23 +146,6 @@ const doExport = (hunter) => {
             </button>
           </div>
 
-          <div class="setting-row">
-            <div class="setting-row-info">
-              <span class="setting-row-label">💡 Tip Notifications</span>
-              <span class="setting-row-desc">แสดง Tip เป็นระยะๆ เพื่อแนะนำฟีเจอร์ต่างๆ ของแอป</span>
-            </div>
-            <button
-              class="toggle-btn"
-              :class="{ active: showTips }"
-              @click="showTips = !showTips"
-              :aria-label="showTips ? 'ปิด Tip' : 'เปิด Tip'"
-            >
-              <span class="toggle-track">
-                <span class="toggle-thumb"></span>
-              </span>
-              <span class="toggle-label">{{ showTips ? 'ON' : 'OFF' }}</span>
-            </button>
-          </div>
         </div>
       </div>
 
@@ -363,6 +381,34 @@ const doExport = (hunter) => {
   font-size: 11px;
   color: #7c5a2b;
   font-style: italic;
+}
+
+.volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 120px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(200,155,60,0.2);
+  outline: none;
+  cursor: pointer;
+}
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #c89b3c;
+  border: 2px solid #7c5a2b;
+  cursor: pointer;
+}
+.volume-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #c89b3c;
+  border: 2px solid #7c5a2b;
+  cursor: pointer;
 }
 
 .toggle-btn {

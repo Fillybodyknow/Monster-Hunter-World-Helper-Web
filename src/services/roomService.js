@@ -47,6 +47,11 @@ export const joinRoom = async (code, hunter) => {
   const hunterCount = Object.keys(room.hunters || {}).length
   if (hunterCount >= 4) throw new Error('Room เต็มแล้ว (สูงสุด 4 คน)')
 
+  const takenClasses = Object.values(room.hunters || {})
+    .filter(h => h.hunter_id !== hunter.hunter_id)
+    .map(h => h.hunter_class_id)
+  if (takenClasses.includes(hunter.hunter_class_id)) throw new Error('Class นี้มีผู้เล่นอื่นใช้อยู่แล้วในตี้')
+
   await update(ref(db, `rooms/${code}/hunters/${hunter.hunter_id}`), {
     hunter_id: hunter.hunter_id,
     hunter_name: hunter.hunter_name,

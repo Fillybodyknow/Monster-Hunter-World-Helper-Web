@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, provide } from 'vue'
 import { useRoomStore } from '@/stores/room'
 import CraftLookupModal from './components/CraftLookupModal.vue'
 import { isFirebaseConnected } from '@/services/firebase'
@@ -18,6 +18,8 @@ const addNotif = (message, type = 'info') => {
     notifications.value = notifications.value.filter((n) => n.id !== id)
   }, 4000)
 }
+
+provide('addNotif', addNotif)
 
 // Auto-reconnect เมื่อ Firebase reconnect และมี savedRoomCode
 let _autoReconnecting = false
@@ -64,6 +66,21 @@ watch(() => room.inRoom, (inRoom, wasInRoom) => {
     })
   }
 })
+
+// Watch: Host หลุดการเชื่อมต่อ — แสดงปุ่มออกตี้หลัง 2 นาที
+const showLeaveButton = ref(false)
+let _leaveButtonTimer = null
+watch(
+  () => room.inRoom && !room.isHost && !room.hostConnected && isFirebaseConnected.value,
+  (hostOffline) => {
+    if (hostOffline) {
+      _leaveButtonTimer = setTimeout(() => { showLeaveButton.value = true }, 60_000)
+    } else {
+      clearTimeout(_leaveButtonTimer)
+      showLeaveButton.value = false
+    }
+  }
+)
 
 // Party panel
 const showPartyPanel = ref(false)
@@ -198,6 +215,7 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
             <div class="disconnect-spinner"></div>
             <p class="disconnect-title">Host ขาดการเชื่อมต่อ</p>
             <p class="disconnect-sub">กำลัง Reconnect...</p>
+            <button v-if="showLeaveButton" class="disconnect-leave-btn" @click="room.leave()">ออกจากตี้</button>
           </div>
         </div>
       </Transition>
@@ -685,6 +703,18 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
   margin: 0;
   letter-spacing: 1px;
 }
+.disconnect-leave-btn {
+  margin-top: 8px;
+  padding: 8px 24px;
+  background: rgba(180,60,40,0.15);
+  border: 1px solid rgba(200,80,60,0.5);
+  border-radius: 8px;
+  color: #ff8070;
+  font-size: 13px;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+.disconnect-leave-btn:hover { background: rgba(180,60,40,0.3); }
 
 .notif-container {
   position: fixed;

@@ -1,10 +1,10 @@
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onActivated } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onActivated, inject } from 'vue'
 
 defineOptions({ name: 'Quest' })
 import ancientData from '@/assets/files/ancient-quest-book.json'
 import wildspireData from '@/assets/files/wildspire_book.json'
-import { showQuestEffects } from '@/stores/settings'
+import { showQuestEffects, soundEnabled, soundVolume } from '@/stores/settings'
 import { hunter, loadHunter, saveHunter } from '@/stores/hunter'
 import monsterInfoData from '@/assets/files/monster_info.json'
 import timeCardData from '@/assets/files/time_card_management.json'
@@ -21,6 +21,7 @@ import { openCraftLookup } from '@/composables/useCraftLookup'
 
 const room = useRoomStore()
 const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
+const addNotif = inject('addNotif', () => {})
 
 // Coop
 const showCoopLobby = ref(false)
@@ -91,6 +92,7 @@ const handleJoinQuest = async () => {
     showCoopLobby.value = true
   } catch (e) {
     joinError.value = e.message
+    addNotif(`❌ ${e.message}`, 'error')
   } finally {
     joinLoading.value = false
   }
@@ -104,6 +106,16 @@ const selectedBook = ref(null)
 const selectedMonster = ref(null)
 const selectedQuest = ref(null)
 const currentDialogId = ref(null)
+
+watch(() => room.inRoom, (inRoom, wasInRoom) => {
+  if (wasInRoom && !inRoom) {
+    phase.value = 'book'
+    selectedBook.value = null
+    selectedMonster.value = null
+    selectedQuest.value = null
+    currentDialogId.value = null
+  }
+})
 
 const books = [
   { id: 'ancient', name: 'Ancient Forest', data: ancientData, color: '#2d5a1b', accent: '#5aab2e' },
@@ -121,7 +133,14 @@ const selectBook = (book) => {
   phase.value = 'monster'
 }
 
-const monsters = computed(() => selectedBook.value?.data || [])
+const WILDSPIRE_ENABLED_MONSTERS = [6]
+
+const monsters = computed(() => {
+  if (!selectedBook.value) return []
+  if (selectedBook.value.id === 'wildspire')
+    return selectedBook.value.data.filter(m => WILDSPIRE_ENABLED_MONSTERS.includes(m.monster_id))
+  return selectedBook.value.data
+})
 
 const selectMonster = (monster) => {
   selectedMonster.value = monster
@@ -244,8 +263,9 @@ const playOutcomeSound = (type) => {
     outcomeAudio.value.pause()
     outcomeAudio.value = null
   }
+  if (!soundEnabled.value) return
   const audio = new Audio(`${import.meta.env.BASE_URL}assets/sounds/hunting_phase/${type === 'complete' ? 'quest_complete' : 'quest_failed'}.mp3`)
-  audio.volume = 0.1
+  audio.volume = soundVolume.value
   audio.play().catch(() => {})
   outcomeAudio.value = audio
 }
@@ -909,33 +929,13 @@ const onFail = () => {
   resetToBookPhase()
 }
 
+
 const goBack = () => {
   const map = {
-    reward: () => {
-      phase.value = 'huntingPanel'
-    },
-    huntingPanel: () => {
-      phase.value = 'hunting'
-    },
-    hunting: () => {
-      phase.value = 'dialog'
-    },
-    dialog: () => {
-      phase.value = 'detail'
-      currentDialogId.value = null
-    },
-    detail: () => {
-      phase.value = 'quest'
-      selectedQuest.value = null
-    },
-    quest: () => {
-      phase.value = 'monster'
-      selectedMonster.value = null
-    },
-    monster: () => {
-      phase.value = 'book'
-      selectedBook.value = null
-    },
+    huntingPanel: () => { phase.value = 'hunting' },
+    detail: () => { phase.value = 'quest'; selectedQuest.value = null },
+    quest: () => { phase.value = 'monster'; selectedMonster.value = null },
+    monster: () => { phase.value = 'book'; selectedBook.value = null },
   }
   map[phase.value]?.()
 }
@@ -1925,7 +1925,7 @@ const openPackDrawer = () => {
   <div class="quest-container">
     <!-- ═══════════ NAV BAR ═══════════ -->
     <div class="nav-bar" v-if="phase !== 'book'">
-      <button class="btn-back" @click="goBack">
+      <button v-if="['monster', 'quest', 'detail', 'huntingPanel'].includes(phase)" class="btn-back" @click="goBack">
         <span class="back-arrow">◄</span>
         <span class="back-text">Back</span>
       </button>
@@ -2010,17 +2010,11 @@ const openPackDrawer = () => {
           v-for="book in books"
           :key="book.id"
           class="book-card"
-          :class="{ 'book-wip': book.id === 'wildspire' }"
           :style="{ '--book-accent': book.accent, '--book-bg': book.color }"
-          @click="book.id !== 'wildspire' && selectBook(book)"
+          @click="selectBook(book)"
         >
           <div class="book-spine"></div>
           <div class="book-body">
-            <!-- WIP overlay -->
-            <div v-if="book.id === 'wildspire'" class="book-wip-overlay">
-              <span class="book-wip-icon">🔨</span>
-              <span class="book-wip-text">กำลังพัฒนา</span>
-            </div>
             <div class="book-seal">
               <img
                 class="seal-inner"
@@ -4086,12 +4080,10 @@ const openPackDrawer = () => {
   white-space: nowrap;
   min-height: 44px;
 }
-
 .btn-back:hover {
   border-color: #c89b3c;
   box-shadow: 0 0 10px rgba(200, 155, 60, 0.4);
 }
-
 .back-arrow {
   font-size: 10px;
 }
