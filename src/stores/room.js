@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { isFirebaseConnected } from '@/services/firebase'
-import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds, pushShuffleSignal } from '@/services/roomService'
+import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds, pushShuffleSignal, pushActivationCount } from '@/services/roomService'
 
 export const useRoomStore = defineStore('room', () => {
   const roomCode = ref(null)
@@ -53,6 +53,7 @@ export const useRoomStore = defineStore('room', () => {
   const timeCardState = computed(() => roomData.value?.timeCards ?? null)
   const tcTurnEnds = computed(() => roomData.value?.tcTurnEnds ?? null)
   const shuffleSignal = computed(() => roomData.value?.shuffleSignal ?? null)
+  const activationCount = computed(() => roomData.value?.activationCount ?? 0)
 
   // Reroll request
   const rerollRequest = computed(() => roomData.value?.rerollRequest ?? null)
@@ -373,6 +374,8 @@ export const useRoomStore = defineStore('room', () => {
     syncHuntState, voteOutcome, unvoteOutcome, clearOutcome,
     triggerShuffle: () => roomCode.value ? pushShuffleSignal(roomCode.value) : undefined,
     shuffleSignal,
+    activationCount,
+    syncActivationCount: (count) => roomCode.value ? pushActivationCount(roomCode.value, count) : undefined,
     syncBehaviorDeck,
     syncTrackTokens,
     syncTimeCards, markTcPending, markTcDrawn, clearAllTurnEnds,

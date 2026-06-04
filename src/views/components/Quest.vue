@@ -827,16 +827,20 @@ const isCardInGame = (card) => {
 const drawBehaviorCard = () => {
   if (!room.isHost && room.inRoom) return
   if (behaviorDeck.value.length === 0) return
+  if (!monsterTurnReady.value) return
 
   const card = behaviorDeck.value[0]
   behaviorDeck.value = behaviorDeck.value.slice(1)
   if (currentBehaviorCard.value) behaviorDiscard.value = [...behaviorDiscard.value, currentBehaviorCard.value]
   currentBehaviorCard.value = card
 
+  activationOverride.value = rampageActive.value ? 0 : null
+  rampageActive.value = false
+
   monsterAttackCard.value = card
   showMonsterAttack.value = true
   _pushDeckState()
-
+  _resetActivation()
 }
 
 const removeCardFromDeck = (behavior_name) => {
@@ -956,6 +960,9 @@ const resetToBookPhase = () => {
   tcRevealCurrent.value = null
   _tcAnimatedKeys.clear()
   _tcProcessedKeys.clear()
+  activationRoundsCompleted.value = 0
+  rampageActive.value = false
+  activationOverride.value = null
   phase.value = 'book'
 }
 
@@ -1291,12 +1298,15 @@ const _drawTcCard = (hunterName) => {
   const [card, ...rest] = timeCardDeck.value
   timeCardDeck.value = rest
   timeCardDiscard.value = [card, ...timeCardDiscard.value]
+  if (card.card_name === 'Rampage') rampageActive.value = true
   _pushTimeCardState()
   return card
 }
 
 const endTurn = () => {
   if (myTurnEnded.value || !timeCardDeck.value.length) return
+  if (!currentBehaviorCard.value) return
+  if (activationLimit.value > 0 && monsterTurnReady.value) return
 
   if (!room.inRoom) {
     // Solo: draw and immediately reset (1-hunter round)
@@ -1304,6 +1314,7 @@ const endTurn = () => {
     if (!card) return
     _soloTurnEnded.value = true
     _queueReveal(hunter.value?.hunter_name ?? 'Hunter', card, hunter.value?.hunter_class_id)
+    _incrementActivation()
     setTimeout(() => { _soloTurnEnded.value = false }, 200)
     return
   }
@@ -1315,6 +1326,7 @@ const endTurn = () => {
     if (!card) return
     _tcProcessedKeys.add(String(room.myHunterId))
     room.markTcDrawn?.(room.myHunterId, myName, card)
+    _incrementActivation()
   } else {
     room.markTcPending?.(room.myHunterId, myName)
   }
@@ -1324,6 +1336,34 @@ const endTurn = () => {
 watch(() => room.shuffleSignal, (val) => {
   if (!val || !room.inRoom || room.isHost || _suppressAnimations) return
   _playShuffleAnim()
+})
+
+// ── Activation (Turn Limit) System ───────────────────────
+const activationRoundsCompleted = ref(0)
+const rampageActive = ref(false)      // Rampage time card drawn → next behavior card activations = 0
+const activationOverride = ref(null)  // null = use card value, 0 = Rampage override
+const activationLimit = computed(() => {
+  if (activationOverride.value !== null) return activationOverride.value
+  return currentBehaviorCard.value?.activations ?? 0
+})
+const monsterTurnReady = computed(() =>
+  activationLimit.value === 0 || activationRoundsCompleted.value >= activationLimit.value
+)
+
+const _incrementActivation = () => {
+  activationRoundsCompleted.value++
+  if (room.inRoom && room.isHost) room.syncActivationCount?.(activationRoundsCompleted.value)
+}
+
+const _resetActivation = () => {
+  activationRoundsCompleted.value = 0
+  if (room.inRoom && room.isHost) room.syncActivationCount?.(0)
+}
+
+// Guest syncs from Firebase
+watch(() => room.activationCount, (count) => {
+  if (!room.inRoom || room.isHost) return
+  activationRoundsCompleted.value = count ?? 0
 })
 
 watch(() => room.tcTurnEnds, (ends) => {
@@ -1341,7 +1381,10 @@ watch(() => room.tcTurnEnds, (ends) => {
     if (room.isHost && data.pending && !_tcProcessedKeys.has(hunterId)) {
       _tcProcessedKeys.add(hunterId)
       const card = _drawTcCard(data.hunterName)
-      if (card) room.markTcDrawn?.(hunterId, data.hunterName, card)
+      if (card) {
+        room.markTcDrawn?.(hunterId, data.hunterName, card)
+        _incrementActivation()
+      }
     }
 
     // All: queue animation for newly drawn cards (ไม่แสดงตอน reconnect)
@@ -2746,16 +2789,45 @@ const openPackDrawer = () => {
           </div>
         </div>
 
+        <!-- Rampage Warning -->
+        <div v-if="rampageActive" class="rampage-banner">
+          🔴 <strong>RAMPAGE!</strong> Monster Turn ถัดไป Hunter จะเล่นได้ 0 ครั้ง
+        </div>
+
+        <!-- Activation Tracker -->
+        <div v-if="activationLimit > 0" class="act-tracker">
+          <div class="act-pips">
+            <span
+              v-for="i in activationLimit"
+              :key="i"
+              class="act-pip"
+              :class="{ 'pip-done': i <= activationRoundsCompleted }"
+            ></span>
+          </div>
+          <p class="act-status">
+            <span v-if="!monsterTurnReady" class="act-waiting">
+              Hunter เล่นได้อีก <strong>{{ activationLimit - activationRoundsCompleted }}</strong> รอบ
+            </span>
+            <span v-else class="act-ready-text">✓ Monster Turn พร้อมแล้ว!</span>
+          </p>
+        </div>
+
         <!-- Monster Turn button (Host only) -->
         <button
           v-if="room.isHost || !room.inRoom"
           class="mt-draw-btn"
-          :disabled="behaviorDeck.length === 0"
+          :class="{ 'mt-btn-ready': monsterTurnReady }"
+          :disabled="behaviorDeck.length === 0 || !monsterTurnReady"
           @click="drawBehaviorCard"
         >
           ⚔ Monster Turn
         </button>
-        <p v-else class="mt-guest-hint">รอ Host จั๋วการ์ด Monster</p>
+        <p v-else class="mt-guest-hint">
+          <template v-if="!monsterTurnReady">
+            Hunter เล่นได้อีก {{ activationLimit - activationRoundsCompleted }} รอบ
+          </template>
+          <template v-else>รอ Host จั๋วการ์ด Monster</template>
+        </p>
 
         <!-- Deck management (Host only) -->
         <div v-if="room.isHost || !room.inRoom" class="mt-management">
@@ -3208,10 +3280,11 @@ const openPackDrawer = () => {
             <button
               class="tct-end-btn"
               :class="{ ended: myTurnEnded }"
-              :disabled="myTurnEnded || !timeCardDeck.length"
+              :disabled="myTurnEnded || !timeCardDeck.length || !currentBehaviorCard || (activationLimit > 0 && monsterTurnReady)"
               @click="showConfirmTurn = true"
             >
-              <span v-if="!myTurnEnded">🃏 จบเทิร์น</span>
+              <span v-if="!currentBehaviorCard || (activationLimit > 0 && monsterTurnReady)">⚔ รอ Monster Turn</span>
+              <span v-else-if="!myTurnEnded">🃏 จบเทิร์น</span>
               <span v-else>✓ รอคนอื่น</span>
             </button>
             <button
@@ -5344,6 +5417,66 @@ const openPackDrawer = () => {
 }
 .mt-draw-btn:hover:not(:disabled) { box-shadow: 0 0 20px rgba(255,80,80,0.5); }
 .mt-draw-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.mt-btn-ready {
+  animation: mt-ready-pulse 1.4s ease-in-out infinite;
+  border-color: rgba(255,80,80,0.9) !important;
+}
+@keyframes mt-ready-pulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(255,80,80,0.4); }
+  50%       { box-shadow: 0 0 26px rgba(255,80,80,0.85); }
+}
+
+/* ── Rampage Banner ── */
+.rampage-banner {
+  background: rgba(200, 40, 40, 0.15);
+  border: 1px solid rgba(200, 40, 40, 0.5);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #f07070;
+  text-align: center;
+  animation: rampage-pulse 1.2s ease-in-out infinite;
+}
+@keyframes rampage-pulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(200,40,40,0); }
+  50%       { box-shadow: 0 0 12px rgba(200,40,40,0.4); }
+}
+
+/* ── Activation Tracker ── */
+.act-tracker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.act-pips {
+  display: flex;
+  gap: 8px;
+}
+.act-pip {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(201,162,39,0.2);
+  border: 2px solid rgba(201,162,39,0.35);
+  transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+.act-pip.pip-done {
+  background: #c9a227;
+  border-color: #c9a227;
+  box-shadow: 0 0 8px rgba(201,162,39,0.6);
+}
+.act-status { font-size: 12px; margin: 0; }
+.act-waiting { color: rgba(201,162,39,0.65); }
+.act-ready-text {
+  color: #6fcf97;
+  font-weight: 700;
+  animation: act-ready-glow 1.2s ease-in-out infinite;
+}
+@keyframes act-ready-glow {
+  0%, 100% { opacity: 0.8; }
+  50%       { opacity: 1; }
+}
 .mt-guest-hint { font-size: 11px; color: #7c5a2b; text-align: center; margin: 0; }
 .mt-management { display: flex; gap: 8px; }
 .mt-mgmt-btn {
