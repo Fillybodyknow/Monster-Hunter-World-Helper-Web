@@ -174,6 +174,10 @@ export const pushBehaviorDeck = (code, deckState) =>
 export const pushTrackTokens = (code, pool, tokens) =>
   set(ref(db, `rooms/${code}/trackTokens`), { pool, tokens })
 
+// ── Shuffle Signal ────────────────────────────────────────
+export const pushShuffleSignal = (code) =>
+  set(ref(db, `rooms/${code}/shuffleSignal`), Date.now())
+
 // ── Time Card Deck Sync ───────────────────────────────────
 export const pushTimeCards = (code, deckState) =>
   set(ref(db, `rooms/${code}/timeCards`), deckState)

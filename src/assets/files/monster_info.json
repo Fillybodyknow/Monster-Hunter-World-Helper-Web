@@ -3654,7 +3654,22 @@
       }
     ],
     "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2],
-    "behavior_deck": [],
-    "behavior_special_card": []
+    "behavior_deck": [
+      { "behavior_id": 1,  "behavior_name": "Mud Shake",       "front_card_img": "assets/img/behavior_deck/barroth/mud_shake_front.png",       "back_card_img": "assets/img/behavior_deck/barroth/mud_shake_back.png" },
+      { "behavior_id": 2,  "behavior_name": "Nose Dive",       "front_card_img": "assets/img/behavior_deck/barroth/nose_dive_front.png",       "back_card_img": "assets/img/behavior_deck/barroth/nose_dive_back.png" },
+      { "behavior_id": 3,  "behavior_name": "Rear Slam",       "front_card_img": "assets/img/behavior_deck/barroth/rear_slam_front.png",       "back_card_img": "assets/img/behavior_deck/barroth/rear_slam_back.png" },
+      { "behavior_id": 4,  "behavior_name": "Shoulder Barge",  "front_card_img": "assets/img/behavior_deck/barroth/shoulder_barge_front.png",  "back_card_img": "assets/img/behavior_deck/barroth/shoulder_barge_back.png" },
+      { "behavior_id": 5,  "behavior_name": "Skull Slam",      "front_card_img": "assets/img/behavior_deck/barroth/skull_slam_front.png",      "back_card_img": "assets/img/behavior_deck/barroth/skull_slam_back.png" },
+      { "behavior_id": 6,  "behavior_name": "Steamroller",     "front_card_img": "assets/img/behavior_deck/barroth/steamroller_front.png",     "back_card_img": "assets/img/behavior_deck/barroth/steamroller_back.png" },
+      { "behavior_id": 7,  "behavior_name": "Tail Thrash",     "front_card_img": "assets/img/behavior_deck/barroth/tail_thrash_front.png",     "back_card_img": "assets/img/behavior_deck/barroth/tail_thrash_back.png" },
+      { "behavior_id": 8,  "behavior_name": "Thrash Left",     "front_card_img": "assets/img/behavior_deck/barroth/thrash_left_front.png",     "back_card_img": "assets/img/behavior_deck/barroth/thrash_left_back.png" },
+      { "behavior_id": 9,  "behavior_name": "Thrash Right",    "front_card_img": "assets/img/behavior_deck/barroth/thrash_right_front.png",    "back_card_img": "assets/img/behavior_deck/barroth/thrash_right_back.png" },
+      { "behavior_id": 10, "behavior_name": "Wide Sweep",      "front_card_img": "assets/img/behavior_deck/barroth/wide_sweep_front.png",      "back_card_img": "assets/img/behavior_deck/barroth/wide_sweep_back.png" }
+    ],
+    "behavior_special_card": [
+      { "behavior_id": 11, "behavior_name": "Skull Crush",      "front_card_img": "assets/img/behavior_deck/barroth/skull_crush_front.png",      "back_card_img": "assets/img/behavior_deck/barroth/skull_crush_back.png" },
+      { "behavior_id": 12, "behavior_name": "Furious Trample",  "front_card_img": "assets/img/behavior_deck/barroth/furious_trample_front.png",  "back_card_img": "assets/img/behavior_deck/barroth/furious_trample_back.png" },
+      { "behavior_id": 13, "behavior_name": "Tail Smash",       "front_card_img": "assets/img/behavior_deck/barroth/tail_smash_front.png",       "back_card_img": "assets/img/behavior_deck/barroth/tail_smash_back.png" }
+    ]
   }
 ]

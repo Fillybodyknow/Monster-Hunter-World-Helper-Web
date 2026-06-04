@@ -790,6 +790,28 @@ const addSpecialCardToDeck = (card) => {
   _pushDeckState()
 }
 
+const randomizeSpecialCard = () => {
+  const specials = allSpecialCards.value
+  if (!specials.length) return
+
+  // นำ special card ทุกใบออกจาก deck, discard, banished และ current
+  specials.forEach(card => {
+    behaviorDeck.value = behaviorDeck.value.filter(c => c.behavior_id !== card.behavior_id)
+    behaviorDiscard.value = behaviorDiscard.value.filter(c => c.behavior_id !== card.behavior_id)
+    behaviorBanished.value = behaviorBanished.value.filter(c => c.behavior_id !== card.behavior_id)
+    if (currentBehaviorCard.value?.behavior_id === card.behavior_id) currentBehaviorCard.value = null
+  })
+
+  // สุ่ม 1 ใบจากทั้งหมด
+  const chosen = specials[Math.floor(Math.random() * specials.length)]
+
+  // เพิ่มใบที่สุ่มได้ + สับกองทิ้งกลับเข้า deck
+  behaviorDeck.value = _shuffle([...behaviorDeck.value, ...behaviorDiscard.value, chosen])
+  behaviorDiscard.value = []
+  _pushDeckState()
+  _triggerShuffleAnim()
+}
+
 // Get all special cards for this monster (for add panel)
 const allSpecialCards = computed(() => {
   const info = _getMonsterInfo()
@@ -823,10 +845,31 @@ const removeCardFromDeck = (behavior_name) => {
   _pushDeckState()
 }
 
+const showShuffleAnim = ref(false)
+const shuffleCardBacks = computed(() => {
+  const pool = behaviorDeck.value
+  return Array.from({ length: 6 }, (_, i) => pool[i % Math.max(pool.length, 1)]?.back_card_img ?? null)
+})
+let _shuffleTimer = null
+const _playShuffleAnim = () => {
+  showShuffleAnim.value = false
+
+  requestAnimationFrame(() => {
+    showShuffleAnim.value = true
+    clearTimeout(_shuffleTimer)
+    _shuffleTimer = setTimeout(() => { showShuffleAnim.value = false }, 2000)
+  })
+}
+const _triggerShuffleAnim = () => {
+  _playShuffleAnim()
+  if (room.inRoom && room.isHost) room.triggerShuffle?.()
+}
+
 const reshuffleDiscardIntoDeck = () => {
   behaviorDeck.value = _shuffle([...behaviorDeck.value, ...behaviorDiscard.value])
   behaviorDiscard.value = []
   _pushDeckState()
+  _triggerShuffleAnim()
 }
 
 const discardTopBehaviorCard = () => {
@@ -1278,6 +1321,11 @@ const endTurn = () => {
 }
 
 // Host watches for guest pending requests; all watch for drawn cards to animate
+watch(() => room.shuffleSignal, (val) => {
+  if (!val || !room.inRoom || room.isHost || _suppressAnimations) return
+  _playShuffleAnim()
+})
+
 watch(() => room.tcTurnEnds, (ends) => {
   if (!room.inRoom) return
   if (phase.value !== 'huntingPanel') return
@@ -2765,6 +2813,9 @@ const openPackDrawer = () => {
                   </div>
                 </div>
                 <div v-if="deckManagerTab === 'special'">
+                  <button class="dm-random-special-btn" @click="randomizeSpecialCard">
+                    🎲 สุ่ม Special Card + สับกองทิ้งเข้า Deck
+                  </button>
                   <div v-for="card in allSpecialCards" :key="card.behavior_id" class="dm-card-row">
                     <img :src="getImg(card.front_card_img)" class="dm-card-thumb" :class="{ 'dm-card-banished': !isCardInGame(card) }" />
                     <span class="dm-card-name">{{ card.behavior_name }}</span>
@@ -3641,6 +3692,25 @@ const openPackDrawer = () => {
         </div>
       </div>
     </div>
+
+    <!-- ═══════════ SHUFFLE ANIMATION OVERLAY ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="showShuffleAnim" class="shuf-overlay">
+          <div class="shuf-stage">
+            <!-- Ghost cards fan out -->
+            <div v-for="(back, i) in shuffleCardBacks.slice(1)" :key="i" :class="`shuf-ghost shuf-ghost-${i + 1}`">
+              <img v-if="back" :src="getImg(back)" class="shuf-card-img" />
+            </div>
+            <!-- Top card (back) -->
+            <div class="shuf-top-card">
+              <img v-if="shuffleCardBacks[0]" :src="getImg(shuffleCardBacks[0])" class="shuf-card-img" />
+            </div>
+          </div>
+          <p class="shuf-label">🔀 กำลังสับกอง...</p>
+        </div>
+      </Transition>
+    </teleport>
 
     <!-- ═══════════ TIME CARD REVEAL OVERLAY ═══════════ -->
     <teleport to="body">
@@ -5160,6 +5230,104 @@ const openPackDrawer = () => {
   font-size: 20px;
 }
 .mt-card-back { filter: brightness(0.95); }
+
+/* ── Shuffle Overlay ── */
+.shuf-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1600;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 36px;
+  pointer-events: none;
+}
+.shuf-stage {
+  position: relative;
+  width: min(500px, 94vw);
+  height: min(240px, 48vw);
+}
+.shuf-ghost, .shuf-top-card {
+  position: absolute;
+  width: min(280px, 72vw);
+  height: min(196px, 50vw);
+  border-radius: 12px;
+  overflow: hidden;
+  top: 50%; left: 50%;
+  margin: calc(min(196px, 50vw) / -2) 0 0 calc(min(280px, 72vw) / -2);
+  box-shadow: 0 16px 50px rgba(0,0,0,0.8), 0 4px 12px rgba(0,0,0,0.5);
+}
+.shuf-card-img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Ghost 1: bottom-left → center */
+@keyframes sg1 {
+  0%   { transform: translate(-180px, 55px) rotate(-28deg) scale(0.92); opacity: 0; }
+  8%   { opacity: 1; }
+  65%  { transform: translate(-18px, 6px) rotate(-4deg) scale(1.02); }
+  100% { transform: translate(-5px, 3px) rotate(-3deg) scale(1); opacity: 1; }
+}
+/* Ghost 2: bottom-right → center */
+@keyframes sg2 {
+  0%   { transform: translate(180px, 55px) rotate(28deg) scale(0.92); opacity: 0; }
+  8%   { opacity: 1; }
+  65%  { transform: translate(18px, 6px) rotate(4deg) scale(1.02); }
+  100% { transform: translate(6px, 2px) rotate(3deg) scale(1); opacity: 1; }
+}
+/* Ghost 3: mid-left → center */
+@keyframes sg3 {
+  0%   { transform: translate(-140px, -20px) rotate(-18deg) scale(0.94); opacity: 0; }
+  14%  { opacity: 1; }
+  65%  { transform: translate(-12px, -3px) rotate(-2deg) scale(1.01); }
+  100% { transform: translate(-3px, -4px) rotate(-2deg) scale(1); opacity: 1; }
+}
+/* Ghost 4: mid-right → center */
+@keyframes sg4 {
+  0%   { transform: translate(140px, -20px) rotate(18deg) scale(0.94); opacity: 0; }
+  14%  { opacity: 1; }
+  65%  { transform: translate(12px, -3px) rotate(2deg) scale(1.01); }
+  100% { transform: translate(4px, -3px) rotate(2deg) scale(1); opacity: 1; }
+}
+/* Ghost 5: top-center → center */
+@keyframes sg5 {
+  0%   { transform: translate(0, -90px) rotate(-8deg) scale(0.9); opacity: 0; }
+  20%  { opacity: 1; }
+  65%  { transform: translate(0, -8px) rotate(-1deg) scale(1.01); }
+  100% { transform: translate(-2px, -5px) rotate(-1deg) scale(1); opacity: 1; }
+}
+/* Top card: subtle settle thump */
+@keyframes shuf-top-settle {
+  0%   { transform: scale(1); }
+  80%  { transform: scale(1); }
+  90%  { transform: scale(1.05); box-shadow: 0 16px 50px rgba(0,0,0,0.8), 0 0 20px rgba(201,162,39,0.3); }
+  100% { transform: scale(1); box-shadow: 0 12px 40px rgba(0,0,0,0.75); }
+}
+
+.shuf-ghost-1 { animation: sg1 1.2s cubic-bezier(0.22,1,0.36,1) forwards; z-index:1; }
+.shuf-ghost-2 { animation: sg2 1.2s cubic-bezier(0.22,1,0.36,1) 0.09s forwards; z-index:2; }
+.shuf-ghost-3 { animation: sg3 1.2s cubic-bezier(0.22,1,0.36,1) 0.18s forwards; z-index:3; }
+.shuf-ghost-4 { animation: sg4 1.2s cubic-bezier(0.22,1,0.36,1) 0.27s forwards; z-index:4; }
+.shuf-ghost-5 { animation: sg5 1.2s cubic-bezier(0.22,1,0.36,1) 0.36s forwards; z-index:5; }
+.shuf-top-card {
+  z-index: 10;
+  animation: shuf-top-settle 1.8s ease forwards;
+}
+.shuf-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: #c9a227;
+  margin: 0;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  animation: shuf-label-fade 2.0s ease forwards;
+}
+@keyframes shuf-label-fade {
+  0%   { opacity: 0; transform: translateY(10px); }
+  15%  { opacity: 1;  transform: translateY(0); }
+  75%  { opacity: 1; }
+  100% { opacity: 0; }
+}
 .mt-card-name { font-size: 11px; color: #a88040; margin: 0; text-align: center; }
 .mt-draw-btn {
   padding: 14px;
@@ -5236,6 +5404,20 @@ const openPackDrawer = () => {
 .dm-tab.active { color: #ffd27a; border-bottom: 2px solid #c89b3c; }
 .dm-tab:hover { color: #a88040; }
 .dm-list { overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.dm-random-special-btn {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(120,80,200,0.5);
+  background: rgba(120,80,200,0.15);
+  color: #a98cf0;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.dm-random-special-btn:hover { background: rgba(120,80,200,0.3); }
 .dm-card-row {
   display: flex; align-items: center; gap: 14px;
   padding: 10px 12px; border-radius: 8px;
