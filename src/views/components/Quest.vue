@@ -25,10 +25,14 @@ const addNotif = inject('addNotif', () => {})
 
 // Coop
 const showCoopLobby = ref(false)
+const showCoopModeSelect = ref(false)
 const showJoinInput = ref(false)
 const joinCode = ref('')
 const joinError = ref('')
 const joinLoading = ref(false)
+
+// Quest Mode: 'full' | 'minimal'
+const questMode = ref('full')
 
 const startCoopQuest = async () => {
   if (!hunter.value) return
@@ -194,15 +198,18 @@ const startQuest = () => {
   dialogResourceCounts.value = {}
   showDialogResources.value = false
   initTrackTokens()
-  buildTimeCardDeck()
+  if (questMode.value === 'full') {
+    buildTimeCardDeck()
+  }
   const attempted = getAttempted(selectedMonster.value.monster_id, selectedQuest.value.quest_id)
   currentDialogId.value = selectedQuest.value.starting_point[attempted]
   phase.value = selectedMonster.value.dialog_hunting_phase.includes(currentDialogId.value)
     ? 'hunting'
     : 'dialog'
-  // Co-op: push initial dialog to Firebase so guests can sync
+  // Co-op: push initial dialog and quest mode to Firebase
   if (room.inRoom && room.isHost) {
     room.setCurrentDialog?.(currentDialogId.value)
+    room.syncQuestMode?.(questMode.value)
   }
 }
 
@@ -505,6 +512,7 @@ watch(() => room.joinSignal, () => {
     behaviorDiscard.value = state.discard ?? []
     behaviorBanished.value = state.banished ?? []
     currentBehaviorCard.value = state.current ?? null
+    if (state.specialCard) specialCardOverlayCard.value = state.specialCard
   }
 
   // Restore track tokens จาก sessionStorage (สำหรับ host reconnect)
@@ -530,6 +538,8 @@ watch(() => room.joinSignal, () => {
       timeCardDeck.value = tcState.deck ?? []
       timeCardDiscard.value = tcState.discard ?? []
     }
+    // Restore quest mode จาก Firebase
+    if (room.questModeState) questMode.value = room.questModeState
     // Restore manual outcome state
     const savedOutcome = room.manualOutcomeState
     if (savedOutcome) {
@@ -564,7 +574,13 @@ watch(() => room.syncedDialogId, (dialogId) => {
     // Reconnect: ไปหน้า huntingPanel โดยตรง ข้าม animation
     currentDialogId.value = dialogId
     _applyCurrentHuntState()
-    phase.value = 'huntingPanel'
+    // ถ้าอยู่ใน reward/assign/trade phase อยู่แล้ว ไม่ต้องเขียนทับ
+    const sp = room.syncedPhase
+    if (sp === 'reward' || sp === 'assign' || sp === 'trade') {
+      // _syncToPhase จาก joinSignal watch จัดการ phase ไปแล้ว
+    } else {
+      phase.value = 'huntingPanel'
+    }
   } else {
     _executeDialog(dialogId)
   }
@@ -722,6 +738,9 @@ const behaviorBanished = ref([])   // cards removed from game
 const currentBehaviorCard = ref(null)  // card currently showing
 const showMonsterAttack = ref(false)   // animation overlay
 const monsterAttackCard = ref(null)    // card being drawn
+const monsterAttackStatuses = ref([])  // status snapshot for resolve overlay
+const showStatusResolve = ref(false)   // "Effects Resolved" overlay
+let _statusResolveTimer = null
 const showDeckManager = ref(false)
 const deckManagerTab = ref('deck')     // 'deck' | 'discard' | 'banished'
 
@@ -770,6 +789,7 @@ const _pushDeckState = (specialCard = undefined) => {
     misreadActive: misreadActive.value,
     rampageActive: rampageActive.value,
     activationOverride: activationOverride.value,
+    attackStatuses: monsterAttackStatuses.value.length ? monsterAttackStatuses.value : null,
   }
   if (specialCard !== undefined) payload.specialCard = specialCard
   room.syncBehaviorDeck?.(payload)
@@ -848,6 +868,19 @@ const drawBehaviorCard = () => {
     if (behaviorDeck.value.length === 0) return
   }
 
+  // Snapshot statuses before clearing (for resolve overlay)
+  const resolvedStatuses = [...appliedStatuses.value]
+
+  // Apply and clear all status effects at start of new monster turn
+  if (appliedStatuses.value.length > 0) {
+    // Poison: -2 HP
+    if (appliedStatuses.value.includes(2)) {
+      adjustHpWithFlash(-2)
+    }
+    appliedStatuses.value = []
+    _pushHuntState()
+  }
+
   const card = behaviorDeck.value[0]
   behaviorDeck.value = behaviorDeck.value.slice(1)
   if (currentBehaviorCard.value) behaviorDiscard.value = [...behaviorDiscard.value, currentBehaviorCard.value]
@@ -856,8 +889,13 @@ const drawBehaviorCard = () => {
   activationOverride.value = rampageActive.value ? 0 : null
   rampageActive.value = false
 
-  monsterAttackCard.value = card
-  showMonsterAttack.value = true
+  if (resolvedStatuses.length > 0) {
+    _showStatusResolve(resolvedStatuses, card)
+  } else {
+    monsterAttackCard.value = card
+    showMonsterAttack.value = true
+  }
+
   _pushDeckState()
   _resetActivation()
   // แสดง float bar เฉพาะตอน Hunter มีเทิร์น (monsterTurnReady = false หลัง reset)
@@ -888,6 +926,23 @@ const _playShuffleAnim = () => {
 const _triggerShuffleAnim = () => {
   _playShuffleAnim()
   if (room.inRoom && room.isHost) room.triggerShuffle?.()
+}
+
+// Show "Effects Resolved" overlay then auto-transition to Monster Attack overlay
+const _showStatusResolve = (statuses, card) => {
+  monsterAttackStatuses.value = statuses
+  monsterAttackCard.value = card
+  showStatusResolve.value = true
+  clearTimeout(_statusResolveTimer)
+  _statusResolveTimer = setTimeout(() => {
+    showStatusResolve.value = false
+    showMonsterAttack.value = true
+  }, 2500)
+}
+const skipStatusResolve = () => {
+  clearTimeout(_statusResolveTimer)
+  showStatusResolve.value = false
+  showMonsterAttack.value = true
 }
 
 const reshuffleDiscardIntoDeck = () => {
@@ -932,8 +987,13 @@ watch([() => room.behaviorDeckState, () => room.joinSignal], ([state], [prev]) =
 
   // ถ้าการ์ดเปลี่ยน → แสดง animation + show float bar เฉพาะตอน Hunter มีเทิร์น
   if (newCard && newCard.behavior_id !== oldCard?.behavior_id) {
-    monsterAttackCard.value = newCard
-    showMonsterAttack.value = true
+    const guestStatuses = state.attackStatuses ?? []
+    if (!_suppressAnimations && guestStatuses.length > 0) {
+      _showStatusResolve(guestStatuses, newCard)
+    } else {
+      monsterAttackCard.value = newCard
+      showMonsterAttack.value = true
+    }
     const newLimit = newCard.activations ?? 0
     if (newLimit > 0) floatBarCollapsed.value = false
   }
@@ -1016,6 +1076,7 @@ const resetToBookPhase = () => {
   manualOutcomeCheck.value = null
   if (room.inRoom && room.isHost) room.syncManualOutcome?.(null)
   floatBarCollapsed.value = false
+  questMode.value = 'full'
   phase.value = 'book'
 }
 
@@ -1113,6 +1174,7 @@ const posDotCoords = {
 // Status / Element mark tracking
 const statusMarks = ref({})
 const appliedStatuses = ref([])
+const blastblightActive = computed(() => appliedStatuses.value.includes(5))
 const elementMarks = ref({})
 const triggeringElement = ref(null)
 let _elemAnimTimer = null
@@ -2004,6 +2066,10 @@ watch(canComplete, (val) => {
     manualOutcomeCheck.value = null
     if (room.inRoom && room.isHost) room.syncManualOutcome?.(null)
   }
+  // Minimal mode: HP = 0 → แสดง Slain บน portrait ทันที
+  if (val && questMode.value === 'minimal') {
+    _setManualOutcome('complete')
+  }
 })
 
 // ออกจาก huntingPanel → clear outcome buttons ทันที (ทุก client)
@@ -2026,6 +2092,12 @@ watch(() => room.outcomeSignal, (val) => {
 watch(() => room.manualOutcomeState, (val) => {
   if (!room.inRoom || room.isHost) return
   manualOutcomeCheck.value = val ?? null
+})
+
+// Guest syncs quest mode from host
+watch(() => room.questModeState, (val) => {
+  if (!room.inRoom || room.isHost) return
+  if (val) questMode.value = val
 })
 
 const _incrementActivation = () => {
@@ -3078,19 +3150,42 @@ const openPackDrawer = () => {
       </div>
 
       <div class="embark-mode-row">
-        <button class="btn-embark btn-solo" @click="startQuest">
-          <span class="embark-icon">🗡</span>
-          Solo
-        </button>
-        <button class="btn-embark btn-coop" @click="startCoopQuest">
-          <span class="embark-icon">⚔</span>
-          Co-op
+        <button class="btn-embark btn-coop" @click="showCoopModeSelect = true">
+          <img :src="getImg('assets/img/menu_topbar_icon/quest.png')" class="embark-icon" />
+          Post Quest
         </button>
       </div>
 
     </div>
 
     <CoopLobbyModal :show="showCoopLobby" @start="onCoopStart" @leave="onCoopLeave" />
+
+    <!-- ═══════════ CO-OP QUEST MODE MODAL ═══════════ -->
+    <Teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="showCoopModeSelect" class="cqm-overlay" @click.self="showCoopModeSelect = false; questMode = 'full'">
+          <div class="cqm-modal">
+            <p class="cqm-title">เลือก Quest Mode</p>
+            <div class="qmode-options">
+              <button class="qmode-btn" :class="{ 'qmode-active': questMode === 'full' }" @click="questMode = 'full'">
+                <span class="qmode-icon">⚔</span>
+                <span class="qmode-name">Full</span>
+                <span class="qmode-desc">Time Card · Track Token · Behavior Deck · Hunter Turn</span>
+              </button>
+              <button class="qmode-btn" :class="{ 'qmode-active': questMode === 'minimal' }" @click="questMode = 'minimal'">
+                <span class="qmode-icon">🗡</span>
+                <span class="qmode-name">Minimal</span>
+                <span class="qmode-desc">HP · Part Damage · Status · Element เท่านั้น</span>
+              </button>
+            </div>
+            <div class="cqm-actions">
+              <button class="coop-mode-cancel" @click="showCoopModeSelect = false; questMode = 'full'">ยกเลิก</button>
+              <button class="coop-mode-confirm" @click="showCoopModeSelect = false; startCoopQuest()">สร้าง Lobby</button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- ═══════════ DIALOG PHASE ═══════════ -->
     <div v-if="phase === 'dialog' && currentDialog" class="phase-dialog">
@@ -3218,7 +3313,7 @@ const openPackDrawer = () => {
       </div>
 
       <!-- Time Card Panel -->
-      <div class="tc-panel">
+      <div v-if="questMode === 'full'" class="tc-panel">
         <div class="tc-header">
           <span class="tc-label">⏳ Time Cards</span>
           <div class="tc-deck-display">
@@ -3517,7 +3612,7 @@ const openPackDrawer = () => {
       </div>
 
       <!-- Monster Turn (after map) -->
-      <div v-if="behaviorDeck.length > 0 || currentBehaviorCard" class="monster-turn-section">
+      <div v-if="questMode === 'full' && (behaviorDeck.length > 0 || currentBehaviorCard)" class="monster-turn-section">
         <p class="hunt-result-label">— Monster Turn —</p>
 
         <div class="mt-cards">
@@ -3548,6 +3643,22 @@ const openPackDrawer = () => {
         <!-- Rampage Warning -->
         <div v-if="rampageActive" class="rampage-banner">
           🔴 <strong>RAMPAGE!</strong> Monster Turn ถัดไป Hunter จะเล่นได้ 0 ครั้ง
+        </div>
+
+        <!-- Active Status Effects on Monster -->
+        <div v-if="appliedStatuses.length > 0" class="status-badge-row">
+          <div
+            v-for="sid in appliedStatuses"
+            :key="sid"
+            class="status-badge"
+            :class="`status-badge-${sid}`"
+          >
+            <img :src="getImg(getStatusEffect(sid)?.thumbnail)" class="status-badge-icon" />
+            <div class="status-badge-info">
+              <span class="status-badge-name">{{ getStatusEffect(sid)?.effect_name }}</span>
+              <span class="status-badge-effect">{{ getStatusEffect(sid)?.monster_suffer }}</span>
+            </div>
+          </div>
         </div>
 
         <!-- Recovery Pending -->
@@ -3895,9 +4006,9 @@ const openPackDrawer = () => {
                     />
                   </div>
                   <div class="part-card-armor-wrap">
-                    <div class="armor-element-card">
+                    <div class="armor-element-card" :class="{ 'armor-blastblight': blastblightActive && partData.armor > 0 }">
                       <img :src="getImg('assets/img/bonus_armor.png')" class="armor-base" />
-                      <span class="element-value">{{ partData.armor }}</span>
+                      <span class="element-value">{{ blastblightActive ? Math.max(0, partData.armor - 1) : partData.armor }}</span>
                     </div>
                   </div>
                   <!-- Mini position diagram -->
@@ -4020,7 +4131,7 @@ const openPackDrawer = () => {
       <!-- end info-parts-row -->
 
       <!-- Time Card Turn -->
-      <div v-if="timeCardDeck.length > 0 || timeCardDiscard.length > 0" class="tct-section">
+      <div v-if="questMode === 'full' && (timeCardDeck.length > 0 || timeCardDiscard.length > 0)" class="tct-section">
         <p class="hunt-result-label">— Time Card —</p>
         <div class="tct-deck-row">
           <div class="tct-deck-wrap">
@@ -4093,6 +4204,54 @@ const openPackDrawer = () => {
               <span v-if="i > potionCount" class="faint-x">✕</span>
             </div>
           </div>
+        </div>
+
+        <!-- Minimal Mode Special Card -->
+        <div v-if="questMode === 'minimal' && specialCardOverlayCard" class="minimal-special-card-wrap">
+          <p class="minimal-special-label">⚔ Special Attack</p>
+          <div class="minimal-special-card">
+            <img :src="getImg(specialCardOverlayCard.front_card_img)" class="minimal-special-img" />
+            <span class="minimal-special-name">{{ specialCardOverlayCard.behavior_name }}</span>
+          </div>
+        </div>
+
+        <!-- Minimal Mode Outcome Buttons -->
+        <div v-if="questMode === 'minimal'" class="minimal-outcome-wrap">
+          <!-- Complete: auto-detect HP=0 -->
+          <button
+            v-if="canComplete"
+            class="minimal-outcome-btn minimal-complete"
+            :class="{ 'outcome-voted': room.myOutcomeVote === 'complete' }"
+            @click="room.inRoom ? toggleVote('complete') : requestOutcome('complete')"
+          >
+            <span class="result-icon">✦</span> Quest Complete
+            <span v-if="room.inRoom && Object.values(room.outcomeVotes ?? {}).filter(v => v === 'complete').length > 0" class="outcome-vote-count">
+              {{ Object.values(room.outcomeVotes ?? {}).filter(v => v === 'complete').length }}/{{ room.hunterCount }}
+            </span>
+          </button>
+          <!-- Failed: auto-detect Faint=3 -->
+          <button
+            v-if="canFail"
+            class="minimal-outcome-btn minimal-failed"
+            :class="{ 'outcome-voted': room.myOutcomeVote === 'fail' }"
+            @click="room.inRoom ? toggleVote('fail') : requestOutcome('fail')"
+          >
+            <span class="result-icon">💀</span> Quest Failed
+            <span v-if="room.inRoom && Object.values(room.outcomeVotes ?? {}).filter(v => v === 'fail').length > 0" class="outcome-vote-count">
+              {{ Object.values(room.outcomeVotes ?? {}).filter(v => v === 'fail').length }}/{{ room.hunterCount }}
+            </span>
+          </button>
+          <!-- Time Out: always visible -->
+          <button
+            class="minimal-outcome-btn minimal-timeout"
+            :class="{ 'outcome-voted': room.myOutcomeVote === 'fail' }"
+            @click="room.inRoom ? toggleVote('fail') : requestOutcome('fail')"
+          >
+            <span class="result-icon">⏱</span> Time Out
+            <span v-if="room.inRoom && Object.values(room.outcomeVotes ?? {}).filter(v => v === 'fail').length > 0" class="outcome-vote-count">
+              {{ Object.values(room.outcomeVotes ?? {}).filter(v => v === 'fail').length }}/{{ room.hunterCount }}
+            </span>
+          </button>
         </div>
 
       </div>
@@ -4603,9 +4762,9 @@ const openPackDrawer = () => {
                         <img v-if="getPartMeta(partData.part_id)" :src="getImg(getPartMeta(partData.part_id).thumbnail)" class="part-icon-img" :class="{ 'part-icon-broken': brokenParts[position] }" />
                       </div>
                       <div class="part-card-armor-wrap">
-                        <div class="armor-element-card">
+                        <div class="armor-element-card" :class="{ 'armor-blastblight': blastblightActive && partData.armor > 0 }">
                           <img :src="getImg('assets/img/bonus_armor.png')" class="armor-base" />
-                          <span class="element-value">{{ partData.armor }}</span>
+                          <span class="element-value">{{ blastblightActive ? Math.max(0, partData.armor - 1) : partData.armor }}</span>
                         </div>
                       </div>
                       <div class="part-mini-diagram">
@@ -5054,7 +5213,7 @@ const openPackDrawer = () => {
     <!-- ═══════════ PART BREAK TOKEN FLASH OVERLAY ═══════════ -->
     <teleport to="body">
       <Transition name="tc-hp-flash">
-        <div v-if="tcPartFlash" class="tc-part-flash-overlay"
+        <div v-if="tcPartFlash && questMode !== 'minimal'" class="tc-part-flash-overlay"
           :class="tcPartFlash.broken ? 'tc-part-shatter' : (tcPartFlash.delta > 0 ? 'tc-part-add' : 'tc-part-remove')">
           <div class="tc-part-icon-wrap" :class="{ 'tc-part-icon-hit': !tcPartFlash.broken }">
             <!-- Shatter shards (broken only) -->
@@ -5121,7 +5280,7 @@ const openPackDrawer = () => {
     <!-- ═══════════ TC HP FLASH OVERLAY ═══════════ -->
     <teleport to="body">
       <Transition name="tc-hp-flash">
-        <div v-if="tcHpFlash" class="tc-hp-flash-overlay" :class="tcHpFlash.type === 'heal' ? 'tc-hp-heal' : 'tc-hp-dmg'">
+        <div v-if="tcHpFlash && questMode !== 'minimal'" class="tc-hp-flash-overlay" :class="tcHpFlash.type === 'heal' ? 'tc-hp-heal' : 'tc-hp-dmg'">
           <img v-if="selectedMonster" :src="getImg(selectedMonster.thumbnail)" class="tc-hp-monster-icon" />
           <span class="tc-hp-value">{{ tcHpFlash.type === 'heal' ? '+' : '−' }}{{ tcHpFlash.delta }}</span>
           <div v-if="tcHpFlash.prevHp !== null" class="tc-hp-bar-wrap">
@@ -5159,7 +5318,7 @@ const openPackDrawer = () => {
     <!-- ═══════════ FLOATING TURN BAR ═══════════ -->
     <teleport to="body">
       <div
-        v-if="phase === 'huntingPanel' && (timeCardDeck.length > 0 || timeCardDiscard.length > 0)"
+        v-if="questMode === 'full' && phase === 'huntingPanel' && (timeCardDeck.length > 0 || timeCardDiscard.length > 0)"
         class="float-turn-bar"
         :class="{ 'float-turn-bar-collapsed': floatBarCollapsed }"
       >
@@ -5243,7 +5402,7 @@ const openPackDrawer = () => {
     <teleport to="body">
       <Transition name="slain-fade">
         <div
-          v-if="room.inRoom && phase === 'huntingPanel'"
+          v-if="questMode === 'full' && room.inRoom && phase === 'huntingPanel'"
           class="party-strip"
         >
           <div
@@ -5274,7 +5433,7 @@ const openPackDrawer = () => {
     <!-- ═══════════ END TURN CONFIRM ═══════════ -->
     <teleport to="body">
       <Transition name="slain-fade">
-        <div v-if="showConfirmTurn" class="ct-overlay" @click.self="showConfirmTurn = false">
+        <div v-if="questMode === 'full' && showConfirmTurn" class="ct-overlay" @click.self="showConfirmTurn = false">
           <div class="ct-modal">
             <p class="ct-title">🃏 จบเทิร์น?</p>
             <p class="ct-sub">จั๋ว Time Card 1 ใบจากกอง (เหลือ {{ timeCardDeck.length }} ใบ)</p>
@@ -5286,6 +5445,32 @@ const openPackDrawer = () => {
               <button class="ct-btn ct-confirm" @click="endTurn(); showConfirmTurn = false">ยืนยัน</button>
               <button class="ct-btn ct-cancel" @click="showConfirmTurn = false">ยกเลิก</button>
             </div>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ STATUS RESOLVE OVERLAY ═══════════ -->
+    <teleport to="body">
+      <Transition name="ma-trans">
+        <div v-if="showStatusResolve" class="sr-overlay" @click="skipStatusResolve">
+          <div class="sr-content">
+            <p class="sr-label">✦ Status Effects Resolved</p>
+            <div class="sr-list">
+              <div v-for="sid in monsterAttackStatuses" :key="sid" class="sr-item">
+                <img :src="getImg(getStatusEffect(sid)?.thumbnail)" class="sr-icon" />
+                <div class="sr-info">
+                  <span class="sr-name">{{ getStatusEffect(sid)?.effect_name }}</span>
+                  <span class="sr-result">
+                    <template v-if="sid === 2">Monster เสีย <strong>2 HP</strong></template>
+                    <template v-else-if="sid === 5">เกราะทุกส่วน <strong>+1</strong> กลับสู่ปกติ</template>
+                    <template v-else>ถูกล้างออก</template>
+                  </span>
+                </div>
+                <span class="sr-check">✓</span>
+              </div>
+            </div>
+            <p class="sr-hint">แตะเพื่อข้าม</p>
           </div>
         </div>
       </Transition>
@@ -6426,7 +6611,138 @@ const openPackDrawer = () => {
 
 .embark-icon {
   font-size: 20px;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
+
+/* ── Co-op Quest Mode Modal ── */
+.cqm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3100;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.cqm-modal {
+  background: rgba(28,18,8,0.98);
+  border: 1px solid rgba(200,155,60,0.35);
+  border-radius: 16px;
+  padding: 24px 20px;
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+}
+.cqm-title {
+  font-size: 13px;
+  color: rgba(200,155,60,0.7);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin: 0;
+  text-align: center;
+}
+.cqm-actions {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 8px;
+}
+.coop-mode-cancel {
+  padding: 10px;
+  background: rgba(60,40,20,0.6);
+  border: 1px solid rgba(180,130,60,0.2);
+  border-radius: 8px;
+  color: rgba(200,155,60,0.6);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.coop-mode-cancel:hover {
+  border-color: rgba(180,130,60,0.4);
+  color: rgba(200,155,60,0.9);
+}
+.coop-mode-confirm {
+  padding: 10px;
+  background: rgba(180,130,60,0.15);
+  border: 1px solid rgba(200,155,60,0.5);
+  border-radius: 8px;
+  color: rgba(230,185,80,1);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.coop-mode-confirm:hover {
+  background: rgba(180,130,60,0.3);
+  border-color: rgba(220,175,80,0.8);
+}
+
+/* ── Quest Mode Selector ── */
+.qmode-selector {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.qmode-label {
+  font-size: 11px;
+  color: rgba(200,155,60,0.6);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin: 0;
+  text-align: center;
+}
+.qmode-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.qmode-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 10px;
+  background: rgba(20,15,8,0.8);
+  border: 1px solid rgba(200,155,60,0.2);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.qmode-btn:hover {
+  border-color: rgba(200,155,60,0.5);
+  background: rgba(40,28,12,0.9);
+}
+.qmode-active {
+  border-color: #c89b3c !important;
+  background: rgba(200,155,60,0.12) !important;
+  box-shadow: 0 0 12px rgba(200,155,60,0.25);
+}
+.qmode-icon {
+  font-size: 20px;
+}
+.qmode-name {
+  font-size: 14px;
+  font-weight: bold;
+  color: #c89b3c;
+  letter-spacing: 1px;
+}
+.qmode-desc {
+  font-size: 10px;
+  color: rgba(200,155,60,0.5);
+  text-align: center;
+  line-height: 1.4;
+}
+.qmode-active .qmode-name { color: #ffd27a; }
+.qmode-active .qmode-desc { color: rgba(255,210,122,0.7); }
 
 .embark-mode-row {
   display: grid;
@@ -6849,6 +7165,139 @@ const openPackDrawer = () => {
 @keyframes mt-ready-pulse {
   0%, 100% { box-shadow: 0 0 10px rgba(255,80,80,0.4); }
   50%       { box-shadow: 0 0 26px rgba(255,80,80,0.85); }
+}
+
+/* ── Status Effect Badges (Behavior card panel) ── */
+.status-badge-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.status-badge {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.status-badge-icon {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.status-badge-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.status-badge-name {
+  font-size: 11px;
+  font-weight: bold;
+  color: #c084fc;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.status-badge-effect {
+  font-size: 12px;
+  color: #d8b4fe;
+  line-height: 1.5;
+}
+/* Poison gets green tint */
+.status-badge-2 { background: rgba(34,197,94,0.1); border-color: rgba(34,197,94,0.35); }
+.status-badge-2 .status-badge-name { color: #4ade80; }
+.status-badge-2 .status-badge-effect { color: #86efac; }
+/* Blastblight gets orange tint */
+.status-badge-5 { background: rgba(249,115,22,0.1); border-color: rgba(249,115,22,0.35); }
+.status-badge-5 .status-badge-name { color: #fb923c; }
+.status-badge-5 .status-badge-effect { color: #fdba74; }
+
+/* ── Status Resolve Overlay ── */
+.sr-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 479;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  cursor: pointer;
+}
+.sr-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: min(340px, 90vw);
+}
+.sr-label {
+  font-size: 13px;
+  letter-spacing: 4px;
+  color: #a78bfa;
+  text-transform: uppercase;
+  margin: 0;
+}
+.sr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+.sr-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(30,20,50,0.7);
+  border: 1px solid rgba(168,85,247,0.4);
+  border-radius: 10px;
+  padding: 10px 14px;
+  animation: sr-item-in 0.35s ease both;
+}
+@keyframes sr-item-in {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.sr-icon {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.sr-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+.sr-name {
+  font-size: 12px;
+  font-weight: bold;
+  color: #c084fc;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.sr-result {
+  font-size: 12px;
+  color: #e2d5f8;
+}
+.sr-result strong { color: #f9a8d4; }
+.sr-check {
+  font-size: 16px;
+  color: #4ade80;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+.sr-hint {
+  font-size: 10px;
+  color: rgba(168,85,247,0.4);
+  letter-spacing: 2px;
+  margin: 0;
+  animation: cml-pulse 1.5s ease-in-out infinite;
 }
 
 /* ── Rampage Banner ── */
@@ -8072,6 +8521,10 @@ const openPackDrawer = () => {
   gap: 14px;
   position: relative;
   z-index: 1;
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 16px 8px;
+  width: 100%;
 }
 
 .ma-label {
@@ -9284,6 +9737,90 @@ const openPackDrawer = () => {
   margin: 0;
 }
 
+/* ── Minimal Mode Special Card ── */
+.minimal-special-card-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 0 4px;
+  border-top: 1px solid rgba(200,155,60,0.15);
+}
+.minimal-special-label {
+  font-size: 10px;
+  color: rgba(200,155,60,0.55);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin: 0;
+}
+.minimal-special-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.minimal-special-img {
+  width: 120px;
+  border-radius: 8px;
+  border: 1px solid rgba(200,155,60,0.3);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+}
+.minimal-special-name {
+  font-size: 12px;
+  color: rgba(230,185,80,0.85);
+  text-align: center;
+}
+
+/* ── Minimal Mode Outcome Buttons ── */
+.minimal-outcome-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding-top: 4px;
+}
+.minimal-outcome-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 10px;
+  border: none;
+  font-size: 15px;
+  font-weight: bold;
+  font-family: inherit;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.minimal-complete {
+  background: linear-gradient(135deg, rgba(34,197,94,0.25), rgba(21,128,61,0.35));
+  border: 1px solid rgba(34,197,94,0.6);
+  color: #4ade80;
+}
+.minimal-complete:hover { background: linear-gradient(135deg, rgba(34,197,94,0.4), rgba(21,128,61,0.5)); }
+.minimal-failed {
+  background: linear-gradient(135deg, rgba(239,68,68,0.25), rgba(153,27,27,0.35));
+  border: 1px solid rgba(239,68,68,0.6);
+  color: #f87171;
+}
+.minimal-failed:hover { background: linear-gradient(135deg, rgba(239,68,68,0.4), rgba(153,27,27,0.5)); }
+.minimal-timeout {
+  background: linear-gradient(135deg, rgba(234,179,8,0.15), rgba(161,98,7,0.25));
+  border: 1px solid rgba(234,179,8,0.4);
+  color: #fbbf24;
+}
+.minimal-timeout:hover { background: linear-gradient(135deg, rgba(234,179,8,0.3), rgba(161,98,7,0.4)); }
+.minimal-outcome-confirmed {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(34,197,94,0.12);
+  border: 1px solid rgba(34,197,94,0.4);
+  color: #86efac;
+  font-size: 13px;
+  text-align: center;
+  animation: rampage-pulse 1.5s ease-in-out infinite;
+}
+
 .faint-tracker {
   display: flex;
   align-items: center;
@@ -10246,6 +10783,12 @@ const openPackDrawer = () => {
 .part-card-armor-wrap {
   display: flex;
   align-items: center;
+}
+.armor-blastblight {
+  filter: drop-shadow(0 0 4px rgba(249,115,22,0.8));
+}
+.armor-blastblight .element-value {
+  color: #fb923c;
 }
 
 .armor-element-card {

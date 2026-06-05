@@ -204,6 +204,10 @@ export const pushTcDrawn = (code, hunterId, hunterName, card) =>
 export const clearTcTurnEnds = (code) =>
   remove(ref(db, `rooms/${code}/tcTurnEnds`))
 
+// ── Quest Mode ────────────────────────────────────────────
+export const pushQuestMode = (code, mode) =>
+  set(ref(db, `rooms/${code}/questMode`), mode)
+
 // ── Reroll Request ────────────────────────────────────────
 export const pushRerollRequest = (code, hunterId, hunterName) =>
   set(ref(db, `rooms/${code}/rerollRequest`), { requesterId: hunterId, requesterName: hunterName, approvals: {} })
