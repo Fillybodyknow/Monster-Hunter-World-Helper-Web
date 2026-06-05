@@ -530,6 +530,12 @@ watch(() => room.joinSignal, () => {
       timeCardDeck.value = tcState.deck ?? []
       timeCardDiscard.value = tcState.discard ?? []
     }
+    // Restore manual outcome state
+    const savedOutcome = room.manualOutcomeState
+    if (savedOutcome) {
+      manualOutcomeCheck.value = savedOutcome
+      floatBarCollapsed.value = false
+    }
     pendingAction.value = null
     tiedActions.value = []
     _syncToPhase(dialogId, true)
@@ -854,6 +860,8 @@ const drawBehaviorCard = () => {
   showMonsterAttack.value = true
   _pushDeckState()
   _resetActivation()
+  // แสดง float bar เฉพาะตอน Hunter มีเทิร์น (monsterTurnReady = false หลัง reset)
+  if (!monsterTurnReady.value) floatBarCollapsed.value = false
 }
 
 const removeCardFromDeck = (behavior_name) => {
@@ -922,11 +930,13 @@ watch([() => room.behaviorDeckState, () => room.joinSignal], ([state], [prev]) =
     }, 4000)
   }
 
-  // ถ้าการ์ดเปลี่ยน → แสดง animation เหมือน Host
+  // ถ้าการ์ดเปลี่ยน → แสดง animation + show float bar เฉพาะตอน Hunter มีเทิร์น
   if (newCard && newCard.behavior_id !== oldCard?.behavior_id) {
     monsterAttackCard.value = newCard
     showMonsterAttack.value = true
-    }
+    const newLimit = newCard.activations ?? 0
+    if (newLimit > 0) floatBarCollapsed.value = false
+  }
 
   currentBehaviorCard.value = newCard
 }, { immediate: true, deep: true })
@@ -1003,6 +1013,9 @@ const resetToBookPhase = () => {
   recoveryHpSnapshot.value = null
   tcHpFlash.value = null
   activationOverride.value = null
+  manualOutcomeCheck.value = null
+  if (room.inRoom && room.isHost) room.syncManualOutcome?.(null)
+  floatBarCollapsed.value = false
   phase.value = 'book'
 }
 
@@ -1243,6 +1256,14 @@ const redCardCounts = ref({})
 const showLastDiscard = ref(false)
 const showConfirmTurn = ref(false)
 const floatBarCollapsed = ref(false)
+const floatToggleLabel = computed(() => {
+  if (floatOutcomeState.value === 'complete') return '✦ Quest Complete'
+  if (floatOutcomeState.value === 'failed')   return '✕ Quest Failed'
+  if (floatOutcomeState.value === 'timeout')  return '⏱ Time Out'
+  if (!currentBehaviorCard.value || (activationLimit.value > 0 && monsterTurnReady.value)) return '⚔ รอ Monster Turn'
+  if (myTurnEnded.value) return '✓ รอคนอื่น'
+  return '🃏 จบเทิร์น'
+})
 const showDiscardCount = ref(false)
 const discardCountInput = ref(1)
 
@@ -1879,7 +1900,7 @@ const _drawTcCard = (hunterName, hunterId = null) => {
 }
 
 const endTurn = () => {
-  if (myTurnEnded.value || !timeCardDeck.value.length) return
+  if (myTurnEnded.value) return
   if (!currentBehaviorCard.value) return
   if (activationLimit.value > 0 && monsterTurnReady.value) return
 
@@ -1891,12 +1912,20 @@ const endTurn = () => {
   }
 
   if (!room.inRoom) {
-    // Solo: draw and immediately reset (1-hunter round)
-    const card = _drawTcCard(hunter.value?.hunter_name ?? 'Hunter')
-    if (!card) return
+    // Solo: draw card ถ้ายังมี, จากนั้น check outcome
+    const hunterName = hunter.value?.hunter_name ?? 'Hunter'
+    const deckWasEmpty = timeCardDeck.value.length === 0
+    if (!deckWasEmpty) {
+      const card = _drawTcCard(hunterName)
+      if (card) _queueReveal(hunterName, card, hunter.value?.hunter_class_id)
+    }
     _soloTurnEnded.value = true
-    _queueReveal(hunter.value?.hunter_name ?? 'Hunter', card, hunter.value?.hunter_class_id)
     _incrementActivation()
+    if (canComplete.value) {
+      _setManualOutcome('complete')
+    } else if (!canFail.value && deckWasEmpty && currentBehaviorCard.value) {
+      _setManualOutcome('timeout')
+    }
     setTimeout(() => { _soloTurnEnded.value = false }, 200)
     return
   }
@@ -1904,11 +1933,19 @@ const endTurn = () => {
   const myName = room.myHunter?.hunter_name ?? 'Hunter'
 
   if (room.isHost) {
-    const card = _drawTcCard(myName, room.myHunterId)
-    if (!card) return
-    _tcProcessedKeys.add(String(room.myHunterId))
-    room.markTcDrawn?.(room.myHunterId, myName, card)
+    const deckWasEmpty = timeCardDeck.value.length === 0
+    if (!deckWasEmpty) {
+      const card = _drawTcCard(myName, room.myHunterId)
+      if (card) {
+        _tcProcessedKeys.add(String(room.myHunterId))
+        room.markTcDrawn?.(room.myHunterId, myName, card)
+      }
+    } else {
+      _tcProcessedKeys.add(String(room.myHunterId))
+      room.markTcDrawn?.(room.myHunterId, myName, null)
+    }
     _incrementActivation()
+    _checkOutcomeAfterTurn(deckWasEmpty)
   } else {
     room.markTcPending?.(room.myHunterId, myName)
   }
@@ -1941,11 +1978,15 @@ const monsterTurnReady = computed(() =>
   activationLimit.value === 0 || activationRoundsCompleted.value >= activationLimit.value
 )
 
+const canComplete = computed(() => huntingHp.value === 0)
+const canFail = computed(() => faintCount.value >= 3)
+
+// Quest Complete / Time Out แสดงเฉพาะหลังกดจบเทิร์น (manual check)
+// Quest Failed ยังคง reactive (จาก faint count)
+const manualOutcomeCheck = ref(null) // 'complete' | 'timeout' | null
 const floatOutcomeState = computed(() => {
-  if (canComplete.value) return 'complete'
   if (canFail.value) return 'failed'
-  if (!canComplete.value && !canFail.value && timeCardDeck.value.length === 0 && currentBehaviorCard.value) return 'timeout'
-  return null
+  return manualOutcomeCheck.value
 })
 
 watch([monsterTurnReady, myTurnEnded], ([ready, ended]) => {
@@ -1957,9 +1998,59 @@ watch(floatOutcomeState, (state) => {
   if (state !== null) floatBarCollapsed.value = false
 })
 
+// ถ้า monster heal กลับมา (HP > 0) → ล้าง Quest Complete ออก
+watch(canComplete, (val) => {
+  if (!val && manualOutcomeCheck.value === 'complete') {
+    manualOutcomeCheck.value = null
+    if (room.inRoom && room.isHost) room.syncManualOutcome?.(null)
+  }
+})
+
+// ออกจาก huntingPanel → clear outcome buttons ทันที (ทุก client)
+watch(phase, (newPhase, oldPhase) => {
+  if (oldPhase === 'huntingPanel' && newPhase !== 'huntingPanel') {
+    manualOutcomeCheck.value = null
+  }
+})
+
+// Guest receives outcome signal → set manual outcome + expand float bar
+watch(() => room.outcomeSignal, (val) => {
+  if (!val || !room.inRoom || room.isHost || _suppressAnimations) return
+  if (val.outcome) {
+    manualOutcomeCheck.value = val.outcome
+    floatBarCollapsed.value = false
+  }
+})
+
+// Guest syncs manualOutcome state จาก Firebase (รวมถึงตอน host clear เป็น null)
+watch(() => room.manualOutcomeState, (val) => {
+  if (!room.inRoom || room.isHost) return
+  manualOutcomeCheck.value = val ?? null
+})
+
 const _incrementActivation = () => {
   activationRoundsCompleted.value++
   if (room.inRoom && room.isHost) room.syncActivationCount?.(activationRoundsCompleted.value)
+}
+
+const _setManualOutcome = (outcome) => {
+  manualOutcomeCheck.value = outcome
+  floatBarCollapsed.value = false
+  if (room.inRoom && room.isHost) {
+    room.syncManualOutcome?.(outcome)
+    room.triggerOutcomeSignal?.(outcome)
+  }
+}
+
+const _checkOutcomeAfterTurn = (deckWasEmpty = false) => {
+  let outcome = null
+  if (canComplete.value) {
+    outcome = 'complete'
+  } else if (!canFail.value && deckWasEmpty && currentBehaviorCard.value) {
+    outcome = 'timeout'
+  }
+  if (!outcome) return
+  _setManualOutcome(outcome)
 }
 
 const _resetActivation = () => {
@@ -1987,11 +2078,11 @@ watch(() => room.tcTurnEnds, (ends) => {
     // Host: fulfill pending guest requests
     if (room.isHost && data.pending && !_tcProcessedKeys.has(hunterId)) {
       _tcProcessedKeys.add(hunterId)
-      const card = _drawTcCard(data.hunterName, hunterId)
-      if (card) {
-        room.markTcDrawn?.(hunterId, data.hunterName, card)
-        _incrementActivation()
-      }
+      const deckWasEmpty = timeCardDeck.value.length === 0
+      const card = !deckWasEmpty ? _drawTcCard(data.hunterName, hunterId) : null
+      room.markTcDrawn?.(hunterId, data.hunterName, card ?? null)
+      _incrementActivation()
+      _checkOutcomeAfterTurn(deckWasEmpty)
     }
 
     // All: queue animation for newly drawn cards (ไม่แสดงตอน reconnect)
@@ -2019,8 +2110,6 @@ watch(() => room.tcTurnEnds, (ends) => {
 }, { deep: true })
 
 const potionCount = ref(0)
-const canComplete = computed(() => huntingHp.value === 0)
-const canFail = computed(() => faintCount.value >= 3)
 
 const toggleFaint = (index) => {
   faintCount.value = faintCount.value === index ? index - 1 : index
@@ -3585,11 +3674,11 @@ const openPackDrawer = () => {
           <!-- ── Monster Status Canvas ── -->
           <div class="msc-wrap">
             <!-- Monster portrait -->
-            <div class="msc-portrait" :class="{ 'portrait-slain': huntingHp === 0 }">
+            <div class="msc-portrait" :class="{ 'portrait-slain': manualOutcomeCheck === 'complete' }">
               <img
                 :src="getImg(selectedMonster.thumbnail)"
                 class="msc-monster-img"
-                :class="{ 'monster-img-slain': huntingHp === 0, 'monster-img-shake': isShaking }"
+                :class="{ 'monster-img-slain': manualOutcomeCheck === 'complete', 'monster-img-shake': isShaking }"
               />
 
               <!-- Damage / Heal indicators -->
@@ -3603,7 +3692,7 @@ const openPackDrawer = () => {
 
               <!-- Slain overlay -->
               <transition name="slain-fade">
-                <div v-if="huntingHp === 0" class="msc-slain-overlay">
+                <div v-if="manualOutcomeCheck === 'complete'" class="msc-slain-overlay">
                   <div class="msc-slain-content">
                     <span class="msc-slain-skull">💀</span>
                     <span class="msc-slain-text">SLAIN</span>
@@ -3762,11 +3851,11 @@ const openPackDrawer = () => {
         </div> -->
         <!-- HP Section -->
       <div class="hpanel-section">
-        <div class="hpanel-section-header" :class="{ 'hp-header-dead': huntingHp === 0 }">
-          <span class="hpanel-section-icon">{{ huntingHp === 0 ? '💀' : '♥' }}</span>
+        <div class="hpanel-section-header" :class="{ 'hp-header-dead': manualOutcomeCheck === 'complete' }">
+          <span class="hpanel-section-icon">{{ manualOutcomeCheck === 'complete' ? '💀' : '♥' }}</span>
           <span class="hpanel-section-label">Monster HP</span>
-          <span class="hpanel-hp-nums" :class="{ 'hp-nums-dead': huntingHp === 0 }">
-            {{ huntingHp === 0 ? 'SLAIN' : `${huntingHp} / ${monsterHuntingData.health}` }}
+          <span class="hpanel-hp-nums" :class="{ 'hp-nums-dead': manualOutcomeCheck === 'complete' }">
+            {{ manualOutcomeCheck === 'complete' ? 'SLAIN' : `${huntingHp} / ${monsterHuntingData.health}` }}
           </span>
         </div>
         <div class="hp-bar-track">
@@ -4006,46 +4095,6 @@ const openPackDrawer = () => {
           </div>
         </div>
 
-        <div class="hunt-result-btns">
-          <!-- Time Out -->
-          <button
-            v-if="!canComplete && !canFail && timeCardDeck.length === 0"
-            class="btn-timeout"
-            :class="{ 'outcome-voted': room.myOutcomeVote === 'fail' }"
-            @click="room.inRoom ? toggleVote('fail') : requestOutcome('fail')"
-          >
-            <span class="result-icon">⏱</span>Time Out
-            <span v-if="room.inRoom && (room.outcomeVotes?.fail ?? Object.values(room.outcomeVotes ?? {}).filter(v=>v==='fail').length) > 0" class="outcome-vote-count">
-              {{ Object.values(room.outcomeVotes ?? {}).filter(v => v === 'fail').length }}/{{ room.hunterCount }}
-            </span>
-          </button>
-
-          <!-- Quest Complete -->
-          <button
-            v-if="canComplete"
-            class="btn-complete"
-            :class="{ 'outcome-voted': room.myOutcomeVote === 'complete' }"
-            @click="room.inRoom ? toggleVote('complete') : requestOutcome('complete')"
-          >
-            <span class="result-icon">✦</span>Quest Complete
-            <span v-if="room.inRoom && Object.values(room.outcomeVotes ?? {}).filter(v => v === 'complete').length > 0" class="outcome-vote-count">
-              {{ Object.values(room.outcomeVotes ?? {}).filter(v => v === 'complete').length }}/{{ room.hunterCount }}
-            </span>
-          </button>
-
-          <!-- Quest Failed -->
-          <button
-            v-if="canFail"
-            class="btn-fail"
-            :class="{ 'outcome-voted': room.myOutcomeVote === 'fail' }"
-            @click="room.inRoom ? toggleVote('fail') : requestOutcome('fail')"
-          >
-            <span class="result-icon">✕</span>Quest Failed
-            <span v-if="room.inRoom && Object.values(room.outcomeVotes ?? {}).filter(v => v === 'fail').length > 0" class="outcome-vote-count">
-              {{ Object.values(room.outcomeVotes ?? {}).filter(v => v === 'fail').length }}/{{ room.hunterCount }}
-            </span>
-          </button>
-        </div>
       </div>
 
     </div>
@@ -5114,29 +5163,10 @@ const openPackDrawer = () => {
         class="float-turn-bar"
         :class="{ 'float-turn-bar-collapsed': floatBarCollapsed }"
       >
-        <button class="float-toggle-btn" @click="floatBarCollapsed = !floatBarCollapsed">
-          {{ floatBarCollapsed ? '🃏 จบเทิร์น ▲' : '▼ ซ่อน' }}
-        </button>
+        <div v-if="floatBarCollapsed" class="float-status-label">{{ floatToggleLabel }}</div>
+
         <!-- Content (hidden when collapsed) -->
         <div v-show="!floatBarCollapsed">
-        <!-- Hunter list (coop only) -->
-        <div v-if="room.inRoom" class="float-hunter-list">
-          <div
-            v-for="h in room.hunters"
-            :key="h.hunter_id"
-            class="float-hunter-row"
-            :class="{ 'float-hunter-done': room.tcTurnEnds?.[h.hunter_id] }"
-          >
-            <span class="float-hunter-mark">{{ room.tcTurnEnds?.[h.hunter_id] ? '✓' : '⏳' }}</span>
-            <img
-              v-if="getHunterClass(h.hunter_class_id)?.thumbnail"
-              :src="getImg(getHunterClass(h.hunter_class_id).thumbnail)"
-              class="float-hunter-icon"
-            />
-            <span class="float-hunter-name">{{ h.hunter_name }}</span>
-            <span v-if="room.tcTurnEnds?.[h.hunter_id]?.pending" class="float-pending">รอจั๋ว…</span>
-          </div>
-        </div>
         <!-- Outcome buttons (แสดงแทน จบเทิร์น เมื่อมีเงื่อนไข) -->
         <button
           v-if="floatOutcomeState === 'complete'"
@@ -5174,20 +5204,71 @@ const openPackDrawer = () => {
           </span>
         </button>
 
-        <!-- End turn button (ปกติ) -->
-        <button
-          v-else
-          class="float-end-btn"
-          :class="{ 'float-ended': myTurnEnded }"
-          :disabled="myTurnEnded || !timeCardDeck.length || !currentBehaviorCard || monsterTurnReady"
-          @click="showConfirmTurn = true"
-        >
-          <span v-if="!currentBehaviorCard || monsterTurnReady">⚔ รอ Monster Turn</span>
-          <span v-else-if="!myTurnEnded">🃏 จบเทิร์น</span>
-          <span v-else>✓ รอคนอื่น</span>
-        </button>
+        <!-- End turn section (ปกติ) -->
+        <template v-else>
+          <!-- Activation counter -->
+          <div v-if="activationLimit > 0 && currentBehaviorCard" class="float-act-bar">
+            <div class="float-act-pips">
+              <span
+                v-for="i in activationLimit"
+                :key="i"
+                class="float-act-pip"
+                :class="{ 'fpip-done': i <= activationRoundsCompleted }"
+              ></span>
+            </div>
+            <span class="float-act-label">
+              <template v-if="!monsterTurnReady">
+                เหลืออีก <strong>{{ activationLimit - activationRoundsCompleted }}</strong> ครั้ง
+              </template>
+              <template v-else>✓ ครบแล้ว — กด Monster Turn</template>
+            </span>
+          </div>
+          <!-- End turn button -->
+          <button
+            class="float-end-btn"
+            :class="{ 'float-ended': myTurnEnded }"
+            :disabled="myTurnEnded || !currentBehaviorCard || monsterTurnReady"
+            @click="showConfirmTurn = true"
+          >
+            <span v-if="!currentBehaviorCard || monsterTurnReady">⚔ รอ Monster Turn</span>
+            <span v-else-if="!myTurnEnded">🃏 จบเทิร์น</span>
+            <span v-else>✓ รอคนอื่น</span>
+          </button>
+        </template>
         </div>
       </div>
+    </teleport>
+
+    <!-- ═══════════ PARTY STRIP (fixed right) ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div
+          v-if="room.inRoom && phase === 'huntingPanel'"
+          class="party-strip"
+        >
+          <div
+            v-for="h in room.hunters"
+            :key="h.hunter_id"
+            class="party-member"
+            :class="{
+              'party-done':    !!room.tcTurnEnds?.[h.hunter_id]?.card,
+              'party-pending': !!room.tcTurnEnds?.[h.hunter_id]?.pending,
+              'party-me':      h.hunter_id === room.myHunterId
+            }"
+          >
+            <div class="party-icon-wrap">
+              <img
+                v-if="getHunterClass(h.hunter_class_id)?.thumbnail"
+                :src="getImg(getHunterClass(h.hunter_class_id).thumbnail)"
+                class="party-icon-img"
+              />
+              <span class="party-status-dot">
+                {{ room.tcTurnEnds?.[h.hunter_id]?.card ? '✓' : room.tcTurnEnds?.[h.hunter_id]?.pending ? '…' : '' }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </Transition>
     </teleport>
 
     <!-- ═══════════ END TURN CONFIRM ═══════════ -->
@@ -5197,6 +5278,10 @@ const openPackDrawer = () => {
           <div class="ct-modal">
             <p class="ct-title">🃏 จบเทิร์น?</p>
             <p class="ct-sub">จั๋ว Time Card 1 ใบจากกอง (เหลือ {{ timeCardDeck.length }} ใบ)</p>
+            <p v-if="activationLimit > 0" class="ct-act-hint">
+              Hunter Turn {{ activationRoundsCompleted + 1 }} / {{ activationLimit }}
+              — เหลืออีก <strong>{{ Math.max(0, activationLimit - activationRoundsCompleted - 1) }}</strong> ครั้งหลังกดนี้
+            </p>
             <div class="ct-btns">
               <button class="ct-btn ct-confirm" @click="endTurn(); showConfirmTurn = false">ยืนยัน</button>
               <button class="ct-btn ct-cancel" @click="showConfirmTurn = false">ยกเลิก</button>
@@ -7463,6 +7548,43 @@ const openPackDrawer = () => {
   border: 1px solid rgba(120,120,120,0.3);
 }
 .dc-cancel:hover { background: rgba(120,120,120,0.28); }
+/* ── Float Activation Bar ── */
+.float-act-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 0 2px;
+}
+.float-act-pips {
+  display: flex;
+  gap: 5px;
+}
+.float-act-pip {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(201,162,39,0.18);
+  border: 1.5px solid rgba(201,162,39,0.35);
+  transition: background 0.25s, box-shadow 0.25s;
+}
+.float-act-pip.fpip-done {
+  background: #c9a227;
+  border-color: #c9a227;
+  box-shadow: 0 0 6px rgba(201,162,39,0.55);
+}
+.float-act-label {
+  font-size: 11px;
+  color: rgba(201,162,39,0.7);
+}
+.float-act-label strong { color: #ffd27a; }
+.ct-act-hint {
+  font-size: 12px;
+  color: rgba(201,162,39,0.55);
+  margin: 0;
+  text-align: center;
+}
+.ct-act-hint strong { color: #c9a227; }
 .ct-overlay {
   position: fixed;
   inset: 0;
@@ -7658,53 +7780,112 @@ const openPackDrawer = () => {
   padding-bottom: calc(8px + env(safe-area-inset-bottom));
   transition: transform 0.25s ease;
 }
-.float-toggle-btn {
+.float-status-label {
   position: absolute;
-  top: -38px; right: 16px;
+  top: -36px; right: 16px;
   background: linear-gradient(to bottom, #2a1e10, #17120c);
   border: 1px solid #c89b3c;
   border-bottom: none;
   border-radius: 10px 10px 0 0;
   color: #ffd27a;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: bold;
-  padding: 6px 18px;
-  cursor: pointer;
+  padding: 6px 16px;
   box-shadow: 0 -4px 12px rgba(200,155,60,0.25);
-  letter-spacing: 1px;
-}
-.float-toggle-btn:hover {
-  background: linear-gradient(to bottom, #3a2e18, #22180e);
-  box-shadow: 0 -4px 16px rgba(200,155,60,0.45);
+  letter-spacing: 0.5px;
+  pointer-events: none;
+  user-select: none;
 }
 .float-turn-bar-collapsed {
   transform: translateY(calc(100% - 0px));
 }
-.float-hunter-list {
+/* ── Party Strip (fixed right vertical) ── */
+.party-strip {
+  position: fixed;
+  right: 0;
+  bottom: 80px;
   display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(200,155,60,0.15);
-  margin-bottom: 8px;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  background: rgba(10, 8, 4, 0.72);
+  border: 1px solid rgba(200,155,60,0.2);
+  border-right: none;
+  border-radius: 12px 0 0 12px;
+  z-index: 900;
+  backdrop-filter: blur(6px);
 }
-.float-hunter-row {
-  display: flex; align-items: center; gap: 5px;
-  padding: 3px 8px;
-  border-radius: 20px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(200,155,60,0.12);
-  font-size: 12px;
+.party-member {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
 }
-.float-hunter-done {
-  background: rgba(200,155,60,0.1);
-  border-color: rgba(200,155,60,0.35);
+.party-icon-wrap {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(20,14,6,0.8);
+  border: 2px solid rgba(200,155,60,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.3s, box-shadow 0.3s;
 }
-.float-hunter-mark { font-size: 12px; }
-.float-hunter-icon { width: 18px; height: 18px; object-fit: contain; }
-.float-hunter-name { color: #c8a060; font-size: 11px; }
-.float-pending { font-size: 10px; color: #7c5a2b; font-style: italic; }
+.party-done .party-icon-wrap {
+  border-color: #6fcf97;
+  box-shadow: 0 0 10px rgba(111,207,151,0.45);
+}
+.party-pending .party-icon-wrap {
+  border-color: rgba(201,162,39,0.6);
+  animation: party-pending-pulse 1.2s ease-in-out infinite;
+}
+.party-me .party-icon-wrap {
+  border-width: 2.5px;
+}
+@keyframes party-pending-pulse {
+  0%, 100% { box-shadow: 0 0 4px rgba(201,162,39,0.2); }
+  50%       { box-shadow: 0 0 12px rgba(201,162,39,0.5); }
+}
+.party-icon-img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+.party-status-dot {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #1a1304;
+  border: 1px solid rgba(200,155,60,0.3);
+  font-size: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  color: #6fcf97;
+  font-weight: 700;
+}
+.party-done .party-status-dot {
+  background: #1e3a28;
+  border-color: #6fcf97;
+}
+.party-name {
+  font-size: 9px;
+  color: rgba(201,162,39,0.65);
+  max-width: 40px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
 .float-end-btn {
   width: 100%;
   padding: 12px;

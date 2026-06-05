@@ -500,7 +500,7 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 /* ── Floating Party Button ── */
 .party-fab {
   position: fixed;
-  bottom: 24px;
+  bottom: 80px;
   left: 20px;
   z-index: 200;
   width: 52px;

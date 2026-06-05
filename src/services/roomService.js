@@ -174,6 +174,14 @@ export const pushBehaviorDeck = (code, deckState) =>
 export const pushTrackTokens = (code, pool, tokens) =>
   set(ref(db, `rooms/${code}/trackTokens`), { pool, tokens })
 
+// ── Manual Outcome State ──────────────────────────────────
+export const pushManualOutcome = (code, outcome) =>
+  set(ref(db, `rooms/${code}/manualOutcome`), outcome ?? null)
+
+// ── Outcome Float Signal ──────────────────────────────────
+export const pushOutcomeSignal = (code, outcome) =>
+  set(ref(db, `rooms/${code}/outcomeSignal`), { outcome, ts: Date.now() })
+
 // ── Activation Count Sync ─────────────────────────────────
 export const pushActivationCount = (code, count) =>
   set(ref(db, `rooms/${code}/activationCount`), count)
