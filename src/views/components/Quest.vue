@@ -761,6 +761,9 @@ const _pushDeckState = (specialCard = undefined) => {
     discard: behaviorDiscard.value,
     banished: behaviorBanished.value,
     current: currentBehaviorCard.value,
+    misreadActive: misreadActive.value,
+    rampageActive: rampageActive.value,
+    activationOverride: activationOverride.value,
   }
   if (specialCard !== undefined) payload.specialCard = specialCard
   room.syncBehaviorDeck?.(payload)
@@ -829,6 +832,16 @@ const drawBehaviorCard = () => {
   if (behaviorDeck.value.length === 0) return
   if (!monsterTurnReady.value) return
 
+  // Misread effect: discard top card before drawing
+  if (misreadActive.value) {
+    const discarded = behaviorDeck.value[0]
+    behaviorDeck.value = behaviorDeck.value.slice(1)
+    behaviorDiscard.value = [...behaviorDiscard.value, discarded]
+    misreadActive.value = false
+    _pushDeckState()
+    if (behaviorDeck.value.length === 0) return
+  }
+
   const card = behaviorDeck.value[0]
   behaviorDeck.value = behaviorDeck.value.slice(1)
   if (currentBehaviorCard.value) behaviorDiscard.value = [...behaviorDiscard.value, currentBehaviorCard.value]
@@ -884,9 +897,12 @@ const discardTopBehaviorCard = () => {
   _pushDeckState()
 }
 
-// Watch Firebase deck state for guests
+// Watch Firebase deck state
 watch([() => room.behaviorDeckState, () => room.joinSignal], ([state], [prev]) => {
-  if (!state || !room.inRoom || room.isHost) return
+  if (!state || !room.inRoom) return
+
+  // Deck states — Host จัดการเองจากโค้ด
+  if (room.isHost) return
   behaviorDeck.value = state.deck ?? []
   behaviorDiscard.value = state.discard ?? []
   behaviorBanished.value = state.banished ?? []
@@ -962,6 +978,30 @@ const resetToBookPhase = () => {
   _tcProcessedKeys.clear()
   activationRoundsCompleted.value = 0
   rampageActive.value = false
+  misreadActive.value = false
+  tcDiscardFlash.value = null
+  tcStatusFlash.value = null
+  nitrotoadStep.value = null
+  nitrotoadRoll.value = null
+  nitrotoadDrawerId.value = null
+  paratoadStep.value = null
+  paratoadRoll.value = null
+  paratoadDrawerId.value = null
+  poisoncupStep.value = null
+  poisoncupRoll.value = null
+  poisoncupDrawerId.value = null
+  sleeptoadStep.value = null
+  sleeptoadRoll.value = null
+  sleeptoadDrawerId.value = null
+  roarStep.value = null
+  roarRoll.value = null
+  roarDrawerId.value = null
+  boulderStep.value = null
+  boulderRoll.value = null
+  boulderDrawerId.value = null
+  recoveryPending.value = false
+  recoveryHpSnapshot.value = null
+  tcHpFlash.value = null
   activationOverride.value = null
   phase.value = 'book'
 }
@@ -1202,6 +1242,7 @@ const showTimeCardManage = ref(false)
 const redCardCounts = ref({})
 const showLastDiscard = ref(false)
 const showConfirmTurn = ref(false)
+const floatBarCollapsed = ref(false)
 const showDiscardCount = ref(false)
 const discardCountInput = ref(1)
 
@@ -1247,13 +1288,494 @@ const addRedCardsAndShuffle = () => {
   _pushTimeCardState()
 }
 
-const _pushTimeCardState = () => {
-  if (!room.inRoom) return
-  room.syncTimeCards?.({ deck: timeCardDeck.value, discard: timeCardDiscard.value })
+
+// Status Token Flash
+const tcStatusFlash = ref(null) // { effectId, name, thumbnail } | null
+let _statusFlashTimer = null
+
+const _showTcStatusFlash = (statusId) => {
+  const effect = getStatusEffect(statusId)
+  if (!effect) return
+  clearTimeout(_statusFlashTimer)
+  tcStatusFlash.value = { effectId: statusId, name: effect.effect_name, thumbnail: effect.thumbnail }
+  _pushTimeCardState()
+  _statusFlashTimer = setTimeout(() => {
+    tcStatusFlash.value = null
+    _pushTimeCardState()
+  }, 2000)
 }
 
+// Discard Flash Overlay
+const tcDiscardFlash = ref(null) // [{ card_img, card_name }, ...]
+let _discardFlashTimer = null
+
+const _showDiscardFlash = (cards) => {
+  clearTimeout(_discardFlashTimer)
+  tcDiscardFlash.value = cards
+  _pushTimeCardState()
+  _discardFlashTimer = setTimeout(() => {
+    tcDiscardFlash.value = null
+    _pushTimeCardState()
+  }, 2200)
+}
+
+// Nitrotoad state
+const nitrotoadStep = ref(null) // null | 'roll' | 'part-select' | 'blastblight'
+const nitrotoadRoll = ref(null)
+const nitrotoadDrawerId = ref(null)
+const nitrotoadDie = ref({ value: 1, rolling: false })
+const isNitrotoadDrawer = computed(() =>
+  !room.inRoom || String(room.myHunterId) === nitrotoadDrawerId.value
+)
+
+const rollNitrotoad = () => {
+  const finalValue = Math.floor(Math.random() * 6) + 1
+  nitrotoadDie.value = { value: 1, rolling: true }
+  nitrotoadStep.value = 'rolling'
+  _pushTimeCardState()
+  const interval = setInterval(() => {
+    nitrotoadDie.value = { value: Math.ceil(Math.random() * 6), rolling: true }
+  }, 55)
+  setTimeout(() => {
+    clearInterval(interval)
+    nitrotoadDie.value = { value: finalValue, rolling: false }
+    nitrotoadRoll.value = finalValue
+    nitrotoadStep.value = 'rolled'
+    _pushTimeCardState()
+  }, 700)
+}
+
+const confirmNitrotoad = () => {
+  nitrotoadStep.value = nitrotoadRoll.value <= 3 ? 'part-select' : 'blastblight'
+  _pushTimeCardState()
+}
+
+// Non-drawer animation: sync animation จาก Firebase (skip ถ้าเป็น drawer เพราะทอยเองแล้ว)
+let _ntGuestInterval = null
+watch(() => room.timeCardState?.nitrotoadStep, (step) => {
+  if (!room.inRoom || isNitrotoadDrawer.value) return
+  if (step === 'rolling') {
+    nitrotoadDie.value = { value: 1, rolling: true }
+    clearInterval(_ntGuestInterval)
+    _ntGuestInterval = setInterval(() => {
+      nitrotoadDie.value = { value: Math.ceil(Math.random() * 6), rolling: true }
+    }, 55)
+  } else if (step === 'rolled') {
+    clearInterval(_ntGuestInterval)
+    nitrotoadDie.value = { value: room.timeCardState?.nitrotoadRoll ?? 1, rolling: false }
+  }
+})
+
+const applyNitrotoadBreak = (pos) => {
+  const data = activeParts.value[pos]
+  const current = partDamage.value[pos] ?? 0
+  const max = data?.part_break_threshold ?? 0
+  const next = Math.min(max, current + 1)
+  adjustPartDamage(pos, 1)
+  _showPartFlash(pos, next, next - current)
+  nitrotoadStep.value = null
+  nitrotoadRoll.value = null
+  nitrotoadDrawerId.value = null
+  _pushTimeCardState()
+}
+
+// ── Paratoad Time Card ────────────────────────────────────
+const paratoadStep = ref(null) // null | 'roll' | 'rolling' | 'rolled' | 'paralysis'
+const paratoadRoll = ref(null)
+const paratoadDrawerId = ref(null)
+const paratoadDie = ref({ value: 1, rolling: false })
+const isParatoadDrawer = computed(() =>
+  !room.inRoom || String(room.myHunterId) === paratoadDrawerId.value
+)
+
+const rollParatoad = () => {
+  const finalValue = Math.floor(Math.random() * 6) + 1
+  paratoadDie.value = { value: 1, rolling: true }
+  paratoadStep.value = 'rolling'
+  _pushTimeCardState()
+  const interval = setInterval(() => {
+    paratoadDie.value = { value: Math.ceil(Math.random() * 6), rolling: true }
+  }, 55)
+  setTimeout(() => {
+    clearInterval(interval)
+    paratoadDie.value = { value: finalValue, rolling: false }
+    paratoadRoll.value = finalValue
+    paratoadStep.value = 'rolled'
+    _pushTimeCardState()
+  }, 700)
+}
+
+const confirmParatoad = () => {
+  if (paratoadRoll.value <= 3) {
+    const res = monsterHuntingData.value?.status_resistance?.find(s => s.status_id === 4)
+    if (res?.immune) {
+      paratoadStep.value = 'immune'
+    } else {
+      markStatus(4)
+      _showTcStatusFlash(4)
+      paratoadStep.value = null
+      paratoadRoll.value = null
+      paratoadDrawerId.value = null
+    }
+  } else {
+    paratoadStep.value = 'paralysis'
+  }
+  _pushTimeCardState()
+}
+
+const dismissParatoad = () => {
+  paratoadStep.value = null
+  paratoadRoll.value = null
+  paratoadDrawerId.value = null
+  _pushTimeCardState()
+}
+
+let _ptGuestInterval = null
+watch(() => room.timeCardState?.paratoadStep, (step) => {
+  if (!room.inRoom || isParatoadDrawer.value) return
+  if (step === 'rolling') {
+    paratoadDie.value = { value: 1, rolling: true }
+    clearInterval(_ptGuestInterval)
+    _ptGuestInterval = setInterval(() => { paratoadDie.value = { value: Math.ceil(Math.random() * 6), rolling: true } }, 55)
+  } else if (step === 'rolled') {
+    clearInterval(_ptGuestInterval)
+    paratoadDie.value = { value: room.timeCardState?.paratoadRoll ?? 1, rolling: false }
+  }
+})
+
+// ── Poisoncup Time Card ───────────────────────────────────
+const poisoncupStep = ref(null) // null | 'roll' | 'rolling' | 'rolled' | 'poison'
+const poisoncupRoll = ref(null)
+const poisoncupDrawerId = ref(null)
+const poisoncupDie = ref({ value: 1, rolling: false })
+const isPoisoncupDrawer = computed(() =>
+  !room.inRoom || String(room.myHunterId) === poisoncupDrawerId.value
+)
+
+const rollPoisoncup = () => {
+  const finalValue = Math.floor(Math.random() * 6) + 1
+  poisoncupDie.value = { value: 1, rolling: true }
+  poisoncupStep.value = 'rolling'
+  _pushTimeCardState()
+  const interval = setInterval(() => {
+    poisoncupDie.value = { value: Math.ceil(Math.random() * 6), rolling: true }
+  }, 55)
+  setTimeout(() => {
+    clearInterval(interval)
+    poisoncupDie.value = { value: finalValue, rolling: false }
+    poisoncupRoll.value = finalValue
+    poisoncupStep.value = 'rolled'
+    _pushTimeCardState()
+  }, 700)
+}
+
+const confirmPoisoncup = () => {
+  if (poisoncupRoll.value <= 3) {
+    const res = monsterHuntingData.value?.status_resistance?.find(s => s.status_id === 2)
+    if (res?.immune) {
+      poisoncupStep.value = 'immune'
+    } else {
+      markStatus(2)
+      _showTcStatusFlash(2)
+      poisoncupStep.value = null
+      poisoncupRoll.value = null
+      poisoncupDrawerId.value = null
+    }
+  } else {
+    poisoncupStep.value = 'poison'
+  }
+  _pushTimeCardState()
+}
+
+const dismissPoisoncup = () => {
+  poisoncupStep.value = null
+  poisoncupRoll.value = null
+  poisoncupDrawerId.value = null
+  _pushTimeCardState()
+}
+
+let _pcGuestInterval = null
+watch(() => room.timeCardState?.poisoncupStep, (step) => {
+  if (!room.inRoom || isPoisoncupDrawer.value) return
+  if (step === 'rolling') {
+    poisoncupDie.value = { value: 1, rolling: true }
+    clearInterval(_pcGuestInterval)
+    _pcGuestInterval = setInterval(() => { poisoncupDie.value = { value: Math.ceil(Math.random() * 6), rolling: true } }, 55)
+  } else if (step === 'rolled') {
+    clearInterval(_pcGuestInterval)
+    poisoncupDie.value = { value: room.timeCardState?.poisoncupRoll ?? 1, rolling: false }
+  }
+})
+
+// ── Sleeptoad Time Card ───────────────────────────────────
+const sleeptoadStep = ref(null) // null | 'roll' | 'rolling' | 'rolled' | 'sleep' | 'immune'
+const sleeptoadRoll = ref(null)
+const sleeptoadDrawerId = ref(null)
+const sleeptoadDie = ref({ value: 1, rolling: false })
+const isSleeptoadDrawer = computed(() =>
+  !room.inRoom || String(room.myHunterId) === sleeptoadDrawerId.value
+)
+
+const rollSleeptoad = () => {
+  const finalValue = Math.floor(Math.random() * 6) + 1
+  sleeptoadDie.value = { value: 1, rolling: true }
+  sleeptoadStep.value = 'rolling'
+  _pushTimeCardState()
+  const interval = setInterval(() => {
+    sleeptoadDie.value = { value: Math.ceil(Math.random() * 6), rolling: true }
+  }, 55)
+  setTimeout(() => {
+    clearInterval(interval)
+    sleeptoadDie.value = { value: finalValue, rolling: false }
+    sleeptoadRoll.value = finalValue
+    sleeptoadStep.value = 'rolled'
+    _pushTimeCardState()
+  }, 700)
+}
+
+const confirmSleeptoad = () => {
+  if (sleeptoadRoll.value <= 3) {
+    const res = monsterHuntingData.value?.status_resistance?.find(s => s.status_id === 3)
+    if (res?.immune) {
+      sleeptoadStep.value = 'immune'
+    } else {
+      markStatus(3)
+      _showTcStatusFlash(3)
+      sleeptoadStep.value = null
+      sleeptoadRoll.value = null
+      sleeptoadDrawerId.value = null
+    }
+  } else {
+    sleeptoadStep.value = 'sleep'
+  }
+  _pushTimeCardState()
+}
+
+const dismissSleeptoad = () => {
+  sleeptoadStep.value = null
+  sleeptoadRoll.value = null
+  sleeptoadDrawerId.value = null
+  _pushTimeCardState()
+}
+
+let _stGuestInterval = null
+watch(() => room.timeCardState?.sleeptoadStep, (step) => {
+  if (!room.inRoom || isSleeptoadDrawer.value) return
+  if (step === 'rolling') {
+    sleeptoadDie.value = { value: 1, rolling: true }
+    clearInterval(_stGuestInterval)
+    _stGuestInterval = setInterval(() => { sleeptoadDie.value = { value: Math.ceil(Math.random() * 6), rolling: true } }, 55)
+  } else if (step === 'rolled') {
+    clearInterval(_stGuestInterval)
+    sleeptoadDie.value = { value: room.timeCardState?.sleeptoadRoll ?? 1, rolling: false }
+  }
+})
+
+// ── Roar Time Card ────────────────────────────────────────
+const roarStep = ref(null) // null | 'roll' | 'rolling' | 'rolled'
+const roarRoll = ref(null)
+const roarDrawerId = ref(null)
+const roarDie = ref({ value: 1, rolling: false })
+const isRoarDrawer = computed(() =>
+  !room.inRoom || String(room.myHunterId) === roarDrawerId.value
+)
+
+const rollRoar = () => {
+  const finalValue = Math.floor(Math.random() * 6) + 1
+  roarDie.value = { value: 1, rolling: true }
+  roarStep.value = 'rolling'
+  _pushTimeCardState()
+  const interval = setInterval(() => {
+    roarDie.value = { value: Math.ceil(Math.random() * 6), rolling: true }
+  }, 55)
+  setTimeout(() => {
+    clearInterval(interval)
+    roarDie.value = { value: finalValue, rolling: false }
+    roarRoll.value = finalValue
+    roarStep.value = 'rolled'
+    _pushTimeCardState()
+  }, 700)
+}
+
+const confirmRoar = () => {
+  const count = Math.min(roarRoll.value, timeCardDeck.value.length)
+  const discarded = timeCardDeck.value.slice(0, count)
+  timeCardDeck.value = timeCardDeck.value.slice(count)
+  timeCardDiscard.value = [...discarded, ...timeCardDiscard.value]
+  roarStep.value = null
+  roarRoll.value = null
+  roarDrawerId.value = null
+  _showDiscardFlash(discarded)
+  _pushTimeCardState()
+}
+
+const dismissRoar = () => {
+  roarStep.value = null
+  roarRoll.value = null
+  roarDrawerId.value = null
+  _pushTimeCardState()
+}
+
+let _roarGuestInterval = null
+watch(() => room.timeCardState?.roarStep, (step) => {
+  if (!room.inRoom || isRoarDrawer.value) return
+  if (step === 'rolling') {
+    roarDie.value = { value: 1, rolling: true }
+    clearInterval(_roarGuestInterval)
+    _roarGuestInterval = setInterval(() => { roarDie.value = { value: Math.ceil(Math.random() * 6), rolling: true } }, 55)
+  } else if (step === 'rolled') {
+    clearInterval(_roarGuestInterval)
+    roarDie.value = { value: room.timeCardState?.roarRoll ?? 1, rolling: false }
+  }
+})
+
+// ── Suspended Boulder Time Card ───────────────────────────
+const boulderStep = ref(null) // null | 'roll' | 'rolling' | 'rolled' | 'hunter-damage'
+const boulderRoll = ref(null)
+const boulderDrawerId = ref(null)
+const boulderDie = ref({ value: 1, rolling: false })
+const isBoulderDrawer = computed(() =>
+  !room.inRoom || String(room.myHunterId) === boulderDrawerId.value
+)
+
+const rollBoulder = () => {
+  const finalValue = Math.floor(Math.random() * 6) + 1
+  boulderDie.value = { value: 1, rolling: true }
+  boulderStep.value = 'rolling'
+  _pushTimeCardState()
+  const interval = setInterval(() => {
+    boulderDie.value = { value: Math.ceil(Math.random() * 6), rolling: true }
+  }, 55)
+  setTimeout(() => {
+    clearInterval(interval)
+    boulderDie.value = { value: finalValue, rolling: false }
+    boulderRoll.value = finalValue
+    boulderStep.value = 'rolled'
+    _pushTimeCardState()
+  }, 700)
+}
+
+const confirmBoulder = () => {
+  if (boulderRoll.value <= 3) {
+    adjustHpWithFlash(-5)
+    boulderStep.value = null
+    boulderRoll.value = null
+    boulderDrawerId.value = null
+  } else {
+    boulderStep.value = 'hunter-damage'
+  }
+  _pushTimeCardState()
+}
+
+const dismissBoulder = () => {
+  boulderStep.value = null
+  boulderRoll.value = null
+  boulderDrawerId.value = null
+  _pushTimeCardState()
+}
+
+let _bdGuestInterval = null
+watch(() => room.timeCardState?.boulderStep, (step) => {
+  if (!room.inRoom || isBoulderDrawer.value) return
+  if (step === 'rolling') {
+    boulderDie.value = { value: 1, rolling: true }
+    clearInterval(_bdGuestInterval)
+    _bdGuestInterval = setInterval(() => { boulderDie.value = { value: Math.ceil(Math.random() * 6), rolling: true } }, 55)
+  } else if (step === 'rolled') {
+    clearInterval(_bdGuestInterval)
+    boulderDie.value = { value: room.timeCardState?.boulderRoll ?? 1, rolling: false }
+  }
+})
+
+// ── Recovery Time Card ────────────────────────────────────
+const recoveryPending = ref(false)
+const recoveryHpSnapshot = ref(null)
+
+
+const dismissNitrotoad = () => {
+  nitrotoadStep.value = null
+  nitrotoadRoll.value = null
+  nitrotoadDrawerId.value = null
+  _pushTimeCardState()
+}
+
+const _pushTimeCardState = () => {
+  if (!room.inRoom) return
+  room.syncTimeCards?.({
+    deck: timeCardDeck.value,
+    discard: timeCardDiscard.value,
+    tcStatusFlash: tcStatusFlash.value ?? null,
+    discardFlashCards: tcDiscardFlash.value ?? null,
+    nitrotoadStep: nitrotoadStep.value,
+    nitrotoadRoll: nitrotoadRoll.value,
+    nitrotoadDrawerId: nitrotoadDrawerId.value,
+    paratoadStep: paratoadStep.value,
+    paratoadRoll: paratoadRoll.value,
+    paratoadDrawerId: paratoadDrawerId.value,
+    poisoncupStep: poisoncupStep.value,
+    poisoncupRoll: poisoncupRoll.value,
+    poisoncupDrawerId: poisoncupDrawerId.value,
+    sleeptoadStep: sleeptoadStep.value,
+    sleeptoadRoll: sleeptoadRoll.value,
+    sleeptoadDrawerId: sleeptoadDrawerId.value,
+    roarStep: roarStep.value,
+    roarRoll: roarRoll.value,
+    roarDrawerId: roarDrawerId.value,
+    boulderStep: boulderStep.value,
+    boulderRoll: boulderRoll.value,
+    boulderDrawerId: boulderDrawerId.value,
+    recoveryPending: recoveryPending.value,
+    recoveryHpSnapshot: recoveryHpSnapshot.value,
+  })
+}
+
+
+
 watch([() => room.timeCardState, () => room.joinSignal], ([state]) => {
-  if (!state || !room.inRoom || room.isHost) return
+  if (!state || !room.inRoom) return
+
+  // Modal states — ทุกคนต้องอ่าน (Host ด้วย เพราะ Guest อาจเป็นคนทอย)
+  nitrotoadStep.value = state.nitrotoadStep ?? null
+  nitrotoadRoll.value = state.nitrotoadRoll ?? null
+  nitrotoadDrawerId.value = state.nitrotoadDrawerId ?? null
+  paratoadStep.value = state.paratoadStep ?? null
+  paratoadRoll.value = state.paratoadRoll ?? null
+  paratoadDrawerId.value = state.paratoadDrawerId ?? null
+  poisoncupStep.value = state.poisoncupStep ?? null
+  poisoncupRoll.value = state.poisoncupRoll ?? null
+  poisoncupDrawerId.value = state.poisoncupDrawerId ?? null
+  sleeptoadStep.value = state.sleeptoadStep ?? null
+  sleeptoadRoll.value = state.sleeptoadRoll ?? null
+  sleeptoadDrawerId.value = state.sleeptoadDrawerId ?? null
+  roarStep.value = state.roarStep ?? null
+  roarRoll.value = state.roarRoll ?? null
+  roarDrawerId.value = state.roarDrawerId ?? null
+  boulderStep.value = state.boulderStep ?? null
+  boulderRoll.value = state.boulderRoll ?? null
+  boulderDrawerId.value = state.boulderDrawerId ?? null
+  recoveryPending.value = state.recoveryPending ?? false
+  recoveryHpSnapshot.value = state.recoveryHpSnapshot ?? null
+
+  // Display states — ทุกคนต้องเห็น (Host ด้วย เพราะ Guest อาจเป็นคนจัดการ)
+  if (state.tcStatusFlash && state.tcStatusFlash.effectId !== tcStatusFlash.value?.effectId) {
+    clearTimeout(_statusFlashTimer)
+    tcStatusFlash.value = state.tcStatusFlash
+    _statusFlashTimer = setTimeout(() => { tcStatusFlash.value = null }, 2000)
+  } else if (!state.tcStatusFlash) {
+    tcStatusFlash.value = null
+  }
+  const _dfKey = state.discardFlashCards?.map(c => c.card_name).join(',') ?? null
+  const _dfCur = tcDiscardFlash.value?.map(c => c.card_name).join(',') ?? null
+  if (_dfKey && _dfKey !== _dfCur) {
+    clearTimeout(_discardFlashTimer)
+    tcDiscardFlash.value = state.discardFlashCards
+    _discardFlashTimer = setTimeout(() => { tcDiscardFlash.value = null }, 2200)
+  } else if (!state.discardFlashCards) {
+    tcDiscardFlash.value = null
+  }
+
+  // Deck/discard — Host จัดการเองจากโค้ด ไม่ต้องอ่านจาก Firebase
+  if (room.isHost) return
   timeCardDeck.value = state.deck ?? []
   timeCardDiscard.value = state.discard ?? []
 }, { deep: true, immediate: true })
@@ -1293,13 +1815,66 @@ const dismissTcReveal = () => {
   setTimeout(_processTcRevealQueue, 300)
 }
 
-const _drawTcCard = (hunterName) => {
+const _drawTcCard = (hunterName, hunterId = null) => {
+  const drawerId = room.inRoom ? String(hunterId ?? room.myHunterId) : null
   if (!timeCardDeck.value.length) return null
   const [card, ...rest] = timeCardDeck.value
   timeCardDeck.value = rest
   timeCardDiscard.value = [card, ...timeCardDiscard.value]
   if (card.card_name === 'Rampage') rampageActive.value = true
+  if (card.card_name === 'Misread') misreadActive.value = true
+  if (card.card_name === 'Monster Sleeps') {
+    const newPartDamage = { ...partDamage.value }
+    Object.entries(activeParts.value).forEach(([pos]) => {
+      if (!brokenParts.value[pos]) newPartDamage[pos] = Math.max(0, (newPartDamage[pos] ?? 0) - 1)
+    })
+    partDamage.value = newPartDamage
+    const max = monsterHuntingData.value?.health ?? 999
+    huntingHp.value = Math.min(max, huntingHp.value + 5)
+    _showDamageIndicator(5, 'heal')
+    _showTcHpFlash(5, 'heal', huntingHp.value - 5, huntingHp.value)
+    _pushHuntState()
+  }
+  if (card.card_name === 'Nitrotoad') {
+    nitrotoadStep.value = 'roll'; nitrotoadRoll.value = null; nitrotoadDrawerId.value = drawerId
+  }
+  if (card.card_name === 'Paratoad') {
+    paratoadStep.value = 'roll'; paratoadRoll.value = null; paratoadDrawerId.value = drawerId
+  }
+  if (card.card_name === 'Poisoncup') {
+    poisoncupStep.value = 'roll'; poisoncupRoll.value = null; poisoncupDrawerId.value = drawerId
+  }
+  if (card.card_name === 'Sleeptoad') {
+    sleeptoadStep.value = 'roll'; sleeptoadRoll.value = null; sleeptoadDrawerId.value = drawerId
+  }
+  if (card.card_name === 'Roar') {
+    roarStep.value = 'roll'; roarRoll.value = null; roarDrawerId.value = drawerId
+  }
+  if (card.card_name === 'Suspended Boulder') {
+    boulderStep.value = 'roll'; boulderRoll.value = null; boulderDrawerId.value = drawerId
+  }
+  if (card.card_name === 'Recovery') {
+    adjustHpWithFlash(5); recoveryHpSnapshot.value = huntingHp.value; recoveryPending.value = true
+  }
+  if (card.card_name === 'Turf War') {
+    adjustHpWithFlash(-5)
+  }
+  if (card.card_name === 'Time Waster') {
+    const discardCount = Math.min(4, timeCardDeck.value.length)
+    const discarded = timeCardDeck.value.slice(0, discardCount)
+    timeCardDeck.value = timeCardDeck.value.slice(discardCount)
+    timeCardDiscard.value = [...discarded, ...timeCardDiscard.value]
+    _showDiscardFlash(discarded)
+  }
+  if (card.card_name === 'Monster Retreats') {
+    const discardCount = Math.min(4, timeCardDeck.value.length)
+    const discarded = timeCardDeck.value.slice(0, discardCount)
+    timeCardDeck.value = timeCardDeck.value.slice(discardCount)
+    timeCardDiscard.value = [...discarded, ...timeCardDiscard.value]
+    _showDiscardFlash(discarded)
+  }
   _pushTimeCardState()
+  if (rampageActive.value || misreadActive.value) _pushDeckState()
   return card
 }
 
@@ -1307,6 +1882,13 @@ const endTurn = () => {
   if (myTurnEnded.value || !timeCardDeck.value.length) return
   if (!currentBehaviorCard.value) return
   if (activationLimit.value > 0 && monsterTurnReady.value) return
+
+  if (recoveryPending.value) {
+    if (huntingHp.value >= recoveryHpSnapshot.value) adjustHpWithFlash(5)
+    recoveryPending.value = false
+    recoveryHpSnapshot.value = null
+    _pushTimeCardState()
+  }
 
   if (!room.inRoom) {
     // Solo: draw and immediately reset (1-hunter round)
@@ -1322,7 +1904,7 @@ const endTurn = () => {
   const myName = room.myHunter?.hunter_name ?? 'Hunter'
 
   if (room.isHost) {
-    const card = _drawTcCard(myName)
+    const card = _drawTcCard(myName, room.myHunterId)
     if (!card) return
     _tcProcessedKeys.add(String(room.myHunterId))
     room.markTcDrawn?.(room.myHunterId, myName, card)
@@ -1341,7 +1923,16 @@ watch(() => room.shuffleSignal, (val) => {
 // ── Activation (Turn Limit) System ───────────────────────
 const activationRoundsCompleted = ref(0)
 const rampageActive = ref(false)      // Rampage time card drawn → next behavior card activations = 0
+const misreadActive = ref(false)      // Misread time card drawn → discard top behavior card before next draw
 const activationOverride = ref(null)  // null = use card value, 0 = Rampage override
+
+// Banner/flag states จาก Firebase — ต้องอยู่หลัง declare (ไม่มี immediate)
+watch([() => room.behaviorDeckState, () => room.joinSignal], ([state]) => {
+  if (!state || !room.inRoom) return
+  misreadActive.value = state.misreadActive ?? false
+  rampageActive.value = state.rampageActive ?? false
+  activationOverride.value = state.activationOverride ?? null
+})
 const activationLimit = computed(() => {
   if (activationOverride.value !== null) return activationOverride.value
   return currentBehaviorCard.value?.activations ?? 0
@@ -1349,6 +1940,22 @@ const activationLimit = computed(() => {
 const monsterTurnReady = computed(() =>
   activationLimit.value === 0 || activationRoundsCompleted.value >= activationLimit.value
 )
+
+const floatOutcomeState = computed(() => {
+  if (canComplete.value) return 'complete'
+  if (canFail.value) return 'failed'
+  if (!canComplete.value && !canFail.value && timeCardDeck.value.length === 0 && currentBehaviorCard.value) return 'timeout'
+  return null
+})
+
+watch([monsterTurnReady, myTurnEnded], ([ready, ended]) => {
+  if (floatOutcomeState.value) return
+  floatBarCollapsed.value = ready || ended
+})
+
+watch(floatOutcomeState, (state) => {
+  if (state !== null) floatBarCollapsed.value = false
+})
 
 const _incrementActivation = () => {
   activationRoundsCompleted.value++
@@ -1361,8 +1968,8 @@ const _resetActivation = () => {
 }
 
 // Guest syncs from Firebase
-watch(() => room.activationCount, (count) => {
-  if (!room.inRoom || room.isHost) return
+watch([() => room.activationCount, () => room.joinSignal], ([count]) => {
+  if (!room.inRoom) return
   activationRoundsCompleted.value = count ?? 0
 })
 
@@ -1380,7 +1987,7 @@ watch(() => room.tcTurnEnds, (ends) => {
     // Host: fulfill pending guest requests
     if (room.isHost && data.pending && !_tcProcessedKeys.has(hunterId)) {
       _tcProcessedKeys.add(hunterId)
-      const card = _drawTcCard(data.hunterName)
+      const card = _drawTcCard(data.hunterName, hunterId)
       if (card) {
         room.markTcDrawn?.(hunterId, data.hunterName, card)
         _incrementActivation()
@@ -1445,6 +2052,24 @@ const initHuntingData = () => {
 // ── Damage Indicator ─────────────────────────────────────
 const damageIndicators = ref([])
 const isShaking = ref(false)
+const tcHpFlash = ref(null) // { delta: number, type: 'dmg'|'heal' } | null
+let _tcHpFlashTimer = null
+const tcPartFlash = ref(null) // { position, delta, current, max, thumbnail } | null
+let _tcPartFlashTimer = null
+
+const _showTcHpFlash = (delta, type, prevHp = null, newHp = null) => {
+  clearTimeout(_tcHpFlashTimer)
+  const maxHp = monsterHuntingData.value?.health ?? 1
+  tcHpFlash.value = { delta, type, prevHp, newHp, maxHp }
+  _tcHpFlashTimer = setTimeout(() => { tcHpFlash.value = null }, 2200)
+}
+
+const adjustHpWithFlash = (delta) => {
+  const prev = huntingHp.value
+  adjustHp(delta)
+  const diff = huntingHp.value - prev
+  if (diff !== 0) _showTcHpFlash(Math.abs(diff), diff < 0 ? 'dmg' : 'heal', prev, huntingHp.value)
+}
 let _dmgCounter = 0
 let _shakeTimer = null
 
@@ -1493,9 +2118,33 @@ watch([() => room.huntState, () => room.joinSignal], ([state]) => {
     const diff = state.huntingHp - huntingHp.value
     if (!_suppressAnimations && diff < 0) _showDamageIndicator(-diff, 'dmg')
     if (!_suppressAnimations && diff > 0) _showDamageIndicator(diff, 'heal')
+    if (!_suppressAnimations && diff !== 0)
+      _showTcHpFlash(Math.abs(diff), diff < 0 ? 'dmg' : 'heal', huntingHp.value, state.huntingHp)
     huntingHp.value = state.huntingHp
   }
-  if (state.partDamage) partDamage.value = state.partDamage
+  if (state.partDamage) {
+    if (!_suppressAnimations) {
+      Object.entries(state.partDamage).forEach(([pos, newVal]) => {
+        const diff = newVal - (partDamage.value[pos] ?? 0)
+        if (diff !== 0) {
+          const data = activeParts.value[pos]
+          if (data) {
+            const _pMax = data.part_break_threshold ?? 0
+            const _pBroken = newVal >= _pMax && diff > 0
+            clearTimeout(_tcPartFlashTimer)
+            tcPartFlash.value = {
+              position: pos, delta: diff, current: newVal,
+              max: _pMax,
+              thumbnail: getPartMeta(data.part_id)?.thumbnail ?? null,
+              broken: _pBroken,
+            }
+            _tcPartFlashTimer = setTimeout(() => { tcPartFlash.value = null }, _pBroken ? 2800 : 1800)
+          }
+        }
+      })
+    }
+    partDamage.value = state.partDamage
+  }
   if (state.statusMarks) statusMarks.value = state.statusMarks
 
   // appliedStatuses: handle empty sentinel
@@ -1535,15 +2184,30 @@ const adjustHp = (delta) => {
   _pushHuntState()
 }
 
+const _showPartFlash = (position, next, diff) => {
+  const data = activeParts.value[position]
+  if (!data || diff === 0) return
+  const max = data.part_break_threshold ?? 0
+  const broken = next >= max && diff > 0
+  clearTimeout(_tcPartFlashTimer)
+  tcPartFlash.value = {
+    position,
+    delta: diff,
+    current: next,
+    max,
+    thumbnail: getPartMeta(data.part_id)?.thumbnail ?? null,
+    broken,
+  }
+  _tcPartFlashTimer = setTimeout(() => { tcPartFlash.value = null }, broken ? 2800 : 1800)
+}
+
 const adjustPartDamage = (position, delta) => {
   const data = activeParts.value[position]
   if (!data) return
   const max = data.part_break_threshold ?? 0
   const current = partDamage.value[position] ?? 0
-  partDamage.value = {
-    ...partDamage.value,
-    [position]: Math.max(0, Math.min(max, current + delta)),
-  }
+  const next = Math.max(0, Math.min(max, current + delta))
+  partDamage.value = { ...partDamage.value, [position]: next }
   _pushHuntState()
 }
 
@@ -2780,10 +3444,13 @@ const openPackDrawer = () => {
 
           <!-- Next card (back) -->
           <div class="mt-card-wrap">
-            <p class="mt-card-label">การ์ดถัดไป</p>
-            <div class="mt-card mt-card-back">
+            <p class="mt-card-label" :class="{ 'misread-label': misreadActive }">
+              {{ misreadActive ? '🃏 จะถูกทิ้ง!' : 'การ์ดถัดไป' }}
+            </p>
+            <div class="mt-card mt-card-back" :class="{ 'misread-card': misreadActive }">
               <img v-if="behaviorDeck.length" :src="getImg(behaviorDeck[0].back_card_img)" class="mt-card-img" />
               <div v-else class="mt-card-empty">หมด</div>
+              <div v-if="misreadActive && behaviorDeck.length" class="misread-overlay">✕</div>
             </div>
             <p class="mt-card-name">เหลือ {{ behaviorDeck.length }} ใบ / ทิ้ง {{ behaviorDiscard.length }} ใบ</p>
           </div>
@@ -2792,6 +3459,16 @@ const openPackDrawer = () => {
         <!-- Rampage Warning -->
         <div v-if="rampageActive" class="rampage-banner">
           🔴 <strong>RAMPAGE!</strong> Monster Turn ถัดไป Hunter จะเล่นได้ 0 ครั้ง
+        </div>
+
+        <!-- Recovery Pending -->
+        <div v-if="recoveryPending" class="recovery-banner">
+          💚 <strong>RECOVERY</strong> — ถ้าไม่มีความเสียหายใน Turn ถัดไป Monster จะฟื้น +5 HP เพิ่ม
+        </div>
+
+        <!-- Misread Warning -->
+        <div v-if="misreadActive" class="misread-banner">
+          🃏 <strong>MISREAD!</strong> Monster Turn ถัดไป การ์ดบนสุดของ Behaviour Deck จะถูกทิ้งก่อน Draw
         </div>
 
         <!-- Activation Tracker -->
@@ -3278,16 +3955,6 @@ const openPackDrawer = () => {
           </div>
           <div class="tct-btn-col">
             <button
-              class="tct-end-btn"
-              :class="{ ended: myTurnEnded }"
-              :disabled="myTurnEnded || !timeCardDeck.length || !currentBehaviorCard || (activationLimit > 0 && monsterTurnReady)"
-              @click="showConfirmTurn = true"
-            >
-              <span v-if="!currentBehaviorCard || (activationLimit > 0 && monsterTurnReady)">⚔ รอ Monster Turn</span>
-              <span v-else-if="!myTurnEnded">🃏 จบเทิร์น</span>
-              <span v-else>✓ รอคนอื่น</span>
-            </button>
-            <button
               v-if="!room.inRoom || room.isHost"
               class="tct-discard-btn"
               :disabled="!timeCardDeck.length"
@@ -3297,28 +3964,6 @@ const openPackDrawer = () => {
           </div>
         </div>
 
-        <!-- Hunter status list (co-op only) -->
-        <div v-if="room.inRoom" class="tct-hunter-list">
-          <div
-            v-for="h in room.hunters"
-            :key="h.hunter_id"
-            class="tct-hunter-row"
-            :class="{ 'turn-done': room.tcTurnEnds?.[h.hunter_id] }"
-          >
-            <span class="tct-hunter-mark">
-              {{ room.tcTurnEnds?.[h.hunter_id] ? '✓' : '⏳' }}
-            </span>
-            <img
-              v-if="getHunterClass(h.hunter_class_id)?.thumbnail"
-              :src="getImg(getHunterClass(h.hunter_class_id).thumbnail)"
-              class="tct-class-icon"
-              :title="getHunterClass(h.hunter_class_id)?.hunter_class"
-            />
-            <span class="tct-hunter-name">{{ h.hunter_name }}</span>
-            <span class="tct-class-name">{{ getHunterClass(h.hunter_class_id)?.hunter_class }}</span>
-            <span v-if="room.tcTurnEnds?.[h.hunter_id]?.pending" class="tct-pending-label">รอจั๋ว…</span>
-          </div>
-        </div>
       </div>
 
       <!-- Quest Outcome -->
@@ -3837,6 +4482,617 @@ const openPackDrawer = () => {
       </Transition>
     </teleport>
 
+    <!-- ═══════════ NITROTOAD MODAL ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="nitrotoadStep" class="nt-overlay">
+          <div class="nt-modal">
+            <p class="nt-title">🐸 Nitrotoad!</p>
+
+            <!-- Step: Roll -->
+            <template v-if="nitrotoadStep === 'roll'">
+              <p class="nt-rule">1–3 : เพิ่ม Break Token บน Part ที่เลือก</p>
+              <p class="nt-rule">4–6 : Hunter ได้รับ Blastblight</p>
+              <div class="nt-die-wrap">
+                <div class="rw-die nt-die" :class="{ rolling: nitrotoadDie.rolling }">
+                  <div class="die-face">
+                    <span v-for="pos in 9" :key="pos" class="die-dot"
+                      :class="{ visible: dotPatterns[nitrotoadDie.value]?.includes(pos - 1) }" />
+                  </div>
+                </div>
+              </div>
+              <button v-if="isNitrotoadDrawer" class="nt-roll-btn" :disabled="nitrotoadDie.rolling" @click="rollNitrotoad">
+                🎲 ทอย
+              </button>
+              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === nitrotoadDrawerId)?.hunter_name ?? 'Hunter' }} ทอยลูกเต๋า...</p>
+            </template>
+
+            <!-- Step: Rolling (ทุกคนเห็น animation พร้อมกัน) -->
+            <template v-else-if="nitrotoadStep === 'rolling'">
+              <div class="nt-die-wrap">
+                <div class="rw-die nt-die rolling">
+                  <div class="die-face">
+                    <span v-for="pos in 9" :key="pos" class="die-dot"
+                      :class="{ visible: dotPatterns[nitrotoadDie.value]?.includes(pos - 1) }" />
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <!-- Step: Rolled (แสดงผล รอ confirm) -->
+            <template v-else-if="nitrotoadStep === 'rolled'">
+              <div class="nt-die-wrap">
+                <div class="rw-die nt-die" :class="{ rolling: nitrotoadDie.rolling }">
+                  <div class="die-face">
+                    <span v-for="pos in 9" :key="pos" class="die-dot"
+                      :class="{ visible: dotPatterns[nitrotoadDie.value]?.includes(pos - 1) }" />
+                  </div>
+                </div>
+              </div>
+              <p class="nt-roll-result">ได้ <strong>{{ nitrotoadRoll }}</strong></p>
+              <p class="nt-rule" :class="nitrotoadRoll <= 3 ? 'nt-rule-good' : 'nt-rule-bad'">
+                {{ nitrotoadRoll <= 3 ? '✓ เพิ่ม Break Token บน Part ที่เลือก' : '✕ Hunter ได้รับ Blastblight' }}
+              </p>
+              <button v-if="isNitrotoadDrawer" class="nt-roll-btn" @click="confirmNitrotoad">ดำเนินการ</button>
+              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === nitrotoadDrawerId)?.hunter_name ?? 'Hunter' }} ดำเนินการ...</p>
+            </template>
+
+            <!-- Step: Part Select (1-3) -->
+            <template v-else-if="nitrotoadStep === 'part-select'">
+              <p class="nt-roll-result">ได้ <strong>{{ nitrotoadRoll }}</strong> — กดที่ Part เพื่อวาง Break Token</p>
+              <template v-if="isNitrotoadDrawer">
+                <div class="nt-parts-grid">
+                  <div
+                    v-for="(partData, position) in activeParts"
+                    :key="position"
+                    class="part-card nt-part-card"
+                    :class="{ 'part-card-broken': brokenParts[position], 'nt-part-selectable': !brokenParts[position] }"
+                    @click="!brokenParts[position] && applyNitrotoadBreak(position)"
+                  >
+                    <div class="part-card-head">
+                      <div class="part-icon-wrap">
+                        <img v-if="getPartMeta(partData.part_id)" :src="getImg(getPartMeta(partData.part_id).thumbnail)" class="part-icon-img" :class="{ 'part-icon-broken': brokenParts[position] }" />
+                      </div>
+                      <div class="part-card-armor-wrap">
+                        <div class="armor-element-card">
+                          <img :src="getImg('assets/img/bonus_armor.png')" class="armor-base" />
+                          <span class="element-value">{{ partData.armor }}</span>
+                        </div>
+                      </div>
+                      <div class="part-mini-diagram">
+                        <svg viewBox="0 0 100 100" class="part-mini-svg">
+                          <circle cx="50" cy="50" r="46" fill="#0f0b05" stroke="#5a3d1f" stroke-width="2" />
+                          <line x1="4" y1="4" x2="96" y2="96" stroke="#3a2810" stroke-width="2" />
+                          <line x1="96" y1="4" x2="4" y2="96" stroke="#3a2810" stroke-width="2" />
+                          <circle v-if="posDotCoords[position]" :cx="posDotCoords[position].x" :cy="posDotCoords[position].y" r="12"
+                            :fill="brokenParts[position] ? 'rgba(220,60,40,0.9)' : 'rgba(200,155,60,0.9)'"
+                            :filter="brokenParts[position] ? 'url(#glow-red)' : 'url(#glow-gold)'" />
+                          <template v-for="connPos in (partData.connect_part_position ?? [])" :key="connPos">
+                            <circle v-if="posDotCoords[connPos]" :cx="posDotCoords[connPos].x" :cy="posDotCoords[connPos].y" r="12"
+                              :fill="brokenParts[position] ? 'rgba(220,60,40,0.9)' : 'rgba(200,155,60,0.9)'"
+                              :filter="brokenParts[position] ? 'url(#glow-red)' : 'url(#glow-gold)'" />
+                          </template>
+                          <defs>
+                            <filter id="glow-gold" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                            <filter id="glow-red" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                          </defs>
+                        </svg>
+                      </div>
+                      <div v-if="brokenParts[position]" class="part-broken-stamp">BROKEN</div>
+                    </div>
+                    <div class="part-break-wrap">
+                      <div class="part-break-row">
+                        <span class="part-break-label">Break</span>
+                        <span class="part-break-nums">{{ partDamage[position] ?? 0 }} / {{ partData.part_break_threshold }}</span>
+                      </div>
+                      <div class="part-break-track">
+                        <div class="part-break-fill" :class="{ 'break-fill-broken': brokenParts[position] }"
+                          :style="{ width: Math.min(100, ((partDamage[position] ?? 0) / partData.part_break_threshold) * 100) + '%' }" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === nitrotoadDrawerId)?.hunter_name ?? 'Hunter' }} เลือก Part...</p>
+            </template>
+
+            <!-- Step: Blastblight (4-6) -->
+            <template v-else-if="nitrotoadStep === 'blastblight'">
+              <p class="nt-roll-result">ได้ <strong>{{ nitrotoadRoll }}</strong></p>
+              <div class="nt-blast-box">
+                <img :src="getImg('assets/img/status_effect/blastblight.webp')" class="nt-blast-icon" />
+                <div>
+                  <p class="nt-blast-name">Blastblight</p>
+                  <p class="nt-blast-desc">{{ getStatusEffect(5)?.hunter_suffer }}</p>
+                </div>
+              </div>
+              <button class="nt-close-btn" @click="dismissNitrotoad">รับทราบ</button>
+            </template>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ PARATOAD MODAL ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="paratoadStep" class="nt-overlay">
+          <div class="nt-modal">
+            <p class="nt-title">🐸 Paratoad!</p>
+
+            <template v-if="paratoadStep === 'roll'">
+              <p class="nt-rule">1–3 : วาง Paralysis Token บน Monster</p>
+              <p class="nt-rule">4–6 : Hunter ได้รับ Paralysis</p>
+              <div class="nt-die-wrap">
+                <div class="rw-die nt-die" :class="{ rolling: paratoadDie.rolling }">
+                  <div class="die-face">
+                    <span v-for="pos in 9" :key="pos" class="die-dot"
+                      :class="{ visible: dotPatterns[paratoadDie.value]?.includes(pos - 1) }" />
+                  </div>
+                </div>
+              </div>
+              <button v-if="isParatoadDrawer" class="nt-roll-btn" @click="rollParatoad">🎲 ทอย</button>
+              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === paratoadDrawerId)?.hunter_name ?? 'Hunter' }} ทอยลูกเต๋า...</p>
+            </template>
+
+            <template v-else-if="paratoadStep === 'rolling'">
+              <div class="nt-die-wrap">
+                <div class="rw-die nt-die rolling">
+                  <div class="die-face">
+                    <span v-for="pos in 9" :key="pos" class="die-dot"
+                      :class="{ visible: dotPatterns[paratoadDie.value]?.includes(pos - 1) }" />
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <template v-else-if="paratoadStep === 'rolled'">
+              <div class="nt-die-wrap">
+                <div class="rw-die nt-die" :class="{ rolling: paratoadDie.rolling }">
+                  <div class="die-face">
+                    <span v-for="pos in 9" :key="pos" class="die-dot"
+                      :class="{ visible: dotPatterns[paratoadDie.value]?.includes(pos - 1) }" />
+                  </div>
+                </div>
+              </div>
+              <p class="nt-roll-result">ได้ <strong>{{ paratoadRoll }}</strong></p>
+              <p class="nt-rule" :class="paratoadRoll <= 3 ? 'nt-rule-good' : 'nt-rule-bad'">
+                {{ paratoadRoll <= 3 ? '✓ วาง Paralysis Token บน Monster' : '✕ Hunter ได้รับ Paralysis' }}
+              </p>
+              <button v-if="isParatoadDrawer" class="nt-roll-btn" @click="confirmParatoad">ดำเนินการ</button>
+              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === paratoadDrawerId)?.hunter_name ?? 'Hunter' }} ดำเนินการ...</p>
+            </template>
+
+            <template v-else-if="paratoadStep === 'paralysis'">
+              <p class="nt-roll-result">ได้ <strong>{{ paratoadRoll }}</strong></p>
+              <div class="nt-blast-box">
+                <img :src="getImg('assets/img/status_effect/paralysis.webp')" class="nt-blast-icon" />
+                <div>
+                  <p class="nt-blast-name">Paralysis</p>
+                  <p class="nt-blast-desc">{{ getStatusEffect(4)?.hunter_suffer }}</p>
+                </div>
+              </div>
+              <button class="nt-close-btn" @click="dismissParatoad">รับทราบ</button>
+            </template>
+
+            <template v-else-if="paratoadStep === 'immune'">
+              <p class="nt-roll-result">ได้ <strong>{{ paratoadRoll }}</strong></p>
+              <div class="nt-immune-box">
+                <span class="nt-immune-icon">🛡</span>
+                <div>
+                  <p class="nt-immune-title">Monster ต้านทาน!</p>
+                  <p class="nt-immune-desc">Monster ไม่ได้รับผลจาก Paralysis</p>
+                </div>
+              </div>
+              <button class="nt-close-btn" @click="dismissParatoad">ปิด</button>
+            </template>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ POISONCUP MODAL ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="poisoncupStep" class="nt-overlay">
+          <div class="nt-modal">
+            <p class="nt-title">☠ Poisoncup!</p>
+
+            <template v-if="poisoncupStep === 'roll'">
+              <p class="nt-rule">1–3 : วาง Poison Token บน Monster</p>
+              <p class="nt-rule">4–6 : Hunter ได้รับ Poison</p>
+              <div class="nt-die-wrap">
+                <div class="rw-die nt-die" :class="{ rolling: poisoncupDie.rolling }">
+                  <div class="die-face">
+                    <span v-for="pos in 9" :key="pos" class="die-dot"
+                      :class="{ visible: dotPatterns[poisoncupDie.value]?.includes(pos - 1) }" />
+                  </div>
+                </div>
+              </div>
+              <button v-if="isPoisoncupDrawer" class="nt-roll-btn" @click="rollPoisoncup">🎲 ทอย</button>
+              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === poisoncupDrawerId)?.hunter_name ?? 'Hunter' }} ทอยลูกเต๋า...</p>
+            </template>
+
+            <template v-else-if="poisoncupStep === 'rolling'">
+              <div class="nt-die-wrap">
+                <div class="rw-die nt-die rolling">
+                  <div class="die-face">
+                    <span v-for="pos in 9" :key="pos" class="die-dot"
+                      :class="{ visible: dotPatterns[poisoncupDie.value]?.includes(pos - 1) }" />
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <template v-else-if="poisoncupStep === 'rolled'">
+              <div class="nt-die-wrap">
+                <div class="rw-die nt-die" :class="{ rolling: poisoncupDie.rolling }">
+                  <div class="die-face">
+                    <span v-for="pos in 9" :key="pos" class="die-dot"
+                      :class="{ visible: dotPatterns[poisoncupDie.value]?.includes(pos - 1) }" />
+                  </div>
+                </div>
+              </div>
+              <p class="nt-roll-result">ได้ <strong>{{ poisoncupRoll }}</strong></p>
+              <p class="nt-rule" :class="poisoncupRoll <= 3 ? 'nt-rule-good' : 'nt-rule-bad'">
+                {{ poisoncupRoll <= 3 ? '✓ วาง Poison Token บน Monster' : '✕ Hunter ได้รับ Poison' }}
+              </p>
+              <button v-if="isPoisoncupDrawer" class="nt-roll-btn" @click="confirmPoisoncup">ดำเนินการ</button>
+              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === poisoncupDrawerId)?.hunter_name ?? 'Hunter' }} ดำเนินการ...</p>
+            </template>
+
+            <template v-else-if="poisoncupStep === 'poison'">
+              <p class="nt-roll-result">ได้ <strong>{{ poisoncupRoll }}</strong></p>
+              <div class="nt-blast-box">
+                <img :src="getImg('assets/img/status_effect/poison.webp')" class="nt-blast-icon" />
+                <div>
+                  <p class="nt-blast-name">Poison</p>
+                  <p class="nt-blast-desc">{{ getStatusEffect(2)?.hunter_suffer }}</p>
+                </div>
+              </div>
+              <button class="nt-close-btn" @click="dismissPoisoncup">รับทราบ</button>
+            </template>
+
+            <template v-else-if="poisoncupStep === 'immune'">
+              <p class="nt-roll-result">ได้ <strong>{{ poisoncupRoll }}</strong></p>
+              <div class="nt-immune-box">
+                <span class="nt-immune-icon">🛡</span>
+                <div>
+                  <p class="nt-immune-title">Monster ต้านทาน!</p>
+                  <p class="nt-immune-desc">Monster ไม่ได้รับผลจาก Poison</p>
+                </div>
+              </div>
+              <button class="nt-close-btn" @click="dismissPoisoncup">ปิด</button>
+            </template>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ SLEEPTOAD MODAL ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="sleeptoadStep" class="nt-overlay">
+          <div class="nt-modal">
+            <p class="nt-title">💤 Sleeptoad!</p>
+
+            <template v-if="sleeptoadStep === 'roll'">
+              <p class="nt-rule">1–3 : วาง Sleep Token บน Monster</p>
+              <p class="nt-rule">4–6 : Hunter ได้รับ Sleep</p>
+              <div class="nt-die-wrap">
+                <div class="rw-die nt-die" :class="{ rolling: sleeptoadDie.rolling }">
+                  <div class="die-face">
+                    <span v-for="pos in 9" :key="pos" class="die-dot"
+                      :class="{ visible: dotPatterns[sleeptoadDie.value]?.includes(pos - 1) }" />
+                  </div>
+                </div>
+              </div>
+              <button v-if="isSleeptoadDrawer" class="nt-roll-btn" @click="rollSleeptoad">🎲 ทอย</button>
+              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === sleeptoadDrawerId)?.hunter_name ?? 'Hunter' }} ทอยลูกเต๋า...</p>
+            </template>
+
+            <template v-else-if="sleeptoadStep === 'rolling'">
+              <div class="nt-die-wrap">
+                <div class="rw-die nt-die rolling">
+                  <div class="die-face">
+                    <span v-for="pos in 9" :key="pos" class="die-dot"
+                      :class="{ visible: dotPatterns[sleeptoadDie.value]?.includes(pos - 1) }" />
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <template v-else-if="sleeptoadStep === 'rolled'">
+              <div class="nt-die-wrap">
+                <div class="rw-die nt-die" :class="{ rolling: sleeptoadDie.rolling }">
+                  <div class="die-face">
+                    <span v-for="pos in 9" :key="pos" class="die-dot"
+                      :class="{ visible: dotPatterns[sleeptoadDie.value]?.includes(pos - 1) }" />
+                  </div>
+                </div>
+              </div>
+              <p class="nt-roll-result">ได้ <strong>{{ sleeptoadRoll }}</strong></p>
+              <p class="nt-rule" :class="sleeptoadRoll <= 3 ? 'nt-rule-good' : 'nt-rule-bad'">
+                {{ sleeptoadRoll <= 3 ? '✓ วาง Sleep Token บน Monster' : '✕ Hunter ได้รับ Sleep' }}
+              </p>
+              <button v-if="isSleeptoadDrawer" class="nt-roll-btn" @click="confirmSleeptoad">ดำเนินการ</button>
+              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === sleeptoadDrawerId)?.hunter_name ?? 'Hunter' }} ดำเนินการ...</p>
+            </template>
+
+            <template v-else-if="sleeptoadStep === 'sleep'">
+              <p class="nt-roll-result">ได้ <strong>{{ sleeptoadRoll }}</strong></p>
+              <div class="nt-blast-box">
+                <img :src="getImg('assets/img/status_effect/sleep.webp')" class="nt-blast-icon" />
+                <div>
+                  <p class="nt-blast-name">Sleep</p>
+                  <p class="nt-blast-desc">{{ getStatusEffect(3)?.hunter_suffer }}</p>
+                </div>
+              </div>
+              <button class="nt-close-btn" @click="dismissSleeptoad">รับทราบ</button>
+            </template>
+
+            <template v-else-if="sleeptoadStep === 'immune'">
+              <p class="nt-roll-result">ได้ <strong>{{ sleeptoadRoll }}</strong></p>
+              <div class="nt-immune-box">
+                <span class="nt-immune-icon">🛡</span>
+                <div>
+                  <p class="nt-immune-title">Monster ต้านทาน!</p>
+                  <p class="nt-immune-desc">Monster ไม่ได้รับผลจาก Sleep</p>
+                </div>
+              </div>
+              <button class="nt-close-btn" @click="dismissSleeptoad">ปิด</button>
+            </template>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ ROAR MODAL ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="roarStep" class="nt-overlay">
+          <div class="nt-modal">
+            <p class="nt-title">📢 Roar!</p>
+
+            <template v-if="roarStep === 'roll'">
+              <p class="nt-rule">ทอยลูกเต๋า — ทิ้งการ์ดจาก Time Deck เท่ากับผลที่ได้</p>
+              <div class="nt-die-wrap">
+                <div class="rw-die nt-die" :class="{ rolling: roarDie.rolling }">
+                  <div class="die-face">
+                    <span v-for="pos in 9" :key="pos" class="die-dot"
+                      :class="{ visible: dotPatterns[roarDie.value]?.includes(pos - 1) }" />
+                  </div>
+                </div>
+              </div>
+              <button v-if="isRoarDrawer" class="nt-roll-btn" @click="rollRoar">🎲 ทอย</button>
+              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === roarDrawerId)?.hunter_name ?? 'Hunter' }} ทอยลูกเต๋า...</p>
+            </template>
+
+            <template v-else-if="roarStep === 'rolling'">
+              <div class="nt-die-wrap">
+                <div class="rw-die nt-die rolling">
+                  <div class="die-face">
+                    <span v-for="pos in 9" :key="pos" class="die-dot"
+                      :class="{ visible: dotPatterns[roarDie.value]?.includes(pos - 1) }" />
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <template v-else-if="roarStep === 'rolled'">
+              <div class="nt-die-wrap">
+                <div class="rw-die nt-die">
+                  <div class="die-face">
+                    <span v-for="pos in 9" :key="pos" class="die-dot"
+                      :class="{ visible: dotPatterns[roarDie.value]?.includes(pos - 1) }" />
+                  </div>
+                </div>
+              </div>
+              <p class="nt-roll-result">ได้ <strong>{{ roarRoll }}</strong></p>
+              <p class="nt-rule nt-rule-bad">
+                ทิ้ง {{ Math.min(roarRoll, timeCardDeck.length) }} ใบจาก Time Deck
+                <span v-if="roarRoll > timeCardDeck.length"> (เหลือแค่ {{ timeCardDeck.length }} ใบ)</span>
+              </p>
+              <button v-if="isRoarDrawer" class="nt-roll-btn" @click="confirmRoar">ดำเนินการ</button>
+              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === roarDrawerId)?.hunter_name ?? 'Hunter' }} ดำเนินการ...</p>
+            </template>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ SUSPENDED BOULDER MODAL ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="boulderStep" class="nt-overlay">
+          <div class="nt-modal">
+            <p class="nt-title">🪨 Suspended Boulder!</p>
+
+            <template v-if="boulderStep === 'roll'">
+              <p class="nt-rule">1–3 : Monster รับ 5 ความเสียหาย</p>
+              <p class="nt-rule">4–6 : Hunter รับ 2 ความเสียหาย</p>
+              <div class="nt-die-wrap">
+                <div class="rw-die nt-die" :class="{ rolling: boulderDie.rolling }">
+                  <div class="die-face">
+                    <span v-for="pos in 9" :key="pos" class="die-dot"
+                      :class="{ visible: dotPatterns[boulderDie.value]?.includes(pos - 1) }" />
+                  </div>
+                </div>
+              </div>
+              <button v-if="isBoulderDrawer" class="nt-roll-btn" @click="rollBoulder">🎲 ทอย</button>
+              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === boulderDrawerId)?.hunter_name ?? 'Hunter' }} ทอยลูกเต๋า...</p>
+            </template>
+
+            <template v-else-if="boulderStep === 'rolling'">
+              <div class="nt-die-wrap">
+                <div class="rw-die nt-die rolling">
+                  <div class="die-face">
+                    <span v-for="pos in 9" :key="pos" class="die-dot"
+                      :class="{ visible: dotPatterns[boulderDie.value]?.includes(pos - 1) }" />
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <template v-else-if="boulderStep === 'rolled'">
+              <div class="nt-die-wrap">
+                <div class="rw-die nt-die">
+                  <div class="die-face">
+                    <span v-for="pos in 9" :key="pos" class="die-dot"
+                      :class="{ visible: dotPatterns[boulderDie.value]?.includes(pos - 1) }" />
+                  </div>
+                </div>
+              </div>
+              <p class="nt-roll-result">ได้ <strong>{{ boulderRoll }}</strong></p>
+              <p class="nt-rule" :class="boulderRoll <= 3 ? 'nt-rule-good' : 'nt-rule-bad'">
+                {{ boulderRoll <= 3 ? '✓ Monster รับ 5 ความเสียหาย' : '✕ Hunter รับ 2 ความเสียหาย' }}
+              </p>
+              <button v-if="isBoulderDrawer" class="nt-roll-btn" @click="confirmBoulder">ดำเนินการ</button>
+              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === boulderDrawerId)?.hunter_name ?? 'Hunter' }} ดำเนินการ...</p>
+            </template>
+
+            <template v-else-if="boulderStep === 'hunter-damage'">
+              <p class="nt-roll-result">ได้ <strong>{{ boulderRoll }}</strong></p>
+              <div class="nt-blast-box">
+                <span style="font-size:28px;flex-shrink:0">💥</span>
+                <div>
+                  <p class="nt-blast-name">Hunter ได้รับความเสียหาย -2 หน่วย</p>
+                </div>
+              </div>
+              <button class="nt-close-btn" @click="dismissBoulder">รับทราบ</button>
+            </template>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ STATUS TOKEN FLASH OVERLAY ═══════════ -->
+    <teleport to="body">
+      <Transition name="tc-hp-flash">
+        <div v-if="tcStatusFlash" class="tc-status-flash-overlay">
+          <img v-if="selectedMonster" :src="getImg(selectedMonster.thumbnail)" class="tc-status-monster-icon" />
+          <div class="tc-status-flash-badge">
+            <img :src="getImg(tcStatusFlash.thumbnail)" class="tc-status-flash-icon" />
+            <div class="tc-status-flash-info">
+              <span class="tc-status-flash-label">Status Token</span>
+              <span class="tc-status-flash-name">{{ tcStatusFlash.name }}</span>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ DISCARD FLASH OVERLAY ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="tcDiscardFlash?.length" class="tc-discard-flash-overlay">
+          <p class="tc-discard-flash-label">ทิ้ง {{ tcDiscardFlash.length }} ใบ</p>
+          <div class="tc-discard-flash-cards">
+            <div
+              v-for="(card, i) in tcDiscardFlash"
+              :key="i"
+              class="tc-discard-flash-card"
+              :style="{ '--i': i, '--total': tcDiscardFlash.length }"
+            >
+              <img :src="getImg(card.card_img)" class="tc-discard-flash-img" />
+              <span class="tc-discard-flash-name">{{ card.card_name }}</span>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ PART BREAK TOKEN FLASH OVERLAY ═══════════ -->
+    <teleport to="body">
+      <Transition name="tc-hp-flash">
+        <div v-if="tcPartFlash" class="tc-part-flash-overlay"
+          :class="tcPartFlash.broken ? 'tc-part-shatter' : (tcPartFlash.delta > 0 ? 'tc-part-add' : 'tc-part-remove')">
+          <div class="tc-part-icon-wrap" :class="{ 'tc-part-icon-hit': !tcPartFlash.broken }">
+            <!-- Shatter shards (broken only) -->
+            <template v-if="tcPartFlash.broken && tcPartFlash.thumbnail">
+              <img :src="getImg(tcPartFlash.thumbnail)" class="tc-part-img tc-shard tc-shard-1" />
+              <img :src="getImg(tcPartFlash.thumbnail)" class="tc-part-img tc-shard tc-shard-2" />
+              <img :src="getImg(tcPartFlash.thumbnail)" class="tc-part-img tc-shard tc-shard-3" />
+              <img :src="getImg(tcPartFlash.thumbnail)" class="tc-part-img tc-shard tc-shard-4" />
+              <img :src="getImg(tcPartFlash.thumbnail)" class="tc-part-img tc-shard tc-shard-5" />
+              <img :src="getImg(tcPartFlash.thumbnail)" class="tc-part-img tc-shard tc-shard-6" />
+              <img :src="getImg(tcPartFlash.thumbnail)" class="tc-part-img tc-shard tc-shard-7" />
+              <img :src="getImg(tcPartFlash.thumbnail)" class="tc-part-img tc-shard tc-shard-8" />
+            </template>
+            <!-- Normal icon -->
+            <img v-else-if="tcPartFlash.thumbnail" :src="getImg(tcPartFlash.thumbnail)" class="tc-part-img" />
+            <svg v-if="!tcPartFlash.broken" class="tc-part-crack-svg" viewBox="0 0 110 110">
+              <!-- Crack 1: มุมซ้ายบน → กลาง -->
+              <polyline v-if="tcPartFlash.current >= 1"
+                points="4,6 20,24 33,36 44,48 52,55" class="tc-crack-line" />
+              <!-- Crack 2: ขวา → กลาง -->
+              <polyline v-if="tcPartFlash.current >= 2"
+                points="110,38 90,42 78,48 66,52 58,55" class="tc-crack-line" />
+              <!-- Crack 3: ล่าง → กลาง -->
+              <polyline v-if="tcPartFlash.current >= 3"
+                points="48,110 50,90 53,74 54,62 55,56" class="tc-crack-line" />
+              <!-- Crack 4: ซ้าย → กลาง -->
+              <polyline v-if="tcPartFlash.current >= 4"
+                points="0,72 18,66 32,61 44,57 52,54" class="tc-crack-line" />
+              <!-- Crack 5: มุมขวาบน → กลาง (สาขาเล็ก) -->
+              <polyline v-if="tcPartFlash.current >= 5"
+                points="106,4 88,20 74,32 63,43 57,52" class="tc-crack-line" />
+              <polyline v-if="tcPartFlash.current >= 5"
+                points="88,20 95,35" class="tc-crack-line tc-crack-thin" />
+              <!-- Crack 6: ล่างซ้าย → กลาง (สาขาเล็ก) -->
+              <polyline v-if="tcPartFlash.current >= 6"
+                points="4,106 22,88 34,74 44,63 51,57" class="tc-crack-line" />
+              <polyline v-if="tcPartFlash.current >= 6"
+                points="34,74 22,80" class="tc-crack-line tc-crack-thin" />
+              <!-- Crack 7: บน → กลาง -->
+              <polyline v-if="tcPartFlash.current >= 7"
+                points="66,0 63,18 60,30 58,44 56,53" class="tc-crack-line" />
+              <!-- Crack 8: ล่างขวา → กลาง -->
+              <polyline v-if="tcPartFlash.current >= 8"
+                points="106,106 88,90 75,77 65,66 58,58" class="tc-crack-line" />
+              <polyline v-if="tcPartFlash.current >= 8"
+                points="75,77 82,70" class="tc-crack-line tc-crack-thin" />
+            </svg>
+            <div v-if="tcPartFlash.broken" class="tc-part-break-flash" />
+          </div>
+          <span class="tc-part-value" :class="tcPartFlash.broken ? 'tc-part-value-break' : ''">
+            {{ tcPartFlash.broken ? 'BROKEN!' : (tcPartFlash.delta > 0 ? '+' : '') + tcPartFlash.delta }}
+          </span>
+          <div v-if="!tcPartFlash.broken" class="tc-hp-bar-wrap">
+            <div class="tc-hp-bar-track">
+              <div class="tc-hp-bar-fill tc-part-bar"
+                :style="{ width: Math.min(100, (tcPartFlash.current / tcPartFlash.max) * 100) + '%' }" />
+            </div>
+            <span class="tc-hp-bar-nums">{{ tcPartFlash.current }} / {{ tcPartFlash.max }}</span>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ TC HP FLASH OVERLAY ═══════════ -->
+    <teleport to="body">
+      <Transition name="tc-hp-flash">
+        <div v-if="tcHpFlash" class="tc-hp-flash-overlay" :class="tcHpFlash.type === 'heal' ? 'tc-hp-heal' : 'tc-hp-dmg'">
+          <img v-if="selectedMonster" :src="getImg(selectedMonster.thumbnail)" class="tc-hp-monster-icon" />
+          <span class="tc-hp-value">{{ tcHpFlash.type === 'heal' ? '+' : '−' }}{{ tcHpFlash.delta }}</span>
+          <div v-if="tcHpFlash.prevHp !== null" class="tc-hp-bar-wrap">
+            <div class="tc-hp-bar-track">
+              <div
+                class="tc-hp-bar-prev"
+                :style="{ width: Math.min(100, (tcHpFlash.prevHp / tcHpFlash.maxHp) * 100) + '%' }"
+              />
+              <div
+                class="tc-hp-bar-fill"
+                :style="{ width: Math.min(100, (tcHpFlash.newHp / tcHpFlash.maxHp) * 100) + '%' }"
+              />
+            </div>
+            <span class="tc-hp-bar-nums">{{ tcHpFlash.newHp }} / {{ tcHpFlash.maxHp }}</span>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+
     <!-- ═══════════ LAST DISCARD PREVIEW ═══════════ -->
     <teleport to="body">
       <Transition name="slain-fade">
@@ -3849,6 +5105,89 @@ const openPackDrawer = () => {
           </div>
         </div>
       </Transition>
+    </teleport>
+
+    <!-- ═══════════ FLOATING TURN BAR ═══════════ -->
+    <teleport to="body">
+      <div
+        v-if="phase === 'huntingPanel' && (timeCardDeck.length > 0 || timeCardDiscard.length > 0)"
+        class="float-turn-bar"
+        :class="{ 'float-turn-bar-collapsed': floatBarCollapsed }"
+      >
+        <button class="float-toggle-btn" @click="floatBarCollapsed = !floatBarCollapsed">
+          {{ floatBarCollapsed ? '🃏 จบเทิร์น ▲' : '▼ ซ่อน' }}
+        </button>
+        <!-- Content (hidden when collapsed) -->
+        <div v-show="!floatBarCollapsed">
+        <!-- Hunter list (coop only) -->
+        <div v-if="room.inRoom" class="float-hunter-list">
+          <div
+            v-for="h in room.hunters"
+            :key="h.hunter_id"
+            class="float-hunter-row"
+            :class="{ 'float-hunter-done': room.tcTurnEnds?.[h.hunter_id] }"
+          >
+            <span class="float-hunter-mark">{{ room.tcTurnEnds?.[h.hunter_id] ? '✓' : '⏳' }}</span>
+            <img
+              v-if="getHunterClass(h.hunter_class_id)?.thumbnail"
+              :src="getImg(getHunterClass(h.hunter_class_id).thumbnail)"
+              class="float-hunter-icon"
+            />
+            <span class="float-hunter-name">{{ h.hunter_name }}</span>
+            <span v-if="room.tcTurnEnds?.[h.hunter_id]?.pending" class="float-pending">รอจั๋ว…</span>
+          </div>
+        </div>
+        <!-- Outcome buttons (แสดงแทน จบเทิร์น เมื่อมีเงื่อนไข) -->
+        <button
+          v-if="floatOutcomeState === 'complete'"
+          class="float-end-btn float-outcome-complete"
+          :class="{ 'outcome-voted': room.myOutcomeVote === 'complete' }"
+          @click="room.inRoom ? toggleVote('complete') : requestOutcome('complete')"
+        >
+          <span class="result-icon">✦</span> Quest Complete
+          <span v-if="room.inRoom && Object.values(room.outcomeVotes ?? {}).filter(v => v === 'complete').length > 0" class="outcome-vote-count">
+            {{ Object.values(room.outcomeVotes ?? {}).filter(v => v === 'complete').length }}/{{ room.hunterCount }}
+          </span>
+        </button>
+
+        <button
+          v-else-if="floatOutcomeState === 'failed'"
+          class="float-end-btn float-outcome-fail"
+          :class="{ 'outcome-voted': room.myOutcomeVote === 'fail' }"
+          @click="room.inRoom ? toggleVote('fail') : requestOutcome('fail')"
+        >
+          <span class="result-icon">💀</span> Quest Failed
+          <span v-if="room.inRoom && Object.values(room.outcomeVotes ?? {}).filter(v => v === 'fail').length > 0" class="outcome-vote-count">
+            {{ Object.values(room.outcomeVotes ?? {}).filter(v => v === 'fail').length }}/{{ room.hunterCount }}
+          </span>
+        </button>
+
+        <button
+          v-else-if="floatOutcomeState === 'timeout'"
+          class="float-end-btn float-outcome-timeout"
+          :class="{ 'outcome-voted': room.myOutcomeVote === 'fail' }"
+          @click="room.inRoom ? toggleVote('fail') : requestOutcome('fail')"
+        >
+          <span class="result-icon">⏱</span> Time Out
+          <span v-if="room.inRoom && Object.values(room.outcomeVotes ?? {}).filter(v => v === 'fail').length > 0" class="outcome-vote-count">
+            {{ Object.values(room.outcomeVotes ?? {}).filter(v => v === 'fail').length }}/{{ room.hunterCount }}
+          </span>
+        </button>
+
+        <!-- End turn button (ปกติ) -->
+        <button
+          v-else
+          class="float-end-btn"
+          :class="{ 'float-ended': myTurnEnded }"
+          :disabled="myTurnEnded || !timeCardDeck.length || !currentBehaviorCard || monsterTurnReady"
+          @click="showConfirmTurn = true"
+        >
+          <span v-if="!currentBehaviorCard || monsterTurnReady">⚔ รอ Monster Turn</span>
+          <span v-else-if="!myTurnEnded">🃏 จบเทิร์น</span>
+          <span v-else>✓ รอคนอื่น</span>
+        </button>
+        </div>
+      </div>
     </teleport>
 
     <!-- ═══════════ END TURN CONFIRM ═══════════ -->
@@ -5285,6 +6624,7 @@ const openPackDrawer = () => {
   margin: 0;
 }
 .mt-card {
+  position: relative;
   width: min(320px, 42vw);
   height: min(212px, 30vw);
   border-radius: 8px;
@@ -5442,6 +6782,430 @@ const openPackDrawer = () => {
   50%       { box-shadow: 0 0 12px rgba(200,40,40,0.4); }
 }
 
+/* ── Misread Card Overlay ── */
+.misread-label {
+  color: #88aaff;
+  font-weight: bold;
+}
+.misread-card {
+  border-color: rgba(80,120,220,0.6) !important;
+  filter: brightness(0.65) saturate(0.4);
+}
+.misread-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  font-weight: bold;
+  color: rgba(100,140,255,0.9);
+  text-shadow: 0 0 12px rgba(80,120,220,0.8);
+  pointer-events: none;
+}
+
+
+/* ── Nitrotoad / Paratoad Modal (shared) ── */
+.nt-die-wrap { display: flex; justify-content: center; padding: 4px 0; }
+.nt-die { pointer-events: none; }
+.nt-parts-grid {
+  display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+  max-width: 360px; max-height: 340px; overflow-y: auto;
+}
+.nt-part-card { width: 100px; transition: 0.15s; }
+.nt-part-selectable {
+  cursor: pointer;
+  border-color: rgba(200,155,60,0.6) !important;
+}
+.nt-part-selectable:hover {
+  border-color: #c89b3c !important;
+  box-shadow: 0 0 14px rgba(200,155,60,0.4);
+  transform: translateY(-2px);
+}
+
+.nt-overlay {
+  position: fixed; inset: 0; z-index: 900;
+  background: rgba(0,0,0,0.82);
+  display: flex; align-items: center; justify-content: center;
+}
+.nt-modal {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 28px 32px;
+  background: linear-gradient(160deg, #1c1508, #13100a);
+  border: 2px solid rgba(200,155,60,0.45);
+  border-radius: 16px;
+  box-shadow: 0 0 40px rgba(0,0,0,0.9), inset 0 0 20px rgba(200,155,60,0.04);
+  max-width: min(420px, 92vw); text-align: center;
+}
+.nt-title {
+  font-size: 18px; font-weight: bold; color: #ffd27a;
+  margin: 0; letter-spacing: 3px; text-transform: uppercase;
+  text-shadow: 0 0 12px rgba(200,155,60,0.5);
+}
+.nt-rule { font-size: 12px; color: #7c5a2b; margin: 0; letter-spacing: 1px; }
+.nt-rule-good { color: #c89b3c; font-weight: bold; }
+.nt-rule-bad  { color: #cc6644; font-weight: bold; }
+.nt-waiting { font-size: 12px; color: #5a3d1f; margin: 0; font-style: italic; letter-spacing: 1px; }
+.nt-roll-result { font-size: 14px; color: #f0ddb0; margin: 0; letter-spacing: 1px; }
+.nt-roll-btn {
+  padding: 10px 32px;
+  background: linear-gradient(to bottom, #2a1e10, #17120c);
+  border: 1px solid #7c5a2b;
+  border-radius: 8px; color: #c89b3c; font-size: 15px; cursor: pointer;
+  letter-spacing: 1px; transition: 0.2s;
+}
+.nt-roll-btn:hover:not(:disabled) {
+  border-color: #c89b3c;
+  box-shadow: 0 0 10px rgba(200,155,60,0.4);
+}
+.nt-roll-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.nt-blast-box {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px;
+  background: rgba(200,100,40,0.08);
+  border: 1px solid rgba(200,100,40,0.3);
+  border-radius: 10px; text-align: left; width: 100%; box-sizing: border-box;
+}
+.nt-blast-icon { width: 40px; height: 40px; object-fit: contain; flex-shrink: 0; }
+.nt-blast-name { font-size: 13px; font-weight: bold; color: #d48040; margin: 0; }
+.nt-blast-desc { font-size: 11px; color: #a86030; margin: 0; line-height: 1.5; }
+.nt-immune-box {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px;
+  background: rgba(100,100,120,0.12);
+  border: 1px solid rgba(150,150,180,0.3);
+  border-radius: 10px; text-align: left; width: 100%; box-sizing: border-box;
+}
+.nt-immune-icon { font-size: 28px; flex-shrink: 0; }
+.nt-immune-title { font-size: 13px; font-weight: bold; color: #b0b0c8; margin: 0; }
+.nt-immune-desc { font-size: 11px; color: #7a7a90; margin: 0; }
+
+.nt-close-btn {
+  padding: 8px 28px;
+  background: linear-gradient(to bottom, #2a1e10, #17120c);
+  border: 1px solid #7c5a2b;
+  border-radius: 8px; color: #c89b3c; font-size: 13px; cursor: pointer;
+  letter-spacing: 1px; transition: 0.2s;
+}
+.nt-close-btn:hover { border-color: #c89b3c; box-shadow: 0 0 8px rgba(200,155,60,0.3); }
+
+
+/* ── Status Token Flash Overlay ── */
+.tc-status-flash-overlay {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9990;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  pointer-events: none;
+}
+.tc-status-monster-icon {
+  width: 100px; height: 100px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 16px rgba(200,155,60,0.6));
+  animation: tcIconPulse 0.4s ease-out;
+}
+.tc-status-flash-badge {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 20px;
+  background: rgba(16,12,8,0.92);
+  border: 2px solid rgba(200,155,60,0.5);
+  border-radius: 12px;
+  box-shadow: 0 0 24px rgba(0,0,0,0.8), 0 0 12px rgba(200,155,60,0.2);
+}
+.tc-status-flash-icon {
+  width: 44px; height: 44px; object-fit: contain;
+  filter: drop-shadow(0 0 8px rgba(200,155,60,0.5));
+}
+.tc-status-flash-info {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.tc-status-flash-label {
+  font-size: 9px; color: #7c5a2b; letter-spacing: 2px; text-transform: uppercase;
+}
+.tc-status-flash-name {
+  font-size: 18px; font-weight: bold; color: #ffd27a; letter-spacing: 2px;
+  text-shadow: 0 0 10px rgba(200,155,60,0.5);
+}
+
+/* ── Discard Flash Overlay ── */
+.tc-discard-flash-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9985;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: rgba(0,0,0,0.6);
+  pointer-events: none;
+}
+.tc-discard-flash-label {
+  font-size: 16px;
+  font-weight: bold;
+  color: #a88040;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin: 0;
+}
+.tc-discard-flash-cards {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  max-width: 90vw;
+}
+.tc-discard-flash-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  animation: discardCardFly 2.2s ease-out both;
+  animation-delay: calc(var(--i) * 0.08s);
+}
+.tc-discard-flash-img {
+  width: min(90px, 20vw);
+  height: auto;
+  border-radius: 6px;
+  border: 1px solid rgba(200,155,60,0.4);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.7);
+  filter: grayscale(40%) brightness(0.75);
+}
+.tc-discard-flash-name {
+  font-size: 9px;
+  color: #7c5a2b;
+  letter-spacing: 1px;
+  text-align: center;
+  max-width: min(90px, 20vw);
+}
+@keyframes discardCardFly {
+  0%   { opacity: 0; transform: translateY(30px) scale(0.8) rotate(calc((var(--i) - var(--total)/2) * 6deg)); }
+  20%  { opacity: 1; transform: translateY(0)    scale(1)   rotate(calc((var(--i) - var(--total)/2) * 4deg)); }
+  70%  { opacity: 1; transform: translateY(0)    scale(1)   rotate(calc((var(--i) - var(--total)/2) * 4deg)); }
+  100% { opacity: 0; transform: translateY(-40px) scale(0.9) rotate(calc((var(--i) - var(--total)/2) * 8deg)); }
+}
+
+/* ── Part Break Token Flash Overlay ── */
+.tc-part-flash-overlay {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9990;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  pointer-events: none;
+}
+.tc-part-add    { color: #c89b3c; }
+.tc-part-remove { color: #8888cc; }
+.tc-part-shatter { color: #ff4444; }
+
+.tc-part-icon-wrap {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  width: 110px; height: 110px;
+}
+.tc-part-img {
+  width: 110px; height: 110px; object-fit: contain;
+}
+.tc-part-icon-hit {
+  animation: partHit 0.35s ease-out;
+}
+@keyframes partHit {
+  0%   { transform: scale(1); }
+  20%  { transform: scale(1.15) rotate(-4deg); filter: brightness(2) sepia(1); }
+  40%  { transform: scale(0.95) rotate(3deg); }
+  70%  { transform: scale(1.05) rotate(-1deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+/* Shatter shards — 8 สามเหลี่ยมจากขอบเข้ากลาง */
+.tc-shard {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+}
+/* 8 triangles meeting at center (50%,50%) */
+.tc-shard-1 { clip-path: polygon(0% 0%, 50% 0%, 50% 50%);   animation: shard1 2.2s ease-out forwards; }
+.tc-shard-2 { clip-path: polygon(50% 0%, 100% 0%, 50% 50%);  animation: shard2 2.2s ease-out forwards; }
+.tc-shard-3 { clip-path: polygon(100% 0%, 100% 50%, 50% 50%); animation: shard3 2.2s ease-out forwards; }
+.tc-shard-4 { clip-path: polygon(100% 50%, 100% 100%, 50% 50%); animation: shard4 2.2s ease-out forwards; }
+.tc-shard-5 { clip-path: polygon(100% 100%, 50% 100%, 50% 50%); animation: shard5 2.2s ease-out forwards; }
+.tc-shard-6 { clip-path: polygon(50% 100%, 0% 100%, 50% 50%); animation: shard6 2.2s ease-out forwards; }
+.tc-shard-7 { clip-path: polygon(0% 100%, 0% 50%, 50% 50%);  animation: shard7 2.2s ease-out forwards; }
+.tc-shard-8 { clip-path: polygon(0% 50%, 0% 0%, 50% 50%);   animation: shard8 2.2s ease-out forwards; }
+
+@keyframes shard1 { 0% { transform: translate(0,0) rotate(0); opacity:1; } 100% { transform: translate(-38px,-48px) rotate(-30deg); opacity:0; } }
+@keyframes shard2 { 0% { transform: translate(0,0) rotate(0); opacity:1; } 100% { transform: translate(38px,-48px) rotate(28deg); opacity:0; } }
+@keyframes shard3 { 0% { transform: translate(0,0) rotate(0); opacity:1; } 100% { transform: translate(50px,-22px) rotate(22deg); opacity:0; } }
+@keyframes shard4 { 0% { transform: translate(0,0) rotate(0); opacity:1; } 100% { transform: translate(50px,22px) rotate(-22deg); opacity:0; } }
+@keyframes shard5 { 0% { transform: translate(0,0) rotate(0); opacity:1; } 100% { transform: translate(38px,48px) rotate(30deg); opacity:0; } }
+@keyframes shard6 { 0% { transform: translate(0,0) rotate(0); opacity:1; } 100% { transform: translate(-38px,48px) rotate(-28deg); opacity:0; } }
+@keyframes shard7 { 0% { transform: translate(0,0) rotate(0); opacity:1; } 100% { transform: translate(-50px,22px) rotate(-22deg); opacity:0; } }
+@keyframes shard8 { 0% { transform: translate(0,0) rotate(0); opacity:1; } 100% { transform: translate(-50px,-22px) rotate(22deg); opacity:0; } }
+
+.tc-part-crack-svg {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  filter: drop-shadow(0 0 2px rgba(255,60,0,0.8));
+}
+.tc-crack-line {
+  fill: none;
+  stroke: #ff4400;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.9;
+}
+.tc-crack-thin {
+  stroke-width: 1.5;
+  opacity: 0.7;
+}
+.tc-part-break-flash {
+  position: absolute; inset: -20px;
+  background: radial-gradient(ellipse, rgba(255,100,0,0.9) 0%, rgba(255,50,0,0.4) 40%, transparent 70%);
+  animation: breakFlash 0.4s ease-out;
+  pointer-events: none;
+}
+@keyframes breakFlash {
+  0%   { opacity: 0; transform: scale(0.5); }
+  30%  { opacity: 1; transform: scale(1.3); }
+  100% { opacity: 0; transform: scale(1.8); }
+}
+
+.tc-part-value {
+  font-size: 64px; font-weight: 900; line-height: 1;
+  text-shadow: 0 0 28px currentColor, 0 2px 8px rgba(0,0,0,0.9);
+}
+.tc-part-value-break {
+  font-size: 48px;
+  letter-spacing: 4px;
+  animation: breakTextPulse 0.5s ease-out;
+}
+@keyframes breakTextPulse {
+  0%   { transform: scale(0.5); opacity: 0; }
+  60%  { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.tc-part-bar { background: linear-gradient(to right, #7c5a2b, #c89b3c); }
+
+/* ── TC HP Flash Overlay ── */
+.tc-hp-flash-overlay {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9990;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+}
+.tc-hp-monster-icon {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 20px currentColor);
+  animation: tcIconPulse 0.4s ease-out;
+}
+@keyframes tcIconPulse {
+  0%   { transform: scale(0.7); opacity: 0.4; }
+  60%  { transform: scale(1.1); }
+  100% { transform: scale(1);   opacity: 1; }
+}
+.tc-hp-value {
+  font-size: 80px;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 0 30px currentColor, 0 2px 8px rgba(0,0,0,0.9);
+}
+.tc-hp-bar-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 200px;
+}
+.tc-hp-bar-track {
+  position: relative;
+  width: 100%;
+  height: 10px;
+  background: rgba(0,0,0,0.5);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.tc-hp-bar-prev {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  background: rgba(255,255,255,0.15);
+  border-radius: 5px;
+  transition: none;
+}
+.tc-hp-bar-fill {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  border-radius: 5px;
+  animation: tcBarGrow 0.5s 0.15s ease-out both;
+}
+.tc-hp-heal .tc-hp-bar-fill { background: linear-gradient(to right, #40b860, #80e890); }
+.tc-hp-dmg  .tc-hp-bar-fill { background: linear-gradient(to right, #b84040, #f07070); }
+@keyframes tcBarGrow {
+  from { transform: scaleX(0); transform-origin: left; }
+  to   { transform: scaleX(1); transform-origin: left; }
+}
+.tc-hp-bar-nums {
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+  letter-spacing: 1px;
+}
+.tc-hp-heal { color: #80e890; }
+.tc-hp-dmg  { color: #f07070; }
+
+.tc-hp-flash-enter-active {
+  animation: tcHpFlashIn 0.2s ease-out forwards;
+}
+.tc-hp-flash-leave-active {
+  animation: tcHpFlashOut 0.4s ease-in forwards;
+}
+@keyframes tcHpFlashIn {
+  from { opacity: 0; transform: translate(-50%, -40%) scale(0.6); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes tcHpFlashOut {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to   { opacity: 0; transform: translate(-50%, -65%) scale(0.85); }
+}
+
+/* ── Recovery Banner ── */
+.recovery-banner {
+  background: rgba(40,160,80,0.1);
+  border: 1px solid rgba(40,160,80,0.4);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #80d890;
+  text-align: center;
+}
+
+/* ── Misread Banner ── */
+.misread-banner {
+  background: rgba(60, 100, 200, 0.12);
+  border: 1px solid rgba(80, 120, 220, 0.45);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #88aaff;
+  text-align: center;
+  animation: misread-pulse 1.4s ease-in-out infinite;
+}
+@keyframes misread-pulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(80,120,220,0); }
+  50%       { box-shadow: 0 0 12px rgba(80,120,220,0.35); }
+}
+
 /* ── Activation Tracker ── */
 .act-tracker {
   display: flex;
@@ -5589,14 +7353,17 @@ const openPackDrawer = () => {
 .tct-section {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 10px;
   padding: 0 4px;
 }
 .tct-deck-row {
   display: flex;
   align-items: flex-end;
-  gap: 20px;
+  justify-content: center;
+  gap: 36px;
   flex-wrap: wrap;
+  width: 100%;
 }
 .tct-deck-wrap {
   display: flex;
@@ -5606,8 +7373,8 @@ const openPackDrawer = () => {
 }
 .tct-deck-stack {
   position: relative;
-  width: min(140px, 38vw);
-  height: min(192px, 52vw);
+  width: min(170px, 44vw);
+  height: min(234px, 60vw);
 }
 .tct-deck-stack.empty { opacity: 0.3; }
 .tct-discard-stack { opacity: 0.8; }
@@ -5834,7 +7601,6 @@ const openPackDrawer = () => {
   margin-top: 6px;
 }
 .tct-btn-col {
-  margin-left: auto;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -5877,6 +7643,109 @@ const openPackDrawer = () => {
   border-color: rgba(120,120,120,0.3);
   color: rgba(200,200,200,0.5);
 }
+/* ── Floating Turn Bar ── */
+.float-turn-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 700;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: linear-gradient(to top, rgba(10,8,4,0.98), rgba(16,12,8,0.95));
+  border-top: 1px solid rgba(200,155,60,0.35);
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.7);
+  padding: 8px 12px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  transition: transform 0.25s ease;
+}
+.float-toggle-btn {
+  position: absolute;
+  top: -38px; right: 16px;
+  background: linear-gradient(to bottom, #2a1e10, #17120c);
+  border: 1px solid #c89b3c;
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  color: #ffd27a;
+  font-size: 14px;
+  font-weight: bold;
+  padding: 6px 18px;
+  cursor: pointer;
+  box-shadow: 0 -4px 12px rgba(200,155,60,0.25);
+  letter-spacing: 1px;
+}
+.float-toggle-btn:hover {
+  background: linear-gradient(to bottom, #3a2e18, #22180e);
+  box-shadow: 0 -4px 16px rgba(200,155,60,0.45);
+}
+.float-turn-bar-collapsed {
+  transform: translateY(calc(100% - 0px));
+}
+.float-hunter-list {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(200,155,60,0.15);
+  margin-bottom: 8px;
+}
+.float-hunter-row {
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(200,155,60,0.12);
+  font-size: 12px;
+}
+.float-hunter-done {
+  background: rgba(200,155,60,0.1);
+  border-color: rgba(200,155,60,0.35);
+}
+.float-hunter-mark { font-size: 12px; }
+.float-hunter-icon { width: 18px; height: 18px; object-fit: contain; }
+.float-hunter-name { color: #c8a060; font-size: 11px; }
+.float-pending { font-size: 10px; color: #7c5a2b; font-style: italic; }
+.float-end-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #7c5a2b;
+  background: linear-gradient(to bottom, #2a1e10, #17120c);
+  color: #c89b3c;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: 0.2s;
+}
+.float-end-btn:not(:disabled):hover {
+  border-color: #c89b3c;
+  box-shadow: 0 0 12px rgba(200,155,60,0.4);
+}
+.float-end-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.float-ended { opacity: 0.5; }
+.float-outcome-complete {
+  border-color: #3cb83c;
+  color: #6fcf97;
+  background: linear-gradient(to bottom, #0a200a, #061406);
+}
+.float-outcome-complete:hover { box-shadow: 0 0 14px rgba(60,184,60,0.5); }
+.float-outcome-complete.outcome-voted { background: rgba(60,184,60,0.15); border-color: #6fcf97; }
+.float-outcome-fail {
+  border-color: #cc4444;
+  color: #f07070;
+  background: linear-gradient(to bottom, #200a0a, #140606);
+}
+.float-outcome-fail:hover { box-shadow: 0 0 14px rgba(204,68,68,0.5); }
+.float-outcome-fail.outcome-voted { background: rgba(204,68,68,0.15); border-color: #f07070; }
+.float-outcome-timeout {
+  border-color: #a88040;
+  color: #ffd27a;
+  background: linear-gradient(to bottom, #1c1508, #13100a);
+}
+.float-outcome-timeout:hover { box-shadow: 0 0 14px rgba(200,155,60,0.4); }
+.float-outcome-timeout.outcome-voted { background: rgba(200,155,60,0.15); border-color: #ffd27a; }
+
 .tct-hunter-list {
   display: flex;
   flex-direction: column;
