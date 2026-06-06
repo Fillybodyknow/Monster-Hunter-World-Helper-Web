@@ -3710,5 +3710,216 @@
       { "behavior_id": 12, "behavior_name": "Furious Trample",  "activations": 3 ,"front_card_img": "assets/img/behavior_deck/barroth/furious_trample_front.png",  "back_card_img": "assets/img/behavior_deck/barroth/furious_trample_back.png" },
       { "behavior_id": 13, "behavior_name": "Tail Smash",       "activations": 1 ,"front_card_img": "assets/img/behavior_deck/barroth/tail_smash_front.png",       "back_card_img": "assets/img/behavior_deck/barroth/tail_smash_back.png" }
     ]
+  },
+  {
+    "monster_id": 7,
+    "monster_name": "Pukei-Pukei",
+    "thumbnail": "assets/img/pukei-pukei_icon.webp",
+    "difficulty": [
+      {
+        "difficulty_id": 1,
+        "level": 1,
+        "health": 60,
+        "map_image": "assets/img/maps/pukei-pukei/pukei-pukei_1_star_map.png",
+        "special_rule": {
+          "title": "Toxic Presence",
+          "description": "เมื่อ Hunter ติดสถานะ Poison จาก Pukei-Pukei, Hunter คนนั้นจะสูญเสีย HP -3 หน่วยแทนที่จะเป็น -2 หน่วย เมื่อจบเทิร์นของ Hunter คนนั้น"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 3,
+            "armor": 0,
+            "part_break_rule": ""
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 4,
+            "armor": 1,
+            "part_break_rule": ""
+          },
+          "left": {
+            "part_id": 3,
+            "connect_part_position": ["right"],
+            "part_break_threshold": 3,
+            "armor": 1,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Claw จะทำให้ Hunter เล่นเพิ่มได้อีก +1 คน"
+          },
+          "right": {}
+        },
+        "element_resistance": [
+          { "element_id": 1, "level": 2, "immune": false },
+          { "element_id": 2, "level": 0, "immune": true },
+          { "element_id": 3, "level": 1, "immune": false },
+          { "element_id": 4, "level": 2, "immune": false },
+          { "element_id": 5, "level": 0, "immune": true }
+        ],
+        "status_resistance": [
+          { "status_id": 1, "level": 2, "immune": false },
+          { "status_id": 2, "level": 0, "immune": true },
+          { "status_id": 3, "level": 1, "immune": false },
+          { "status_id": 4, "level": 1, "immune": false },
+          { "status_id": 5, "level": 2, "immune": false }
+        ],
+        "reward_table": [
+          { "rolled_number": 1,  "reward": { "resource_type_id": 1, "item_id": 9  }, "part_break_reward": {} },
+          { "rolled_number": 2,  "reward": { "resource_type_id": 3, "item_id": 43 }, "part_break_reward": {} },
+          { "rolled_number": 3,  "reward": { "resource_type_id": 3, "item_id": 41 }, "part_break_reward": {} },
+          { "rolled_number": 4,  "reward": { "resource_type_id": 3, "item_id": 40 }, "part_break_reward": {} },
+          { "rolled_number": 5,  "reward": { "resource_type_id": 3, "item_id": 39 }, "part_break_reward": {} },
+          { "rolled_number": 6,  "reward": { "resource_type_id": 2, "item_id": 11 }, "part_break_reward": { "part_id": 1, "gain_additional": 1 } },
+          { "rolled_number": 7,  "reward": { "resource_type_id": 3, "item_id": 43 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
+          { "rolled_number": 8,  "reward": { "resource_type_id": 2, "item_id": 12 }, "part_break_reward": {} },
+          { "rolled_number": 9,  "reward": { "resource_type_id": 3, "item_id": 43 }, "part_break_reward": { "part_id": 3, "gain_additional": 1 } },
+          { "rolled_number": 10, "reward": { "resource_type_id": 3, "item_id": 41 }, "part_break_reward": {} },
+          { "rolled_number": 11, "reward": { "resource_type_id": 3, "item_id": 39 }, "part_break_reward": {} },
+          { "rolled_number": 12, "reward": { "resource_type_id": 1, "item_id": 9  }, "part_break_reward": {} }
+        ]
+      },
+      {
+        "difficulty_id": 2,
+        "level": 2,
+        "health": 65,
+        "map_image": "assets/img/maps/pukei-pukei/pukei-pukei_2_star_map.png",
+        "special_rule": {
+          "title": "Toxic Presence",
+          "description": "เมื่อ Hunter ติดสถานะ Poison จาก Pukei-Pukei, Hunter คนนั้นจะสูญเสีย HP -3 หน่วยแทนที่จะเป็น -2 หน่วย เมื่อจบเทิร์นของ Hunter คนนั้น, การ์ดพฤติกรรมที่มีการโจมตีสถานะ Poison ระยะโจมตีและค่าหลบหลีกเพิ่มขึ้น +1 หน่วย"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 4,
+            "armor": 1,
+            "part_break_rule": ""
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 5,
+            "armor": 1,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Tail จะทำให้ระยะโจมตีของการ์ดนั้นลดลง -1 หน่วย"
+          },
+          "left": {
+            "part_id": 3,
+            "connect_part_position": ["right"],
+            "part_break_threshold": 4,
+            "armor": 2,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Claw จะทำให้ Hunter เล่นเพิ่มได้อีก +1 คน"
+          },
+          "right": {}
+        },
+        "element_resistance": [
+          { "element_id": 1, "level": 2, "immune": false },
+          { "element_id": 2, "level": 0, "immune": true },
+          { "element_id": 3, "level": 1, "immune": false },
+          { "element_id": 4, "level": 2, "immune": false },
+          { "element_id": 5, "level": 0, "immune": true }
+        ],
+        "status_resistance": [
+          { "status_id": 1, "level": 2, "immune": false },
+          { "status_id": 2, "level": 0, "immune": true },
+          { "status_id": 3, "level": 1, "immune": false },
+          { "status_id": 4, "level": 1, "immune": false },
+          { "status_id": 5, "level": 2, "immune": false }
+        ],
+        "reward_table": [
+          { "rolled_number": 1,  "reward": { "resource_type_id": 1, "item_id": 9  }, "part_break_reward": {} },
+          { "rolled_number": 2,  "reward": { "resource_type_id": 3, "item_id": 43 }, "part_break_reward": {} },
+          { "rolled_number": 3,  "reward": { "resource_type_id": 3, "item_id": 41 }, "part_break_reward": {} },
+          { "rolled_number": 4,  "reward": { "resource_type_id": 3, "item_id": 40 }, "part_break_reward": {} },
+          { "rolled_number": 5,  "reward": { "resource_type_id": 3, "item_id": 39 }, "part_break_reward": {} },
+          { "rolled_number": 6,  "reward": { "resource_type_id": 2, "item_id": 11 }, "part_break_reward": { "part_id": 1, "gain_additional": 1 } },
+          { "rolled_number": 7,  "reward": { "resource_type_id": 3, "item_id": 43 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
+          { "rolled_number": 8,  "reward": { "resource_type_id": 2, "item_id": 12 }, "part_break_reward": {} },
+          { "rolled_number": 9,  "reward": { "resource_type_id": 3, "item_id": 43 }, "part_break_reward": { "part_id": 3, "gain_additional": 1 } },
+          { "rolled_number": 10, "reward": { "resource_type_id": 3, "item_id": 41 }, "part_break_reward": {} },
+          { "rolled_number": 11, "reward": { "resource_type_id": 3, "item_id": 39 }, "part_break_reward": {} },
+          { "rolled_number": 12, "reward": { "resource_type_id": 1, "item_id": 9  }, "part_break_reward": {} }
+        ]
+      },
+      {
+        "difficulty_id": 3,
+        "level": 3,
+        "health": 65,
+        "map_image": "assets/img/maps/pukei-pukei/pukei-pukei_3_star_map.png",
+        "special_rule": {
+          "title": "Toxic Predator",
+          "description": "เมื่อ Hunter ติดสถานะ Poison จาก Pukei-Pukei, Hunter คนนั้นจะสูญเสีย HP -3 หน่วยแทนที่จะเป็น -2 หน่วย เมื่อจบเทิร์นของ Hunter คนนั้น, การ์ดพฤติกรรมทุกใบ ระยะโจมตีและค่าหลบหลีกเพิ่มขึ้น +1 หน่วย"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 5,
+            "armor": 2,
+            "part_break_rule": "Poison จะทำให้ Hunter สูญเสีย HP -2 หน่วยแทน -3 หน่วย"
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 6,
+            "armor": 2,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Tail จะทำให้ระยะโจมตีของการ์ดนั้นลดลง -1 หน่วย"
+          },
+          "left": {
+            "part_id": 3,
+            "connect_part_position": ["right"],
+            "part_break_threshold": 5,
+            "armor": 3,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Claw จะทำให้ Hunter เล่นเพิ่มได้อีก +1 คน"
+          },
+          "right": {}
+        },
+        "element_resistance": [
+          { "element_id": 1, "level": 2, "immune": false },
+          { "element_id": 2, "level": 0, "immune": true },
+          { "element_id": 3, "level": 1, "immune": false },
+          { "element_id": 4, "level": 2, "immune": false },
+          { "element_id": 5, "level": 0, "immune": true }
+        ],
+        "status_resistance": [
+          { "status_id": 1, "level": 2, "immune": false },
+          { "status_id": 2, "level": 0, "immune": true },
+          { "status_id": 3, "level": 1, "immune": false },
+          { "status_id": 4, "level": 1, "immune": false },
+          { "status_id": 5, "level": 2, "immune": false }
+        ],
+        "reward_table": [
+          { "rolled_number": 1,  "reward": { "resource_type_id": 1, "item_id": 9  }, "part_break_reward": {} },
+          { "rolled_number": 2,  "reward": { "resource_type_id": 3, "item_id": 43 }, "part_break_reward": {} },
+          { "rolled_number": 3,  "reward": { "resource_type_id": 3, "item_id": 41 }, "part_break_reward": {} },
+          { "rolled_number": 4,  "reward": { "resource_type_id": 3, "item_id": 40 }, "part_break_reward": {} },
+          { "rolled_number": 5,  "reward": { "resource_type_id": 3, "item_id": 39 }, "part_break_reward": {} },
+          { "rolled_number": 6,  "reward": { "resource_type_id": 2, "item_id": 11 }, "part_break_reward": { "part_id": 1, "gain_additional": 1 } },
+          { "rolled_number": 7,  "reward": { "resource_type_id": 3, "item_id": 43 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
+          { "rolled_number": 8,  "reward": { "resource_type_id": 2, "item_id": 12 }, "part_break_reward": {} },
+          { "rolled_number": 9,  "reward": { "resource_type_id": 3, "item_id": 43 }, "part_break_reward": { "part_id": 3, "gain_additional": 1 } },
+          { "rolled_number": 10, "reward": { "resource_type_id": 3, "item_id": 41 }, "part_break_reward": {} },
+          { "rolled_number": 11, "reward": { "resource_type_id": 3, "item_id": 39 }, "part_break_reward": {} },
+          { "rolled_number": 12, "reward": { "resource_type_id": 1, "item_id": 9  }, "part_break_reward": {} }
+        ]
+      }
+    ],
+    "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2],
+    "behavior_deck": [
+      { "behavior_id": 1,  "behavior_name": "Poison Glob",       "activations": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/poison_glob_front.png",       "back_card_img": "assets/img/behavior_deck/pukei-pukei/poison_glob_back.png" },
+      { "behavior_id": 2,  "behavior_name": "Poison Spit",       "activations": 3, "front_card_img": "assets/img/behavior_deck/pukei-pukei/poison_spit_front.png",       "back_card_img": "assets/img/behavior_deck/pukei-pukei/poison_spit_back.png" },
+      { "behavior_id": 3,  "behavior_name": "Right Wing Swipe",  "activations": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/right_wing_swipe_front.png",  "back_card_img": "assets/img/behavior_deck/pukei-pukei/right_wing_swipe_back.png" },
+      { "behavior_id": 4,  "behavior_name": "Tongue Whip Left",  "activations": 3, "front_card_img": "assets/img/behavior_deck/pukei-pukei/tongue_whip_left_front.png",  "back_card_img": "assets/img/behavior_deck/pukei-pukei/tongue_whip_left_back.png" },
+      { "behavior_id": 5,  "behavior_name": "Tail Whip",         "activations": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/tail_whip_front.png",         "back_card_img": "assets/img/behavior_deck/pukei-pukei/tail_whip_back.png" },
+      { "behavior_id": 6,  "behavior_name": "Left Wing Swipe",   "activations": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/left_wing_swipe_front.png",   "back_card_img": "assets/img/behavior_deck/pukei-pukei/left_wing_swipe_back.png" },
+      { "behavior_id": 7,  "behavior_name": "Poison Spew",       "activations": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/poison_spew_front.png",       "back_card_img": "assets/img/behavior_deck/pukei-pukei/poison_spew_back.png" },
+      { "behavior_id": 8,  "behavior_name": "Tongue Whip Right", "activations": 3, "front_card_img": "assets/img/behavior_deck/pukei-pukei/tongue_whip_right_front.png", "back_card_img": "assets/img/behavior_deck/pukei-pukei/tongue_whip_right_back.png" },
+      { "behavior_id": 9,  "behavior_name": "Flying Spit",       "activations": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/flying_spit_front.png",       "back_card_img": "assets/img/behavior_deck/pukei-pukei/flying_spit_back.png" },
+      { "behavior_id": 10, "behavior_name": "Tongue Lash",       "activations": 3, "front_card_img": "assets/img/behavior_deck/pukei-pukei/tongue_lash_front.png",       "back_card_img": "assets/img/behavior_deck/pukei-pukei/tongue_lash_back.png" }
+    ],
+    "behavior_special_card": [
+      { "behavior_id": 11, "behavior_name": "Flying Bite",     "activations": 3, "front_card_img": "assets/img/behavior_deck/pukei-pukei/flying_bite_front.png",     "back_card_img": "assets/img/behavior_deck/pukei-pukei/flying_bite_back.png" },
+      { "behavior_id": 12, "behavior_name": "Rear Spray",      "activations": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/rear_spray_front.png",      "back_card_img": "assets/img/behavior_deck/pukei-pukei/rear_spray_back.png" },
+      { "behavior_id": 13, "behavior_name": "Chicken Scratch", "activations": 3, "front_card_img": "assets/img/behavior_deck/pukei-pukei/chicken_scratch_front.png", "back_card_img": "assets/img/behavior_deck/pukei-pukei/chicken_scratch_back.png" }
+    ]
   }
 ]

@@ -137,7 +137,7 @@ const selectBook = (book) => {
   phase.value = 'monster'
 }
 
-const WILDSPIRE_ENABLED_MONSTERS = [6]
+const WILDSPIRE_ENABLED_MONSTERS = [6, 7]
 
 const monsters = computed(() => selectedBook.value?.data || [])
 
@@ -886,8 +886,15 @@ const drawBehaviorCard = () => {
   if (currentBehaviorCard.value) behaviorDiscard.value = [...behaviorDiscard.value, currentBehaviorCard.value]
   currentBehaviorCard.value = card
 
-  activationOverride.value = rampageActive.value ? 0 : null
+  if (rampageActive.value) {
+    activationOverride.value = 0
+  } else if (pendingActivationAdjust.value !== 0) {
+    activationOverride.value = Math.max(0, (card.activations ?? 0) + pendingActivationAdjust.value)
+  } else {
+    activationOverride.value = null
+  }
   rampageActive.value = false
+  pendingActivationAdjust.value = 0
 
   if (resolvedStatuses.length > 0) {
     _showStatusResolve(resolvedStatuses, card)
@@ -999,6 +1006,7 @@ watch([() => room.behaviorDeckState, () => room.joinSignal], ([state], [prev]) =
   }
 
   currentBehaviorCard.value = newCard
+  activationOverride.value = state.activationOverride ?? null
 }, { immediate: true, deep: true })
 
 const incrementAttempted = () => {
@@ -1317,7 +1325,17 @@ const showTimeCardManage = ref(false)
 const redCardCounts = ref({})
 const showLastDiscard = ref(false)
 const showConfirmTurn = ref(false)
+const showMonsterTurnConfirm = ref(false)
+const showAddHunterTurnConfirm = ref(false)
+const pendingActivationAdjust = ref(0)
 const floatBarCollapsed = ref(false)
+
+const nextBehaviorCard = computed(() => behaviorDeck.value[0] ?? null)
+const activationPartRules = computed(() =>
+  Object.entries(activeParts.value)
+    .filter(([pos, data]) => brokenParts.value[pos] && data.part_break_rule?.includes('จะทำให้ Hunter เล่นเพิ่มได้'))
+    .map(([, data]) => data.part_break_rule)
+)
 const floatToggleLabel = computed(() => {
   if (floatOutcomeState.value === 'complete') return '✦ Quest Complete'
   if (floatOutcomeState.value === 'failed')   return '✕ Quest Failed'
@@ -2130,6 +2148,12 @@ const _resetActivation = () => {
   if (room.inRoom && room.isHost) room.syncActivationCount?.(0)
 }
 
+const addHostTurn = () => {
+  if (!currentBehaviorCard.value) return
+  activationOverride.value = activationLimit.value + 1
+  _pushDeckState()
+}
+
 // Guest syncs from Firebase
 watch([() => room.activationCount, () => room.joinSignal], ([count]) => {
   if (!room.inRoom) return
@@ -2208,6 +2232,9 @@ const initHuntingData = () => {
   elementMarks.value = {}
   triggeringElement.value = null
   if (_elemAnimTimer) clearTimeout(_elemAnimTimer)
+  activationRoundsCompleted.value = 0
+  activationOverride.value = null
+  if (room.inRoom && room.isHost) room.syncActivationCount?.(0)
 }
 
 // ── Damage Indicator ─────────────────────────────────────
@@ -3689,13 +3716,22 @@ const openPackDrawer = () => {
           </p>
         </div>
 
+        <!-- Add Hunter Turn button (Host only) -->
+        <button
+          v-if="(room.isHost || !room.inRoom) && currentBehaviorCard && !monsterTurnReady"
+          class="add-hunter-turn-btn"
+          @click="showAddHunterTurnConfirm = true"
+        >
+          +1 เทิร์น Hunter
+        </button>
+
         <!-- Monster Turn button (Host only) -->
         <button
           v-if="room.isHost || !room.inRoom"
           class="mt-draw-btn"
           :class="{ 'mt-btn-ready': monsterTurnReady }"
           :disabled="behaviorDeck.length === 0 || !monsterTurnReady"
-          @click="drawBehaviorCard"
+          @click="pendingActivationAdjust = 0; showMonsterTurnConfirm = true"
         >
           ⚔ Monster Turn
         </button>
@@ -5430,6 +5466,64 @@ const openPackDrawer = () => {
       </Transition>
     </teleport>
 
+    <!-- ═══════════ MONSTER TURN CONFIRM ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="showMonsterTurnConfirm" class="mtc-overlay" @click.self="showMonsterTurnConfirm = false">
+          <div class="mtc-modal">
+            <p class="mtc-title">⚔ Monster Turn</p>
+
+            <!-- Back of next card -->
+            <div v-if="nextBehaviorCard" class="mtc-card-wrap">
+              <img :src="getImg(nextBehaviorCard.back_card_img)" class="mtc-card-img" />
+            </div>
+
+            <!-- Part break rules that give extra turns -->
+            <div v-if="activationPartRules.length > 0" class="mtc-rules">
+              <p class="mtc-rules-label">⚡ Part Break Effects</p>
+              <p v-for="(rule, i) in activationPartRules" :key="i" class="mtc-rule-text">{{ rule }}</p>
+            </div>
+
+            <!-- Manual activation adjust -->
+            <div class="mtc-adjust-wrap">
+              <p class="mtc-adjust-label">เพิ่ม / ลด Hunter Turn</p>
+              <div class="mtc-adjust-row">
+                <button class="mtc-adj-btn" @click="pendingActivationAdjust--">−</button>
+                <span class="mtc-adj-value" :class="pendingActivationAdjust > 0 ? 'mtc-adj-pos' : pendingActivationAdjust < 0 ? 'mtc-adj-neg' : ''">
+                  {{ pendingActivationAdjust > 0 ? '+' : '' }}{{ pendingActivationAdjust }}
+                </span>
+                <button class="mtc-adj-btn" @click="pendingActivationAdjust++">+</button>
+              </div>
+            </div>
+
+            <div class="mtc-btns">
+              <button class="mtc-btn mtc-cancel" @click="showMonsterTurnConfirm = false; pendingActivationAdjust = 0">ยกเลิก</button>
+              <button class="mtc-btn mtc-confirm" @click="showMonsterTurnConfirm = false; drawBehaviorCard()">ยืนยัน</button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ ADD HUNTER TURN CONFIRM ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="showAddHunterTurnConfirm" class="mtc-overlay" @click.self="showAddHunterTurnConfirm = false">
+          <div class="mtc-modal">
+            <p class="mtc-title">+1 เทิร์น Hunter</p>
+            <p class="aht-desc">
+              เพิ่ม Hunter Turn สำหรับการ์ดนี้จาก
+              <strong>{{ activationLimit }}</strong> เป็น <strong>{{ activationLimit + 1 }}</strong> เทิร์น
+            </p>
+            <div class="mtc-btns">
+              <button class="mtc-btn mtc-cancel" @click="showAddHunterTurnConfirm = false">ยกเลิก</button>
+              <button class="mtc-btn mtc-confirm" @click="showAddHunterTurnConfirm = false; addHostTurn()">ยืนยัน</button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
     <!-- ═══════════ END TURN CONFIRM ═══════════ -->
     <teleport to="body">
       <Transition name="slain-fade">
@@ -6616,6 +6710,160 @@ const openPackDrawer = () => {
   object-fit: contain;
 }
 
+/* ── Monster Turn Confirm Modal ── */
+.mtc-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3100;
+  background: rgba(0,0,0,0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.mtc-modal {
+  background: rgba(20,10,5,0.98);
+  border: 1px solid rgba(180,60,60,0.4);
+  border-radius: 16px;
+  padding: 20px 18px;
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+}
+.mtc-title {
+  font-size: 14px;
+  font-weight: bold;
+  color: rgba(220,120,120,0.9);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin: 0;
+}
+.mtc-card-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.mtc-card-img {
+  width: 180px;
+  border-radius: 10px;
+  border: 1px solid rgba(180,60,60,0.3);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+}
+.mtc-card-name {
+  font-size: 11px;
+  color: rgba(200,130,130,0.6);
+  margin: 0;
+}
+.mtc-rules {
+  width: 100%;
+  background: rgba(180,60,60,0.08);
+  border: 1px solid rgba(180,60,60,0.25);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mtc-rules-label {
+  font-size: 10px;
+  color: rgba(220,120,80,0.8);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 0 0 4px;
+}
+.mtc-rule-text {
+  font-size: 12px;
+  color: rgba(230,190,150,0.85);
+  margin: 0;
+  line-height: 1.5;
+}
+.mtc-adjust-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.mtc-adjust-label {
+  font-size: 10px;
+  color: rgba(200,155,60,0.6);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin: 0;
+}
+.mtc-adjust-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.mtc-adj-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(200,155,60,0.4);
+  background: rgba(40,28,12,0.8);
+  color: rgba(200,155,60,0.9);
+  font-size: 20px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mtc-adj-btn:hover {
+  border-color: rgba(200,155,60,0.8);
+  background: rgba(60,40,12,0.9);
+}
+.mtc-adj-value {
+  font-size: 28px;
+  font-weight: bold;
+  color: rgba(230,185,80,1);
+  min-width: 50px;
+  text-align: center;
+  line-height: 1;
+}
+.mtc-adj-pos { color: rgba(100,220,120,1); }
+.mtc-adj-neg { color: rgba(220,100,100,1); }
+.mtc-btns {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 8px;
+  width: 100%;
+}
+.mtc-btn {
+  padding: 11px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.mtc-cancel {
+  background: rgba(40,20,10,0.7);
+  border: 1px solid rgba(180,60,60,0.2);
+  color: rgba(200,130,130,0.6);
+}
+.mtc-cancel:hover {
+  border-color: rgba(180,60,60,0.5);
+  color: rgba(200,130,130,0.9);
+}
+.mtc-confirm {
+  background: rgba(120,30,30,0.3);
+  border: 1px solid rgba(200,60,60,0.6);
+  color: rgba(230,140,140,1);
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+.mtc-confirm:hover {
+  background: rgba(140,40,40,0.5);
+  border-color: rgba(220,80,80,0.9);
+}
+
 /* ── Co-op Quest Mode Modal ── */
 .cqm-overlay {
   position: fixed;
@@ -7158,6 +7406,20 @@ const openPackDrawer = () => {
 }
 .mt-draw-btn:hover:not(:disabled) { box-shadow: 0 0 20px rgba(255,80,80,0.5); }
 .mt-draw-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.add-hunter-turn-btn {
+  padding: 8px 18px;
+  background: rgba(80, 180, 120, 0.15);
+  border: 1px solid rgba(80, 200, 120, 0.5);
+  border-radius: 8px;
+  color: #7dffb0;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.2s;
+  margin-bottom: 6px;
+}
+.add-hunter-turn-btn:hover { background: rgba(80, 200, 120, 0.28); box-shadow: 0 0 12px rgba(80,200,120,0.4); }
+.aht-desc { font-size: 14px; color: #c8b89a; text-align: center; margin: 0 0 18px; line-height: 1.6; }
+.aht-desc strong { color: #ffe08a; }
 .mt-btn-ready {
   animation: mt-ready-pulse 1.4s ease-in-out infinite;
   border-color: rgba(255,80,80,0.9) !important;
