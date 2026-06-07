@@ -223,6 +223,12 @@ const tiedActions = ref([]) // actions ที่ votes เสมอกัน ร
 const showBattleIntro = ref(false)
 const showSpecialCardOverlay = ref(false)
 const specialCardOverlayCard = ref(null)
+const showSpecialCardSelect = ref(false)
+const specialCardSelectOptions = ref([])
+const _pendingTokenTotal = ref(0)
+const awaitingHostDeckBuild = ref(false)
+const showSpecialCardConfirm = ref(false)
+const _pendingSpecialCardChoice = ref(null)
 
 // Token Reveal Overlay
 const showTokenReveal = ref(false)
@@ -241,6 +247,12 @@ const startTokenReveal = (onDone) => {
   // Reveal all tokens immediately (update state + push Firebase)
   trackTokens.value = trackTokens.value.map(t => ({ ...t, revealed: true }))
   _pushTokenState()
+
+  if (questMode.value === 'minimal') {
+    const finalTotal = trackTokens.value.reduce((s, t) => s + (t.value ?? 0), 0)
+    onDone(finalTotal)
+    return
+  }
 
   showTokenReveal.value = true
   tokenRevealDone.value = false
@@ -316,26 +328,50 @@ const _executeDialog = (dialogId) => {
       battleIntroPhase.value = 'enter'
       startTokenReveal((total) => {
         if (room.isHost || !room.inRoom) {
-          buildBehaviorDeck(total)
-          // หา special card ที่เพิ่งใส่เข้า deck
-          const info = monsterInfoData.find(m => m.monster_id === selectedMonster.value?.monster_id)
-          const [min, max] = selectedQuest.value?.scoutfly_level ?? [0, 0]
-          let specialName = null
-          if (total < min) specialName = selectedMonster.value?.special_attack_card?.[0]
-          else if (total <= max) specialName = selectedMonster.value?.special_attack_card?.[1]
-          else specialName = selectedMonster.value?.special_attack_card?.[2]
-          const specialCard = specialName
-            ? info?.behavior_special_card?.find(c => c.behavior_name === specialName)
-            : null
-          if (specialCard) {
-            specialCardOverlayCard.value = specialCard
-            showSpecialCardOverlay.value = true
-            setTimeout(() => {
-              showSpecialCardOverlay.value = false
-              phase.value = 'huntingPanel'
-            }, 4000)
-            return
+          if (questMode.value === 'minimal') {
+            const info = monsterInfoData.find(m => m.monster_id === selectedMonster.value?.monster_id)
+            const names = selectedMonster.value?.special_attack_card ?? []
+            const cardTierMap = new Map()
+            names.forEach((name, tier) => {
+              if (!name) return
+              const card = info?.behavior_special_card?.find(c => c.behavior_name === name)
+              if (!card) return
+              if (!cardTierMap.has(card.behavior_name)) cardTierMap.set(card.behavior_name, { card, tiers: [] })
+              cardTierMap.get(card.behavior_name).tiers.push(tier)
+            })
+            const options = [...cardTierMap.values()]
+            if (options.length > 0) {
+              _pendingTokenTotal.value = total
+              specialCardSelectOptions.value = options
+              showSpecialCardSelect.value = true
+              return
+            }
+            buildBehaviorDeck(total)
+          } else {
+            const info = monsterInfoData.find(m => m.monster_id === selectedMonster.value?.monster_id)
+            const [min, max] = selectedQuest.value?.scoutfly_level ?? [0, 0]
+            let specialName = null
+            if (total < min) specialName = selectedMonster.value?.special_attack_card?.[0]
+            else if (total <= max) specialName = selectedMonster.value?.special_attack_card?.[1]
+            else specialName = selectedMonster.value?.special_attack_card?.[2]
+            const specialCard = specialName
+              ? info?.behavior_special_card?.find(c => c.behavior_name === specialName)
+              : null
+            buildBehaviorDeck(total, specialName)
+            if (specialCard) {
+              specialCardOverlayCard.value = specialCard
+              showSpecialCardOverlay.value = true
+              setTimeout(() => {
+                showSpecialCardOverlay.value = false
+                phase.value = 'huntingPanel'
+              }, 4000)
+              return
+            }
           }
+        } else if (questMode.value === 'minimal') {
+          // Guest: รอ Host เลือก Special Attack Card ก่อน
+          awaitingHostDeckBuild.value = true
+          return
         }
         phase.value = 'huntingPanel'
       })
@@ -756,15 +792,17 @@ const _shuffle = (arr) => {
 const _getMonsterInfo = () =>
   monsterInfoData.find((m) => m.monster_id === selectedMonster.value?.monster_id)
 
-const buildBehaviorDeck = (tokenTotal) => {
+const buildBehaviorDeck = (tokenTotal, forcedSpecialName = undefined) => {
   const info = _getMonsterInfo()
   if (!info) return
-  const [min, max] = selectedQuest.value?.scoutfly_level ?? [0, 0]
-  // Determine which special card to add based on Scoutfly tier
-  let specialName = null
-  if (tokenTotal < min) specialName = selectedMonster.value?.special_attack_card?.[0]
-  else if (tokenTotal <= max) specialName = selectedMonster.value?.special_attack_card?.[1]
-  else specialName = selectedMonster.value?.special_attack_card?.[2]
+  let specialName = forcedSpecialName
+  if (specialName === undefined) {
+    // Determine which special card to add based on Scoutfly tier
+    const [min, max] = selectedQuest.value?.scoutfly_level ?? [0, 0]
+    if (tokenTotal < min) specialName = selectedMonster.value?.special_attack_card?.[0]
+    else if (tokenTotal <= max) specialName = selectedMonster.value?.special_attack_card?.[1]
+    else specialName = selectedMonster.value?.special_attack_card?.[2]
+  }
 
   const special = specialName
     ? info.behavior_special_card?.find(c => c.behavior_name === specialName)
@@ -777,6 +815,37 @@ const buildBehaviorDeck = (tokenTotal) => {
   behaviorDiscard.value = []
   currentBehaviorCard.value = null
   _pushDeckState(special ?? null)
+}
+
+const scoutflyTierLabel = (tier) => {
+  const [min, max] = selectedQuest.value?.scoutfly_level ?? [0, 0]
+  if (tier === 0) return `น้อยกว่า ${min}`
+  if (tier === 1) return `${min} - ${max}`
+  return `มากกว่า ${max}`
+}
+
+const selectSpecialAttackCard = (card) => {
+  _pendingSpecialCardChoice.value = card
+  showSpecialCardConfirm.value = true
+}
+
+const confirmSpecialAttackCard = () => {
+  const card = _pendingSpecialCardChoice.value
+  showSpecialCardConfirm.value = false
+  showSpecialCardSelect.value = false
+  buildBehaviorDeck(_pendingTokenTotal.value, card?.behavior_name ?? null)
+  if (card) {
+    specialCardOverlayCard.value = card
+    if (questMode.value !== 'minimal') {
+      showSpecialCardOverlay.value = true
+      setTimeout(() => {
+        showSpecialCardOverlay.value = false
+        phase.value = 'huntingPanel'
+      }, 4000)
+      return
+    }
+  }
+  phase.value = 'huntingPanel'
 }
 
 const _pushDeckState = (specialCard = undefined) => {
@@ -980,16 +1049,24 @@ watch([() => room.behaviorDeckState, () => room.joinSignal], ([state], [prev]) =
   const newCard = state.current ?? null
   const oldCard = prev?.current ?? currentBehaviorCard.value
 
+  // Guest รออยู่ใน Minimal Mode → Host build deck เสร็จแล้ว ไปหน้า Hunting ได้
+  if (awaitingHostDeckBuild.value && state.specialCard !== undefined) {
+    awaitingHostDeckBuild.value = false
+    if (phase.value !== 'huntingPanel') phase.value = 'huntingPanel'
+  }
+
   // Special card overlay: แสดงเมื่อ deck ถูก build ใหม่ (ไม่แสดงตอน reconnect)
   const prevSpecial = prev?.specialCard
   const newSpecial = state.specialCard
   if (!_suppressAnimations && newSpecial && newSpecial?.behavior_id !== prevSpecial?.behavior_id) {
     specialCardOverlayCard.value = newSpecial
-    showSpecialCardOverlay.value = true
-    setTimeout(() => {
-      showSpecialCardOverlay.value = false
-      if (phase.value !== 'huntingPanel') phase.value = 'huntingPanel'
-    }, 4000)
+    if (questMode.value !== 'minimal') {
+      showSpecialCardOverlay.value = true
+      setTimeout(() => {
+        showSpecialCardOverlay.value = false
+        if (phase.value !== 'huntingPanel') phase.value = 'huntingPanel'
+      }, 4000)
+    }
   }
 
   // ถ้าการ์ดเปลี่ยน → แสดง animation + show float bar เฉพาะตอน Hunter มีเทิร์น
@@ -3281,7 +3358,7 @@ const openPackDrawer = () => {
       </div>
 
       <!-- Track Token Panel -->
-      <div class="tt-panel">
+      <div v-if="questMode !== 'minimal'" class="tt-panel">
         <div class="tt-header">
           <span class="tt-label">🔍 Track Token</span>
           <span class="tt-pool">Pool: {{ trackTokenPool.length }}</span>
@@ -3577,7 +3654,7 @@ const openPackDrawer = () => {
       </div>
 
       <!-- TRACK TOKEN TOTAL -->
-      <div v-if="trackTokens.length" class="token-total-bar">
+      <div v-if="questMode !== 'minimal' && trackTokens.length" class="token-total-bar">
         <span class="token-total-label">🔍 Track Token รวม</span>
         <div class="token-total-tokens">
           <div
@@ -5593,10 +5670,73 @@ const openPackDrawer = () => {
       </Transition>
     </teleport>
 
+    <!-- ═══════════ SPECIAL CARD SELECT (Host only) ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="showSpecialCardSelect" class="scs-overlay">
+          <div class="scs-modal">
+            <p class="scs-title">⚔ เลือก Special Attack Card</p>
+            <p class="scs-sub">Host เลือกการ์ด Special Attack ของ {{ selectedMonster?.monster_name }}</p>
+            <p class="scs-scoutfly">
+              🪰 Scoutfly Level รวม: <strong>{{ _pendingTokenTotal }}</strong>
+              <span v-if="selectedQuest?.scoutfly_level"> (เกณฑ์ {{ selectedQuest.scoutfly_level[0] }} - {{ selectedQuest.scoutfly_level[1] }})</span>
+            </p>
+            <div class="scs-options">
+              <button
+                v-for="opt in specialCardSelectOptions"
+                :key="opt.card.behavior_id"
+                class="scs-option"
+                @click="selectSpecialAttackCard(opt.card)"
+              >
+                <img :src="getImg(opt.card.front_card_img)" class="scs-card-img" />
+                <span class="scs-card-name">{{ opt.card.behavior_name }}</span>
+                <span class="scs-card-hint">
+                  🪰 ถ้าได้ {{ opt.tiers.map(scoutflyTierLabel).join(' หรือ ') }} ให้เลือกใบนี้
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ WAITING FOR HOST SPECIAL CARD (Guest) ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="awaitingHostDeckBuild" class="scs-overlay">
+          <div class="scs-modal scs-waiting-modal">
+            <div class="scs-waiting-spinner"></div>
+            <p class="scs-title">⌛ รอ Host เลือก Special Attack Card</p>
+            <p class="scs-sub">Host กำลังเลือกการ์ด Special Attack ของ {{ selectedMonster?.monster_name }} อยู่...</p>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ SPECIAL CARD CONFIRM (Host only) ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="showSpecialCardConfirm" class="mtc-overlay" @click.self="showSpecialCardConfirm = false">
+          <div class="mtc-modal">
+            <p class="mtc-title">⚔ ยืนยันการเลือกการ์ด</p>
+            <div v-if="_pendingSpecialCardChoice" class="scs-confirm-card-wrap">
+              <img :src="getImg(_pendingSpecialCardChoice.front_card_img)" class="scs-confirm-card-img" />
+              <span class="scs-confirm-card-name">{{ _pendingSpecialCardChoice.behavior_name }}</span>
+            </div>
+            <p class="aht-desc">ยืนยันเลือกการ์ดนี้เป็น Special Attack Card ของ Monster ตัวนี้ใช่ไหม?</p>
+            <div class="mtc-btns">
+              <button class="mtc-btn mtc-cancel" @click="showSpecialCardConfirm = false">ยกเลิก</button>
+              <button class="mtc-btn mtc-confirm" @click="confirmSpecialAttackCard">ยืนยัน</button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
     <!-- ═══════════ SPECIAL CARD OVERLAY ═══════════ -->
     <teleport to="body">
       <Transition name="slain-fade">
-        <div v-if="showSpecialCardOverlay" class="sc-overlay" @click="showSpecialCardOverlay = false; phase = 'huntingPanel'">
+        <div v-if="questMode !== 'minimal' && showSpecialCardOverlay" class="sc-overlay" @click="showSpecialCardOverlay = false; phase = 'huntingPanel'">
           <div class="sc-content">
             <p class="sc-label">⚔ Special Attack Added!</p>
             <div class="sc-card">
@@ -7212,6 +7352,64 @@ const openPackDrawer = () => {
 }
 .sc-card-name { font-size: 18px; font-weight: bold; color: #ffd27a; margin: 0; letter-spacing: 2px; }
 .sc-hint { font-size: 10px; color: rgba(124,90,43,0.5); letter-spacing: 2px; margin: 0; animation: cml-pulse 1.5s ease-in-out infinite; }
+
+/* ── Special Card Select Modal ── */
+.scs-overlay {
+  position: fixed; inset: 0;
+  background: rgba(5,2,0,0.92);
+  backdrop-filter: blur(6px);
+  z-index: 489;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.scs-modal {
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  background: rgba(20,14,8,0.9);
+  border: 1px solid rgba(200,155,60,0.4);
+  border-radius: 14px;
+  padding: 24px;
+  max-width: 560px;
+  width: 100%;
+}
+.scs-title { font-size: 18px; font-weight: bold; color: #ffd27a; margin: 0; letter-spacing: 2px; text-align: center; }
+.scs-sub { font-size: 13px; color: #c8b89a; margin: 0; text-align: center; }
+.scs-scoutfly { font-size: 13px; color: #9adfff; margin: 0; text-align: center; }
+.scs-scoutfly strong { color: #ffe08a; }
+.scs-options {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 16px;
+  width: 100%;
+}
+.scs-option {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 2px solid rgba(200,155,60,0.35);
+  border-radius: 10px;
+  padding: 10px;
+  cursor: pointer;
+  transition: 0.2s;
+  flex: 1 1 140px;
+  max-width: 180px;
+}
+.scs-option:hover {
+  border-color: rgba(255,210,122,0.9);
+  box-shadow: 0 0 20px rgba(255,210,122,0.4);
+  transform: translateY(-2px);
+}
+.scs-card-img { width: 100%; max-width: 140px; height: auto; border-radius: 6px; display: block; }
+.scs-card-name { font-size: 13px; font-weight: bold; color: #ffd27a; text-align: center; }
+.scs-card-hint { font-size: 11px; color: #9adfff; text-align: center; line-height: 1.4; }
+.scs-confirm-card-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 8px; }
+.scs-confirm-card-img { width: min(220px, 70vw); height: auto; border-radius: 8px; border: 2px solid #c89b3c; box-shadow: 0 0 20px rgba(200,155,60,0.4); }
+.scs-confirm-card-name { font-size: 15px; font-weight: bold; color: #ffd27a; }
+.scs-waiting-modal { gap: 18px; }
+.scs-waiting-spinner {
+  width: 44px; height: 44px;
+  border: 4px solid rgba(255,210,122,0.2);
+  border-top-color: #ffd27a;
+  border-radius: 50%;
+  animation: scs-spin 1s linear infinite;
+}
+@keyframes scs-spin { to { transform: rotate(360deg); } }
 
 /* ── Current Attack Card (below msc-wrap) ── */
 .current-attack-card {
