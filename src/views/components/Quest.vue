@@ -137,7 +137,7 @@ const selectBook = (book) => {
   phase.value = 'monster'
 }
 
-const WILDSPIRE_ENABLED_MONSTERS = [6, 7]
+const WILDSPIRE_ENABLED_MONSTERS = [6, 7, 8]
 
 const monsters = computed(() => selectedBook.value?.data || [])
 
@@ -2608,6 +2608,16 @@ const isPartBrokenById = (partId) => {
   )
 }
 
+// รองรับ part_break_reward ที่ระบุ position เพื่อแยกชิ้นส่วนที่มี part_id ซ้ำกัน (เช่น Jyuratodus ครีบซ้าย/ขวา part_id=5)
+const isPartBreakRewardActive = (reward) => {
+  if (!reward?.part_id) return false
+  if (reward.position) {
+    const data = activeParts.value[reward.position]
+    return !!data && data.part_id === reward.part_id && !!brokenParts.value[reward.position]
+  }
+  return isPartBrokenById(reward.part_id)
+}
+
 const rollAllDice = () => {
   if (isAnyRolling.value) return
   const count = rewardDiceCount.value
@@ -2658,7 +2668,7 @@ const initAssignPhase = () => {
   const auto = []
   monsterHuntingData.value?.reward_table?.forEach((row) => {
     if (!row.part_break_reward?.part_id) return
-    if (!isPartBrokenById(row.part_break_reward.part_id)) return
+    if (!isPartBreakRewardActive(row.part_break_reward)) return
     const { resource_type_id, item_id } = row.reward
     const qty = row.part_break_reward.gain_additional ?? 1
     const existing = auto.find(
@@ -3799,7 +3809,7 @@ const openPackDrawer = () => {
           class="add-hunter-turn-btn"
           @click="showAddHunterTurnConfirm = true"
         >
-          +1 เทิร์น Hunter
+          +1 เทิร์น Hunter กรณีมี Effect เพิ่ม Hunter Turn ในการ์ดปัจจุบัน
         </button>
 
         <!-- Monster Turn button (Host only) -->
@@ -4563,14 +4573,17 @@ const openPackDrawer = () => {
             <div
               v-if="row.part_break_reward?.part_id"
               class="rw-part-bonus"
-              :class="{ 'bonus-active': isPartBrokenById(row.part_break_reward.part_id) }"
+              :class="{ 'bonus-active': isPartBreakRewardActive(row.part_break_reward) }"
             >
               <span class="rw-bonus-icon">{{
-                isPartBrokenById(row.part_break_reward.part_id) ? '🔓' : '🔒'
+                isPartBreakRewardActive(row.part_break_reward) ? '🔓' : '🔒'
               }}</span>
               <span class="rw-bonus-text">
                 +{{ row.part_break_reward.gain_additional }}
-                {{ getPartMeta(row.part_break_reward.part_id)?.part ?? '' }} Break
+                {{ getPartMeta(row.part_break_reward.part_id)?.part ?? '' }}
+                <template v-if="row.part_break_reward.position === 'left'">(ซ้าย)</template>
+                <template v-else-if="row.part_break_reward.position === 'right'">(ขวา)</template>
+                Break
               </span>
             </div>
           </div>
@@ -5562,7 +5575,7 @@ const openPackDrawer = () => {
             </div>
 
             <!-- Manual activation adjust -->
-            <div class="mtc-adjust-wrap">
+            <div v-if="activationPartRules.length > 0" class="mtc-adjust-wrap">
               <p class="mtc-adjust-label">เพิ่ม / ลด Hunter Turn</p>
               <div class="mtc-adjust-row">
                 <button class="mtc-adj-btn" @click="pendingActivationAdjust--">−</button>

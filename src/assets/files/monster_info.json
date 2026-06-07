@@ -3921,5 +3921,234 @@
       { "behavior_id": 12, "behavior_name": "Rear Spray",      "activations": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/rear_spray_front.png",      "back_card_img": "assets/img/behavior_deck/pukei-pukei/rear_spray_back.png" },
       { "behavior_id": 13, "behavior_name": "Chicken Scratch", "activations": 3, "front_card_img": "assets/img/behavior_deck/pukei-pukei/chicken_scratch_front.png", "back_card_img": "assets/img/behavior_deck/pukei-pukei/chicken_scratch_back.png" }
     ]
+  },
+  {
+    "monster_id": 8,
+    "monster_name": "Jyuratodus",
+    "thumbnail": "assets/img/Jyuratodus_Icon.webp",
+    "difficulty": [
+      {
+        "difficulty_id": 1,
+        "level": 1,
+        "health": 65,
+        "map_image": "assets/img/maps/jyuratodus/jyuratodus_1_star_map.png",
+        "special_rule": {
+          "title": "Mire Dweller",
+          "description": "ในระหว่างที่ Jyuratodus อยู่ในพื้นที่ Pond(บ่อน้ำ) จะทำให้การ์ดพฤติกรรมทุกใบมีระยะโจมตีและค่าหลบหลีกเพิ่มขึ้น +1 หน่วย"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 5,
+            "armor": 2,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน (Head), จะทำให้ (ระยะโจมตี) และ (ค่าหลบหลีก) ของการ์ดนั้นลดลง -1 หน่วย"
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 5,
+            "armor": 1,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน (Tail), จะทำให้ (ค่าความเสียหาย) ของการ์ดนั้นลดลง -1 หน่วย"
+          },
+          "left": {
+            "part_id": 5,
+            "connect_part_position": null,
+            "part_break_threshold": 4,
+            "armor": 2,
+            "part_break_rule": ""
+          },
+          "right": {
+            "part_id": 5,
+            "connect_part_position": null,
+            "part_break_threshold": 4,
+            "armor": 2,
+            "part_break_rule": ""
+          }
+        },
+        "element_resistance": [
+          { "element_id": 1, "level": 0, "immune": true },
+          { "element_id": 2, "level": 0, "immune": true },
+          { "element_id": 3, "level": 2, "immune": false },
+          { "element_id": 4, "level": 2, "immune": false },
+          { "element_id": 5, "level": 0, "immune": true }
+        ],
+        "status_resistance": [
+          { "status_id": 1, "level": 2, "immune": false },
+          { "status_id": 2, "level": 2, "immune": false },
+          { "status_id": 3, "level": 0, "immune": true },
+          { "status_id": 4, "level": 2, "immune": false },
+          { "status_id": 5, "level": 0, "immune": true }
+        ],
+        "reward_table": [
+          { "rolled_number": 1,  "reward": { "resource_type_id": 3, "item_id": 47 }, "part_break_reward": { "part_id": 5, "position": "left",  "gain_additional": 1 } },
+          { "rolled_number": 2,  "reward": { "resource_type_id": 2, "item_id": 13 }, "part_break_reward": {} },
+          { "rolled_number": 3,  "reward": { "resource_type_id": 3, "item_id": 48 }, "part_break_reward": {} },
+          { "rolled_number": 4,  "reward": { "resource_type_id": 3, "item_id": 49 }, "part_break_reward": {} },
+          { "rolled_number": 5,  "reward": { "resource_type_id": 1, "item_id": 10 }, "part_break_reward": {} },
+          { "rolled_number": 6,  "reward": { "resource_type_id": 3, "item_id": 45 }, "part_break_reward": {} },
+          { "rolled_number": 7,  "reward": { "resource_type_id": 3, "item_id": 46 }, "part_break_reward": { "part_id": 1, "gain_additional": 1 } },
+          { "rolled_number": 8,  "reward": { "resource_type_id": 3, "item_id": 45 }, "part_break_reward": {} },
+          { "rolled_number": 9,  "reward": { "resource_type_id": 2, "item_id": 14 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
+          { "rolled_number": 10, "reward": { "resource_type_id": 3, "item_id": 49 }, "part_break_reward": {} },
+          { "rolled_number": 11, "reward": { "resource_type_id": 3, "item_id": 48 }, "part_break_reward": {} },
+          { "rolled_number": 12, "reward": { "resource_type_id": 3, "item_id": 47 }, "part_break_reward": { "part_id": 5, "position": "right", "gain_additional": 1 } }
+        ]
+      },
+      {
+        "difficulty_id": 2,
+        "level": 2,
+        "health": 70,
+        "map_image": "assets/img/maps/jyuratodus/jyuratodus_2_star_map.png",
+        "special_rule": {
+          "title": "Mire Stalker",
+          "description": "ในระหว่างที่ Jyuratodus อยู่ในพื้นที่ Pond(บ่อน้ำ) จะทำให้การ์ดพฤติกรรมทุกใบมี (ระยะโจมตี), (ค่าหลบหลีก) และ (ค่าความเสียหาย) เพิ่มขึ้น +1 หน่วย"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 6,
+            "armor": 2,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน (Head), จะทำให้ (ระยะโจมตี) และ (ค่าหลบหลีก) ของการ์ดนั้นลดลง -1 หน่วย"
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 5,
+            "armor": 2,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน (Tail), จะทำให้ (ค่าความเสียหาย) ของการ์ดนั้นลดลง -1 หน่วย"
+          },
+          "left": {
+            "part_id": 5,
+            "connect_part_position": null,
+            "part_break_threshold": 5,
+            "armor": 3,
+            "part_break_rule": ""
+          },
+          "right": {
+            "part_id": 5,
+            "connect_part_position": null,
+            "part_break_threshold": 5,
+            "armor": 3,
+            "part_break_rule": "Part ส่วนนี้ เกราะ -1 หน่วย"
+          }
+        },
+        "element_resistance": [
+          { "element_id": 1, "level": 0, "immune": true },
+          { "element_id": 2, "level": 0, "immune": true },
+          { "element_id": 3, "level": 2, "immune": false },
+          { "element_id": 4, "level": 2, "immune": false },
+          { "element_id": 5, "level": 0, "immune": true }
+        ],
+        "status_resistance": [
+          { "status_id": 1, "level": 2, "immune": false },
+          { "status_id": 2, "level": 2, "immune": false },
+          { "status_id": 3, "level": 0, "immune": true },
+          { "status_id": 4, "level": 2, "immune": false },
+          { "status_id": 5, "level": 0, "immune": true }
+        ],
+        "reward_table": [
+          { "rolled_number": 1,  "reward": { "resource_type_id": 3, "item_id": 47 }, "part_break_reward": { "part_id": 5, "position": "left",  "gain_additional": 1 } },
+          { "rolled_number": 2,  "reward": { "resource_type_id": 2, "item_id": 13 }, "part_break_reward": {} },
+          { "rolled_number": 3,  "reward": { "resource_type_id": 3, "item_id": 48 }, "part_break_reward": {} },
+          { "rolled_number": 4,  "reward": { "resource_type_id": 3, "item_id": 49 }, "part_break_reward": {} },
+          { "rolled_number": 5,  "reward": { "resource_type_id": 1, "item_id": 10 }, "part_break_reward": {} },
+          { "rolled_number": 6,  "reward": { "resource_type_id": 3, "item_id": 45 }, "part_break_reward": {} },
+          { "rolled_number": 7,  "reward": { "resource_type_id": 3, "item_id": 46 }, "part_break_reward": { "part_id": 1, "gain_additional": 1 } },
+          { "rolled_number": 8,  "reward": { "resource_type_id": 3, "item_id": 45 }, "part_break_reward": {} },
+          { "rolled_number": 9,  "reward": { "resource_type_id": 2, "item_id": 14 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
+          { "rolled_number": 10, "reward": { "resource_type_id": 3, "item_id": 49 }, "part_break_reward": {} },
+          { "rolled_number": 11, "reward": { "resource_type_id": 3, "item_id": 48 }, "part_break_reward": {} },
+          { "rolled_number": 12, "reward": { "resource_type_id": 3, "item_id": 47 }, "part_break_reward": { "part_id": 5, "position": "right", "gain_additional": 1 } }
+        ]
+      },
+      {
+        "difficulty_id": 3,
+        "level": 3,
+        "health": 75,
+        "map_image": "assets/img/maps/jyuratodus/jyuratodus_3_star_map.png",
+        "special_rule": {
+          "title": "Mire Beast",
+          "description": "ในระหว่างที่ Jyuratodus อยู่ในพื้นที่ Pond(บ่อน้ำ) ทุก Body Parts ของมัน (เกราะ) +1 หน่วย และทำให้การ์ดพฤติกรรมทุกใบมี (ระยะโจมตี), (ค่าหลบหลีก) และ (ค่าความเสียหาย) เพิ่มขึ้น +1 หน่วย"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 6,
+            "armor": 3,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน (Head), จะทำให้ (ระยะโจมตี) และ (ค่าหลบหลีก) ของการ์ดนั้นลดลง -1 หน่วย"
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 5,
+            "armor": 2,
+            "part_break_rule": ""
+          },
+          "left": {
+            "part_id": 5,
+            "connect_part_position": null,
+            "part_break_threshold": 6,
+            "armor": 3,
+            "part_break_rule": "Part ส่วนนี้ เกราะ -1 หน่วย"
+          },
+          "right": {
+            "part_id": 5,
+            "connect_part_position": null,
+            "part_break_threshold": 6,
+            "armor": 3,
+            "part_break_rule": "Part ส่วนนี้ เกราะ -1 หน่วย"
+          }
+        },
+        "element_resistance": [
+          { "element_id": 1, "level": 0, "immune": true },
+          { "element_id": 2, "level": 0, "immune": true },
+          { "element_id": 3, "level": 2, "immune": false },
+          { "element_id": 4, "level": 2, "immune": false },
+          { "element_id": 5, "level": 0, "immune": true }
+        ],
+        "status_resistance": [
+          { "status_id": 1, "level": 2, "immune": false },
+          { "status_id": 2, "level": 2, "immune": false },
+          { "status_id": 3, "level": 0, "immune": true },
+          { "status_id": 4, "level": 2, "immune": false },
+          { "status_id": 5, "level": 0, "immune": true }
+        ],
+        "reward_table": [
+          { "rolled_number": 1,  "reward": { "resource_type_id": 3, "item_id": 47 }, "part_break_reward": { "part_id": 5, "position": "left",  "gain_additional": 1 } },
+          { "rolled_number": 2,  "reward": { "resource_type_id": 2, "item_id": 13 }, "part_break_reward": {} },
+          { "rolled_number": 3,  "reward": { "resource_type_id": 3, "item_id": 48 }, "part_break_reward": {} },
+          { "rolled_number": 4,  "reward": { "resource_type_id": 3, "item_id": 49 }, "part_break_reward": {} },
+          { "rolled_number": 5,  "reward": { "resource_type_id": 1, "item_id": 10 }, "part_break_reward": {} },
+          { "rolled_number": 6,  "reward": { "resource_type_id": 3, "item_id": 45 }, "part_break_reward": {} },
+          { "rolled_number": 7,  "reward": { "resource_type_id": 3, "item_id": 46 }, "part_break_reward": { "part_id": 1, "gain_additional": 1 } },
+          { "rolled_number": 8,  "reward": { "resource_type_id": 3, "item_id": 45 }, "part_break_reward": {} },
+          { "rolled_number": 9,  "reward": { "resource_type_id": 2, "item_id": 14 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
+          { "rolled_number": 10, "reward": { "resource_type_id": 3, "item_id": 49 }, "part_break_reward": {} },
+          { "rolled_number": 11, "reward": { "resource_type_id": 3, "item_id": 48 }, "part_break_reward": {} },
+          { "rolled_number": 12, "reward": { "resource_type_id": 3, "item_id": 47 }, "part_break_reward": { "part_id": 5, "position": "right", "gain_additional": 1 } }
+        ]
+      }
+    ],
+    "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2],
+    "behavior_deck": [
+      { "behavior_id": 1,  "behavior_name": "Back Flip",      "activations": 4, "front_card_img": "assets/img/behavior_deck/jyuratodus/back_flip_front.png",      "back_card_img": "assets/img/behavior_deck/jyuratodus/back_flip_back.png" },
+      { "behavior_id": 2,  "behavior_name": "Direct Rush",    "activations": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/direct_rush_front.png",    "back_card_img": "assets/img/behavior_deck/jyuratodus/direct_rush_back.png" },
+      { "behavior_id": 3,  "behavior_name": "Dive Smash",     "activations": 3, "front_card_img": "assets/img/behavior_deck/jyuratodus/dive_smash_front.png",     "back_card_img": "assets/img/behavior_deck/jyuratodus/dive_smash_back.png" },
+      { "behavior_id": 4,  "behavior_name": "Double Spit",    "activations": 3, "front_card_img": "assets/img/behavior_deck/jyuratodus/double_spit_front.png",    "back_card_img": "assets/img/behavior_deck/jyuratodus/double_spit_back.png" },
+      { "behavior_id": 5,  "behavior_name": "Mud Bomb",       "activations": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/mud_bomb_front.png",       "back_card_img": "assets/img/behavior_deck/jyuratodus/mud_bomb_back.png" },
+      { "behavior_id": 6,  "behavior_name": "Mud Spit",       "activations": 3, "front_card_img": "assets/img/behavior_deck/jyuratodus/mud_spit_front.png",       "back_card_img": "assets/img/behavior_deck/jyuratodus/mud_spit_back.png" },
+      { "behavior_id": 7,  "behavior_name": "Mud Splash",     "activations": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/mud_splash_front.png",     "back_card_img": "assets/img/behavior_deck/jyuratodus/mud_splash_back.png" },
+      { "behavior_id": 8,  "behavior_name": "Rapid Headbutt", "activations": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/rapid_headbutt_front.png", "back_card_img": "assets/img/behavior_deck/jyuratodus/rapid_headbutt_back.png" },
+      { "behavior_id": 9,  "behavior_name": "Shark Bite",     "activations": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/shark_bite_front.png",     "back_card_img": "assets/img/behavior_deck/jyuratodus/shark_bite_back.png" },
+      { "behavior_id": 10, "behavior_name": "Tidal Waves",    "activations": 3, "front_card_img": "assets/img/behavior_deck/jyuratodus/tidal_waves_front.png",    "back_card_img": "assets/img/behavior_deck/jyuratodus/tidal_waves_back.png" }
+    ],
+    "behavior_special_card": [
+      { "behavior_id": 11, "behavior_name": "Forward Bite",    "activations": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/forward_bite_front.png",    "back_card_img": "assets/img/behavior_deck/jyuratodus/forward_bite_back.png" },
+      { "behavior_id": 12, "behavior_name": "Submerge Attack", "activations": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/submerge_attack_front.png", "back_card_img": "assets/img/behavior_deck/jyuratodus/submerge_attack_back.png" },
+      { "behavior_id": 13, "behavior_name": "Water Wrap",      "activations": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/water_wrap_front.png",      "back_card_img": "assets/img/behavior_deck/jyuratodus/water_wrap_back.png" }
+    ]
   }
 ]
