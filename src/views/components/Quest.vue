@@ -268,7 +268,7 @@ const selectBook = (book) => {
   phase.value = 'monster'
 }
 
-const WILDSPIRE_ENABLED_MONSTERS = [6, 7, 8]
+const WILDSPIRE_ENABLED_MONSTERS = [6, 7, 8, 9]
 
 const monsters = computed(() => selectedBook.value?.data || [])
 
