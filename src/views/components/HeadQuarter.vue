@@ -132,6 +132,7 @@ const RC_REWARD_TABLE = {
 const dotPatterns = { 1:[4], 2:[2,6], 3:[2,4,6], 4:[0,2,6,8], 5:[0,2,4,6,8], 6:[0,2,3,5,6,8] }
 
 const rcPhase           = ref('roll')
+const rcHasRolled       = ref(false)
 const rcDice            = ref([{ id: 0, value: 1, spent: false }, { id: 1, value: 1, spent: false }])
 const rcRolling         = ref(new Set())
 const rcSelectedDiceIds = ref([])
@@ -166,6 +167,7 @@ const rcAnimateDie = (id, finalValue) => {
 
 const rcRollAll = () => {
   if (rcIsRolling.value) return
+  rcHasRolled.value = true
   const vals = [Math.ceil(Math.random() * 6), Math.ceil(Math.random() * 6)]
   vals.forEach((val, i) => setTimeout(() => rcAnimateDie(i, val), i * 100))
 }
@@ -213,14 +215,15 @@ const rcConfirmRewards = () => {
   })
   saveHunter(hunter.value)
   rcReset()
+  activeActivity.value = null
 }
 
 const rcReset = () => {
   rcPhase.value = 'roll'
+  rcHasRolled.value = false
   rcDice.value = [{ id: 0, value: 1, spent: false }, { id: 1, value: 1, spent: false }]
   rcSelectedDiceIds.value = []
   rcStagedRewards.value = []
-  rcRollAll()
 }
 
 // ─── Provisions Stockpile ────────────────────────────────────────────────────
@@ -516,25 +519,26 @@ const poogiePat = () => { poogiePatted.value = true }
 
       <!-- Phase: Roll -->
       <div v-if="rcPhase === 'roll'" class="rc-roll-phase">
-        <p class="rc-sub">ทอย 2 เต๋า · กดที่เต๋าเพื่อทอยใหม่เฉพาะลูก</p>
-        <div class="rc-dice-row">
-          <div
-            v-for="die in rcDice" :key="die.id"
-            class="rc-die"
-            :class="{ rolling: rcRolling.has(die.id) }"
-            @click="rcRerollOne(die.id)"
-            title="คลิกเพื่อทอยใหม่"
-          >
-            <div class="rc-die-face">
-              <span v-for="pos in 9" :key="pos" class="rc-die-dot"
-                :class="{ visible: dotPatterns[die.value]?.includes(pos - 1) }" />
+        <div v-if="!rcHasRolled" class="rc-roll-actions">
+          <button class="rc-btn-primary" @click="rcRollAll">🎲 ทอยเต๋า</button>
+        </div>
+        <template v-else>
+          <div class="rc-dice-row">
+            <div
+              v-for="die in rcDice" :key="die.id"
+              class="rc-die"
+              :class="{ rolling: rcRolling.has(die.id) }"
+            >
+              <div class="rc-die-face">
+                <span v-for="pos in 9" :key="pos" class="rc-die-dot"
+                  :class="{ visible: dotPatterns[die.value]?.includes(pos - 1) }" />
+              </div>
             </div>
           </div>
-        </div>
-        <div class="rc-roll-actions">
-          <button class="rc-btn-secondary" :disabled="rcIsRolling" @click="rcRollAll">🎲 ทอยใหม่ทั้งหมด</button>
-          <button class="rc-btn-primary"   :disabled="rcIsRolling" @click="rcUseResult">ใช้ผลนี้ →</button>
-        </div>
+          <div class="rc-roll-actions">
+            <button class="rc-btn-primary" :disabled="rcIsRolling" @click="rcUseResult">ใช้ผลนี้ →</button>
+          </div>
+        </template>
       </div>
 
       <!-- Phase: Claim -->

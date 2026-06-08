@@ -251,3 +251,19 @@ export const removeTradeItem = (code, key) =>
 
 export const clearTradePool = (code) =>
   remove(ref(db, `rooms/${code}/tradePool`))
+
+// ── HQ Vote ───────────────────────────────────────────────
+export const pushHqVote = (code, hunterId, vote) =>
+  set(ref(db, `rooms/${code}/hqVotes/${hunterId}`), vote)
+export const clearHqVotes = (code) =>
+  remove(ref(db, `rooms/${code}/hqVotes`))
+
+// ── HQ State (visit tracking per hunter) ─────────────────
+export const pushHqCurrent = (code, hunterId, locationId) =>
+  set(ref(db, `rooms/${code}/hqState/${hunterId}/current`), locationId ?? null)
+export const pushHqDoneList = (code, hunterId, doneList) =>
+  set(ref(db, `rooms/${code}/hqState/${hunterId}/done`), doneList.length ? doneList : null)
+export const pushHqReady = (code, hunterId, ready) =>
+  set(ref(db, `rooms/${code}/hqState/${hunterId}/ready`), ready)
+export const clearHqState = (code) =>
+  remove(ref(db, `rooms/${code}/hqState`))

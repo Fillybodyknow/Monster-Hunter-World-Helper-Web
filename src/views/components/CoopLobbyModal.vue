@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useRoomStore } from '@/stores/room'
 import hunterClassData from '@/assets/files/class_hunter.json'
 
@@ -68,6 +68,13 @@ const copyCode = async () => {
   setTimeout(() => (copied.value = false), 1500)
 }
 const copied = ref(false)
+
+const starColor = computed(() => {
+  const d = room.questInfo?.difficulty_level
+  if (d >= 4) return '#cc77ff'
+  if (d >= 2) return '#ff4444'
+  return '#ffffff'
+})
 </script>
 
 <template>
@@ -95,9 +102,12 @@ const copied = ref(false)
             <span class="cml-quest-name">{{ room.questInfo.monster_name }}</span>
             <div class="cml-quest-meta">
               <span class="cml-quest-type">{{ room.questInfo.quest_type }}</span>
-              <span class="cml-quest-stars">
+              <span class="cml-quest-stars" :style="{ color: starColor }">
                 <span v-for="i in room.questInfo.difficulty_level" :key="i">★</span>
               </span>
+            </div>
+            <div v-if="room.questInfo.exhausted_attempt" class="cml-exhausted-badge">
+              ⚠ จะบังคับเข้า HQ (2 กิจกรรม)
             </div>
           </div>
         </div>
@@ -283,9 +293,19 @@ const copied = ref(false)
   padding: 2px 6px;
 }
 .cml-quest-stars {
-  color: #f5c518;
   font-size: 13px;
   letter-spacing: 1px;
+}
+.cml-exhausted-badge {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #ffaa33;
+  background: rgba(255,140,0,0.1);
+  border: 1px solid rgba(255,140,0,0.35);
+  border-radius: 4px;
+  padding: 2px 7px;
+  margin-top: 4px;
+  width: fit-content;
 }
 
 /* Countdown overlay */

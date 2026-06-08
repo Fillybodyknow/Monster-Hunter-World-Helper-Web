@@ -17,6 +17,7 @@ import resourceData from '@/assets/files/resource.json'
 import { getHunters, saveHunters } from '@/services/hunterStorage'
 import { useRoomStore } from '@/stores/room'
 import CoopLobbyModal from './CoopLobbyModal.vue'
+import HQPhase from './HQPhase.vue'
 import { openCraftLookup } from '@/composables/useCraftLookup'
 
 const room = useRoomStore()
@@ -37,12 +38,16 @@ const questMode = ref('full')
 const startCoopQuest = async () => {
   if (!hunter.value) return
   if (!room.inRoom) await room.create(hunter.value)
+  const _exhausted = isQuestExhausted(selectedQuest.value)
   await room.setQuestInfo({
     monster_id: selectedMonster.value?.monster_id,
     monster_name: selectedMonster.value?.monster_name,
     thumbnail: selectedMonster.value?.thumbnail,
     quest_type: selectedQuest.value?.quest_type,
     difficulty_level: selectedQuest.value?.difficulty_level,
+    campaign_day: hunter.value.campaign_day ?? 1,
+    exhausted_attempt: _exhausted,
+    hq_max_actions: _exhausted ? 2 : 3,
   })
   showCoopLobby.value = true
 }
@@ -68,16 +73,43 @@ const onCoopStart = () => {
     // Quest ดำเนินอยู่แล้ว (host reconnect หรือ guest) → sync โดยไม่ reset
     if (room.inRoom) _startSuppressAnimations()
     _syncToPhase(room.syncedDialogId, true)
+  } else if (room.syncedPhase === 'hqVote' || room.syncedPhase === 'hq' || room.syncedPhase === 'handlerStart') {
+    // Reconnect กลางช่วง HQ / handlerStart
+    _resolveQuestFromRoom()
+    isExhaustedAttempt.value = room.questInfo?.exhausted_attempt ?? false
+    phase.value = room.syncedPhase
   } else if (!room.isHost) {
-    // Guest ที่ยังไม่ได้รับ syncedDialogId → รอ Firebase โหลดก่อน
-    const stop = watch(() => room.syncedDialogId, (id) => {
+    // Guest รอ phase จาก Firebase
+    const stop = watch([() => room.syncedDialogId, () => room.syncedPhase], ([id, sp]) => {
+      if (sp === 'hqVote' || sp === 'hq' || sp === 'handlerStart') {
+        stop()
+        if (sp === 'handlerStart') isExhaustedAttempt.value = room.questInfo?.exhausted_attempt ?? false
+        phase.value = sp
+        return
+      }
       if (!id) return
       stop()
       _syncToPhase(id, true)
     }, { immediate: true })
   } else {
     // Host เริ่มเควสใหม่
-    startQuest()
+    const day = room.questInfo?.campaign_day ?? hunter.value?.campaign_day ?? 1
+    isExhaustedAttempt.value = room.questInfo?.exhausted_attempt ?? false
+    if (isExhaustedAttempt.value) {
+      // Attempts หมด: บังคับ HQ 2 actions
+      handlerStartDialogId.value = null
+      phase.value = 'hq'
+      room.syncPhase?.('hq')
+      room.clearHqVotesAll?.()
+      room.clearHqStateAll?.()
+    } else if (day <= 1) {
+      startQuest()
+    } else {
+      phase.value = 'hqVote'
+      room.syncPhase?.('hqVote')
+      room.clearHqVotesAll?.()
+      room.clearHqStateAll?.()
+    }
   }
 }
 
@@ -110,6 +142,105 @@ const selectedBook = ref(null)
 const selectedMonster = ref(null)
 const selectedQuest = ref(null)
 const currentDialogId = ref(null)
+
+// ─── HQ Vote ─────────────────────────────────────────────
+const myHqVote = ref(null)  // 'hq' | 'quest' | null
+const isExhaustedAttempt = ref(false)
+const handlerStartDialogId = ref(null)
+const hqMaxActions = computed(() => isExhaustedAttempt.value ? 2 : 3)
+
+watch(phase, (p) => {
+  if (p === 'hqVote') { myHqVote.value = null; pendingHqVote.value = null }
+})
+
+const pendingHqVote = ref(null)
+const confirmHqVote = () => { if (pendingHqVote.value) { castHqVote(pendingHqVote.value); pendingHqVote.value = null } }
+const cancelHqVote = () => { pendingHqVote.value = null }
+
+const castHqVote = (vote) => {
+  myHqVote.value = vote
+  if (room.inRoom) {
+    room.voteHq?.(vote)
+  } else {
+    // Solo: ตัดสินใจทันที
+    if (vote === 'hq') {
+      phase.value = 'hq'
+    } else {
+      startQuest()
+    }
+  }
+}
+
+const confirmHandlerStart = (dialogId) => {
+  handlerStartDialogId.value = dialogId
+  startQuest()
+}
+
+const breakHqTie = (vote) => {
+  if (vote === 'hq') {
+    phase.value = 'hq'
+    room.syncPhase?.('hq')
+    room.clearHqVotesAll?.()
+  } else {
+    room.clearHqVotesAll?.()
+    startQuest()
+  }
+}
+
+// Watch majority vote result (coop)
+watch(() => room.hqVoteResult, (result) => {
+  if (!result || !room.inRoom || !room.isHost) return
+  if (result === 'hq') {
+    phase.value = 'hq'
+    room.syncPhase?.('hq')
+  } else {
+    room.clearHqVotesAll?.()
+    startQuest()
+  }
+})
+
+// Guest syncs hqVote / hq / handlerStart phase
+watch([() => room.syncedPhase, () => room.joinSignal], ([sp]) => {
+  if (!sp || !room.inRoom || room.isHost) return
+  if ((sp === 'hqVote' || sp === 'hq' || sp === 'handlerStart') && phase.value !== sp) {
+    if (sp === 'handlerStart') isExhaustedAttempt.value = room.questInfo?.exhausted_attempt ?? false
+    phase.value = sp
+  }
+})
+
+const _incrementDay = () => {
+  if (hunter.value) {
+    hunter.value.campaign_day = (hunter.value.campaign_day ?? 0) + 1
+    saveHunter(hunter.value)
+  }
+}
+
+// All hunters ready in HQ → host adds day and starts quest (or picks dialog if exhausted)
+watch(() => room.allHqReady, (allReady) => {
+  if (!allReady || !room.inRoom || !room.isHost) return
+  _incrementDay()
+  room.clearHqVotesAll?.()
+  room.clearHqStateAll?.()
+  myHqVote.value = null
+  if (isExhaustedAttempt.value) {
+    phase.value = 'handlerStart'
+    room.syncPhase?.('handlerStart')
+  } else {
+    startQuest()
+  }
+})
+
+const onHQAllReady = () => {
+  if (!room.inRoom) {
+    _incrementDay()
+    myHqVote.value = null
+    if (isExhaustedAttempt.value) {
+      phase.value = 'handlerStart'
+    } else {
+      startQuest()
+    }
+  }
+}
 
 watch(() => room.inRoom, (inRoom, wasInRoom) => {
   if (wasInRoom && !inRoom) {
@@ -182,7 +313,7 @@ const attemptsLeft = (quest) => {
 
 const selectQuest = (quest) => {
   if (!isQuestUnlocked(selectedMonster.value.monster_id, quest.quest_id)) return
-  if (isQuestExhausted(quest)) return
+  if (quest.quest_id === 1 && isQuestExhausted(quest)) return
   selectedQuest.value = quest
   phase.value = 'detail'
 }
@@ -194,6 +325,9 @@ const startingDialog = computed(() => {
   return selectedMonster.value.quest_dialogs.find((d) => d.dialog_id === dialogId)
 })
 
+const getDialog = (dialogId) =>
+  selectedMonster.value?.quest_dialogs?.find(d => d.dialog_id === dialogId) ?? null
+
 const startQuest = () => {
   dialogResourceCounts.value = {}
   showDialogResources.value = false
@@ -201,8 +335,10 @@ const startQuest = () => {
   if (questMode.value === 'full') {
     buildTimeCardDeck()
   }
-  const attempted = getAttempted(selectedMonster.value.monster_id, selectedQuest.value.quest_id)
-  currentDialogId.value = selectedQuest.value.starting_point[attempted]
+  const startDialogId = (isExhaustedAttempt.value && handlerStartDialogId.value)
+    ? handlerStartDialogId.value
+    : selectedQuest.value.starting_point[getAttempted(selectedMonster.value.monster_id, selectedQuest.value.quest_id)]
+  currentDialogId.value = startDialogId
   phase.value = selectedMonster.value.dialog_hunting_phase.includes(currentDialogId.value)
     ? 'hunting'
     : 'dialog'
@@ -587,10 +723,25 @@ watch(() => room.joinSignal, () => {
     _syncToPhase(dialogId, true)
   }
 
+  const sp = room.syncedPhase
+  if (sp === 'hqVote' || sp === 'hq' || sp === 'handlerStart') {
+    _resolveQuestFromRoom()
+    isExhaustedAttempt.value = room.questInfo?.exhausted_attempt ?? false
+    phase.value = sp
+    return
+  }
+
   if (room.syncedDialogId) {
     doNav(room.syncedDialogId)
   } else {
-    const stop = watch(() => room.syncedDialogId, (id) => {
+    const stop = watch([() => room.syncedDialogId, () => room.syncedPhase], ([id, newSp]) => {
+      if (newSp === 'hqVote' || newSp === 'hq' || newSp === 'handlerStart') {
+        stop()
+        _resolveQuestFromRoom()
+        isExhaustedAttempt.value = room.questInfo?.exhausted_attempt ?? false
+        phase.value = newSp
+        return
+      }
       if (!id) return
       stop()
       doNav(id)
@@ -601,6 +752,7 @@ watch(() => room.joinSignal, () => {
 // Host proceeds → guests follow
 watch(() => room.syncedDialogId, (dialogId) => {
   if (!dialogId || !room.inRoom) return
+  isExhaustedAttempt.value = room.questInfo?.exhausted_attempt ?? false
   _resolveQuestFromRoom()
   if (!selectedMonster.value) return
   pendingAction.value = null
@@ -618,6 +770,7 @@ watch(() => room.syncedDialogId, (dialogId) => {
       phase.value = 'huntingPanel'
     }
   } else {
+    phase.value = 'dialog'
     _executeDialog(dialogId)
   }
 })
@@ -1162,17 +1315,19 @@ const resetToBookPhase = () => {
   if (room.inRoom && room.isHost) room.syncManualOutcome?.(null)
   floatBarCollapsed.value = false
   questMode.value = 'full'
+  isExhaustedAttempt.value = false
+  handlerStartDialogId.value = null
   phase.value = 'book'
 }
 
 const onComplete = () => {
-  incrementAttempted()
+  if (!isExhaustedAttempt.value) incrementAttempted()
   incrementDay()
   resetToBookPhase()
 }
 
 const onFail = () => {
-  if (selectedQuest.value.quest_id !== 1) incrementAttempted()
+  if (selectedQuest.value.quest_id !== 1 && !isExhaustedAttempt.value) incrementAttempted()
   incrementDay()
   if (room.inRoom) room.leave()
   resetToBookPhase()
@@ -2191,7 +2346,7 @@ watch(() => room.manualOutcomeState, (val) => {
 
 // Guest syncs quest mode from host
 watch(() => room.questModeState, (val) => {
-  if (!room.inRoom || room.isHost) return
+  if (!room.inRoom) return
   if (val) questMode.value = val
 })
 
@@ -3117,8 +3272,10 @@ const openPackDrawer = () => {
           class="scroll-card"
           :class="{
             'scroll-locked': !isQuestUnlocked(selectedMonster.monster_id, quest.quest_id),
+            'scroll-cleared':
+              quest.quest_id === 1 && isQuestExhausted(quest),
             'scroll-exhausted':
-              isQuestExhausted(quest) &&
+              quest.quest_id !== 1 && isQuestExhausted(quest) &&
               isQuestUnlocked(selectedMonster.monster_id, quest.quest_id),
             'scroll-available':
               isQuestUnlocked(selectedMonster.monster_id, quest.quest_id) &&
@@ -3177,13 +3334,19 @@ const openPackDrawer = () => {
             </div>
 
             <div
-              v-if="
-                isQuestExhausted(quest) &&
+              v-if="quest.quest_id === 1 && isQuestExhausted(quest)"
+              class="exhausted-notice cleared-notice"
+            >
+              ✓ ผ่านแล้ว
+            </div>
+            <div
+              v-else-if="
+                quest.quest_id !== 1 && isQuestExhausted(quest) &&
                 isQuestUnlocked(selectedMonster.monster_id, quest.quest_id)
               "
               class="exhausted-notice"
             >
-              All starting points exhausted
+              ⚠ จำนวนการลง Quest ครบแล้ว — ยังลงเล่นได้แต่จะบังคับเข้าช่วง HQ ก่อน (2 กิจกรรมใน HQ) และคุณจะเป็นคนเลือกจุดเริ่มต้น Quest ได้
             </div>
           </div>
         </div>
@@ -3257,10 +3420,15 @@ const openPackDrawer = () => {
       </div>
 
       <!-- STARTING POINT SCROLL -->
-      <div v-if="startingDialog" class="starting-scroll">
+      <div v-if="startingDialog && !isQuestExhausted(selectedQuest)" class="starting-scroll">
         <div class="scroll-tab">Starting Point</div>
         <p class="scroll-flavor-title">{{ startingDialog.title }}</p>
         <p class="scroll-flavor-body">{{ startingDialog.subtitle }}</p>
+      </div>
+      <div v-else-if="isQuestExhausted(selectedQuest)" class="starting-scroll exhausted-banner">
+        <div class="scroll-tab exhausted-tab">⚠ ATTEMPTS EXHAUSTED</div>
+        <p class="scroll-flavor-title">จำนวนการลง Quest ครบแล้ว</p>
+        <p class="scroll-flavor-body">บังคับเข้า HQ ก่อน (2 Actions) · Host จะเลือก Starting Dialog เองหลัง HQ · ไม่นับ Attempt เพิ่ม</p>
       </div>
 
       <div class="embark-mode-row">
@@ -3273,6 +3441,140 @@ const openPackDrawer = () => {
     </div>
 
     <CoopLobbyModal :show="showCoopLobby" @start="onCoopStart" @leave="onCoopLeave" />
+
+    <!-- ═══════════ HQ VOTE PHASE ═══════════ -->
+    <div v-if="phase === 'hqVote'" class="phase-hq-vote">
+      <div class="hqv-header">
+        <div class="hqv-line"></div>
+        <span class="hqv-title">แวะ Head Quarter ก่อนลุยไหม?</span>
+        <div class="hqv-line"></div>
+      </div>
+
+      <div class="hqv-monster-row">
+        <img :src="getImg(selectedMonster?.thumbnail)" class="hqv-monster-img" />
+        <div>
+          <p class="hqv-target-label">Target</p>
+          <p class="hqv-monster-name">{{ selectedMonster?.monster_name }}</p>
+        </div>
+      </div>
+
+      <div v-if="!myHqVote" class="hqv-choices">
+        <button class="hqv-btn hqv-btn-hq" @click="pendingHqVote = 'hq'">
+          <img :src="getImg('assets/img/menu_topbar_icon/head_querter.png')" class="hqv-btn-icon hqv-hq-icon" />
+          <span class="hqv-btn-label">แวะ HQ ก่อน</span>
+          <span class="hqv-btn-sub">เพิ่มวัน · ทำ 3 กิจกรรม</span>
+        </button>
+        <button class="hqv-btn hqv-btn-quest" @click="pendingHqVote = 'quest'">
+          <img :src="getImg('assets/img/menu_topbar_icon/quest.png')" class="hqv-btn-icon hqv-quest-icon" />
+          <span class="hqv-btn-label">ลุย Quest เลย</span>
+          <span class="hqv-btn-sub">ข้าม HQ ไปเริ่มล่าเลย</span>
+        </button>
+      </div>
+
+      <!-- Vote Confirm Modal -->
+      <Teleport to="body">
+        <Transition name="slain-fade">
+          <div v-if="pendingHqVote" class="hqvc-overlay" @click.self="cancelHqVote">
+            <div class="hqvc-modal">
+              <p class="hqvc-title">ยืนยันการโหวต</p>
+              <div class="hqvc-choice" :class="pendingHqVote === 'hq' ? 'hqvc-hq' : 'hqvc-quest'">
+                <img
+                  v-if="pendingHqVote === 'hq'"
+                  :src="getImg('assets/img/menu_topbar_icon/head_querter.png')"
+                  class="hqvc-icon hqvc-icon-white"
+                />
+                <img
+                  v-else
+                  :src="getImg('assets/img/menu_topbar_icon/quest.png')"
+                  class="hqvc-icon"
+                />
+                <span class="hqvc-label">{{ pendingHqVote === 'hq' ? 'แวะ HQ ก่อน' : 'ลุย Quest เลย' }}</span>
+              </div>
+              <div class="hqvc-btns">
+                <button class="hqvc-btn-confirm" @click="confirmHqVote">✓ ยืนยัน</button>
+                <button class="hqvc-btn-cancel" @click="cancelHqVote">← ยกเลิก</button>
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </Teleport>
+
+      <div v-if="myHqVote" class="hqv-waiting">
+        <p class="hqv-voted-label">คุณโหวต: <strong>{{ myHqVote === 'hq' ? '🏰 แวะ HQ' : '⚔ ลุย Quest' }}</strong></p>
+        <p v-if="room.inRoom" class="hqv-waiting-sub">รอผลโหวตจากทีม...</p>
+      </div>
+
+      <!-- Party vote status -->
+      <div v-if="room.inRoom" class="hqv-party-votes">
+        <div v-for="h in room.hunters" :key="h.hunter_id" class="hqv-vote-row">
+          <span class="hqv-hunter-name">{{ h.hunter_name }}</span>
+          <span v-if="room.hqVotes[h.hunter_id] === 'hq'" class="hqv-vote-pill hqv-vote-hq">🏰 HQ</span>
+          <span v-else-if="room.hqVotes[h.hunter_id] === 'quest'" class="hqv-vote-pill hqv-vote-quest">⚔ Quest</span>
+          <span v-else class="hqv-vote-pill hqv-vote-pending">รอ...</span>
+        </div>
+      </div>
+
+      <!-- Tiebreak -->
+      <div v-if="room.inRoom && room.hqVoteTied" class="hqv-tiebreak">
+        <p class="hqv-tie-label">⚖ คะแนนเท่ากัน!</p>
+        <template v-if="room.isHost">
+          <p class="hqv-tie-sub">Host ตัดสินใจเลือก</p>
+          <div class="hqv-choices">
+            <button class="hqv-btn hqv-btn-hq" @click="breakHqTie('hq')">
+              <img :src="getImg('assets/img/menu_topbar_icon/head_querter.png')" class="hqv-btn-icon hqv-hq-icon" />
+              <span class="hqv-btn-label">แวะ HQ ก่อน</span>
+            </button>
+            <button class="hqv-btn hqv-btn-quest" @click="breakHqTie('quest')">
+              <span class="hqv-btn-icon">⚔</span>
+              <span class="hqv-btn-label">ลุย Quest เลย</span>
+            </button>
+          </div>
+        </template>
+        <p v-else class="hqv-tie-sub">รอ Host ตัดสิน...</p>
+      </div>
+    </div>
+
+    <!-- ═══════════ HQ PHASE ═══════════ -->
+    <div v-if="phase === 'hq'" class="phase-hq">
+      <HQPhase :maxActions="hqMaxActions" @allReady="onHQAllReady" />
+    </div>
+
+    <!-- ═══════════ HANDLER START — HOST PICKS DIALOG ═══════════ -->
+    <div v-if="phase === 'handlerStart'" class="phase-hq-vote">
+      <div class="hqv-header">
+        <div class="hqv-line"></div>
+        <span class="hqv-title">เลือก Starting Dialog</span>
+        <div class="hqv-line"></div>
+      </div>
+
+      <div class="hqv-monster-row">
+        <img :src="getImg(selectedMonster?.thumbnail)" class="hqv-monster-img" />
+        <div>
+          <p class="hqv-target-label">Target</p>
+          <p class="hqv-monster-name">{{ selectedMonster?.monster_name }}</p>
+        </div>
+      </div>
+
+      <template v-if="!room.inRoom || room.isHost">
+        <p class="hs-pick-label">เลือก Route ที่จะเริ่ม Quest</p>
+        <div class="hs-dialog-list">
+          <div
+            v-for="(dialogId, idx) in selectedQuest?.starting_point"
+            :key="dialogId"
+            class="hs-dialog-card"
+            @click="confirmHandlerStart(dialogId)"
+          >
+            <div class="hs-dialog-index">Route {{ idx + 1 }}</div>
+            <div class="hs-dialog-title">{{ getDialog(dialogId)?.title ?? `Dialog #${dialogId}` }}</div>
+            <div v-if="getDialog(dialogId)?.subtitle" class="hs-dialog-sub">{{ getDialog(dialogId).subtitle }}</div>
+          </div>
+        </div>
+      </template>
+
+      <div v-else class="hqv-waiting">
+        <p class="hqv-voted-label">⏳ รอ Host เลือก Starting Point...</p>
+      </div>
+    </div>
 
     <!-- ═══════════ CO-OP QUEST MODE MODAL ═══════════ -->
     <Teleport to="body">
@@ -6525,10 +6827,18 @@ const openPackDrawer = () => {
   opacity: 0.55;
   filter: grayscale(50%);
 }
-.scroll-card.scroll-exhausted {
-  opacity: 0.4;
-  filter: grayscale(70%);
+.scroll-card.scroll-cleared {
+  opacity: 0.35;
+  filter: grayscale(80%);
+  cursor: not-allowed;
+  pointer-events: none;
 }
+.cleared-notice { color: #6a9a5a !important; }
+.scroll-card.scroll-exhausted {
+  border-color: rgba(200,140,40,0.45);
+  cursor: pointer;
+}
+.scroll-card.scroll-exhausted:hover { border-color: #c89b3c; background: rgba(30,20,8,0.9); }
 
 .lock-veil {
   position: absolute;
@@ -6827,6 +7137,22 @@ const openPackDrawer = () => {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+.exhausted-banner { border-color: rgba(200,80,80,0.4) !important; background: linear-gradient(to bottom,#1e0e0e,#150b0b) !important; }
+.exhausted-tab { background: #2a0e0e !important; border-color: rgba(200,80,80,0.4) !important; color: #ff6b6b !important; }
+.exhausted-banner .scroll-flavor-title { color: #ff9090; }
+.exhausted-banner .scroll-flavor-body { color: #c08080; -webkit-line-clamp: 4; line-clamp: 4; }
+
+/* Handler Start — dialog picker */
+.hs-pick-label { font-size: 12px; color: #a07840; text-align: center; font-style: italic; margin: 0; }
+.hs-dialog-list { display: flex; flex-direction: column; gap: 10px; }
+.hs-dialog-card {
+  padding: 14px 16px; border-radius: 8px; cursor: pointer; transition: all 0.15s;
+  border: 1px solid rgba(124,90,43,0.4); background: rgba(14,10,4,0.8);
+}
+.hs-dialog-card:hover { border-color: #c89b3c; background: rgba(40,28,10,0.9); box-shadow: 0 0 14px rgba(200,155,60,0.15); }
+.hs-dialog-index { font-size: 10px; letter-spacing: 3px; color: #c89b3c; text-transform: uppercase; margin-bottom: 4px; }
+.hs-dialog-title { font-size: 14px; font-weight: bold; color: #ffd27a; margin-bottom: 4px; }
+.hs-dialog-sub { font-size: 11px; color: #a08050; line-height: 1.5; }
 
 .btn-embark {
   display: flex;
@@ -7145,9 +7471,78 @@ const openPackDrawer = () => {
 .qmode-active .qmode-name { color: #ffd27a; }
 .qmode-active .qmode-desc { color: rgba(255,210,122,0.7); }
 
+/* ═══════ HQ Vote Phase ═══════ */
+.phase-hq-vote {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 0;
+  color: #f0ddb0;
+  font-family: 'Georgia', serif;
+}
+.hqv-header { display: flex; align-items: center; gap: 10px; }
+.hqv-line { flex: 1; height: 1px; background: linear-gradient(to right, transparent, #7c5a2b); }
+.hqv-line:last-child { background: linear-gradient(to left, transparent, #7c5a2b); }
+.hqv-title { font-size: 12px; letter-spacing: 3px; color: #c89b3c; white-space: nowrap; text-transform: uppercase; }
+.hqv-monster-row { display: flex; align-items: center; gap: 14px; padding: 10px 14px; border-radius: 8px; background: rgba(20,14,6,0.8); border: 1px solid rgba(124,90,43,0.3); }
+.hqv-monster-img { width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 0 4px rgba(0,0,0,0.6)); }
+.hqv-target-label { font-size: 9px; letter-spacing: 3px; color: #7c5a2b; text-transform: uppercase; margin: 0; }
+.hqv-monster-name { font-size: 16px; color: #ffd27a; font-weight: bold; margin: 0; }
+.hqv-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.hqv-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 18px 10px; border-radius: 12px;
+  border: 2px solid; cursor: pointer; transition: all 0.2s;
+  font-family: 'Georgia', serif;
+  background: rgba(10,8,4,0.8);
+}
+.hqv-btn-hq { border-color: rgba(200,155,60,0.5); }
+.hqv-btn-hq:hover { border-color: #c89b3c; background: rgba(40,28,8,0.9); box-shadow: 0 0 16px rgba(200,155,60,0.2); }
+.hqv-btn-quest { border-color: rgba(200,80,80,0.5); }
+.hqv-btn-quest:hover { border-color: #cc4444; background: rgba(40,14,14,0.9); box-shadow: 0 0 16px rgba(200,60,60,0.2); }
+.hqv-btn-icon { font-size: 26px; }
+.hqv-hq-icon { width: 28px; height: 28px; object-fit: contain; filter: brightness(0) invert(1); }
+.hqv-quest-icon { width: 28px; height: 28px; object-fit: contain; }
+
+/* HQ Vote Confirm Modal */
+.hqvc-overlay { position: fixed; inset: 0; background: rgba(5,4,2,0.75); backdrop-filter: blur(8px) brightness(0.5); display: flex; justify-content: center; align-items: center; z-index: 400; padding: 16px; }
+.hqvc-modal { width: min(320px,100%); padding: 24px 20px; border-radius: 12px; background: linear-gradient(160deg,#1c1508,#13100a); border: 1px solid rgba(124,90,43,0.5); box-shadow: 0 0 40px rgba(0,0,0,0.9); display: flex; flex-direction: column; gap: 16px; align-items: center; font-family: 'Georgia',serif; animation: hqModalIn 0.2s cubic-bezier(0.34,1.56,0.64,1); }
+.hqvc-title { font-size: 12px; letter-spacing: 3px; color: #c89b3c; text-transform: uppercase; margin: 0; }
+.hqvc-choice { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-radius: 10px; border: 2px solid; width: 100%; }
+.hqvc-hq { border-color: rgba(200,155,60,0.6); background: rgba(40,28,8,0.8); }
+.hqvc-quest { border-color: rgba(200,80,80,0.5); background: rgba(40,14,14,0.8); }
+.hqvc-icon { width: 32px; height: 32px; object-fit: contain; }
+.hqvc-icon-white { filter: brightness(0) invert(1); }
+.hqvc-label { font-size: 16px; font-weight: bold; color: #f0ddb0; letter-spacing: 1px; }
+.hqvc-btns { display: flex; gap: 10px; width: 100%; }
+.hqvc-btn-confirm { flex: 1; padding: 12px; border-radius: 8px; border: 2px solid #c89b3c; background: linear-gradient(to bottom,#3a2a10,#1a1308); color: #ffd27a; font-family: 'Georgia',serif; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+.hqvc-btn-confirm:hover { box-shadow: 0 0 14px rgba(200,155,60,0.4); }
+.hqvc-btn-cancel { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid rgba(124,90,43,0.3); background: rgba(10,8,4,0.6); color: #7c5a2b; font-family: 'Georgia',serif; font-size: 13px; cursor: pointer; transition: 0.2s; }
+.hqvc-btn-cancel:hover { border-color: rgba(124,90,43,0.6); color: #c89b3c; }
+.hqv-btn-label { font-size: 14px; font-weight: bold; color: #f0ddb0; letter-spacing: 1px; }
+.hqv-btn-sub { font-size: 10px; color: #7c5a2b; font-style: italic; }
+.hqv-waiting { text-align: center; padding: 16px; border-radius: 10px; background: rgba(10,8,4,0.7); border: 1px solid rgba(124,90,43,0.3); }
+.hqv-voted-label { margin: 0 0 4px; font-size: 14px; color: #f0ddb0; }
+.hqv-voted-label strong { color: #ffd27a; }
+.hqv-waiting-sub { margin: 0; font-size: 12px; color: #7c5a2b; font-style: italic; }
+.hqv-party-votes { display: flex; flex-direction: column; gap: 6px; }
+.hqv-vote-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-radius: 8px; background: rgba(14,10,4,0.7); border: 1px solid rgba(90,61,31,0.3); }
+.hqv-hunter-name { font-size: 13px; color: #e0c88a; font-weight: bold; }
+.hqv-vote-pill { font-size: 11px; padding: 3px 10px; border-radius: 12px; }
+.hqv-vote-hq { background: rgba(200,155,60,0.15); border: 1px solid rgba(200,155,60,0.4); color: #ffd27a; }
+.hqv-vote-quest { background: rgba(200,80,80,0.12); border: 1px solid rgba(200,80,80,0.4); color: #ff9090; }
+.hqv-vote-pending { background: rgba(60,60,60,0.2); border: 1px solid rgba(90,90,90,0.3); color: #5a5a5a; }
+.hqv-tiebreak { text-align: center; padding: 14px 12px; border-radius: 10px; background: rgba(20,12,4,0.85); border: 1px solid rgba(200,155,60,0.4); display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.hqv-tie-label { margin: 0; font-size: 16px; font-weight: bold; color: #ffd27a; letter-spacing: 1px; }
+.hqv-tie-sub { margin: 0; font-size: 12px; color: #a07840; font-style: italic; }
+.hqv-tiebreak .hqv-choices { width: 100%; }
+
+/* HQ Phase container */
+.phase-hq { padding: 4px 0; }
+
 .embark-mode-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 10px;
 }
 

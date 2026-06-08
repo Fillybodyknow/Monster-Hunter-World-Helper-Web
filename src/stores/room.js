@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { isFirebaseConnected } from '@/services/firebase'
-import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds, pushShuffleSignal, pushActivationCount, pushOutcomeSignal, pushManualOutcome, pushQuestMode } from '@/services/roomService'
+import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds, pushShuffleSignal, pushActivationCount, pushOutcomeSignal, pushManualOutcome, pushQuestMode, pushHqVote, clearHqVotes, pushHqCurrent, pushHqDoneList, pushHqReady, clearHqState } from '@/services/roomService'
 
 export const useRoomStore = defineStore('room', () => {
   const roomCode = ref(null)
@@ -95,6 +95,28 @@ export const useRoomStore = defineStore('room', () => {
   const questInfo = computed(() => roomData.value?.questInfo ?? null)
   const myHunter = computed(() => hunters.value.find((h) => h.hunter_id === myHunterId.value))
   const amReady = computed(() => myHunter.value?.ready ?? false)
+
+  // HQ Vote
+  const hqVotes = computed(() => roomData.value?.hqVotes ?? {})
+  const hqState = computed(() => roomData.value?.hqState ?? {})
+  const hqVoteResult = computed(() => {
+    const votes = Object.values(hqVotes.value)
+    if (!votes.length) return null
+    const majority = Math.floor(hunters.value.length / 2) + 1
+    const hqCount = votes.filter(v => v === 'hq').length
+    const questCount = votes.filter(v => v === 'quest').length
+    if (hqCount >= majority) return 'hq'
+    if (questCount >= majority) return 'quest'
+    return null
+  })
+  const hqAllVoted = computed(() =>
+    hunters.value.length > 0 && hunters.value.every(h => hqVotes.value[h.hunter_id])
+  )
+  const hqVoteTied = computed(() => hqAllVoted.value && hqVoteResult.value === null)
+  const allHqReady = computed(() =>
+    hunters.value.length > 0 &&
+    hunters.value.every(h => hqState.value[h.hunter_id]?.ready)
+  )
 
   const _listen = (code) => {
     if (_unsub) _unsub()
@@ -340,6 +362,31 @@ export const useRoomStore = defineStore('room', () => {
     return removeOutcomeVote(roomCode.value, myHunterId.value)
   }
 
+  const voteHq = (vote) => {
+    if (!roomCode.value || !myHunterId.value) return
+    return pushHqVote(roomCode.value, myHunterId.value, vote)
+  }
+  const clearHqVotesAll = () => {
+    if (!roomCode.value) return
+    return clearHqVotes(roomCode.value)
+  }
+  const setHqCurrent = (locationId) => {
+    if (!roomCode.value || !myHunterId.value) return
+    return pushHqCurrent(roomCode.value, myHunterId.value, locationId)
+  }
+  const setHqDoneList = (doneList) => {
+    if (!roomCode.value || !myHunterId.value) return
+    return pushHqDoneList(roomCode.value, myHunterId.value, doneList)
+  }
+  const setHqReady = (ready) => {
+    if (!roomCode.value || !myHunterId.value) return
+    return pushHqReady(roomCode.value, myHunterId.value, ready)
+  }
+  const clearHqStateAll = () => {
+    if (!roomCode.value) return
+    return clearHqState(roomCode.value)
+  }
+
   const reset = () => {
     roomCode.value = null
     roomData.value = null
@@ -392,5 +439,7 @@ export const useRoomStore = defineStore('room', () => {
     addToTradePool, removeFromTradePool, clearTrade,
     setMyDialogCounts, clearDialogCounts,
     voteAction, clearActionVote, kick, reset,
+    hqVotes, hqState, hqVoteResult, hqVoteTied, allHqReady,
+    voteHq, clearHqVotesAll, setHqCurrent, setHqDoneList, setHqReady, clearHqStateAll,
   }
 })
