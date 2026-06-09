@@ -96,10 +96,14 @@ const onCoopStart = () => {
     _syncToPhase(room.syncedDialogId, true)
     // Restore manual outcome AFTER _syncToPhase (canComplete watcher อาจล้างค่าในรอบ async เดียวกัน)
     const savedOutcome = room.manualOutcomeState
-    if (savedOutcome) nextTick(() => {
-      manualOutcomeCheck.value = savedOutcome
-      floatBarCollapsed.value = false
-    })
+    if (savedOutcome) {
+      _restoringOutcome = true
+      nextTick(() => {
+        manualOutcomeCheck.value = savedOutcome
+        floatBarCollapsed.value = false
+        _restoringOutcome = false
+      })
+    }
   } else if (room.syncedPhase === 'hqVote' || room.syncedPhase === 'hq' || room.syncedPhase === 'handlerStart') {
     // Reconnect กลางช่วง HQ / handlerStart
     _resolveQuestFromRoom()
@@ -696,6 +700,7 @@ let _suppressAnimations = false
 let _suppressTimer = null
 let _isReconnecting = false
 let _reconnectTimer = null
+let _restoringOutcome = false
 const _startSuppressAnimations = () => {
   _suppressAnimations = true
   clearTimeout(_suppressTimer)
@@ -760,10 +765,14 @@ watch(() => room.joinSignal, () => {
     _isReconnecting = false
     // Restore manual outcome AFTER _syncToPhase (canComplete watcher อาจล้างค่าในรอบ async เดียวกัน)
     const savedOutcome = room.manualOutcomeState
-    if (savedOutcome) nextTick(() => {
-      manualOutcomeCheck.value = savedOutcome
-      floatBarCollapsed.value = false
-    })
+    if (savedOutcome) {
+      _restoringOutcome = true
+      nextTick(() => {
+        manualOutcomeCheck.value = savedOutcome
+        floatBarCollapsed.value = false
+        _restoringOutcome = false
+      })
+    }
   }
 
   const sp = room.syncedPhase
@@ -2363,7 +2372,8 @@ watch(floatOutcomeState, (state) => {
 watch(canComplete, (val) => {
   if (!val && manualOutcomeCheck.value === 'complete') {
     manualOutcomeCheck.value = null
-    if (room.inRoom && room.isHost) room.syncManualOutcome?.(null)
+    // ไม่ push null ไป Firebase ถ้ากำลัง restore จาก reconnect (ป้องกัน Firebase ถูกล้าง)
+    if (room.inRoom && room.isHost && !_restoringOutcome) room.syncManualOutcome?.(null)
   }
   // Minimal mode: HP = 0 → แสดง Slain บน portrait ทันที
   if (val && questMode.value === 'minimal') {
