@@ -760,10 +760,8 @@ watch(() => room.joinSignal, () => {
     pendingAction.value = null
     tiedActions.value = []
     _syncToPhase(dialogId, true)
-    // Reconnect restoration complete — close the window
-    clearTimeout(_reconnectTimer)
-    _isReconnecting = false
-    // Restore manual outcome AFTER _syncToPhase (canComplete watcher อาจล้างค่าในรอบ async เดียวกัน)
+    // Restore manual outcome — keep _isReconnecting = true until after nextTick so canComplete
+    // watcher (queued from _syncToPhase's huntingHp change) won't clear the restored value
     const savedOutcome = room.manualOutcomeState
     if (savedOutcome) {
       _restoringOutcome = true
@@ -771,7 +769,12 @@ watch(() => room.joinSignal, () => {
         manualOutcomeCheck.value = savedOutcome
         floatBarCollapsed.value = false
         _restoringOutcome = false
+        clearTimeout(_reconnectTimer)
+        _isReconnecting = false
       })
+    } else {
+      clearTimeout(_reconnectTimer)
+      _isReconnecting = false
     }
   }
 
@@ -2371,9 +2374,10 @@ watch(floatOutcomeState, (state) => {
 // ถ้า monster heal กลับมา (HP > 0) → ล้าง Quest Complete ออก
 watch(canComplete, (val) => {
   if (!val && manualOutcomeCheck.value === 'complete') {
+    // ระหว่าง reconnect restore (_isReconnecting หรือ _restoringOutcome) — ไม่ล้างค่าเลย
+    if (_isReconnecting || _restoringOutcome) return
     manualOutcomeCheck.value = null
-    // ไม่ push null ไป Firebase ถ้ากำลัง restore จาก reconnect (ป้องกัน Firebase ถูกล้าง)
-    if (room.inRoom && room.isHost && !_restoringOutcome) room.syncManualOutcome?.(null)
+    if (room.inRoom && room.isHost) room.syncManualOutcome?.(null)
   }
   // Minimal mode: HP = 0 → แสดง Slain บน portrait ทันที
   if (val && questMode.value === 'minimal') {
@@ -2398,8 +2402,10 @@ watch(() => room.outcomeSignal, (val) => {
 })
 
 // Guest syncs manualOutcome state จาก Firebase (รวมถึงตอน host clear เป็น null)
+// Host ก็ restore ได้ระหว่าง reconnect window (เหมือน behaviorDeck / timeCard / questMode)
 watch(() => room.manualOutcomeState, (val) => {
-  if (!room.inRoom || room.isHost) return
+  if (!room.inRoom) return
+  if (room.isHost && !_isReconnecting) return
   manualOutcomeCheck.value = val ?? null
 })
 
