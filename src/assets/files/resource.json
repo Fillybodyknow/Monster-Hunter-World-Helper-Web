@@ -178,6 +178,11 @@
                 "item_id": 20,
                 "item": "Novacrystal",
                 "thumbnail": "assets/img/other_materials/novacrystal.png"
+            },
+            {
+                "item_id": 21,
+                "item": "Black Spiral Horn",
+                "thumbnail": "assets/img/other_materials/piercing-claw.png"
             }
         ]
     },

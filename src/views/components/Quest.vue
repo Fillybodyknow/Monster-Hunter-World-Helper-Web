@@ -268,7 +268,7 @@ const selectBook = (book) => {
   phase.value = 'monster'
 }
 
-const WILDSPIRE_ENABLED_MONSTERS = [6, 7, 8, 9]
+const WILDSPIRE_ENABLED_MONSTERS = [6, 7, 8, 9, 10]
 
 const monsters = computed(() => selectedBook.value?.data || [])
 
@@ -3215,7 +3215,7 @@ const openPackDrawer = () => {
             <h2 class="book-title-text">{{ book.name }}</h2>
             <div class="book-divider"></div>
             <p class="book-meta">{{ book.data.length }} Monsters Available</p>
-            <div class="book-cta">{{ book.id === 'wildspire' ? '🔒 Coming Soon' : 'Open Book ▶' }}</div>
+            <div class="book-cta">📜 Open Book ▶</div>
           </div>
         </div>
       </div>

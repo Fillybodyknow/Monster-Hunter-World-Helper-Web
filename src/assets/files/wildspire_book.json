@@ -2964,9 +2964,9 @@
         "monster_name": "Black Diablos",
         "thumbnail": "assets/img/Black_Diablos_Icon.webp",
         "special_attack_card": [
-            "Forward Rush",
-            "Horn Thrust",
-            "Surface Bite"
+            "Burrowing Retreat",
+            "Side Horn Thrust",
+            "Surface Impale"
         ],
         "dialog_hunting_phase": [31,32,33,34],
         "quest": [
