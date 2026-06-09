@@ -72,7 +72,38 @@ const onCoopStart = () => {
   if (room.syncedDialogId) {
     // Quest ดำเนินอยู่แล้ว (host reconnect หรือ guest) → sync โดยไม่ reset
     if (room.inRoom) _startSuppressAnimations()
+    if (room.inRoom) {
+      // Restore behavior deck
+      const deckState = room.behaviorDeckState
+      if (deckState) {
+        behaviorDeck.value = deckState.deck ?? []
+        behaviorDiscard.value = deckState.discard ?? []
+        behaviorBanished.value = deckState.banished ?? []
+        currentBehaviorCard.value = deckState.current ?? null
+        if (deckState.specialCard) specialCardOverlayCard.value = deckState.specialCard
+      }
+      // Restore time cards
+      const tcState = room.timeCardState
+      if (tcState) {
+        timeCardDeck.value = tcState.deck ?? []
+        timeCardDiscard.value = tcState.discard ?? []
+      }
+      // Restore quest mode (time cards only exist in Full mode — guards against stale 'minimal' in Firebase)
+      const _hasTc = (tcState?.deck?.length ?? 0) > 0 || (tcState?.discard?.length ?? 0) > 0
+      if (_hasTc) questMode.value = 'full'
+      else if (room.questModeState) questMode.value = room.questModeState
+    }
     _syncToPhase(room.syncedDialogId, true)
+    // Restore manual outcome AFTER _syncToPhase (canComplete watcher อาจล้างค่าในรอบ async เดียวกัน)
+    const savedOutcome = room.manualOutcomeState
+    if (savedOutcome) {
+      _restoringOutcome = true
+      nextTick(() => {
+        manualOutcomeCheck.value = savedOutcome
+        floatBarCollapsed.value = false
+        _restoringOutcome = false
+      })
+    }
   } else if (room.syncedPhase === 'hqVote' || room.syncedPhase === 'hq' || room.syncedPhase === 'handlerStart') {
     // Reconnect กลางช่วง HQ / handlerStart
     _resolveQuestFromRoom()
@@ -268,7 +299,7 @@ const selectBook = (book) => {
   phase.value = 'monster'
 }
 
-const WILDSPIRE_ENABLED_MONSTERS = [6, 7, 8, 9]
+const WILDSPIRE_ENABLED_MONSTERS = [6, 7, 8, 9, 10]
 
 const monsters = computed(() => selectedBook.value?.data || [])
 
@@ -667,6 +698,9 @@ watch([() => room.syncedPhase, () => room.joinSignal], ([syncPhase]) => {
 
 let _suppressAnimations = false
 let _suppressTimer = null
+let _isReconnecting = false
+let _reconnectTimer = null
+let _restoringOutcome = false
 const _startSuppressAnimations = () => {
   _suppressAnimations = true
   clearTimeout(_suppressTimer)
@@ -677,6 +711,10 @@ const _startSuppressAnimations = () => {
 watch(() => room.joinSignal, () => {
   if (!room.inRoom) return
   _startSuppressAnimations()
+  // Allow reactive watchers to restore Host state from Firebase during reconnect window
+  _isReconnecting = true
+  clearTimeout(_reconnectTimer)
+  _reconnectTimer = setTimeout(() => { _isReconnecting = false }, 5000)
 
   const restoreDeck = (state) => {
     if (!state) return
@@ -711,16 +749,33 @@ watch(() => room.joinSignal, () => {
       timeCardDiscard.value = tcState.discard ?? []
     }
     // Restore quest mode จาก Firebase
-    if (room.questModeState) questMode.value = room.questModeState
-    // Restore manual outcome state
-    const savedOutcome = room.manualOutcomeState
-    if (savedOutcome) {
-      manualOutcomeCheck.value = savedOutcome
-      floatBarCollapsed.value = false
+    // Time cards only exist in Full mode — if Firebase has stale 'minimal' but time cards are present, treat as Full
+    const _tcState = room.timeCardState
+    const _hasTimeCards = (_tcState?.deck?.length ?? 0) > 0 || (_tcState?.discard?.length ?? 0) > 0
+    if (_hasTimeCards) {
+      questMode.value = 'full'
+    } else if (room.questModeState) {
+      questMode.value = room.questModeState
     }
     pendingAction.value = null
     tiedActions.value = []
     _syncToPhase(dialogId, true)
+    // Restore manual outcome — keep _isReconnecting = true until after nextTick so canComplete
+    // watcher (queued from _syncToPhase's huntingHp change) won't clear the restored value
+    const savedOutcome = room.manualOutcomeState
+    if (savedOutcome) {
+      _restoringOutcome = true
+      nextTick(() => {
+        manualOutcomeCheck.value = savedOutcome
+        floatBarCollapsed.value = false
+        _restoringOutcome = false
+        clearTimeout(_reconnectTimer)
+        _isReconnecting = false
+      })
+    } else {
+      clearTimeout(_reconnectTimer)
+      _isReconnecting = false
+    }
   }
 
   const sp = room.syncedPhase
@@ -931,6 +986,8 @@ const monsterAttackStatuses = ref([])  // status snapshot for resolve overlay
 const showStatusResolve = ref(false)   // "Effects Resolved" overlay
 let _statusResolveTimer = null
 const showDeckManager = ref(false)
+const showCardZoom = ref(false)
+const zoomCardImg = ref('')
 const deckManagerTab = ref('deck')     // 'deck' | 'discard' | 'banished'
 
 const _shuffle = (arr) => {
@@ -1193,8 +1250,8 @@ const discardTopBehaviorCard = () => {
 watch([() => room.behaviorDeckState, () => room.joinSignal], ([state], [prev]) => {
   if (!state || !room.inRoom) return
 
-  // Deck states — Host จัดการเองจากโค้ด
-  if (room.isHost) return
+  // Deck states — Host จัดการเองจากโค้ด (ยกเว้นตอน reconnect)
+  if (room.isHost && !_isReconnecting) return
   behaviorDeck.value = state.deck ?? []
   behaviorDiscard.value = state.discard ?? []
   behaviorBanished.value = state.banished ?? []
@@ -1224,12 +1281,14 @@ watch([() => room.behaviorDeckState, () => room.joinSignal], ([state], [prev]) =
 
   // ถ้าการ์ดเปลี่ยน → แสดง animation + show float bar เฉพาะตอน Hunter มีเทิร์น
   if (newCard && newCard.behavior_id !== oldCard?.behavior_id) {
-    const guestStatuses = state.attackStatuses ?? []
-    if (!_suppressAnimations && guestStatuses.length > 0) {
-      _showStatusResolve(guestStatuses, newCard)
-    } else {
-      monsterAttackCard.value = newCard
-      showMonsterAttack.value = true
+    if (!_suppressAnimations) {
+      const guestStatuses = state.attackStatuses ?? []
+      if (guestStatuses.length > 0) {
+        _showStatusResolve(guestStatuses, newCard)
+      } else {
+        monsterAttackCard.value = newCard
+        showMonsterAttack.value = true
+      }
     }
     const newLimit = newCard.activations ?? 0
     if (newLimit > 0) floatBarCollapsed.value = false
@@ -1315,6 +1374,7 @@ const resetToBookPhase = () => {
   if (room.inRoom && room.isHost) room.syncManualOutcome?.(null)
   floatBarCollapsed.value = false
   questMode.value = 'full'
+  if (room.inRoom && room.isHost) room.syncQuestMode?.('full')
   isExhaustedAttempt.value = false
   handlerStartDialogId.value = null
   phase.value = 'book'
@@ -1323,6 +1383,7 @@ const resetToBookPhase = () => {
 const onComplete = () => {
   if (!isExhaustedAttempt.value) incrementAttempted()
   incrementDay()
+  if (room.inRoom) room.leave()
   resetToBookPhase()
 }
 
@@ -2107,8 +2168,8 @@ watch([() => room.timeCardState, () => room.joinSignal], ([state]) => {
     tcDiscardFlash.value = null
   }
 
-  // Deck/discard — Host จัดการเองจากโค้ด ไม่ต้องอ่านจาก Firebase
-  if (room.isHost) return
+  // Deck/discard — Host จัดการเองจากโค้ด ไม่ต้องอ่านจาก Firebase (ยกเว้นตอน reconnect)
+  if (room.isHost && !_isReconnecting) return
   timeCardDeck.value = state.deck ?? []
   timeCardDiscard.value = state.discard ?? []
 }, { deep: true, immediate: true })
@@ -2313,6 +2374,8 @@ watch(floatOutcomeState, (state) => {
 // ถ้า monster heal กลับมา (HP > 0) → ล้าง Quest Complete ออก
 watch(canComplete, (val) => {
   if (!val && manualOutcomeCheck.value === 'complete') {
+    // ระหว่าง reconnect restore (_isReconnecting หรือ _restoringOutcome) — ไม่ล้างค่าเลย
+    if (_isReconnecting || _restoringOutcome) return
     manualOutcomeCheck.value = null
     if (room.inRoom && room.isHost) room.syncManualOutcome?.(null)
   }
@@ -2339,14 +2402,17 @@ watch(() => room.outcomeSignal, (val) => {
 })
 
 // Guest syncs manualOutcome state จาก Firebase (รวมถึงตอน host clear เป็น null)
+// Host ก็ restore ได้ระหว่าง reconnect window (เหมือน behaviorDeck / timeCard / questMode)
 watch(() => room.manualOutcomeState, (val) => {
-  if (!room.inRoom || room.isHost) return
+  if (!room.inRoom) return
+  if (room.isHost && !_isReconnecting) return
   manualOutcomeCheck.value = val ?? null
 })
 
-// Guest syncs quest mode from host
+// Guest syncs quest mode from host (Host also restores from Firebase during reconnect)
 watch(() => room.questModeState, (val) => {
   if (!room.inRoom) return
+  if (room.isHost && !_isReconnecting) return
   if (val) questMode.value = val
 })
 
@@ -3215,7 +3281,7 @@ const openPackDrawer = () => {
             <h2 class="book-title-text">{{ book.name }}</h2>
             <div class="book-divider"></div>
             <p class="book-meta">{{ book.data.length }} Monsters Available</p>
-            <div class="book-cta">{{ book.id === 'wildspire' ? '🔒 Coming Soon' : 'Open Book ▶' }}</div>
+            <div class="book-cta">📜 Open Book ▶</div>
           </div>
         </div>
       </div>
@@ -4165,7 +4231,7 @@ const openPackDrawer = () => {
                 <div v-if="deckManagerTab === 'deck'">
                   <div v-if="!behaviorDeck.length" class="dm-empty">ไม่มีการ์ดใน Deck</div>
                   <div v-for="card in behaviorDeck" :key="card.behavior_id" class="dm-card-row">
-                    <img :src="getImg(card.front_card_img)" class="dm-card-thumb" />
+                    <img :src="getImg(card.front_card_img)" class="dm-card-thumb dm-card-zoomable" @click="zoomCardImg = getImg(card.front_card_img); showCardZoom = true" />
                     <span class="dm-card-name">{{ card.behavior_name }}</span>
                     <button class="dm-btn dm-btn-banish" @click="banishCard(card)">นำออกจากเกม</button>
                   </div>
@@ -4173,7 +4239,7 @@ const openPackDrawer = () => {
                 <div v-if="deckManagerTab === 'discard'">
                   <div v-if="!behaviorDiscard.length" class="dm-empty">ไม่มีการ์ดในกองทิ้ง</div>
                   <div v-for="card in behaviorDiscard" :key="card.behavior_id" class="dm-card-row">
-                    <img :src="getImg(card.front_card_img)" class="dm-card-thumb" />
+                    <img :src="getImg(card.front_card_img)" class="dm-card-thumb dm-card-zoomable" @click="zoomCardImg = getImg(card.front_card_img); showCardZoom = true" />
                     <span class="dm-card-name">{{ card.behavior_name }}</span>
                     <button class="dm-btn dm-btn-banish" @click="banishCard(card)">นำออกจากเกม</button>
                   </div>
@@ -4181,7 +4247,7 @@ const openPackDrawer = () => {
                 <div v-if="deckManagerTab === 'banished'">
                   <div v-if="!behaviorBanished.length" class="dm-empty">ไม่มีการ์ดนอกเกม</div>
                   <div v-for="card in behaviorBanished" :key="card.behavior_id" class="dm-card-row">
-                    <img :src="getImg(card.front_card_img)" class="dm-card-thumb dm-card-banished" />
+                    <img :src="getImg(card.front_card_img)" class="dm-card-thumb dm-card-banished dm-card-zoomable" @click="zoomCardImg = getImg(card.front_card_img); showCardZoom = true" />
                     <span class="dm-card-name dm-card-name-banished">{{ card.behavior_name }}</span>
                     <button class="dm-btn dm-btn-restore" @click="restoreCard(card)">คืนเข้า Deck</button>
                   </div>
@@ -4191,7 +4257,7 @@ const openPackDrawer = () => {
                     🎲 สุ่ม Special Card + สับกองทิ้งเข้า Deck
                   </button>
                   <div v-for="card in allSpecialCards" :key="card.behavior_id" class="dm-card-row">
-                    <img :src="getImg(card.front_card_img)" class="dm-card-thumb" :class="{ 'dm-card-banished': !isCardInGame(card) }" />
+                    <img :src="getImg(card.front_card_img)" class="dm-card-thumb dm-card-zoomable" :class="{ 'dm-card-banished': !isCardInGame(card) }" @click="zoomCardImg = getImg(card.front_card_img); showCardZoom = true" />
                     <span class="dm-card-name">{{ card.behavior_name }}</span>
                     <button v-if="isCardInGame(card)" class="dm-btn dm-btn-banish" @click="banishCard(card)">นำออก</button>
                     <button v-else class="dm-btn dm-btn-restore" @click="addSpecialCardToDeck(card)">เพิ่มเข้า Deck</button>
@@ -4199,6 +4265,15 @@ const openPackDrawer = () => {
                 </div>
               </div>
             </div>
+          </div>
+        </Transition>
+      </Teleport>
+
+      <!-- Card Zoom Modal -->
+      <Teleport to="body">
+        <Transition name="slain-fade">
+          <div v-if="showCardZoom" class="cz-overlay" @click="showCardZoom = false">
+            <img :src="zoomCardImg" class="cz-img" @click.stop />
           </div>
         </Transition>
       </Teleport>
@@ -5746,7 +5821,7 @@ const openPackDrawer = () => {
     <!-- ═══════════ FLOATING TURN BAR ═══════════ -->
     <teleport to="body">
       <div
-        v-if="questMode === 'full' && phase === 'huntingPanel' && (timeCardDeck.length > 0 || timeCardDiscard.length > 0)"
+        v-if="questMode === 'full' && phase === 'huntingPanel' && (timeCardDeck.length > 0 || timeCardDiscard.length > 0) && !showResultAnim"
         class="float-turn-bar"
         :class="{ 'float-turn-bar-collapsed': floatBarCollapsed }"
       >
@@ -5830,7 +5905,7 @@ const openPackDrawer = () => {
     <teleport to="body">
       <Transition name="slain-fade">
         <div
-          v-if="questMode === 'full' && room.inRoom && phase === 'huntingPanel'"
+          v-if="questMode === 'full' && room.inRoom && phase === 'huntingPanel' && !showResultAnim"
           class="party-strip"
         >
           <div
@@ -8724,6 +8799,10 @@ const openPackDrawer = () => {
   border: 1px solid rgba(124,90,43,0.2);
 }
 .dm-card-thumb { width: 100px; height: 72px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+.dm-card-zoomable { cursor: zoom-in; transition: transform 0.15s; }
+.dm-card-zoomable:hover { transform: scale(1.08); }
+.cz-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; align-items: center; justify-content: center; cursor: zoom-out; }
+.cz-img { max-width: 90vw; max-height: 85vh; object-fit: contain; border-radius: 10px; box-shadow: 0 8px 40px rgba(0,0,0,0.7); cursor: default; }
 .dm-card-banished { filter: grayscale(80%) opacity(0.5); }
 .dm-card-name { flex: 1; font-size: 14px; color: #d4c090; font-weight: bold; }
 .dm-card-name-banished { color: #7c5a2b; }

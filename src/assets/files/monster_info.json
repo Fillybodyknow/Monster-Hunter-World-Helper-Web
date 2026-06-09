@@ -4200,7 +4200,7 @@
           { "element_id": 2, "level": 2, "immune": false },
           { "element_id": 3, "level": 0, "immune": true },
           { "element_id": 4, "level": 1, "immune": false },
-          { "element_id": 5, "level": 0, "immune": false }
+          { "element_id": 5, "level": 2, "immune": false }
         ],
         "status_resistance": [
           { "status_id": 1, "level": 0, "immune": true },
@@ -4268,7 +4268,7 @@
           { "element_id": 2, "level": 2, "immune": false },
           { "element_id": 3, "level": 0, "immune": true },
           { "element_id": 4, "level": 1, "immune": false },
-          { "element_id": 5, "level": 0, "immune": false }
+          { "element_id": 5, "level": 2, "immune": false }
         ],
         "status_resistance": [
           { "status_id": 1, "level": 0, "immune": true },
@@ -4336,7 +4336,7 @@
           { "element_id": 2, "level": 2, "immune": false },
           { "element_id": 3, "level": 0, "immune": true },
           { "element_id": 4, "level": 1, "immune": false },
-          { "element_id": 5, "level": 0, "immune": false }
+          { "element_id": 5, "level": 2, "immune": false }
         ],
         "status_resistance": [
           { "status_id": 1, "level": 0, "immune": true },
@@ -4378,6 +4378,235 @@
       { "behavior_id": 11, "behavior_name": "Forward Rush", "activations": 2, "front_card_img": "assets/img/behavior_deck/diablos/forward_rush_front.png", "back_card_img": "assets/img/behavior_deck/diablos/forward_rush_back.png" },
       { "behavior_id": 12, "behavior_name": "Horn Thrust",  "activations": 2, "front_card_img": "assets/img/behavior_deck/diablos/horn_thrust_front.png",  "back_card_img": "assets/img/behavior_deck/diablos/horn_thrust_back.png" },
       { "behavior_id": 13, "behavior_name": "Surface Bite", "activations": 4, "front_card_img": "assets/img/behavior_deck/diablos/surface_bite_front.png", "back_card_img": "assets/img/behavior_deck/diablos/surface_bite_back.png" }
+    ]
+  },
+  {
+    "monster_id": 10,
+    "monster_name": "Black Diablos",
+    "thumbnail": "assets/img/Black_Diablos_Icon.webp",
+    "difficulty": [
+      {
+        "difficulty_id": 1,
+        "level": 1,
+        "health": 80,
+        "map_image": "assets/img/maps/b_diablos/b_diablos_1_star_map.png",
+        "special_rule": {
+          "title": "Delving Wyvern",
+          "description": "เมื่อกำหนด (Target) ของการ์ดพฤติกรรมที่มีการโจมตีส่วน (Claw) ให้ Black Diablos แล้ว, ให้นำ Black Diablos ออกจากบอร์ด จากนั้นวาง มัน ไปยัง (Node) เดียวกับ (Target) ของมัน โดยไม่เปลี่ยนทิศทางการหันหน้าเดิมของมัน จากนั้นให้ย้าย Hunters เหล่านั้นเสมือนว่า Black Diablos ได้เคลื่อนที่เข้ามายัง Node ดังกล่าว, หลังจากนั้น ให้ดำเนินการการ์ดพฤติกรรมของ Black Diablos ตามปกติ"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 7,
+            "armor": 4,
+            "part_break_rule": "การ์ดพฤติกรรมทุกใบทำ (ความเสียหาย) ลดลง -1 หน่วย"
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 5,
+            "armor": 3,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน (Tail), จะทำให้ (ระยะโจมตี) ของการ์ดนั้นลดลง -1 หน่วย"
+          },
+          "left": {
+            "part_id": 3,
+            "connect_part_position": ["right"],
+            "part_break_threshold": 6,
+            "armor": 3,
+            "part_break_rule": "ทิ้งการ์ดพฤติกรรมที่มีการโจมตีส่วน (Claw) ออก 1 ใบจาก Deck หลังจากนั้นทำการสับกองการ์ดพฤติกรรม"
+          },
+          "right": {
+            "part_id": 5,
+            "connect_part_position": ["left"],
+            "part_break_threshold": 6,
+            "armor": 3,
+            "part_break_rule": "อวัยวะส่วนนี้ (เกราะ) -1 หน่วย"
+          }
+        },
+        "element_resistance": [
+          { "element_id": 1, "level": 0, "immune": true },
+          { "element_id": 2, "level": 2, "immune": false },
+          { "element_id": 3, "level": 0, "immune": true },
+          { "element_id": 4, "level": 1, "immune": false },
+          { "element_id": 5, "level": 0, "immune": true }
+        ],
+        "status_resistance": [
+          { "status_id": 1, "level": 0, "immune": true },
+          { "status_id": 2, "level": 2, "immune": false },
+          { "status_id": 3, "level": 2, "immune": false },
+          { "status_id": 4, "level": 1, "immune": false },
+          { "status_id": 5, "level": 2, "immune": false }
+        ],
+        "reward_table": [
+          { "rolled_number": 1,  "reward": { "resource_type_id": 2, "item_id": 20 }, "part_break_reward": {} },
+          { "rolled_number": 2,  "reward": { "resource_type_id": 3, "item_id": 55 }, "part_break_reward": {} },
+          { "rolled_number": 3,  "reward": { "resource_type_id": 2, "item_id": 21 }, "part_break_reward": {} },
+          { "rolled_number": 4,  "reward": { "resource_type_id": 2, "item_id": 18 }, "part_break_reward": {} },
+          { "rolled_number": 5,  "reward": { "resource_type_id": 3, "item_id": 55 }, "part_break_reward": {} },
+          { "rolled_number": 6,  "reward": { "resource_type_id": 3, "item_id": 57 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
+          { "rolled_number": 7,  "reward": { "resource_type_id": 3, "item_id": 52 }, "part_break_reward": {} },
+          { "rolled_number": 8,  "reward": { "resource_type_id": 2, "item_id": 16 }, "part_break_reward": {} },
+          { "rolled_number": 9,  "reward": { "resource_type_id": 2, "item_id": 20 }, "part_break_reward": {} },
+          { "rolled_number": 10, "reward": { "resource_type_id": 3, "item_id": 55 }, "part_break_reward": { "part_id": 5, "gain_additional": 1 } },
+          { "rolled_number": 11, "reward": { "resource_type_id": 2, "item_id": 18 }, "part_break_reward": { "part_id": 1, "gain_additional": 1 } },
+          { "rolled_number": 12, "reward": { "resource_type_id": 2, "item_id": 21 }, "part_break_reward": { "part_id": 3, "gain_additional": 1 } }
+        ]
+      },
+      {
+        "difficulty_id": 2,
+        "level": 2,
+        "health": 85,
+        "map_image": "assets/img/maps/b_diablos/b_diablos_2_star_map.png",
+        "special_rule": {
+          "title": "Tunnelling Wyvern",
+          "description": "เมื่อกำหนด (Target) ของการ์ดพฤติกรรมที่มีการโจมตีส่วน (Claw) ให้ Black Diablos แล้ว, ให้นำ Black Diablos ออกจากบอร์ด จากนั้นวาง มัน ไปยัง (Node) เดียวกับ (Target) ของมัน โดยไม่เปลี่ยนทิศทางการหันหน้าเดิมของมัน จากนั้นให้ย้าย Hunters เหล่านั้นเสมือนว่า Black Diablos ได้เคลื่อนที่เข้ามายัง Node ดังกล่าว, หลังจากนั้น ให้ดำเนินการการ์ดพฤติกรรมของ Black Diablos ตามปกติ, การ์ดพฤติกรรมที่มีการโจมตีส่วน (Claw) จะทำ (ความเสียหาย) เพิ่มขึ้น +1 หน่วย"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 7,
+            "armor": 4,
+            "part_break_rule": "การ์ดพฤติกรรมทุกใบทำ (ความเสียหาย) ลดลง -1 หน่วย"
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 6,
+            "armor": 3,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน (Tail), จะทำให้ (ระยะโจมตี) ของการ์ดนั้นลดลง -1 หน่วย"
+          },
+          "left": {
+            "part_id": 3,
+            "connect_part_position": ["right"],
+            "part_break_threshold": 7,
+            "armor": 4,
+            "part_break_rule": "ทิ้งการ์ดพฤติกรรมที่มีการโจมตีส่วน (Claw) ออก 1 ใบจาก Deck หลังจากนั้นทำการสับกองการ์ดพฤติกรรม"
+          },
+          "right": {
+            "part_id": 5,
+            "connect_part_position": ["left"],
+            "part_break_threshold": 6,
+            "armor": 4,
+            "part_break_rule": "อวัยวะส่วนนี้ (เกราะ) -1 หน่วย"
+          }
+        },
+        "element_resistance": [
+          { "element_id": 1, "level": 0, "immune": true },
+          { "element_id": 2, "level": 2, "immune": false },
+          { "element_id": 3, "level": 0, "immune": true },
+          { "element_id": 4, "level": 1, "immune": false },
+          { "element_id": 5, "level": 0, "immune": true }
+        ],
+        "status_resistance": [
+          { "status_id": 1, "level": 0, "immune": true },
+          { "status_id": 2, "level": 2, "immune": false },
+          { "status_id": 3, "level": 2, "immune": false },
+          { "status_id": 4, "level": 1, "immune": false },
+          { "status_id": 5, "level": 2, "immune": false }
+        ],
+        "reward_table": [
+          { "rolled_number": 1,  "reward": { "resource_type_id": 2, "item_id": 20 }, "part_break_reward": {} },
+          { "rolled_number": 2,  "reward": { "resource_type_id": 3, "item_id": 55 }, "part_break_reward": {} },
+          { "rolled_number": 3,  "reward": { "resource_type_id": 2, "item_id": 21 }, "part_break_reward": {} },
+          { "rolled_number": 4,  "reward": { "resource_type_id": 2, "item_id": 18 }, "part_break_reward": {} },
+          { "rolled_number": 5,  "reward": { "resource_type_id": 3, "item_id": 55 }, "part_break_reward": {} },
+          { "rolled_number": 6,  "reward": { "resource_type_id": 3, "item_id": 57 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
+          { "rolled_number": 7,  "reward": { "resource_type_id": 3, "item_id": 52 }, "part_break_reward": {} },
+          { "rolled_number": 8,  "reward": { "resource_type_id": 2, "item_id": 16 }, "part_break_reward": {} },
+          { "rolled_number": 9,  "reward": { "resource_type_id": 2, "item_id": 20 }, "part_break_reward": {} },
+          { "rolled_number": 10, "reward": { "resource_type_id": 3, "item_id": 55 }, "part_break_reward": { "part_id": 5, "gain_additional": 1 } },
+          { "rolled_number": 11, "reward": { "resource_type_id": 2, "item_id": 18 }, "part_break_reward": { "part_id": 1, "gain_additional": 1 } },
+          { "rolled_number": 12, "reward": { "resource_type_id": 2, "item_id": 21 }, "part_break_reward": { "part_id": 3, "gain_additional": 1 } }
+        ]
+      },
+      {
+        "difficulty_id": 4,
+        "level": 4,
+        "health": 90,
+        "map_image": "assets/img/maps/b_diablos/b_diablos_4_star_map.png",
+        "special_rule": {
+          "title": "Burrowong Wyvern",
+          "description": "เมื่อกำหนด (Target) ของการ์ดพฤติกรรมที่มีการโจมตีส่วน (Claw) ให้ Black Diablos แล้ว, ให้นำ Black Diablos ออกจากบอร์ด จากนั้นวาง มัน ไปยัง (Node) เดียวกับ (Target) ของมัน โดยไม่เปลี่ยนทิศทางการหันหน้าเดิมของมัน จากนั้นให้ย้าย Hunters เหล่านั้นเสมือนว่า Black Diablos ได้เคลื่อนที่เข้ามายัง Node ดังกล่าว, หลังจากนั้น ให้ดำเนินการการ์ดพฤติกรรมของ Black Diablos ตามปกติ, การ์ดพฤติกรรมที่มีการโจมตีส่วน (Claw) จะทำ (ความเสียหาย) เพิ่มขึ้น +2 หน่วย"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 8,
+            "armor": 5,
+            "part_break_rule": "การ์ดพฤติกรรมทุกใบทำ (ความเสียหาย) ลดลง -1 หน่วย"
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 6,
+            "armor": 4,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน (Tail), จะทำให้ (ระยะโจมตี) ของการ์ดนั้นลดลง -1 หน่วย"
+          },
+          "left": {
+            "part_id": 3,
+            "connect_part_position": ["right"],
+            "part_break_threshold": 7,
+            "armor": 4,
+            "part_break_rule": "ทิ้งการ์ดพฤติกรรมที่มีการโจมตีส่วน (Claw) ออก 1 ใบจาก Deck หลังจากนั้นทำการสับกองการ์ดพฤติกรรม"
+          },
+          "right": {
+            "part_id": 5,
+            "connect_part_position": ["left"],
+            "part_break_threshold": 7,
+            "armor": 4,
+            "part_break_rule": "อวัยวะส่วนนี้ (เกราะ) -1 หน่วย"
+          }
+        },
+        "element_resistance": [
+          { "element_id": 1, "level": 0, "immune": true },
+          { "element_id": 2, "level": 2, "immune": false },
+          { "element_id": 3, "level": 0, "immune": true },
+          { "element_id": 4, "level": 1, "immune": false },
+          { "element_id": 5, "level": 0, "immune": true }
+        ],
+        "status_resistance": [
+          { "status_id": 1, "level": 0, "immune": true },
+          { "status_id": 2, "level": 2, "immune": false },
+          { "status_id": 3, "level": 2, "immune": false },
+          { "status_id": 4, "level": 1, "immune": false },
+          { "status_id": 5, "level": 2, "immune": false }
+        ],
+        "reward_table": [
+          { "rolled_number": 1,  "reward": { "resource_type_id": 2, "item_id": 20 }, "part_break_reward": {} },
+          { "rolled_number": 2,  "reward": { "resource_type_id": 3, "item_id": 55 }, "part_break_reward": {} },
+          { "rolled_number": 3,  "reward": { "resource_type_id": 2, "item_id": 21 }, "part_break_reward": {} },
+          { "rolled_number": 4,  "reward": { "resource_type_id": 2, "item_id": 18 }, "part_break_reward": {} },
+          { "rolled_number": 5,  "reward": { "resource_type_id": 3, "item_id": 55 }, "part_break_reward": {} },
+          { "rolled_number": 6,  "reward": { "resource_type_id": 3, "item_id": 57 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
+          { "rolled_number": 7,  "reward": { "resource_type_id": 3, "item_id": 52 }, "part_break_reward": {} },
+          { "rolled_number": 8,  "reward": { "resource_type_id": 2, "item_id": 16 }, "part_break_reward": {} },
+          { "rolled_number": 9,  "reward": { "resource_type_id": 2, "item_id": 20 }, "part_break_reward": {} },
+          { "rolled_number": 10, "reward": { "resource_type_id": 3, "item_id": 55 }, "part_break_reward": { "part_id": 5, "gain_additional": 1 } },
+          { "rolled_number": 11, "reward": { "resource_type_id": 2, "item_id": 18 }, "part_break_reward": { "part_id": 1, "gain_additional": 1 } },
+          { "rolled_number": 12, "reward": { "resource_type_id": 2, "item_id": 21 }, "part_break_reward": { "part_id": 3, "gain_additional": 1 } }
+        ]
+      }
+    ],
+    "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2],
+    "behavior_deck": [
+      { "behavior_id": 1,  "behavior_name": "Horn Swing Left",  "activations": 2, "front_card_img": "assets/img/behavior_deck/b_diablos/horn_swing_left_front.png",  "back_card_img": "assets/img/behavior_deck/b_diablos/horn_swing_left_back.png" },
+      { "behavior_id": 2,  "behavior_name": "Horn Swing Right", "activations": 2, "front_card_img": "assets/img/behavior_deck/b_diablos/horn_swing_right_front.png", "back_card_img": "assets/img/behavior_deck/b_diablos/horn_swing_right_back.png" },
+      { "behavior_id": 3,  "behavior_name": "Long Charge",      "activations": 2, "front_card_img": "assets/img/behavior_deck/b_diablos/long_charge_front.png",      "back_card_img": "assets/img/behavior_deck/b_diablos/long_charge_back.png" },
+      { "behavior_id": 4,  "behavior_name": "Short Charge",     "activations": 1, "front_card_img": "assets/img/behavior_deck/b_diablos/short_charge_front.png",     "back_card_img": "assets/img/behavior_deck/b_diablos/short_charge_back.png" },
+      { "behavior_id": 5,  "behavior_name": "Surface Bite",     "activations": 2, "front_card_img": "assets/img/behavior_deck/b_diablos/surface_bite_front.png",     "back_card_img": "assets/img/behavior_deck/b_diablos/surface_bite_back.png" },
+      { "behavior_id": 6,  "behavior_name": "Surface Charge",   "activations": 3, "front_card_img": "assets/img/behavior_deck/b_diablos/surface_charge_front.png",   "back_card_img": "assets/img/behavior_deck/b_diablos/surface_charge_back.png" },
+      { "behavior_id": 7,  "behavior_name": "Surface Dive",     "activations": 2, "front_card_img": "assets/img/behavior_deck/b_diablos/surface_dive_front.png",     "back_card_img": "assets/img/behavior_deck/b_diablos/surface_dive_back.png" },
+      { "behavior_id": 8,  "behavior_name": "Surface Retreat",  "activations": 3, "front_card_img": "assets/img/behavior_deck/b_diablos/surface_retreat_front.png",  "back_card_img": "assets/img/behavior_deck/b_diablos/surface_retreat_back.png" },
+      { "behavior_id": 9,  "behavior_name": "Tail Bash",        "activations": 1, "front_card_img": "assets/img/behavior_deck/b_diablos/tail_bash_front.png",        "back_card_img": "assets/img/behavior_deck/b_diablos/tail_bash_back.png" },
+      { "behavior_id": 10, "behavior_name": "Tail Sweep",       "activations": 1, "front_card_img": "assets/img/behavior_deck/b_diablos/tail_sweep_front.png",       "back_card_img": "assets/img/behavior_deck/b_diablos/tail_sweep_back.png" }
+    ],
+    "behavior_special_card": [
+      { "behavior_id": 11, "behavior_name": "Burrowing Retreat", "activations": 2, "front_card_img": "assets/img/behavior_deck/b_diablos/burrowing_retreat_front.png", "back_card_img": "assets/img/behavior_deck/b_diablos/burrowing_retreat_back.png" },
+      { "behavior_id": 12, "behavior_name": "Side Horn Thrust",  "activations": 2, "front_card_img": "assets/img/behavior_deck/b_diablos/side_horn_thrust_front.png",  "back_card_img": "assets/img/behavior_deck/b_diablos/side_horn_thrust_back.png" },
+      { "behavior_id": 13, "behavior_name": "Surface Impale",    "activations": 4, "front_card_img": "assets/img/behavior_deck/b_diablos/surface_impale_front.png",    "back_card_img": "assets/img/behavior_deck/b_diablos/surface_impale_back.png" }
     ]
   }
 ]
