@@ -5805,7 +5805,7 @@ const openPackDrawer = () => {
     <!-- ═══════════ FLOATING TURN BAR ═══════════ -->
     <teleport to="body">
       <div
-        v-if="questMode === 'full' && phase === 'huntingPanel' && (timeCardDeck.length > 0 || timeCardDiscard.length > 0)"
+        v-if="questMode === 'full' && phase === 'huntingPanel' && (timeCardDeck.length > 0 || timeCardDiscard.length > 0) && !showResultAnim"
         class="float-turn-bar"
         :class="{ 'float-turn-bar-collapsed': floatBarCollapsed }"
       >
@@ -5889,7 +5889,7 @@ const openPackDrawer = () => {
     <teleport to="body">
       <Transition name="slain-fade">
         <div
-          v-if="questMode === 'full' && room.inRoom && phase === 'huntingPanel'"
+          v-if="questMode === 'full' && room.inRoom && phase === 'huntingPanel' && !showResultAnim"
           class="party-strip"
         >
           <div
