@@ -1371,6 +1371,7 @@ const resetToBookPhase = () => {
 const onComplete = () => {
   if (!isExhaustedAttempt.value) incrementAttempted()
   incrementDay()
+  if (room.inRoom) room.leave()
   resetToBookPhase()
 }
 
