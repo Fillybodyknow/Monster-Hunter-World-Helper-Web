@@ -92,14 +92,14 @@ const onCoopStart = () => {
       const _hasTc = (tcState?.deck?.length ?? 0) > 0 || (tcState?.discard?.length ?? 0) > 0
       if (_hasTc) questMode.value = 'full'
       else if (room.questModeState) questMode.value = room.questModeState
-      // Restore manual outcome
-      const savedOutcome = room.manualOutcomeState
-      if (savedOutcome) {
-        manualOutcomeCheck.value = savedOutcome
-        floatBarCollapsed.value = false
-      }
     }
     _syncToPhase(room.syncedDialogId, true)
+    // Restore manual outcome AFTER _syncToPhase (canComplete watcher อาจล้างค่าในรอบ async เดียวกัน)
+    const savedOutcome = room.manualOutcomeState
+    if (savedOutcome) nextTick(() => {
+      manualOutcomeCheck.value = savedOutcome
+      floatBarCollapsed.value = false
+    })
   } else if (room.syncedPhase === 'hqVote' || room.syncedPhase === 'hq' || room.syncedPhase === 'handlerStart') {
     // Reconnect กลางช่วง HQ / handlerStart
     _resolveQuestFromRoom()
@@ -752,18 +752,18 @@ watch(() => room.joinSignal, () => {
     } else if (room.questModeState) {
       questMode.value = room.questModeState
     }
-    // Restore manual outcome state
-    const savedOutcome = room.manualOutcomeState
-    if (savedOutcome) {
-      manualOutcomeCheck.value = savedOutcome
-      floatBarCollapsed.value = false
-    }
     pendingAction.value = null
     tiedActions.value = []
     _syncToPhase(dialogId, true)
     // Reconnect restoration complete — close the window
     clearTimeout(_reconnectTimer)
     _isReconnecting = false
+    // Restore manual outcome AFTER _syncToPhase (canComplete watcher อาจล้างค่าในรอบ async เดียวกัน)
+    const savedOutcome = room.manualOutcomeState
+    if (savedOutcome) nextTick(() => {
+      manualOutcomeCheck.value = savedOutcome
+      floatBarCollapsed.value = false
+    })
   }
 
   const sp = room.syncedPhase
