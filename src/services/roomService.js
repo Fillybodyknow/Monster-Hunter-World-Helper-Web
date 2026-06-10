@@ -178,6 +178,10 @@ export const pushTrackTokens = (code, pool, tokens) =>
 export const pushManualOutcome = (code, outcome) =>
   set(ref(db, `rooms/${code}/manualOutcome`), outcome ?? null)
 
+// ── Reward Dice Modifier State (Time Card overrides) ──────
+export const pushRewardDiceModifiers = (code, modifiers) =>
+  set(ref(db, `rooms/${code}/rewardDiceModifiers`), modifiers ?? null)
+
 // ── Outcome Float Signal ──────────────────────────────────
 export const pushOutcomeSignal = (code, outcome) =>
   set(ref(db, `rooms/${code}/outcomeSignal`), { outcome, ts: Date.now() })
