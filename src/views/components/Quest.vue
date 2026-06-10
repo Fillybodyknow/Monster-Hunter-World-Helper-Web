@@ -1340,6 +1340,10 @@ const resetToBookPhase = () => {
   boulderStep.value = null
   boulderRoll.value = null
   boulderDrawerId.value = null
+  manualBetrayal.value = null
+  manualJagrasSlayer.value = null
+  manualPlunderblade.value = false
+  if (room.inRoom && room.isHost) room.syncRewardDiceModifiers?.(null)
   recoveryPending.value = false
   recoveryHpSnapshot.value = null
   tcHpFlash.value = null
@@ -2705,12 +2709,91 @@ const diceCountTable = {
   'Tempered Investigation Quest': { 2: 5, 3: 4, 4: 4 },
 }
 
+// ─── Time Card Reward Dice Modifiers ───────────────────────────────────────
+const TC_JAGRAS_SLAYER_ID = 21
+const TC_BETRAYAL_ID = 31
+const GREAT_JAGRAS_ID = 1
+
+// Auto-detect: ตรวจจาก Time Card ที่ถูกจั่ว/ทิ้งไว้ในกองทิ้งระหว่างเควส
+const detectedBetrayal = computed(() =>
+  timeCardDiscard.value.some((c) => c.time_card_id === TC_BETRAYAL_ID),
+)
+const detectedJagrasSlayer = computed(() =>
+  timeCardDiscard.value.some((c) => c.time_card_id === TC_JAGRAS_SLAYER_ID) &&
+  selectedMonster.value?.monster_id === GREAT_JAGRAS_ID,
+)
+
+// Manual override: null/false = ใช้ค่าจาก Auto-detect (หรือปิด), true = บังคับเปิด
+// Host เป็นคนกดได้เท่านั้น และ sync ค่าผ่าน Firebase ให้ Guest เห็นตรงกัน
+const manualBetrayal = ref(null)
+const manualJagrasSlayer = ref(null)
+// Plunderblade (Palico): "ถ้า Break ส่วนที่วาง Token ไว้สำเร็จและจบเควสนี้ ทอยลูกเต๋าเพิ่มอีก 2 ลูก"
+// ไม่มี Auto-detect (เป็น state บนกระดาน) — Manual ล้วน, Host จัดการเหมือนอีก 2 อัน
+const manualPlunderblade = ref(false)
+
+const effectiveManualBetrayal = computed(() => {
+  if (room.inRoom && !room.isHost) return room.rewardDiceModifierState?.betrayal ?? null
+  return manualBetrayal.value
+})
+const effectiveManualJagrasSlayer = computed(() => {
+  if (room.inRoom && !room.isHost) return room.rewardDiceModifierState?.jagrasSlayer ?? null
+  return manualJagrasSlayer.value
+})
+const effectiveManualPlunderblade = computed(() => {
+  if (room.inRoom && !room.isHost) return room.rewardDiceModifierState?.plunderblade ?? false
+  return manualPlunderblade.value
+})
+
+const betrayalActive = computed(() => effectiveManualBetrayal.value ?? detectedBetrayal.value)
+const jagrasSlayerActive = computed(() => effectiveManualJagrasSlayer.value ?? detectedJagrasSlayer.value)
+const plunderbladeActive = computed(() => effectiveManualPlunderblade.value)
+
+const _syncRewardDiceModifiers = () => {
+  if (!room.inRoom) return
+  room.syncRewardDiceModifiers?.({
+    betrayal: manualBetrayal.value,
+    jagrasSlayer: manualJagrasSlayer.value,
+    plunderblade: manualPlunderblade.value,
+  })
+}
+const setBetrayalModifier = (val) => {
+  if (room.inRoom && !room.isHost) return
+  manualBetrayal.value = val
+  _syncRewardDiceModifiers()
+}
+const setJagrasSlayerModifier = (val) => {
+  if (room.inRoom && !room.isHost) return
+  manualJagrasSlayer.value = val
+  _syncRewardDiceModifiers()
+}
+const setPlunderbladeModifier = (val) => {
+  if (room.inRoom && !room.isHost) return
+  manualPlunderblade.value = val
+  _syncRewardDiceModifiers()
+}
+
+const rewardDiceModifier = computed(() => {
+  let mod = 0
+  if (jagrasSlayerActive.value) mod += 1
+  if (betrayalActive.value) mod -= 1
+  if (plunderbladeActive.value) mod += 2
+  return mod
+})
+
 const rewardPhase = ref('hunterSelect') // 'hunterSelect' | 'diceRoll' | 'assign'
 const rewardHunterCount = ref(2)
 const rewardDiceCount = computed(() => {
   const qt = selectedQuest.value?.quest_type ?? ''
-  return diceCountTable[qt]?.[rewardHunterCount.value] ?? 2
+  const base = diceCountTable[qt]?.[rewardHunterCount.value] ?? 2
+  return Math.max(0, base + rewardDiceModifier.value)
 })
+
+const previewDiceCount = (hunterCount) => {
+  const qt = selectedQuest.value?.quest_type ?? ''
+  const base = diceCountTable[qt]?.[hunterCount]
+  if (base === undefined) return '?'
+  return Math.max(0, base + rewardDiceModifier.value)
+}
 
 const rolledDice = ref([]) // [{id, value, spent}]
 const selectedDiceIds = ref([]) // ids of dice currently selected
@@ -2833,6 +2916,14 @@ const rollAllDice = () => {
     }, count * 100 + 700)
   }
 }
+
+// Time Card modifier เปลี่ยนระหว่างหน้าทอยเต๋า (Host toggle หรือ sync จาก Co-op) → ทอยใหม่ตามจำนวนที่เปลี่ยน
+// (เฉพาะตอนยังไม่มีใครเลือกเต๋าไปใช้ reward)
+watch(rewardDiceModifier, () => {
+  if (rewardPhase.value !== 'diceRoll') return
+  if (rolledDice.value.some((d) => d.spent)) return
+  rollAllDice()
+})
 
 const rerollDie = (id) => {
   if (room.inRoom) return // ไม่อนุญาต reroll ใน co-op
@@ -4755,7 +4846,7 @@ const openPackDrawer = () => {
             <span class="rw-hunter-num">{{ n }}</span>
             <span class="rw-hunter-label">Hunters</span>
             <span class="rw-dice-preview">
-              {{ diceCountTable[selectedQuest.quest_type]?.[n] ?? '?' }} 🎲
+              {{ previewDiceCount(n) }} 🎲
             </span>
           </button>
         </div>
@@ -4763,6 +4854,48 @@ const openPackDrawer = () => {
           <span class="rw-qt-label">{{ selectedQuest.quest_type }}</span>
           <span class="rw-qt-arrow">→</span>
           <span class="rw-qt-dice">{{ rewardDiceCount }} ลูกเต๋า</span>
+        </div>
+        <div class="rw-tc-modifiers">
+          <label
+            v-if="selectedMonster?.monster_id === GREAT_JAGRAS_ID"
+            class="rw-tc-toggle"
+            :class="{ active: jagrasSlayerActive, 'rw-tc-readonly': room.inRoom && !room.isHost }"
+          >
+            <input
+              type="checkbox"
+              :checked="jagrasSlayerActive"
+              :disabled="room.inRoom && !room.isHost"
+              @change="setJagrasSlayerModifier($event.target.checked)"
+            />
+            <span class="rw-tc-name">🃏 Jagras Slayer</span>
+            <span class="rw-tc-effect rw-tc-effect-plus">+1 🎲</span>
+          </label>
+          <label
+            class="rw-tc-toggle"
+            :class="{ active: betrayalActive, 'rw-tc-readonly': room.inRoom && !room.isHost }"
+          >
+            <input
+              type="checkbox"
+              :checked="betrayalActive"
+              :disabled="room.inRoom && !room.isHost"
+              @change="setBetrayalModifier($event.target.checked)"
+            />
+            <span class="rw-tc-name">🃏 The Betrayal</span>
+            <span class="rw-tc-effect rw-tc-effect-minus">-1 🎲</span>
+          </label>
+          <label
+            class="rw-tc-toggle"
+            :class="{ active: plunderbladeActive, 'rw-tc-readonly': room.inRoom && !room.isHost }"
+          >
+            <input
+              type="checkbox"
+              :checked="plunderbladeActive"
+              :disabled="room.inRoom && !room.isHost"
+              @change="setPlunderbladeModifier($event.target.checked)"
+            />
+            <span class="rw-tc-name">🐱 Plunderblade (Palico)</span>
+            <span class="rw-tc-effect rw-tc-effect-plus">+2 🎲</span>
+          </label>
         </div>
         <button
           class="rw-btn-primary"
@@ -4782,6 +4915,48 @@ const openPackDrawer = () => {
           {{ rewardDiceCount }} ลูกเต๋า · {{ rewardHunterCount }} Hunters ·
           {{ selectedQuest.quest_type }}
         </p>
+        <div class="rw-tc-modifiers rw-tc-modifiers-compact">
+          <label
+            v-if="selectedMonster?.monster_id === GREAT_JAGRAS_ID"
+            class="rw-tc-toggle"
+            :class="{ active: jagrasSlayerActive, 'rw-tc-readonly': room.inRoom && !room.isHost }"
+          >
+            <input
+              type="checkbox"
+              :checked="jagrasSlayerActive"
+              :disabled="room.inRoom && !room.isHost"
+              @change="setJagrasSlayerModifier($event.target.checked)"
+            />
+            <span class="rw-tc-name">🃏 Jagras Slayer</span>
+            <span class="rw-tc-effect rw-tc-effect-plus">+1 🎲</span>
+          </label>
+          <label
+            class="rw-tc-toggle"
+            :class="{ active: betrayalActive, 'rw-tc-readonly': room.inRoom && !room.isHost }"
+          >
+            <input
+              type="checkbox"
+              :checked="betrayalActive"
+              :disabled="room.inRoom && !room.isHost"
+              @change="setBetrayalModifier($event.target.checked)"
+            />
+            <span class="rw-tc-name">🃏 The Betrayal</span>
+            <span class="rw-tc-effect rw-tc-effect-minus">-1 🎲</span>
+          </label>
+          <label
+            class="rw-tc-toggle"
+            :class="{ active: plunderbladeActive, 'rw-tc-readonly': room.inRoom && !room.isHost }"
+          >
+            <input
+              type="checkbox"
+              :checked="plunderbladeActive"
+              :disabled="room.inRoom && !room.isHost"
+              @change="setPlunderbladeModifier($event.target.checked)"
+            />
+            <span class="rw-tc-name">🐱 Plunderblade (Palico)</span>
+            <span class="rw-tc-effect rw-tc-effect-plus">+2 🎲</span>
+          </label>
+        </div>
         <!-- My dice -->
         <p class="rw-section-label">🎲 เต๋าของคุณ</p>
         <div class="rw-dice-row">
@@ -13748,6 +13923,97 @@ const openPackDrawer = () => {
   font-size: 13px;
   color: #ffd27a;
   font-weight: bold;
+}
+
+/* Time Card reward dice modifiers */
+.rw-tc-modifiers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.rw-tc-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(10, 8, 4, 0.6);
+  border: 1px solid rgba(90, 61, 31, 0.4);
+  color: #7c5a2b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.rw-tc-toggle.active {
+  border-color: #c89b3c;
+  background: rgba(60, 40, 10, 0.9);
+  color: #ffd27a;
+}
+.rw-tc-toggle.rw-tc-readonly {
+  cursor: default;
+  opacity: 0.85;
+}
+.rw-tc-toggle.rw-tc-readonly input[type='checkbox'] {
+  cursor: default;
+}
+.rw-tc-modifiers-compact {
+  flex-direction: row;
+  margin-bottom: 12px;
+}
+.rw-tc-modifiers-compact .rw-tc-toggle {
+  flex: 1;
+  padding: 6px 10px;
+}
+.rw-tc-modifiers-compact .rw-tc-name,
+.rw-tc-modifiers-compact .rw-tc-effect {
+  font-size: 11px;
+}
+.rw-tc-toggle input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 17px;
+  height: 17px;
+  min-width: 17px;
+  border-radius: 4px;
+  border: 1px solid rgba(200, 155, 60, 0.5);
+  background: rgba(10, 8, 4, 0.8);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s;
+}
+.rw-tc-toggle input[type='checkbox']:checked {
+  background: #c89b3c;
+  border-color: #ffd27a;
+  box-shadow: 0 0 8px rgba(200, 155, 60, 0.5);
+}
+.rw-tc-toggle input[type='checkbox']:checked::after {
+  content: '✓';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  color: #2b1d08;
+}
+.rw-tc-toggle input[type='checkbox']:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.rw-tc-name {
+  flex: 1;
+  font-size: 12px;
+}
+.rw-tc-effect {
+  font-size: 12px;
+  font-weight: bold;
+}
+.rw-tc-effect-plus {
+  color: #7ad17a;
+}
+.rw-tc-effect-minus {
+  color: #e0796f;
 }
 
 /* Primary / Secondary buttons */
