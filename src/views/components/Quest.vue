@@ -982,9 +982,7 @@ const behaviorBanished = ref([])   // cards removed from game
 const currentBehaviorCard = ref(null)  // card currently showing
 const showMonsterAttack = ref(false)   // animation overlay
 const monsterAttackCard = ref(null)    // card being drawn
-const monsterAttackStatuses = ref([])  // status snapshot for resolve overlay
-const showStatusResolve = ref(false)   // "Effects Resolved" overlay
-let _statusResolveTimer = null
+const monsterAttackStatuses = ref([])  // resolved status effects shown in Monster Attack overlay
 const showDeckManager = ref(false)
 const showCardZoom = ref(false)
 const zoomCardImg = ref('')
@@ -1175,12 +1173,9 @@ const drawBehaviorCard = () => {
   rampageActive.value = false
   pendingActivationAdjust.value = 0
 
-  if (resolvedStatuses.length > 0) {
-    _showStatusResolve(resolvedStatuses, card)
-  } else {
-    monsterAttackCard.value = card
-    showMonsterAttack.value = true
-  }
+  monsterAttackStatuses.value = resolvedStatuses
+  monsterAttackCard.value = card
+  showMonsterAttack.value = true
 
   _pushDeckState()
   _resetActivation()
@@ -1212,23 +1207,6 @@ const _playShuffleAnim = () => {
 const _triggerShuffleAnim = () => {
   _playShuffleAnim()
   if (room.inRoom && room.isHost) room.triggerShuffle?.()
-}
-
-// Show "Effects Resolved" overlay then auto-transition to Monster Attack overlay
-const _showStatusResolve = (statuses, card) => {
-  monsterAttackStatuses.value = statuses
-  monsterAttackCard.value = card
-  showStatusResolve.value = true
-  clearTimeout(_statusResolveTimer)
-  _statusResolveTimer = setTimeout(() => {
-    showStatusResolve.value = false
-    showMonsterAttack.value = true
-  }, 2500)
-}
-const skipStatusResolve = () => {
-  clearTimeout(_statusResolveTimer)
-  showStatusResolve.value = false
-  showMonsterAttack.value = true
 }
 
 const reshuffleDiscardIntoDeck = () => {
@@ -1282,13 +1260,9 @@ watch([() => room.behaviorDeckState, () => room.joinSignal], ([state], [prev]) =
   // ถ้าการ์ดเปลี่ยน → แสดง animation + show float bar เฉพาะตอน Hunter มีเทิร์น
   if (newCard && newCard.behavior_id !== oldCard?.behavior_id) {
     if (!_suppressAnimations) {
-      const guestStatuses = state.attackStatuses ?? []
-      if (guestStatuses.length > 0) {
-        _showStatusResolve(guestStatuses, newCard)
-      } else {
-        monsterAttackCard.value = newCard
-        showMonsterAttack.value = true
-      }
+      monsterAttackStatuses.value = state.attackStatuses ?? []
+      monsterAttackCard.value = newCard
+      showMonsterAttack.value = true
     }
     const newLimit = newCard.activations ?? 0
     if (newLimit > 0) floatBarCollapsed.value = false
@@ -2547,7 +2521,7 @@ const _showTcHpFlash = (delta, type, prevHp = null, newHp = null) => {
   clearTimeout(_tcHpFlashTimer)
   const maxHp = monsterHuntingData.value?.health ?? 1
   tcHpFlash.value = { delta, type, prevHp, newHp, maxHp }
-  _tcHpFlashTimer = setTimeout(() => { tcHpFlash.value = null }, 2200)
+  _tcHpFlashTimer = setTimeout(() => { tcHpFlash.value = null }, 800)
 }
 
 const adjustHpWithFlash = (delta) => {
@@ -2624,7 +2598,7 @@ watch([() => room.huntState, () => room.joinSignal], ([state]) => {
               thumbnail: getPartMeta(data.part_id)?.thumbnail ?? null,
               broken: _pBroken,
             }
-            _tcPartFlashTimer = setTimeout(() => { tcPartFlash.value = null }, _pBroken ? 2800 : 1800)
+            _tcPartFlashTimer = setTimeout(() => { tcPartFlash.value = null }, _pBroken ? 1200 : 700)
           }
         }
       })
@@ -2684,7 +2658,7 @@ const _showPartFlash = (position, next, diff) => {
     thumbnail: getPartMeta(data.part_id)?.thumbnail ?? null,
     broken,
   }
-  _tcPartFlashTimer = setTimeout(() => { tcPartFlash.value = null }, broken ? 2800 : 1800)
+  _tcPartFlashTimer = setTimeout(() => { tcPartFlash.value = null }, broken ? 1200 : 700)
 }
 
 const adjustPartDamage = (position, delta) => {
@@ -5821,7 +5795,7 @@ const openPackDrawer = () => {
     <!-- ═══════════ FLOATING TURN BAR ═══════════ -->
     <teleport to="body">
       <div
-        v-if="questMode === 'full' && phase === 'huntingPanel' && (timeCardDeck.length > 0 || timeCardDiscard.length > 0) && !showResultAnim"
+        v-if="questMode === 'full' && phase === 'huntingPanel' && (timeCardDeck.length > 0 || timeCardDiscard.length > 0) && !showResultAnim && !showTcReveal && !showMonsterAttack"
         class="float-turn-bar"
         :class="{ 'float-turn-bar-collapsed': floatBarCollapsed }"
       >
@@ -6011,38 +5985,28 @@ const openPackDrawer = () => {
       </Transition>
     </teleport>
 
-    <!-- ═══════════ STATUS RESOLVE OVERLAY ═══════════ -->
-    <teleport to="body">
-      <Transition name="ma-trans">
-        <div v-if="showStatusResolve" class="sr-overlay" @click="skipStatusResolve">
-          <div class="sr-content">
-            <p class="sr-label">✦ Status Effects Resolved</p>
-            <div class="sr-list">
-              <div v-for="sid in monsterAttackStatuses" :key="sid" class="sr-item">
-                <img :src="getImg(getStatusEffect(sid)?.thumbnail)" class="sr-icon" />
-                <div class="sr-info">
-                  <span class="sr-name">{{ getStatusEffect(sid)?.effect_name }}</span>
-                  <span class="sr-result">
-                    <template v-if="sid === 2">Monster เสีย <strong>2 HP</strong></template>
-                    <template v-else-if="sid === 5">เกราะทุกส่วน <strong>+1</strong> กลับสู่ปกติ</template>
-                    <template v-else>ถูกล้างออก</template>
-                  </span>
-                </div>
-                <span class="sr-check">✓</span>
-              </div>
-            </div>
-            <p class="sr-hint">แตะเพื่อข้าม</p>
-          </div>
-        </div>
-      </Transition>
-    </teleport>
-
     <!-- ═══════════ MONSTER ATTACK OVERLAY ═══════════ -->
     <teleport to="body">
       <Transition name="ma-trans">
-        <div v-if="showMonsterAttack" class="ma-overlay" @click="showMonsterAttack = false">
+        <div v-if="showMonsterAttack" class="ma-overlay" @click="showMonsterAttack = false; monsterAttackStatuses = []">
           <div class="ma-content">
             <p class="ma-label">⚔ Monster Attack!</p>
+            <div v-if="monsterAttackStatuses.length" class="ma-status-list">
+              <div v-for="sid in monsterAttackStatuses" :key="sid" class="ma-status-item">
+                <img :src="getImg(getStatusEffect(sid)?.thumbnail)" class="ma-status-icon" />
+                <div class="ma-status-info">
+                  <span class="ma-status-name">{{ getStatusEffect(sid)?.effect_name }}</span>
+                  <span class="ma-status-result">
+                    <template v-if="sid === 2">Monster สูญเสีย <strong>-2 HP</strong></template>
+                    <template v-else-if="sid === 5">ลบล้างสถานะ Blastblight บนตัว Monster</template>
+                    <template v-else-if="sid === 1">การ์ดพฤติกรรมนี้จะใช้ค่า (หลบหลีก) เพียงแค่ <strong>1</strong> หน่วย และไม่เพิ่มหรือลดได้ด้วยเอฟเฟกต์อื่นใด</template>
+                    <template v-else-if="sid === 3">การ์ดพฤติกรรมนี้จะข้ามไปแสดงผล Hunter Turn ได้ทันที</template>
+                    <template v-else-if="sid === 4">การ์ดพฤติกรรมนี้จะทำให้ (การเคลื่อนที่) ของ Monster กลายเป็น <strong>0</strong></template>
+                  </span>
+                </div>
+                <span class="ma-status-check">✓</span>
+              </div>
+            </div>
             <div class="ma-card-flip">
               <div class="ma-card-inner">
                 <div class="ma-card-back">
@@ -8158,89 +8122,56 @@ const openPackDrawer = () => {
 .status-badge-5 .status-badge-name { color: #fb923c; }
 .status-badge-5 .status-badge-effect { color: #fdba74; }
 
-/* ── Status Resolve Overlay ── */
-.sr-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.88);
-  z-index: 479;
+/* ── Resolved Status List (in Monster Attack Overlay) ── */
+.ma-status-list {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  cursor: pointer;
+  gap: 8px;
+  width: min(380px, 92vw);
 }
-.sr-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  width: min(340px, 90vw);
-}
-.sr-label {
-  font-size: 13px;
-  letter-spacing: 4px;
-  color: #a78bfa;
-  text-transform: uppercase;
-  margin: 0;
-}
-.sr-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 100%;
-}
-.sr-item {
+.ma-status-item {
   display: flex;
   align-items: center;
   gap: 12px;
   background: rgba(30,20,50,0.7);
   border: 1px solid rgba(168,85,247,0.4);
   border-radius: 10px;
-  padding: 10px 14px;
-  animation: sr-item-in 0.35s ease both;
+  padding: 8px 14px;
+  animation: ma-status-in 0.35s ease both;
 }
-@keyframes sr-item-in {
+@keyframes ma-status-in {
   from { opacity: 0; transform: translateX(-12px); }
   to   { opacity: 1; transform: translateX(0); }
 }
-.sr-icon {
-  width: 30px;
-  height: 30px;
+.ma-status-icon {
+  width: 28px;
+  height: 28px;
   object-fit: contain;
   flex-shrink: 0;
 }
-.sr-info {
+.ma-status-info {
   display: flex;
   flex-direction: column;
   gap: 2px;
   flex: 1;
 }
-.sr-name {
-  font-size: 12px;
+.ma-status-name {
+  font-size: 11px;
   font-weight: bold;
   color: #c084fc;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
-.sr-result {
-  font-size: 12px;
+.ma-status-result {
+  font-size: 11px;
   color: #e2d5f8;
 }
-.sr-result strong { color: #f9a8d4; }
-.sr-check {
-  font-size: 16px;
+.ma-status-result strong { color: #f9a8d4; }
+.ma-status-check {
+  font-size: 15px;
   color: #4ade80;
   font-weight: bold;
   flex-shrink: 0;
-}
-.sr-hint {
-  font-size: 10px;
-  color: rgba(168,85,247,0.4);
-  letter-spacing: 2px;
-  margin: 0;
-  animation: cml-pulse 1.5s ease-in-out infinite;
 }
 
 /* ── Rampage Banner ── */
