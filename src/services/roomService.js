@@ -6,8 +6,35 @@ const generateRoomCode = () => {
   return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
 }
 
+// ── Cleanup ห้องเก่าที่ค้างอยู่ (Host ปิดไปโดยไม่ได้กด "ออก") ──────
+// เรียกแบบ best-effort ตอนสร้างห้องใหม่ — ลบห้องที่ไม่มีความเคลื่อนไหวนานเกิน STALE_ROOM_MS
+const STALE_ROOM_MS = 5 * 60 * 60 * 1000 // 5 ชั่วโมง
+
+const cleanupStaleRooms = async () => {
+  try {
+    const snap = await get(ref(db, 'rooms'))
+    if (!snap.exists()) return
+    const now = Date.now()
+    const updates = {}
+    snap.forEach((child) => {
+      const r = child.val()
+      const lastActive = r?.createdAt ?? 0
+      if (now - lastActive > STALE_ROOM_MS) {
+        updates[child.key] = null
+      }
+    })
+    if (Object.keys(updates).length) {
+      await update(ref(db, 'rooms'), updates)
+    }
+  } catch {
+    // best-effort เท่านั้น ไม่ต้อง throw
+  }
+}
+
 // ── Create Room ──────────────────────────────────────────
 export const createRoom = async (hunter) => {
+  cleanupStaleRooms()
+
   let code
   let exists = true
 
