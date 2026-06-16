@@ -89,15 +89,17 @@ import State from './components/State.vue'
 import Inventory from './components/Inventory.vue'
 import Crafting from './components/Crafting.vue'
 import Setting from './components/Setting.vue'
+import Help from './components/Help.vue'
 const menus = [
   { menu: 'Quest',     label: 'Quest',     thumbnail: 'assets/img/menu_topbar_icon/quest.png' },
   { menu: 'State',     label: 'State',     thumbnail: 'assets/img/menu_topbar_icon/hunter.png' },
   { menu: 'Inventory', label: 'Inventory', thumbnail: 'assets/img/menu_topbar_icon/inv.png' },
   { menu: 'Crafting',  label: 'Crafting',  thumbnail: 'assets/img/menu_topbar_icon/craft.png' },
   { menu: 'Setting',   label: 'Setting',   thumbnail: 'assets/img/menu_topbar_icon/setting.png' },
+  { menu: 'Help',      label: 'คู่มือ',    text: '?' },
 ]
 
-const componentMap = { Quest, State, Inventory, Crafting, Setting }
+const componentMap = { Quest, State, Inventory, Crafting, Setting, Help }
 const currentComponent = computed(() => componentMap[activeMenu.value])
 const activeMenu = ref('Quest')
 
@@ -118,7 +120,9 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
         :aria-label="item.menu"
       >
         <div class="nav-icon-wrap">
+          <span v-if="item.text" class="nav-icon-text">{{ item.text }}</span>
           <img
+            v-else
             :src="getImg(item.thumbnail)"
             class="nav-icon"
             :style="item.white ? 'filter: brightness(0) invert(1)' : ''"
@@ -317,6 +321,19 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
   object-fit: contain;
   filter: drop-shadow(0 0 3px rgba(255, 200, 100, 0.3));
   transition: 0.2s;
+}
+
+.nav-icon-text {
+  font-size: 18px;
+  font-weight: bold;
+  color: rgba(200,155,60,0.5);
+  line-height: 1;
+  transition: 0.2s;
+}
+.nav-item.active .nav-icon-text,
+.nav-item:hover .nav-icon-text {
+  color: #ffd27a;
+  text-shadow: 0 0 8px rgba(255,200,100,0.7);
 }
 
 .nav-item.active .nav-icon {
