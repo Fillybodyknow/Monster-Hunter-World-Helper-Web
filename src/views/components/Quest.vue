@@ -246,10 +246,11 @@ const _incrementDay = () => {
   }
 }
 
-// All hunters ready in HQ → host adds day and starts quest (or picks dialog if exhausted)
+// All hunters ready in HQ → adds day for everyone, host also clears state and advances phase
 watch(() => room.allHqReady, (allReady) => {
-  if (!allReady || !room.inRoom || !room.isHost) return
+  if (!allReady || !room.inRoom || phase.value !== 'hq') return
   _incrementDay()
+  if (!room.isHost) return
   room.clearHqVotesAll?.()
   room.clearHqStateAll?.()
   myHqVote.value = null
