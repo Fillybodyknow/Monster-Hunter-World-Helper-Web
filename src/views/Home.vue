@@ -89,15 +89,17 @@ import State from './components/State.vue'
 import Inventory from './components/Inventory.vue'
 import Crafting from './components/Crafting.vue'
 import Setting from './components/Setting.vue'
+import Help from './components/Help.vue'
 const menus = [
   { menu: 'Quest',     label: 'Quest',     thumbnail: 'assets/img/menu_topbar_icon/quest.png' },
   { menu: 'State',     label: 'State',     thumbnail: 'assets/img/menu_topbar_icon/hunter.png' },
   { menu: 'Inventory', label: 'Inventory', thumbnail: 'assets/img/menu_topbar_icon/inv.png' },
   { menu: 'Crafting',  label: 'Crafting',  thumbnail: 'assets/img/menu_topbar_icon/craft.png' },
   { menu: 'Setting',   label: 'Setting',   thumbnail: 'assets/img/menu_topbar_icon/setting.png' },
+  { menu: 'Help',      label: 'คู่มือ',    text: '?' },
 ]
 
-const componentMap = { Quest, State, Inventory, Crafting, Setting }
+const componentMap = { Quest, State, Inventory, Crafting, Setting, Help }
 const currentComponent = computed(() => componentMap[activeMenu.value])
 const activeMenu = ref('Quest')
 
@@ -118,7 +120,9 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
         :aria-label="item.menu"
       >
         <div class="nav-icon-wrap">
+          <span v-if="item.text" class="nav-icon-text">{{ item.text }}</span>
           <img
+            v-else
             :src="getImg(item.thumbnail)"
             class="nav-icon"
             :style="item.white ? 'filter: brightness(0) invert(1)' : ''"
@@ -127,6 +131,10 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
         <span class="nav-label">{{ item.label ?? item.menu }}</span>
         <div v-if="activeMenu === item.menu" class="nav-underline"></div>
       </div>
+
+      <button v-if="room.inRoom" class="topbar-party-btn" @click="showPartyPanel = true">
+        ⚔ <span class="topbar-party-count">{{ room.hunterCount }}</span>
+      </button>
 
     </nav>
 
@@ -150,13 +158,7 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
       </transition>
     </div>
 
-    <!-- ── Floating Party Button ── -->
     <teleport to="body">
-      <button v-if="room.inRoom" class="party-fab" @click="showPartyPanel = true">
-        ⚔
-        <span class="party-fab-count">{{ room.hunterCount }}</span>
-      </button>
-
       <transition name="notif-slide">
         <div v-if="showPartyPanel" class="party-panel-overlay" @click.self="showPartyPanel = false">
           <div class="party-panel">
@@ -317,6 +319,45 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
   object-fit: contain;
   filter: drop-shadow(0 0 3px rgba(255, 200, 100, 0.3));
   transition: 0.2s;
+}
+
+.nav-icon-text {
+  font-size: 18px;
+  font-weight: bold;
+  color: rgba(200,155,60,0.5);
+  line-height: 1;
+  transition: 0.2s;
+}
+.nav-item.active .nav-icon-text,
+.nav-item:hover .nav-icon-text {
+  color: #ffd27a;
+  text-shadow: 0 0 8px rgba(255,200,100,0.7);
+}
+
+.topbar-party-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  margin-left: auto;
+  flex-shrink: 0;
+  background: rgba(200,155,60,0.12);
+  border: 1px solid rgba(200,155,60,0.35);
+  border-radius: 8px;
+  color: #ffd27a;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.topbar-party-btn:hover { background: rgba(200,155,60,0.22); }
+.topbar-party-count {
+  background: #7cfc00;
+  color: #000;
+  font-size: 10px;
+  font-weight: bold;
+  border-radius: 10px;
+  padding: 1px 5px;
 }
 
 .nav-item.active .nav-icon {
@@ -494,43 +535,6 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 </style>
 
 <style>
-/* ── Floating Party Button ── */
-.party-fab {
-  position: fixed;
-  bottom: 80px;
-  left: 20px;
-  z-index: 200;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #2a1e10, #1a1208);
-  border: 2px solid #c89b3c;
-  color: #ffd27a;
-  font-size: 20px;
-  cursor: pointer;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.6), 0 0 12px rgba(200,155,60,0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: 0.2s;
-}
-.party-fab:hover { box-shadow: 0 4px 24px rgba(0,0,0,0.7), 0 0 20px rgba(200,155,60,0.5); }
-.party-fab-count {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  background: #7cfc00;
-  color: #000;
-  font-size: 10px;
-  font-weight: bold;
-  border-radius: 50%;
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 /* ── Party Panel ── */
 .party-panel-overlay {
   position: fixed;

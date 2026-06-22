@@ -175,6 +175,18 @@
             "card_name": "Wake Up!",
             "card_img": "assets/img/time_cards/red_time_cards/wake_up.png",
             "copies": 1
+        },
+        {
+            "time_card_id": 30,
+            "card_name": "Barroth Slayer",
+            "card_img": "assets/img/time_cards/red_time_cards/barroth_slayer.png",
+            "copies": 1
+        },
+        {
+            "time_card_id": 31,
+            "card_name": "The Betrayal",
+            "card_img": "assets/img/time_cards/red_time_cards/the_betrayal.png",
+            "copies": 1
         }
     ],
     "back_time_card_img": "assets/img/time_cards/back_time_card.png"

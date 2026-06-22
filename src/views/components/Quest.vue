@@ -246,10 +246,11 @@ const _incrementDay = () => {
   }
 }
 
-// All hunters ready in HQ → host adds day and starts quest (or picks dialog if exhausted)
+// All hunters ready in HQ → adds day for everyone, host also clears state and advances phase
 watch(() => room.allHqReady, (allReady) => {
-  if (!allReady || !room.inRoom || !room.isHost) return
+  if (!allReady || !room.inRoom || phase.value !== 'hq') return
   _incrementDay()
+  if (!room.isHost) return
   room.clearHqVotesAll?.()
   room.clearHqStateAll?.()
   myHqVote.value = null
@@ -984,6 +985,7 @@ const showMonsterAttack = ref(false)   // animation overlay
 const monsterAttackCard = ref(null)    // card being drawn
 const monsterAttackStatuses = ref([])  // resolved status effects shown in Monster Attack overlay
 const showDeckManager = ref(false)
+const showMapModal = ref(false)
 const showCardZoom = ref(false)
 const zoomCardImg = ref('')
 const deckManagerTab = ref('deck')     // 'deck' | 'discard' | 'banished'
@@ -1340,6 +1342,10 @@ const resetToBookPhase = () => {
   boulderStep.value = null
   boulderRoll.value = null
   boulderDrawerId.value = null
+  manualBetrayal.value = null
+  manualJagrasSlayer.value = null
+  manualPlunderblade.value = false
+  if (room.inRoom && room.isHost) room.syncRewardDiceModifiers?.(null)
   recoveryPending.value = false
   recoveryHpSnapshot.value = null
   tcHpFlash.value = null
@@ -1596,6 +1602,12 @@ const showMonsterTurnConfirm = ref(false)
 const showAddHunterTurnConfirm = ref(false)
 const pendingActivationAdjust = ref(0)
 const floatBarCollapsed = ref(false)
+const floatBarVisible = computed(() =>
+  questMode.value === 'full' &&
+  phase.value === 'huntingPanel' &&
+  (timeCardDeck.value.length > 0 || timeCardDiscard.value.length > 0) &&
+  !showResultAnim.value && !showTcReveal.value && !showMonsterAttack.value
+)
 
 const nextBehaviorCard = computed(() => behaviorDeck.value[0] ?? null)
 const activationPartRules = computed(() =>
@@ -2578,31 +2590,9 @@ watch([() => room.huntState, () => room.joinSignal], ([state]) => {
     const diff = state.huntingHp - huntingHp.value
     if (!_suppressAnimations && diff < 0) _showDamageIndicator(-diff, 'dmg')
     if (!_suppressAnimations && diff > 0) _showDamageIndicator(diff, 'heal')
-    if (!_suppressAnimations && diff !== 0)
-      _showTcHpFlash(Math.abs(diff), diff < 0 ? 'dmg' : 'heal', huntingHp.value, state.huntingHp)
     huntingHp.value = state.huntingHp
   }
   if (state.partDamage) {
-    if (!_suppressAnimations) {
-      Object.entries(state.partDamage).forEach(([pos, newVal]) => {
-        const diff = newVal - (partDamage.value[pos] ?? 0)
-        if (diff !== 0) {
-          const data = activeParts.value[pos]
-          if (data) {
-            const _pMax = data.part_break_threshold ?? 0
-            const _pBroken = newVal >= _pMax && diff > 0
-            clearTimeout(_tcPartFlashTimer)
-            tcPartFlash.value = {
-              position: pos, delta: diff, current: newVal,
-              max: _pMax,
-              thumbnail: getPartMeta(data.part_id)?.thumbnail ?? null,
-              broken: _pBroken,
-            }
-            _tcPartFlashTimer = setTimeout(() => { tcPartFlash.value = null }, _pBroken ? 1200 : 700)
-          }
-        }
-      })
-    }
     partDamage.value = state.partDamage
   }
   if (state.statusMarks) statusMarks.value = state.statusMarks
@@ -2671,6 +2661,7 @@ const adjustPartDamage = (position, delta) => {
   _pushHuntState()
 }
 
+
 const _applyCurrentHuntState = () => {
   const state = room.huntState
   if (!state) return
@@ -2705,12 +2696,91 @@ const diceCountTable = {
   'Tempered Investigation Quest': { 2: 5, 3: 4, 4: 4 },
 }
 
+// ─── Time Card Reward Dice Modifiers ───────────────────────────────────────
+const TC_JAGRAS_SLAYER_ID = 21
+const TC_BETRAYAL_ID = 31
+const GREAT_JAGRAS_ID = 1
+
+// Auto-detect: ตรวจจาก Time Card ที่ถูกจั่ว/ทิ้งไว้ในกองทิ้งระหว่างเควส
+const detectedBetrayal = computed(() =>
+  timeCardDiscard.value.some((c) => c.time_card_id === TC_BETRAYAL_ID),
+)
+const detectedJagrasSlayer = computed(() =>
+  timeCardDiscard.value.some((c) => c.time_card_id === TC_JAGRAS_SLAYER_ID) &&
+  selectedMonster.value?.monster_id === GREAT_JAGRAS_ID,
+)
+
+// Manual override: null/false = ใช้ค่าจาก Auto-detect (หรือปิด), true = บังคับเปิด
+// Host เป็นคนกดได้เท่านั้น และ sync ค่าผ่าน Firebase ให้ Guest เห็นตรงกัน
+const manualBetrayal = ref(null)
+const manualJagrasSlayer = ref(null)
+// Plunderblade (Palico): "ถ้า Break ส่วนที่วาง Token ไว้สำเร็จและจบเควสนี้ ทอยลูกเต๋าเพิ่มอีก 2 ลูก"
+// ไม่มี Auto-detect (เป็น state บนกระดาน) — Manual ล้วน, Host จัดการเหมือนอีก 2 อัน
+const manualPlunderblade = ref(false)
+
+const effectiveManualBetrayal = computed(() => {
+  if (room.inRoom && !room.isHost) return room.rewardDiceModifierState?.betrayal ?? null
+  return manualBetrayal.value
+})
+const effectiveManualJagrasSlayer = computed(() => {
+  if (room.inRoom && !room.isHost) return room.rewardDiceModifierState?.jagrasSlayer ?? null
+  return manualJagrasSlayer.value
+})
+const effectiveManualPlunderblade = computed(() => {
+  if (room.inRoom && !room.isHost) return room.rewardDiceModifierState?.plunderblade ?? false
+  return manualPlunderblade.value
+})
+
+const betrayalActive = computed(() => effectiveManualBetrayal.value ?? detectedBetrayal.value)
+const jagrasSlayerActive = computed(() => effectiveManualJagrasSlayer.value ?? detectedJagrasSlayer.value)
+const plunderbladeActive = computed(() => effectiveManualPlunderblade.value)
+
+const _syncRewardDiceModifiers = () => {
+  if (!room.inRoom) return
+  room.syncRewardDiceModifiers?.({
+    betrayal: manualBetrayal.value,
+    jagrasSlayer: manualJagrasSlayer.value,
+    plunderblade: manualPlunderblade.value,
+  })
+}
+const setBetrayalModifier = (val) => {
+  if (room.inRoom && !room.isHost) return
+  manualBetrayal.value = val
+  _syncRewardDiceModifiers()
+}
+const setJagrasSlayerModifier = (val) => {
+  if (room.inRoom && !room.isHost) return
+  manualJagrasSlayer.value = val
+  _syncRewardDiceModifiers()
+}
+const setPlunderbladeModifier = (val) => {
+  if (room.inRoom && !room.isHost) return
+  manualPlunderblade.value = val
+  _syncRewardDiceModifiers()
+}
+
+const rewardDiceModifier = computed(() => {
+  let mod = 0
+  if (jagrasSlayerActive.value) mod += 1
+  if (betrayalActive.value) mod -= 1
+  if (plunderbladeActive.value) mod += 2
+  return mod
+})
+
 const rewardPhase = ref('hunterSelect') // 'hunterSelect' | 'diceRoll' | 'assign'
 const rewardHunterCount = ref(2)
 const rewardDiceCount = computed(() => {
   const qt = selectedQuest.value?.quest_type ?? ''
-  return diceCountTable[qt]?.[rewardHunterCount.value] ?? 2
+  const base = diceCountTable[qt]?.[rewardHunterCount.value] ?? 2
+  return Math.max(0, base + rewardDiceModifier.value)
 })
+
+const previewDiceCount = (hunterCount) => {
+  const qt = selectedQuest.value?.quest_type ?? ''
+  const base = diceCountTable[qt]?.[hunterCount]
+  if (base === undefined) return '?'
+  return Math.max(0, base + rewardDiceModifier.value)
+}
 
 const rolledDice = ref([]) // [{id, value, spent}]
 const selectedDiceIds = ref([]) // ids of dice currently selected
@@ -2833,6 +2903,14 @@ const rollAllDice = () => {
     }, count * 100 + 700)
   }
 }
+
+// Time Card modifier เปลี่ยนระหว่างหน้าทอยเต๋า (Host toggle หรือ sync จาก Co-op) → ทอยใหม่ตามจำนวนที่เปลี่ยน
+// (เฉพาะตอนยังไม่มีใครเลือกเต๋าไปใช้ reward)
+watch(rewardDiceModifier, () => {
+  if (rewardPhase.value !== 'diceRoll') return
+  if (rolledDice.value.some((d) => d.spent)) return
+  rollAllDice()
+})
 
 const rerollDie = (id) => {
   if (room.inRoom) return // ไม่อนุญาต reroll ใน co-op
@@ -4041,7 +4119,7 @@ const openPackDrawer = () => {
     </div>
 
     <!-- ═══════════ HUNTING PANEL ═══════════ -->
-    <div v-if="phase === 'huntingPanel' && monsterHuntingData" class="phase-hunting-panel">
+    <div v-if="phase === 'huntingPanel' && monsterHuntingData" class="phase-hunting-panel" :class="{ 'php-bar-open': floatBarVisible && !floatBarCollapsed }">
       <!-- Header -->
       <div class="hpanel-header">
         <img :src="getImg(selectedMonster.thumbnail)" class="hpanel-monster-img" />
@@ -4057,14 +4135,51 @@ const openPackDrawer = () => {
             >
           </div>
         </div>
+        <button
+          v-if="monsterHuntingData.map_image"
+          class="hpanel-map-btn"
+          @click="showMapModal = true"
+        >🗺 Map</button>
       </div>
 
-      <!-- Map -->
-      <div
-        v-if="monsterHuntingData.map_image"
-        style="display: flex; align-items: center; justify-content: center; width: 100%"
-      >
-        <img :src="getImg(monsterHuntingData.map_image)" class="hpanel-map-img" />
+      <!-- Quick Status Strip: Faint + Potion + Hunter Status -->
+      <div class="hpanel-quick-strip">
+        <div class="qs-trackers">
+          <div class="qs-tracker">
+            <span class="qs-tracker-label">Faint</span>
+            <div class="qs-tracker-slots">
+              <div
+                v-for="i in 3"
+                :key="i"
+                class="qs-slot"
+                :class="{ 'qs-slot-used': i <= faintCount }"
+                @click="toggleFaint(i)"
+                title="คลิกเพื่อ Faint / ยกเลิก"
+              >
+                <img :src="getImg('assets/img/UI/faint_icon.png')" class="qs-slot-img" />
+                <span v-if="i <= faintCount" class="qs-slot-x">✕</span>
+              </div>
+            </div>
+          </div>
+          <div class="qs-divider"></div>
+          <div class="qs-tracker">
+            <span class="qs-tracker-label">Potion</span>
+            <div class="qs-tracker-slots">
+              <div
+                v-for="i in 3"
+                :key="i"
+                class="qs-slot qs-slot-potion"
+                :class="{ 'qs-slot-empty': i > potionCount }"
+                @click="togglePotion(i)"
+                title="คลิกเพื่อใช้ / เพิ่ม Potion"
+              >
+                <img :src="getImg('assets/img/UI/potion_icon.png')" class="qs-slot-img" />
+                <span v-if="i > potionCount" class="qs-slot-x">✕</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       <!-- Monster Turn (after map) -->
@@ -4607,128 +4722,54 @@ const openPackDrawer = () => {
       <!-- Time Card Turn -->
       <div v-if="questMode === 'full' && (timeCardDeck.length > 0 || timeCardDiscard.length > 0)" class="tct-section">
         <p class="hunt-result-label">— Time Card —</p>
-        <div class="tct-deck-row">
-          <div class="tct-deck-wrap">
-            <div class="tct-deck-stack" :class="{ empty: !timeCardDeck.length }">
-              <img :src="getImg(timeCardData.back_time_card_img)" class="tct-back-img" />
-              <span class="tct-count-badge">{{ timeCardDeck.length }}</span>
+        <div class="tct-card-group">
+          <div class="tct-deck-row">
+            <div class="tct-deck-wrap">
+              <div class="tct-deck-stack" :class="{ empty: !timeCardDeck.length }">
+                <img :src="getImg(timeCardData.back_time_card_img)" class="tct-back-img" />
+                <span class="tct-count-badge">{{ timeCardDeck.length }}</span>
+              </div>
+              <span class="tct-deck-label">เหลือ</span>
             </div>
-            <span class="tct-deck-label">เหลือ</span>
-          </div>
-          <div class="tct-deck-wrap">
-            <div
-              class="tct-deck-stack tct-discard-stack"
-              :class="{ 'tct-clickable': timeCardDiscard.length }"
-              @click="timeCardDiscard.length && (showLastDiscard = true)"
-            >
-              <img v-if="timeCardDiscard.length" :src="getImg(timeCardDiscard[0].card_img)" class="tct-back-img" />
-              <div v-else class="tct-deck-empty-slot"></div>
-              <span class="tct-count-badge tct-badge-discard">{{ timeCardDiscard.length }}</span>
+            <div class="tct-deck-wrap">
+              <div
+                class="tct-deck-stack tct-discard-stack"
+                :class="{ 'tct-clickable': timeCardDiscard.length }"
+                @click="timeCardDiscard.length && (showLastDiscard = true)"
+              >
+                <img v-if="timeCardDiscard.length" :src="getImg(timeCardDiscard[0].card_img)" class="tct-back-img" />
+                <div v-else class="tct-deck-empty-slot"></div>
+                <span class="tct-count-badge tct-badge-discard">{{ timeCardDiscard.length }}</span>
+              </div>
+              <span class="tct-deck-label">ทิ้งแล้ว</span>
             </div>
-            <span class="tct-deck-label">ทิ้งแล้ว</span>
           </div>
-          <div class="tct-btn-col">
-            <button
-              v-if="!room.inRoom || room.isHost"
-              class="tct-discard-btn"
-              :disabled="!timeCardDeck.length"
-              @click="discardCountInput = 1; showDiscardCount = true"
-              title="ทิ้งการ์ดจาก Time Card Deck"
-            >🗑 ทิ้ง</button>
-          </div>
+          <button
+            v-if="!room.inRoom || room.isHost"
+            class="tct-discard-btn"
+            :disabled="!timeCardDeck.length"
+            @click="discardCountInput = 1; showDiscardCount = true"
+            title="ทิ้งการ์ดจาก Time Card Deck"
+          >🗑 ทิ้ง</button>
         </div>
 
       </div>
 
-      <!-- Quest Outcome -->
-      <div class="hunt-result-section">
-        <p class="hunt-result-label">— Quest Outcome —</p>
-
-        <!-- Faint Tracker -->
-        <div class="faint-tracker">
-          <span class="faint-label">Faint</span>
-          <div class="faint-icons">
-            <div
-              v-for="i in 3"
-              :key="i"
-              class="faint-slot"
-              :class="{ 'faint-used': i <= faintCount }"
-              @click="toggleFaint(i)"
-              title="คลิกเพื่อ Faint / ยกเลิก"
-            >
-              <img :src="getImg('assets/img/UI/faint_icon.png')" class="faint-icon-img" />
-              <span v-if="i <= faintCount" class="faint-x">✕</span>
+      <!-- Map Modal -->
+      <Teleport to="body">
+        <Transition name="slain-fade">
+          <div v-if="showMapModal" class="map-modal-overlay" @click.self="showMapModal = false">
+            <div class="map-modal-panel">
+              <div class="map-modal-header">
+                <span class="map-modal-title">🗺 แผนที่ — {{ selectedMonster?.monster_name }}</span>
+                <button class="map-modal-close" @click="showMapModal = false">✕</button>
+              </div>
+              <div class="map-modal-hint">ใช้ระบุจุดเกิด (Setup / Faint)</div>
+              <img :src="getImg(monsterHuntingData.map_image)" class="map-modal-img" />
             </div>
           </div>
-        </div>
-
-        <!-- Potion Tracker -->
-        <div class="faint-tracker">
-          <span class="faint-label">Potion</span>
-          <div class="faint-icons">
-            <div
-              v-for="i in 3"
-              :key="i"
-              class="faint-slot potion-slot"
-              :class="{ 'potion-empty': i > potionCount }"
-              @click="togglePotion(i)"
-              title="คลิกเพื่อใช้ / เพิ่ม Potion"
-            >
-              <img :src="getImg('assets/img/UI/potion_icon.png')" class="faint-icon-img" />
-              <span v-if="i > potionCount" class="faint-x">✕</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Minimal Mode Special Card -->
-        <div v-if="questMode === 'minimal' && specialCardOverlayCard" class="minimal-special-card-wrap">
-          <p class="minimal-special-label">⚔ Special Attack</p>
-          <div class="minimal-special-card">
-            <img :src="getImg(specialCardOverlayCard.front_card_img)" class="minimal-special-img" />
-            <span class="minimal-special-name">{{ specialCardOverlayCard.behavior_name }}</span>
-          </div>
-        </div>
-
-        <!-- Minimal Mode Outcome Buttons -->
-        <div v-if="questMode === 'minimal'" class="minimal-outcome-wrap">
-          <!-- Complete: auto-detect HP=0 -->
-          <button
-            v-if="canComplete"
-            class="minimal-outcome-btn minimal-complete"
-            :class="{ 'outcome-voted': room.myOutcomeVote === 'complete' }"
-            @click="room.inRoom ? toggleVote('complete') : requestOutcome('complete')"
-          >
-            <span class="result-icon">✦</span> Quest Complete
-            <span v-if="room.inRoom && Object.values(room.outcomeVotes ?? {}).filter(v => v === 'complete').length > 0" class="outcome-vote-count">
-              {{ Object.values(room.outcomeVotes ?? {}).filter(v => v === 'complete').length }}/{{ room.hunterCount }}
-            </span>
-          </button>
-          <!-- Failed: auto-detect Faint=3 -->
-          <button
-            v-if="canFail"
-            class="minimal-outcome-btn minimal-failed"
-            :class="{ 'outcome-voted': room.myOutcomeVote === 'fail' }"
-            @click="room.inRoom ? toggleVote('fail') : requestOutcome('fail')"
-          >
-            <span class="result-icon">💀</span> Quest Failed
-            <span v-if="room.inRoom && Object.values(room.outcomeVotes ?? {}).filter(v => v === 'fail').length > 0" class="outcome-vote-count">
-              {{ Object.values(room.outcomeVotes ?? {}).filter(v => v === 'fail').length }}/{{ room.hunterCount }}
-            </span>
-          </button>
-          <!-- Time Out: always visible -->
-          <button
-            class="minimal-outcome-btn minimal-timeout"
-            :class="{ 'outcome-voted': room.myOutcomeVote === 'fail' }"
-            @click="room.inRoom ? toggleVote('fail') : requestOutcome('fail')"
-          >
-            <span class="result-icon">⏱</span> Time Out
-            <span v-if="room.inRoom && Object.values(room.outcomeVotes ?? {}).filter(v => v === 'fail').length > 0" class="outcome-vote-count">
-              {{ Object.values(room.outcomeVotes ?? {}).filter(v => v === 'fail').length }}/{{ room.hunterCount }}
-            </span>
-          </button>
-        </div>
-
-      </div>
+        </Transition>
+      </Teleport>
 
     </div>
 
@@ -4755,7 +4796,7 @@ const openPackDrawer = () => {
             <span class="rw-hunter-num">{{ n }}</span>
             <span class="rw-hunter-label">Hunters</span>
             <span class="rw-dice-preview">
-              {{ diceCountTable[selectedQuest.quest_type]?.[n] ?? '?' }} 🎲
+              {{ previewDiceCount(n) }} 🎲
             </span>
           </button>
         </div>
@@ -4763,6 +4804,48 @@ const openPackDrawer = () => {
           <span class="rw-qt-label">{{ selectedQuest.quest_type }}</span>
           <span class="rw-qt-arrow">→</span>
           <span class="rw-qt-dice">{{ rewardDiceCount }} ลูกเต๋า</span>
+        </div>
+        <div class="rw-tc-modifiers">
+          <label
+            v-if="selectedMonster?.monster_id === GREAT_JAGRAS_ID"
+            class="rw-tc-toggle"
+            :class="{ active: jagrasSlayerActive, 'rw-tc-readonly': room.inRoom && !room.isHost }"
+          >
+            <input
+              type="checkbox"
+              :checked="jagrasSlayerActive"
+              :disabled="room.inRoom && !room.isHost"
+              @change="setJagrasSlayerModifier($event.target.checked)"
+            />
+            <span class="rw-tc-name">🃏 Jagras Slayer</span>
+            <span class="rw-tc-effect rw-tc-effect-plus">+1 🎲</span>
+          </label>
+          <label
+            class="rw-tc-toggle"
+            :class="{ active: betrayalActive, 'rw-tc-readonly': room.inRoom && !room.isHost }"
+          >
+            <input
+              type="checkbox"
+              :checked="betrayalActive"
+              :disabled="room.inRoom && !room.isHost"
+              @change="setBetrayalModifier($event.target.checked)"
+            />
+            <span class="rw-tc-name">🃏 The Betrayal</span>
+            <span class="rw-tc-effect rw-tc-effect-minus">-1 🎲</span>
+          </label>
+          <label
+            class="rw-tc-toggle"
+            :class="{ active: plunderbladeActive, 'rw-tc-readonly': room.inRoom && !room.isHost }"
+          >
+            <input
+              type="checkbox"
+              :checked="plunderbladeActive"
+              :disabled="room.inRoom && !room.isHost"
+              @change="setPlunderbladeModifier($event.target.checked)"
+            />
+            <span class="rw-tc-name">🐱 Plunderblade (Palico)</span>
+            <span class="rw-tc-effect rw-tc-effect-plus">+2 🎲</span>
+          </label>
         </div>
         <button
           class="rw-btn-primary"
@@ -4782,6 +4865,48 @@ const openPackDrawer = () => {
           {{ rewardDiceCount }} ลูกเต๋า · {{ rewardHunterCount }} Hunters ·
           {{ selectedQuest.quest_type }}
         </p>
+        <div class="rw-tc-modifiers rw-tc-modifiers-compact">
+          <label
+            v-if="selectedMonster?.monster_id === GREAT_JAGRAS_ID"
+            class="rw-tc-toggle"
+            :class="{ active: jagrasSlayerActive, 'rw-tc-readonly': room.inRoom && !room.isHost }"
+          >
+            <input
+              type="checkbox"
+              :checked="jagrasSlayerActive"
+              :disabled="room.inRoom && !room.isHost"
+              @change="setJagrasSlayerModifier($event.target.checked)"
+            />
+            <span class="rw-tc-name">🃏 Jagras Slayer</span>
+            <span class="rw-tc-effect rw-tc-effect-plus">+1 🎲</span>
+          </label>
+          <label
+            class="rw-tc-toggle"
+            :class="{ active: betrayalActive, 'rw-tc-readonly': room.inRoom && !room.isHost }"
+          >
+            <input
+              type="checkbox"
+              :checked="betrayalActive"
+              :disabled="room.inRoom && !room.isHost"
+              @change="setBetrayalModifier($event.target.checked)"
+            />
+            <span class="rw-tc-name">🃏 The Betrayal</span>
+            <span class="rw-tc-effect rw-tc-effect-minus">-1 🎲</span>
+          </label>
+          <label
+            class="rw-tc-toggle"
+            :class="{ active: plunderbladeActive, 'rw-tc-readonly': room.inRoom && !room.isHost }"
+          >
+            <input
+              type="checkbox"
+              :checked="plunderbladeActive"
+              :disabled="room.inRoom && !room.isHost"
+              @change="setPlunderbladeModifier($event.target.checked)"
+            />
+            <span class="rw-tc-name">🐱 Plunderblade (Palico)</span>
+            <span class="rw-tc-effect rw-tc-effect-plus">+2 🎲</span>
+          </label>
+        </div>
         <!-- My dice -->
         <p class="rw-section-label">🎲 เต๋าของคุณ</p>
         <div class="rw-dice-row">
@@ -5881,6 +6006,10 @@ const openPackDrawer = () => {
         <div
           v-if="questMode === 'full' && room.inRoom && phase === 'huntingPanel' && !showResultAnim"
           class="party-strip"
+          :class="{
+            'party-strip-lifted': floatBarVisible && !floatBarCollapsed,
+            'party-strip-tab': floatBarVisible && floatBarCollapsed
+          }"
         >
           <div
             v-for="h in room.hunters"
@@ -9049,14 +9178,15 @@ const openPackDrawer = () => {
   color: rgba(201,162,39,0.5);
   margin-top: 6px;
 }
-.tct-btn-col {
+
+.tct-card-group {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 6px;
-  align-self: center;
+  gap: 10px;
 }
 .tct-discard-btn {
+  width: 100%;
   padding: 7px 14px;
   border-radius: 8px;
   border: 1px solid rgba(180,60,40,0.4);
@@ -9126,11 +9256,11 @@ const openPackDrawer = () => {
 .float-turn-bar-collapsed {
   transform: translateY(calc(100% - 0px));
 }
-/* ── Party Strip (fixed right vertical) ── */
+/* ── Party Strip (fixed bottom-right) ── */
 .party-strip {
   position: fixed;
   right: 0;
-  bottom: 80px;
+  bottom: max(16px, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -9142,6 +9272,13 @@ const openPackDrawer = () => {
   border-radius: 12px 0 0 12px;
   z-index: 900;
   backdrop-filter: blur(6px);
+  transition: bottom 0.25s ease;
+}
+.party-strip-lifted {
+  bottom: 110px;
+}
+.party-strip-tab {
+  bottom: 50px;
 }
 .party-member {
   display: flex;
@@ -10600,12 +10737,6 @@ const openPackDrawer = () => {
   line-height: 1.3;
 }
 
-.hunt-result-section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
 .hunt-result-label {
   text-align: center;
   font-size: 11px;
@@ -10615,89 +10746,6 @@ const openPackDrawer = () => {
   margin: 0;
 }
 
-/* ── Minimal Mode Special Card ── */
-.minimal-special-card-wrap {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 0 4px;
-  border-top: 1px solid rgba(200,155,60,0.15);
-}
-.minimal-special-label {
-  font-size: 10px;
-  color: rgba(200,155,60,0.55);
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  margin: 0;
-}
-.minimal-special-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-.minimal-special-img {
-  width: 120px;
-  border-radius: 8px;
-  border: 1px solid rgba(200,155,60,0.3);
-  box-shadow: 0 2px 12px rgba(0,0,0,0.5);
-}
-.minimal-special-name {
-  font-size: 12px;
-  color: rgba(230,185,80,0.85);
-  text-align: center;
-}
-
-/* ── Minimal Mode Outcome Buttons ── */
-.minimal-outcome-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-  padding-top: 4px;
-}
-.minimal-outcome-btn {
-  width: 100%;
-  padding: 14px;
-  border-radius: 10px;
-  border: none;
-  font-size: 15px;
-  font-weight: bold;
-  font-family: inherit;
-  letter-spacing: 1px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.minimal-complete {
-  background: linear-gradient(135deg, rgba(34,197,94,0.25), rgba(21,128,61,0.35));
-  border: 1px solid rgba(34,197,94,0.6);
-  color: #4ade80;
-}
-.minimal-complete:hover { background: linear-gradient(135deg, rgba(34,197,94,0.4), rgba(21,128,61,0.5)); }
-.minimal-failed {
-  background: linear-gradient(135deg, rgba(239,68,68,0.25), rgba(153,27,27,0.35));
-  border: 1px solid rgba(239,68,68,0.6);
-  color: #f87171;
-}
-.minimal-failed:hover { background: linear-gradient(135deg, rgba(239,68,68,0.4), rgba(153,27,27,0.5)); }
-.minimal-timeout {
-  background: linear-gradient(135deg, rgba(234,179,8,0.15), rgba(161,98,7,0.25));
-  border: 1px solid rgba(234,179,8,0.4);
-  color: #fbbf24;
-}
-.minimal-timeout:hover { background: linear-gradient(135deg, rgba(234,179,8,0.3), rgba(161,98,7,0.4)); }
-.minimal-outcome-confirmed {
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: rgba(34,197,94,0.12);
-  border: 1px solid rgba(34,197,94,0.4);
-  color: #86efac;
-  font-size: 13px;
-  text-align: center;
-  animation: rampage-pulse 1.5s ease-in-out infinite;
-}
 
 .faint-tracker {
   display: flex;
@@ -10937,6 +10985,10 @@ const openPackDrawer = () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  transition: padding-bottom 0.25s ease;
+}
+.php-bar-open {
+  padding-bottom: 120px;
 }
 
 /* — Header — */
@@ -10952,6 +11004,179 @@ const openPackDrawer = () => {
     rgba(10, 5, 2, 0.95) 70%
   );
   border: 1px solid rgba(180, 60, 20, 0.4);
+}
+
+/* Map button in header */
+.hpanel-map-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(200,155,60,0.4);
+  background: rgba(200,155,60,0.08);
+  color: #c89b3c;
+  font-size: 12px;
+  font-family: inherit;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.hpanel-map-btn:hover { background: rgba(200,155,60,0.18); color: #ffd27a; }
+
+/* ── Quick Status Strip ── */
+.hpanel-quick-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px clamp(8px, 3vw, 16px);
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(124,90,43,0.25);
+  border-radius: 8px;
+}
+
+.qs-trackers {
+  display: flex;
+  align-items: stretch;
+}
+
+.qs-tracker {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.qs-tracker-label {
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: #7c5a2b;
+  text-transform: uppercase;
+}
+
+.qs-tracker-slots {
+  display: flex;
+  gap: clamp(6px, 2vw, 14px);
+  justify-content: center;
+}
+
+.qs-slot {
+  position: relative;
+  width: clamp(42px, 12.5vw, 64px);
+  height: clamp(42px, 12.5vw, 64px);
+  border-radius: 10px;
+  border: 1px solid rgba(180,60,20,0.4);
+  background: rgba(120,20,0,0.15);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.15s;
+  flex-shrink: 0;
+}
+.qs-slot:hover { background: rgba(180,60,20,0.25); }
+.qs-slot-used { border-color: rgba(255,60,60,0.6); background: rgba(180,30,30,0.2); }
+.qs-slot-used .qs-slot-img { opacity: 0.35; }
+
+.qs-slot-potion {
+  border-color: rgba(60,180,100,0.4);
+  background: rgba(20,120,60,0.1);
+}
+.qs-slot-potion:hover { background: rgba(60,180,100,0.2); }
+.qs-slot-empty { border-color: rgba(100,100,100,0.3); background: rgba(0,0,0,0.15); }
+.qs-slot-empty .qs-slot-img { opacity: 0.25; }
+
+.qs-slot-img {
+  width: clamp(26px, 8vw, 42px);
+  height: clamp(26px, 8vw, 42px);
+  object-fit: contain;
+}
+
+.qs-slot-x {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(13px, 3.5vw, 18px);
+  font-weight: bold;
+  color: #ff4444;
+}
+
+.qs-divider {
+  width: 1px;
+  background: rgba(124,90,43,0.3);
+  flex-shrink: 0;
+  margin: 0 4px;
+}
+
+
+/* ── Map Modal ── */
+.map-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(6px);
+  z-index: 250;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.map-modal-panel {
+  background: linear-gradient(160deg, #1c1508, #13100a);
+  border: 2px solid #7c5a2b;
+  border-radius: 14px;
+  width: min(420px, 100%);
+  overflow: hidden;
+  box-shadow: 0 0 40px rgba(0,0,0,0.8);
+}
+
+.map-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(124,90,43,0.4);
+  background: rgba(200,155,60,0.05);
+}
+
+.map-modal-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: #ffd27a;
+  letter-spacing: 1px;
+}
+
+.map-modal-close {
+  background: none;
+  border: none;
+  color: #7c5a2b;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-family: inherit;
+  transition: color 0.15s;
+}
+.map-modal-close:hover { color: #ffd27a; }
+
+.map-modal-hint {
+  text-align: center;
+  font-size: 10px;
+  color: rgba(124,90,43,0.6);
+  letter-spacing: 2px;
+  padding: 8px 16px 0;
+}
+
+.map-modal-img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  padding: 12px;
+  image-rendering: pixelated;
 }
 
 .hpanel-monster-img {
@@ -13748,6 +13973,97 @@ const openPackDrawer = () => {
   font-size: 13px;
   color: #ffd27a;
   font-weight: bold;
+}
+
+/* Time Card reward dice modifiers */
+.rw-tc-modifiers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.rw-tc-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(10, 8, 4, 0.6);
+  border: 1px solid rgba(90, 61, 31, 0.4);
+  color: #7c5a2b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.rw-tc-toggle.active {
+  border-color: #c89b3c;
+  background: rgba(60, 40, 10, 0.9);
+  color: #ffd27a;
+}
+.rw-tc-toggle.rw-tc-readonly {
+  cursor: default;
+  opacity: 0.85;
+}
+.rw-tc-toggle.rw-tc-readonly input[type='checkbox'] {
+  cursor: default;
+}
+.rw-tc-modifiers-compact {
+  flex-direction: row;
+  margin-bottom: 12px;
+}
+.rw-tc-modifiers-compact .rw-tc-toggle {
+  flex: 1;
+  padding: 6px 10px;
+}
+.rw-tc-modifiers-compact .rw-tc-name,
+.rw-tc-modifiers-compact .rw-tc-effect {
+  font-size: 11px;
+}
+.rw-tc-toggle input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 17px;
+  height: 17px;
+  min-width: 17px;
+  border-radius: 4px;
+  border: 1px solid rgba(200, 155, 60, 0.5);
+  background: rgba(10, 8, 4, 0.8);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s;
+}
+.rw-tc-toggle input[type='checkbox']:checked {
+  background: #c89b3c;
+  border-color: #ffd27a;
+  box-shadow: 0 0 8px rgba(200, 155, 60, 0.5);
+}
+.rw-tc-toggle input[type='checkbox']:checked::after {
+  content: '✓';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  color: #2b1d08;
+}
+.rw-tc-toggle input[type='checkbox']:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.rw-tc-name {
+  flex: 1;
+  font-size: 12px;
+}
+.rw-tc-effect {
+  font-size: 12px;
+  font-weight: bold;
+}
+.rw-tc-effect-plus {
+  color: #7ad17a;
+}
+.rw-tc-effect-minus {
+  color: #e0796f;
 }
 
 /* Primary / Secondary buttons */

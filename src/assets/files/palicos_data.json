@@ -1,0 +1,67 @@
+[
+    {
+        "palicos": [
+            {
+                "id": 1,
+                "type": "Coral Orchestra - Ailment Cure",
+                "card_img": "assets/img/palicos/coral_orchestra_ailment_cure.png",
+                "ability": "เลือก Hunter ที่อยู่ภายใน 2 Node จาก Hunter ตัวนี้ แล้ววาง Palico Token บน Weapon Card ของ Hunter คนนั้น Hunter คนนั้นจะไม่ได้รับ Status Ailment ตลอดช่วงที่เหลือของ Hunting Phase นำ Token นี้ออกเมื่อจบ Turn ถัดไปของ Monster"
+            },
+            {
+                "id": 2,
+                "type": "Coral Orchestra - Attack Boost",
+                "card_img": "assets/img/palicos/coral_orchestra_attack_boost.png",
+                "ability": "ในเทิร์นนี้ Hunter ของคุณสามารถเพิกเฉยต่อ (จำนวนจำกัดของ Attack Card) และเล่น Attack Card ที่หงายอยู่ได้กี่ใบก็ได้"
+            },
+            {
+                "id": 3,
+                "type": "Coral Orchestra - Defense Boost",
+                "card_img": "assets/img/palicos/coral_orchestra_defense_boost.png",
+                "ability": "เลือก Hunter ที่อยู่ภายใน 2 Node จาก Hunter ตัวนี้ แล้ววาง Palico Token บน Weapon Card ของ Hunter คนนั้น Hunter คนนั้นจะได้รับ Defense +3 ในช่วง Turn ถัดไปของ Monster นำ Token นี้ออกเมื่อจบ Turn ถัดไปของ Monster"
+            },
+            {
+                "id": 4,
+                "type": "Coral Orchestra - Dodge Boost",
+                "card_img": "assets/img/palicos/coral_orchestra_dodge_boost.png",
+                "ability": "ถ้า Monster อยู่ภายใน 1 Node จาก Hunter ของคุณ ให้วาง Palico Token บน Behavior Deck ของ Monster Behavior ถัดไปของ Monster จะมีค่า Dodge ลดลง -2 นำ Token นี้ออกเมื่อจบ Turn ถัดไปของ Monster"
+            },
+            {
+                "id": 5,
+                "type": "Flashfly Cage",
+                "card_img": "assets/img/palicos/flashfly_cage.png",
+                "ability": "ถ้า Monster อยู่ภายใน 2 Node จาก Hunter ของคุณ ให้วาง Palico Token บน Behavior Deck ของ Monster ถ้า Behavior ถัดไปของ Monster มีสัญลักษณ์ Movement ให้ไม่ต้อง Resolve สัญลักษณ์นั้น นำ Token นี้ออกเมื่อจบ Turn ถัดไปของ Monster"
+            },
+            {
+                "id": 6,
+                "type": "Meowlotov Cocktail",
+                "card_img": "assets/img/palicos/meowlotov_cocktail.png",
+                "ability": "ถ้า Monster อยู่ภายใน 1 Node จาก Hunter ของคุณ ให้วาง Break Token บนส่วนใดส่วนหนึ่งของ Monster ได้สูงสุดเท่ากับค่า Part Break ของส่วนนั้น"
+            },
+            {
+                "id": 7,
+                "type": "Plunderblade",
+                "card_img": "assets/img/palicos/plunderblade.png",
+                "ability": "ถ้า Monster อยู่ภายใน 1 Node จาก Hunter ของคุณ ให้วาง Palico Token บนกองเก็บ Break Token จุดใดจุดหนึ่งของ Monster ถ้าคุณ Break ส่วนนั้นได้สำเร็จและจบเควสนี้ คุณสามารถทอยลูกเต๋าเพิ่มอีก 2 ลูกบน Reward Table ของ Monster ได้"
+            },
+            {
+                "id": 8,
+                "type": "Rath of Meow",
+                "card_img": "assets/img/palicos/rath_of_meow.png",
+                "ability": "ถ้า Monster อยู่ภายใน 3 Node จาก Hunter ของคุณ ให้จั่ว Damage Card เพิ่มอีก 3 ใบ เสมือนกำลัง Resolve Attack Card"
+            },
+            {
+                "id": 9,
+                "type": "Shieldspire",
+                "card_img": "assets/img/palicos/shieldspire.png",
+                "ability": "วาง Palico Token ภายใน 1 Node จาก Hunter ของคุณ Token นี้ถือเป็น Hunter ที่มีภูมิคุ้มกันต่อ Damage และ Status Ailment ทั้งหมด และมีค่า Threat เท่ากับ 9 นำ Token นี้ออกเมื่อจบ Turn ถัดไปของ Monster"
+            },
+            {
+                "id": 10,
+                "type": "Vigorwasp Spray",
+                "card_img": "assets/img/palicos/vigorwasp_spray.png",
+                "ability": "เลือก Hunter ที่อยู่ภายใน 2 Node จาก Hunter ของคุณ ฟื้นฟู Health ที่เสียไปทั้งหมดโดยตั้งค่า Health Dial ของ Hunter คนนั้นให้เต็ม"
+            }
+        ],
+        "back_card_img": "assets/img/palicos/back_card.png"
+    }
+]

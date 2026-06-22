@@ -6,8 +6,35 @@ const generateRoomCode = () => {
   return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
 }
 
+// ── Cleanup ห้องเก่าที่ค้างอยู่ (Host ปิดไปโดยไม่ได้กด "ออก") ──────
+// เรียกแบบ best-effort ตอนสร้างห้องใหม่ — ลบห้องที่ไม่มีความเคลื่อนไหวนานเกิน STALE_ROOM_MS
+const STALE_ROOM_MS = 5 * 60 * 60 * 1000 // 5 ชั่วโมง
+
+const cleanupStaleRooms = async () => {
+  try {
+    const snap = await get(ref(db, 'rooms'))
+    if (!snap.exists()) return
+    const now = Date.now()
+    const updates = {}
+    snap.forEach((child) => {
+      const r = child.val()
+      const lastActive = r?.createdAt ?? 0
+      if (now - lastActive > STALE_ROOM_MS) {
+        updates[child.key] = null
+      }
+    })
+    if (Object.keys(updates).length) {
+      await update(ref(db, 'rooms'), updates)
+    }
+  } catch {
+    // best-effort เท่านั้น ไม่ต้อง throw
+  }
+}
+
 // ── Create Room ──────────────────────────────────────────
 export const createRoom = async (hunter) => {
+  cleanupStaleRooms()
+
   let code
   let exists = true
 
@@ -44,21 +71,26 @@ export const joinRoom = async (code, hunter) => {
   if (!snap.exists()) throw new Error('ไม่พบ Room นี้')
 
   const room = snap.val()
-  const hunterCount = Object.keys(room.hunters || {}).length
-  if (hunterCount >= 4) throw new Error('Room เต็มแล้ว (สูงสุด 4 คน)')
+  const existing = room.hunters?.[hunter.hunter_id]
+  const isRejoin = !!existing
 
-  const takenClasses = Object.values(room.hunters || {})
-    .filter(h => h.hunter_id !== hunter.hunter_id)
-    .map(h => h.hunter_class_id)
-  if (takenClasses.includes(hunter.hunter_class_id)) throw new Error('Class นี้มีผู้เล่นอื่นใช้อยู่แล้วในตี้')
+  if (!isRejoin) {
+    const hunterCount = Object.keys(room.hunters || {}).length
+    if (hunterCount >= 4) throw new Error('Room เต็มแล้ว (สูงสุด 4 คน)')
+
+    const takenClasses = Object.values(room.hunters || {})
+      .filter(h => h.hunter_id !== hunter.hunter_id)
+      .map(h => h.hunter_class_id)
+    if (takenClasses.includes(hunter.hunter_class_id)) throw new Error('Class นี้มีผู้เล่นอื่นใช้อยู่แล้วในตี้')
+  }
 
   await update(ref(db, `rooms/${code}/hunters/${hunter.hunter_id}`), {
     hunter_id: hunter.hunter_id,
     hunter_name: hunter.hunter_name,
     hunter_class_id: hunter.hunter_class_id,
     palico_name: hunter.palico_name,
-    isHost: false,
-    joinedAt: Date.now(),
+    isHost: existing?.isHost ?? false,
+    joinedAt: existing?.joinedAt ?? Date.now(),
   })
 
   return room
@@ -177,6 +209,10 @@ export const pushTrackTokens = (code, pool, tokens) =>
 // ── Manual Outcome State ──────────────────────────────────
 export const pushManualOutcome = (code, outcome) =>
   set(ref(db, `rooms/${code}/manualOutcome`), outcome ?? null)
+
+// ── Reward Dice Modifier State (Time Card overrides) ──────
+export const pushRewardDiceModifiers = (code, modifiers) =>
+  set(ref(db, `rooms/${code}/rewardDiceModifiers`), modifiers ?? null)
 
 // ── Outcome Float Signal ──────────────────────────────────
 export const pushOutcomeSignal = (code, outcome) =>
