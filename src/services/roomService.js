@@ -1,4 +1,4 @@
-import { db } from './firebase'
+import { db, authReady } from './firebase'
 import { ref, set, get, update, onValue, remove, onDisconnect, push } from 'firebase/database'
 
 const generateRoomCode = () => {
@@ -33,6 +33,7 @@ const cleanupStaleRooms = async () => {
 
 // ── Create Room ──────────────────────────────────────────
 export const createRoom = async (hunter) => {
+  await authReady()
   cleanupStaleRooms()
 
   let code
@@ -67,6 +68,7 @@ export const createRoom = async (hunter) => {
 
 // ── Join Room ────────────────────────────────────────────
 export const joinRoom = async (code, hunter) => {
+  await authReady()
   const snap = await get(ref(db, `rooms/${code}`))
   if (!snap.exists()) throw new Error('ไม่พบ Room นี้')
 
