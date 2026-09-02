@@ -288,5 +288,63 @@
       }
     },
     "thumbnail": "assets/img/class/gunlance.png"
+  },
+  {
+    "hunter_class_id": 11,
+    "hunter_class": "Switch Axe",
+    "starter_set": {
+      "weapon": {
+        "weapon_type_id": 1,
+        "item_id": 1,
+        "is_equip": true
+      },
+      "armors": {
+        "helm": {
+          "equip_set_id": 1,
+          "equip_id": 1,
+          "is_equip": true
+        },
+        "mail": {
+          "equip_set_id": 1,
+          "equip_id": 2,
+          "is_equip": true
+        },
+        "greaves": {
+          "equip_set_id": 1,
+          "equip_id": 3,
+          "is_equip": true
+        }
+      }
+    },
+    "thumbnail": "assets/img/class/switch_axe.png"
+  },
+  {
+    "hunter_class_id": 12,
+    "hunter_class": "Insect Glaive",
+    "starter_set": {
+      "weapon": {
+        "weapon_type_id": 1,
+        "item_id": 1,
+        "is_equip": true
+      },
+      "armors": {
+        "helm": {
+          "equip_set_id": 1,
+          "equip_id": 1,
+          "is_equip": true
+        },
+        "mail": {
+          "equip_set_id": 1,
+          "equip_id": 2,
+          "is_equip": true
+        },
+        "greaves": {
+          "equip_set_id": 1,
+          "equip_id": 3,
+          "is_equip": true
+        }
+      }
+    },
+    "thumbnail": "assets/img/class/insect_glaive.png"
   }
 ]
