@@ -131,6 +131,26 @@
                         "id": 8,
                         "name": "Lance",
                         "thumbnail": "assets/img/equiments/weapons/lanceR1.png"
+                    },
+                    {
+                        "id": 9,
+                        "name": "Hunting Horn",
+                        "thumbnail": "assets/img/equiments/weapons/hunting_hornR1.png"
+                    },
+                    {
+                        "id": 10,
+                        "name": "Gunlance",
+                        "thumbnail": "assets/img/equiments/weapons/gunlanceR1.png"
+                    },
+                    {
+                        "id": 11,
+                        "name": "Switch Axe",
+                        "thumbnail": "assets/img/equiments/weapons/switch_axeR1.png"
+                    },
+                    {
+                        "id": 12,
+                        "name": "Insect Glaive",
+                        "thumbnail": "assets/img/equiments/weapons/insect_glaiveR1.png"
                     }
                 ]
             },
@@ -176,6 +196,26 @@
                         "id": 8,
                         "name": "Lance",
                         "thumbnail": "assets/img/equiments/weapons/lanceR2.png"
+                    },
+                    {
+                        "id": 9,
+                        "name": "Hunting Horn",
+                        "thumbnail": "assets/img/equiments/weapons/hunting_hornR2.png"
+                    },
+                    {
+                        "id": 10,
+                        "name": "Gunlance",
+                        "thumbnail": "assets/img/equiments/weapons/gunlanceR2.png"
+                    },
+                    {
+                        "id": 11,
+                        "name": "Switch Axe",
+                        "thumbnail": "assets/img/equiments/weapons/switch_axeR2.png"
+                    },
+                    {
+                        "id": 12,
+                        "name": "Insect Glaive",
+                        "thumbnail": "assets/img/equiments/weapons/insect_glaiveR2.png"
                     }
                 ]
             },
@@ -221,6 +261,26 @@
                         "id": 8,
                         "name": "Lance",
                         "thumbnail": "assets/img/equiments/weapons/lanceR3.png"
+                    },
+                    {
+                        "id": 9,
+                        "name": "Hunting Horn",
+                        "thumbnail": "assets/img/equiments/weapons/hunting_hornR3.png"
+                    },
+                    {
+                        "id": 10,
+                        "name": "Gunlance",
+                        "thumbnail": "assets/img/equiments/weapons/gunlanceR3.png"
+                    },
+                    {
+                        "id": 11,
+                        "name": "Switch Axe",
+                        "thumbnail": "assets/img/equiments/weapons/switch_axeR3.png"
+                    },
+                    {
+                        "id": 12,
+                        "name": "Insect Glaive",
+                        "thumbnail": "assets/img/equiments/weapons/insect_glaiveR3.png"
                     }
                 ]
             },
@@ -266,6 +326,26 @@
                         "id": 8,
                         "name": "Lance",
                         "thumbnail": "assets/img/equiments/weapons/lanceR4.png"
+                    },
+                    {
+                        "id": 9,
+                        "name": "Hunting Horn",
+                        "thumbnail": "assets/img/equiments/weapons/hunting_hornR4.png"
+                    },
+                    {
+                        "id": 10,
+                        "name": "Gunlance",
+                        "thumbnail": "assets/img/equiments/weapons/gunlanceR4.png"
+                    },
+                    {
+                        "id": 11,
+                        "name": "Switch Axe",
+                        "thumbnail": "assets/img/equiments/weapons/switch_axeR4.png"
+                    },
+                    {
+                        "id": 12,
+                        "name": "Insect Glaive",
+                        "thumbnail": "assets/img/equiments/weapons/insect_glaiveR4.png"
                     }
                 ]
             }

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { isFirebaseConnected } from '@/services/firebase'
-import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds, pushShuffleSignal, pushActivationCount, pushOutcomeSignal, pushManualOutcome, pushRewardDiceModifiers, pushQuestMode, pushHqVote, clearHqVotes, pushHqCurrent, pushHqDoneList, pushHqReady, clearHqState } from '@/services/roomService'
+import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, pushDialogDice, clearDialogDice, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds, pushShuffleSignal, pushActivationCount, pushOutcomeSignal, pushManualOutcome, pushRewardDiceModifiers, pushQuestMode, pushHqVote, clearHqVotes, pushHqCurrent, pushHqDoneList, pushHqReady, clearHqState } from '@/services/roomService'
 
 export const useRoomStore = defineStore('room', () => {
   const roomCode = ref(null)
@@ -68,6 +68,7 @@ export const useRoomStore = defineStore('room', () => {
   })
   const hostConnected = computed(() => roomData.value?.hostConnected !== false)
   const myDialogCounts = computed(() => roomData.value?.dialogCounts?.[myHunterId.value] ?? null)
+  const dialogDice = computed(() => roomData.value?.dialogDice ?? {})
   const partyDice = computed(() => roomData.value?.partyDice ?? {})
   const partyRewards = computed(() => roomData.value?.partyRewards ?? {})
   const tradePool = computed(() => {
@@ -342,6 +343,16 @@ export const useRoomStore = defineStore('room', () => {
     return pushDialogCounts(roomCode.value, myHunterId.value, counts)
   }
 
+  const setDialogDice = (key, value) => {
+    if (!roomCode.value) return
+    return pushDialogDice(roomCode.value, key, value)
+  }
+
+  const clearDialogDiceAll = () => {
+    if (!roomCode.value) return
+    return clearDialogDice(roomCode.value)
+  }
+
   const clearDialogCounts = () => {
     if (!roomCode.value) return
     return clearAllDialogCounts(roomCode.value)
@@ -408,7 +419,7 @@ export const useRoomStore = defineStore('room', () => {
     dialogVotes, votesByAction, votersByAction, myVote, syncedDialogId,
     proceedVotes, allProceeded, myProceedVoted,
     syncedPendingActionId,
-    huntState, behaviorDeckState, hostConnected, partyDice, partyRewards, tradePool, myDialogCounts,
+    huntState, behaviorDeckState, hostConnected, partyDice, partyRewards, tradePool, myDialogCounts, dialogDice,
     trackTokenState, timeCardState, tcTurnEnds, questModeState,
     syncQuestMode: (mode) => roomCode.value ? pushQuestMode(roomCode.value, mode) : undefined,
     rerollRequest, myRerollApproval, rerollAllApproved,
@@ -439,7 +450,7 @@ export const useRoomStore = defineStore('room', () => {
     pushMyDice, clearAllPartyDice,
     pushMyRewards, clearAllPartyRewards,
     addToTradePool, removeFromTradePool, clearTrade,
-    setMyDialogCounts, clearDialogCounts,
+    setMyDialogCounts, clearDialogCounts, setDialogDice, clearDialogDiceAll,
     voteAction, clearActionVote, kick, reset,
     hqVotes, hqState, hqVoteResult, hqVoteTied, allHqReady,
     voteHq, clearHqVotesAll, setHqCurrent, setHqDoneList, setHqReady, clearHqStateAll,

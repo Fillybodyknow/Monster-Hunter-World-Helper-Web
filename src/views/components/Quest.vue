@@ -412,9 +412,12 @@ const tokenRevealTotal = computed(() =>
 const startTokenReveal = (onDone) => {
   if (!trackTokens.value.length) { onDone(); return }
 
-  // Reveal all tokens immediately (update state + push Firebase)
-  trackTokens.value = trackTokens.value.map(t => ({ ...t, revealed: true }))
-  _pushTokenState()
+  // Host เท่านั้นที่เปิดค่าจริงแล้ว push ขึ้น Firebase
+  // Guest ยังไม่รู้ค่า token ที่ยังไม่เปิด ถ้าตั้ง revealed เองจะโชว์ค่าว่าง
+  if (!room.inRoom || room.isHost) {
+    trackTokens.value = trackTokens.value.map(t => ({ ...t, revealed: true }))
+    _pushTokenState()
+  }
 
   if (questMode.value === 'minimal') {
     const finalTotal = trackTokens.value.reduce((s, t) => s + (t.value ?? 0), 0)
@@ -434,12 +437,13 @@ const startTokenReveal = (onDone) => {
   })
   const total = 500 + trackTokens.value.length * 600 + 800
   setTimeout(() => { tokenRevealDone.value = true }, total)
-  const finalTotal = trackTokens.value.reduce((s, t) => s + (t.value ?? 0), 0)
   setTimeout(() => {
     showTokenReveal.value = false
-    onDone(finalTotal)
+    // อ่านค่าตอนจบ ไม่ใช่ตอนเริ่ม — ของ Guest เพิ่ง sync มาระหว่างอนิเมชัน
+    onDone(trackTokens.value.reduce((s, t) => s + (t.value ?? 0), 0))
   }, total + 2000)
 }
+
 const battleIntroPhase = ref('enter') // 'enter' | 'show' | 'leave'
 const battleIntroKey = ref(0)
 
@@ -485,7 +489,10 @@ const _executeDialog = (dialogId) => {
   currentDialogId.value = dialogId
   if (selectedMonster.value?.dialog_hunting_phase?.includes(dialogId)) {
     _saveDialogCountsToInventory()
-    if (room.inRoom) room.clearDialogCounts?.()
+    if (room.inRoom) {
+      room.clearDialogCounts?.()
+      if (room.isHost) room.clearDialogDiceAll?.()
+    }
     battleIntroKey.value++
     showBattleIntro.value = true
     battleIntroPhase.value = 'enter'
@@ -569,7 +576,10 @@ const confirmAction = () => {
   if (room.inRoom) {
     room.voteProceed()
   } else {
-    _proceedWithAction(action)
+    applyEffects(action.effects, 'action')
+    // มีเต๋าให้ทอย → รอผลก่อน ค่อยไปบทถัดไป (ไม่งั้นหน้าต่างทอยจะถูกปิดทันที)
+    if (dialogDice.value) pendingProceedAction.value = action
+    else _proceedWithAction(action)
   }
 }
 
@@ -621,10 +631,15 @@ watch(() => room.dialogVotes, (votes) => {
   }
 }, { deep: true })
 
-// Co-op: host watches allProceeded → execute action
+// Co-op: ทุกคนโหวต Proceed ครบ → จัดการ effects แล้ว Host พาไปบทถัดไป
 watch(() => room.allProceeded, (ready) => {
-  if (!ready || !room.inRoom || !room.isHost || !pendingAction.value) return
-  _proceedWithAction(pendingAction.value)
+  const action = pendingAction.value
+  if (!ready || !room.inRoom || !action) return
+  applyEffects(action.effects, 'action')
+  if (!room.isHost) return
+  // มีเต๋าให้ทอย → รอ Host ทอยเสร็จก่อนพาทุกคนไปบทถัดไป
+  if (dialogDice.value) pendingProceedAction.value = action
+  else _proceedWithAction(action)
 })
 
 // Resolve monster/quest จาก questInfo (ใช้ตอน reconnect / guest join)
@@ -1343,8 +1358,11 @@ const resetToBookPhase = () => {
   boulderRoll.value = null
   boulderDrawerId.value = null
   manualBetrayal.value = null
-  manualJagrasSlayer.value = null
+  manualSlayer.value = null
   manualPlunderblade.value = false
+  dialogDice.value = null
+  pendingMonsterDiceDamage.value = 0
+  pendingProceedAction.value = null
   if (room.inRoom && room.isHost) room.syncRewardDiceModifiers?.(null)
   recoveryPending.value = false
   recoveryHpSnapshot.value = null
@@ -1515,6 +1533,15 @@ const initTrackTokens = () => {
 }
 
 const selectedToken = ref(null) // token ที่คลิกเพื่อแสดง modal
+
+// Guest: ค่า token จริงมาถึงระหว่างอนิเมชัน — เติมลงการ์ดที่กำลังพลิกอยู่
+watch(trackTokens, (tokens) => {
+  if (!showTokenReveal.value) return
+  tokenRevealVisual.value = tokenRevealVisual.value.map((v) => {
+    const t = tokens.find((x) => x.id === v.id)
+    return t ? { ...v, value: t.value, revealed: t.revealed } : v
+  })
+}, { deep: true })
 
 const _pushTokenState = () => {
   // บันทึกค่าจริงไว้ใน sessionStorage เพื่อ restore หลัง reconnect
@@ -2503,7 +2530,9 @@ const togglePotion = (index) => {
 
 const initHuntingData = () => {
   if (!monsterHuntingData.value) return
-  huntingHp.value = monsterHuntingData.value.health
+  // ดาเมจจากเต๋าช่วง dialog ("ลดเลือดตามที่ทอยได้") หักตอนนี้ เพราะเพิ่งมี HP ให้หัก
+  huntingHp.value = Math.max(0, monsterHuntingData.value.health - (pendingMonsterDiceDamage.value ?? 0))
+  pendingMonsterDiceDamage.value = 0
   faintCount.value = 0
   // potionCount ไม่ reset เพราะยาที่ได้จาก Dialog Phase ควรพกมาด้วย
   const parts = {}
@@ -2697,23 +2726,38 @@ const diceCountTable = {
 }
 
 // ─── Time Card Reward Dice Modifiers ───────────────────────────────────────
-const TC_JAGRAS_SLAYER_ID = 21
 const TC_BETRAYAL_ID = 31
-const GREAT_JAGRAS_ID = 1
+
+// Slayer card แต่ละใบให้ +1 🎲 เฉพาะตอนล่ามอนสเตอร์ของตัวเอง — time_card_id → monster_id
+const SLAYER_CARD_MONSTER = { 21: 1, 30: 6, 32: 4, 33: 9 }
+
+// Slayer card ที่ใช้ได้กับเควสนี้ (มอนสเตอร์หนึ่งตัวมีได้ใบเดียว)
+const activeSlayerCardId = computed(() => {
+  const monsterId = selectedMonster.value?.monster_id
+  if (monsterId == null) return null
+  const found = Object.entries(SLAYER_CARD_MONSTER).find(([, id]) => id === monsterId)
+  return found ? Number(found[0]) : null
+})
+const activeSlayerCardName = computed(
+  () =>
+    timeCardData.red_time_cards.find((c) => c.time_card_id === activeSlayerCardId.value)?.card_name ??
+    'Slayer',
+)
 
 // Auto-detect: ตรวจจาก Time Card ที่ถูกจั่ว/ทิ้งไว้ในกองทิ้งระหว่างเควส
 const detectedBetrayal = computed(() =>
   timeCardDiscard.value.some((c) => c.time_card_id === TC_BETRAYAL_ID),
 )
-const detectedJagrasSlayer = computed(() =>
-  timeCardDiscard.value.some((c) => c.time_card_id === TC_JAGRAS_SLAYER_ID) &&
-  selectedMonster.value?.monster_id === GREAT_JAGRAS_ID,
+const detectedSlayer = computed(
+  () =>
+    activeSlayerCardId.value != null &&
+    timeCardDiscard.value.some((c) => c.time_card_id === activeSlayerCardId.value),
 )
 
 // Manual override: null/false = ใช้ค่าจาก Auto-detect (หรือปิด), true = บังคับเปิด
 // Host เป็นคนกดได้เท่านั้น และ sync ค่าผ่าน Firebase ให้ Guest เห็นตรงกัน
 const manualBetrayal = ref(null)
-const manualJagrasSlayer = ref(null)
+const manualSlayer = ref(null)
 // Plunderblade (Palico): "ถ้า Break ส่วนที่วาง Token ไว้สำเร็จและจบเควสนี้ ทอยลูกเต๋าเพิ่มอีก 2 ลูก"
 // ไม่มี Auto-detect (เป็น state บนกระดาน) — Manual ล้วน, Host จัดการเหมือนอีก 2 อัน
 const manualPlunderblade = ref(false)
@@ -2722,9 +2766,12 @@ const effectiveManualBetrayal = computed(() => {
   if (room.inRoom && !room.isHost) return room.rewardDiceModifierState?.betrayal ?? null
   return manualBetrayal.value
 })
-const effectiveManualJagrasSlayer = computed(() => {
-  if (room.inRoom && !room.isHost) return room.rewardDiceModifierState?.jagrasSlayer ?? null
-  return manualJagrasSlayer.value
+const effectiveManualSlayer = computed(() => {
+  if (room.inRoom && !room.isHost) {
+    const state = room.rewardDiceModifierState
+    return state?.slayer ?? state?.jagrasSlayer ?? null
+  }
+  return manualSlayer.value
 })
 const effectiveManualPlunderblade = computed(() => {
   if (room.inRoom && !room.isHost) return room.rewardDiceModifierState?.plunderblade ?? false
@@ -2732,14 +2779,14 @@ const effectiveManualPlunderblade = computed(() => {
 })
 
 const betrayalActive = computed(() => effectiveManualBetrayal.value ?? detectedBetrayal.value)
-const jagrasSlayerActive = computed(() => effectiveManualJagrasSlayer.value ?? detectedJagrasSlayer.value)
+const slayerActive = computed(() => effectiveManualSlayer.value ?? detectedSlayer.value)
 const plunderbladeActive = computed(() => effectiveManualPlunderblade.value)
 
 const _syncRewardDiceModifiers = () => {
   if (!room.inRoom) return
   room.syncRewardDiceModifiers?.({
     betrayal: manualBetrayal.value,
-    jagrasSlayer: manualJagrasSlayer.value,
+    slayer: manualSlayer.value,
     plunderblade: manualPlunderblade.value,
   })
 }
@@ -2748,9 +2795,9 @@ const setBetrayalModifier = (val) => {
   manualBetrayal.value = val
   _syncRewardDiceModifiers()
 }
-const setJagrasSlayerModifier = (val) => {
+const setSlayerModifier = (val) => {
   if (room.inRoom && !room.isHost) return
-  manualJagrasSlayer.value = val
+  manualSlayer.value = val
   _syncRewardDiceModifiers()
 }
 const setPlunderbladeModifier = (val) => {
@@ -2761,7 +2808,7 @@ const setPlunderbladeModifier = (val) => {
 
 const rewardDiceModifier = computed(() => {
   let mod = 0
-  if (jagrasSlayerActive.value) mod += 1
+  if (slayerActive.value) mod += 1
   if (betrayalActive.value) mod -= 1
   if (plunderbladeActive.value) mod += 2
   return mod
@@ -2823,6 +2870,20 @@ const getResourceItem = (resource_type_id, item_id) => {
 const dialogResourceCounts = ref({})
 const showDialogResources = ref(false)
 
+// dialog_resources ครอบคลุมไม่ครบทุกอย่างที่ effects แจก — รวมของที่เก็บได้แล้วเข้ามาด้วย
+// ไม่งั้นของที่ Auto-Complete เพิ่มให้จะไม่โผล่ในลิสต์ (แม้จะเข้า inventory จริงตอนจบ dialog)
+const dialogResourceList = computed(() => {
+  const base = selectedQuest.value?.dialog_resources ?? []
+  const seen = new Set(base.map((r) => `${r.resource_type_id}-${r.item_id}`))
+  const extra = Object.entries(dialogResourceCounts.value)
+    .filter(([key, qty]) => qty > 0 && !seen.has(key))
+    .map(([key]) => {
+      const [resource_type_id, item_id] = key.split('-').map(Number)
+      return { resource_type_id, item_id }
+    })
+  return [...base, ...extra]
+})
+
 const _pushDialogCounts = () => {
   if (room.inRoom) room.setMyDialogCounts?.(dialogResourceCounts.value)
 }
@@ -2865,6 +2926,320 @@ watch([() => room.myDialogCounts, () => room.joinSignal], ([counts]) => {
   if (!counts || !room.inRoom) return
   dialogResourceCounts.value = counts
 }, { immediate: true })
+
+// ─── Dialog Auto-Complete ──────────────────────────────────────────────────
+// effects[] ถูก generate ไว้ในไฟล์ quest book (scripts/parse-dialog-effects.mjs)
+// ผลที่แอปทำเองได้จะถูก apply ตอนกดปุ่ม ส่วนที่เหลือแสดงเป็นข้อความให้ทำบนกระดาน
+const EFFECT_LABEL = {
+  discardTimeCard: (e) => `ทิ้ง Time Card ${e.n} ใบ`,
+  gainTrackToken: (e) => `รับ Track Token ${e.n} อัน`,
+  discardTrackToken: (e) => `ทิ้ง Track Token ${e.n === 'all' ? 'ทั้งหมด' : `${e.n} อัน`}`,
+  revealTrackToken: (e) => `เปิดเผย Track Token ${e.n === 'all' ? 'ทั้งหมด' : `${e.n} อัน`}`,
+  gainPotion: (e) => `รับยา ${e.n} ขวด`,
+  discardPotion: (e) => `ทิ้งยา ${e.n} ขวด`,
+  shuffleTimeCard: (e) => `สับการ์ด ${e.card} เข้ากอง Time Card`,
+  gainResource: (e) => `รับ ${e.name} ×${e.n}`,
+  damage: (e) => `นักล่าทุกคนเสีย ${e.n} HP`,
+  heal: (e) => `นักล่าทุกคนฟื้น ${e.n} HP`,
+  healFull: () => 'นักล่าทุกคนฟื้นเต็ม',
+  drawTimeCardAside: (e) => `จั่ว Time Card ${e.n} ใบ วางแยกไว้`,
+  startHunting: () => 'เริ่ม Hunting Phase',
+  checkScoutfly: () => 'ตรวจ Scoutfly Level',
+  diceRoll: (e) => (e.scope === 'each' ? '🎲 ทอยเต๋า (ทุกคนทอยเอง)' : '🎲 ทอยเต๋า (ทอยครั้งเดียว)'),
+  diceMonsterDamage: (e) => `🎲 ทอยเต๋า — ลด HP ${e.monster} ตามที่ทอยได้`,
+  diceRollManual: () => '🎲 ทอยเต๋า แล้วเลือกตัวเลือกตามเลขที่ได้',
+}
+
+// ผลที่ต้องทำบนกระดานเอง — แสดงเป็นหมายเหตุ ไม่ทำอัตโนมัติ
+// diceRollManual = สั่งทอยแต่ผลไปอยู่ที่ปุ่ม choice — ผู้เล่นทอยเองแล้วกดปุ่มที่ตรงกับเลข
+const MANUAL_EFFECTS = new Set([
+  'damage', 'heal', 'healFull', 'drawTimeCardAside', 'startHunting', 'checkScoutfly', 'diceRollManual',
+])
+
+// ของติดตัวนักล่าแต่ละคน — ทุกคนต้อง apply เอง (dialogCounts แยกราย hunter)
+// ที่เหลือเป็น state กลางของห้อง (deck / token / potion) ให้ Host ทำคนเดียวแล้ว sync
+const PER_HUNTER_EFFECTS = new Set(['gainResource'])
+
+// ต้องให้ผู้เล่นทอยก่อน ถึงจะรู้ว่าได้ผลอะไร
+const DICE_EFFECTS = new Set(['diceRoll', 'diceMonsterDamage'])
+
+// minimal mode ตั้งใจให้จัดการบนโต๊ะเองทั้งหมด (ไม่มี Time Card deck ด้วย)
+const autoCompleteEnabled = computed(() => questMode.value === 'full')
+
+const effectLabel = (e) => EFFECT_LABEL[e.type]?.(e) ?? e.type
+const isPerHunterEffect = (e) => PER_HUNTER_EFFECTS.has(e.type)
+const isAutoEffect = (e) => !MANUAL_EFFECTS.has(e.type)
+
+// ใครเป็นคนลงมือ — shared state ให้ Host ทำคนเดียว ไม่งั้นทิ้งการ์ดซ้ำ
+const canApplyEffect = (e) => isPerHunterEffect(e) || !room.inRoom || room.isHost
+const hasApplicableEffects = (effects) => !!effects?.some(isAutoEffect)
+
+const autoAppliedKeys = ref(new Set())
+const autoApplyResult = ref(null) // { done: {label,type}[], skipped: {label,type}[] } | null
+
+const _effectKey = (source, index) => `${source}#${index}`
+
+// ไอคอนตามชนิด effect — ของเข้าคลังต้องเห็นชัดว่าต่างจากการทิ้งการ์ด
+const EFFECT_ICON = {
+  gainResource: '📦',
+  gainPotion: '🧪',
+  discardPotion: '🧪',
+  gainTrackToken: '🔍',
+  discardTrackToken: '🔍',
+  revealTrackToken: '🔍',
+  discardTimeCard: '⏳',
+  shuffleTimeCard: '🔀',
+}
+
+// แจ้งทีละรายการ ผู้เล่นจะได้เห็นว่าระบบทำอะไรไปบ้าง ไม่ใช่แค่จำนวน
+// จำกัดไว้ไม่ให้ล้นจอมือถือ ส่วนที่เกินยุบเป็นบรรทัดเดียว
+const NOTIF_MAX = 4
+const _notifyEffects = (done, skipped) => {
+  const lines = [
+    ...done.map((d) => ({ text: `${EFFECT_ICON[d.type] ?? '⚡'} ${d.label}`, type: 'info' })),
+    ...skipped.map((d) => ({ text: `✋ ${d.label}`, type: 'warn' })),
+  ]
+  const shown = lines.slice(0, NOTIF_MAX)
+  const hidden = lines.length - shown.length
+  if (hidden > 0) shown.push({ text: `⚡ และอีก ${hidden} รายการ`, type: 'info' })
+
+  shown.forEach((n, i) => setTimeout(() => addNotif(n.text, n.type), i * 120))
+}
+
+const _applyOneEffect = (e) => {
+  switch (e.type) {
+    case 'discardTimeCard':
+      for (let i = 0; i < e.n; i++) {
+        if (!timeCardDeck.value.length) return 'Time Card ในกองไม่พอ'
+        discardTimeCard()
+      }
+      return null
+
+    case 'gainTrackToken':
+      for (let i = 0; i < e.n; i++) {
+        if (!trackTokenPool.value.length) return 'Track Token Pool หมด'
+        addTrackToken()
+      }
+      return null
+
+    case 'discardTrackToken': {
+      const count = e.n === 'all' ? trackTokens.value.length : e.n
+      if (!count) return 'ไม่มี Track Token ให้ทิ้ง'
+      trackTokens.value.slice(0, count).forEach((t) => discardTrackToken(t.id))
+      return null
+    }
+
+    case 'revealTrackToken': {
+      const hidden = trackTokens.value.filter((t) => !t.revealed)
+      const count = e.n === 'all' ? hidden.length : e.n
+      if (!count) return 'ไม่มี Track Token ที่ยังไม่เปิด'
+      hidden.slice(0, count).forEach((t) => revealTrackToken(t.id))
+      return null
+    }
+
+    case 'gainPotion':
+      if (potionCount.value >= 3) return 'ยาเต็มแล้ว (3 ขวด)'
+      potionCount.value = Math.min(3, potionCount.value + e.n)
+      _pushHuntState()
+      return null
+
+    case 'discardPotion':
+      if (potionCount.value <= 0) return 'ไม่มียาให้ทิ้ง'
+      potionCount.value = Math.max(0, potionCount.value - e.n)
+      _pushHuntState()
+      return null
+
+    case 'shuffleTimeCard': {
+      const card = timeCardData.red_time_cards.find((c) => c.time_card_id === e.time_card_id)
+      if (!card) return `ไม่พบการ์ด ${e.card}`
+      timeCardDeck.value = _shuffle([
+        ...timeCardDeck.value,
+        { ...card, uid: `rc_${card.time_card_id}_${Date.now()}` },
+      ])
+      _pushTimeCardState()
+      _triggerShuffleAnim()
+      return null
+    }
+
+    case 'gainResource':
+      if (e.type_id == null || e.item_id == null) return `${e.name} — ไม่มีในคลังไอเทม`
+      for (let i = 0; i < e.n; i++) addDialogResource(e.type_id, e.item_id)
+      return null
+
+    default:
+      return 'ทำอัตโนมัติไม่ได้'
+  }
+}
+
+const applyEffects = (effects, source) => {
+  if (!autoCompleteEnabled.value || !effects?.length) return
+  const done = []
+  const skipped = []
+
+  let gotResource = false
+
+  let diceToRoll = null
+
+  effects.forEach((e, i) => {
+    if (!isAutoEffect(e)) return
+    const key = _effectKey(source, i)
+    if (autoAppliedKeys.value.has(key)) return
+
+    // ทอยเต๋าต้องรอผู้เล่นทอยก่อน — เปิดหน้าต่างทอยแทนการทำทันที
+    // key ต้องผูกกับ dialog ด้วย เพราะถูกส่งขึ้น Firebase ให้ทั้งห้องใช้ร่วมกัน
+    if (DICE_EFFECTS.has(e.type)) {
+      if (!diceToRoll) {
+        diceToRoll = {
+          effect: e,
+          source,
+          index: i,
+          key,
+          diceKey: `d${currentDialogId.value}_${key.replace('#', '_')}`,
+          value: null,
+          rolling: false,
+          row: null,
+        }
+      }
+      return
+    }
+
+    autoAppliedKeys.value = new Set(autoAppliedKeys.value).add(key)
+
+    // shared state — Host ลงมือคนเดียว คนอื่นแค่รู้ว่าจัดการแล้วแล้วรอ sync
+    if (!canApplyEffect(e)) {
+      done.push({ label: effectLabel(e), type: e.type })
+      return
+    }
+
+    const problem = _applyOneEffect(e)
+    if (problem) skipped.push({ label: `${effectLabel(e)} — ${problem}`, type: e.type })
+    else {
+      done.push({ label: effectLabel(e), type: e.type })
+      if (e.type === 'gainResource') gotResource = true
+    }
+  })
+
+  // ไม่ทับเต๋าที่ค้างอยู่ ไม่งั้นผลที่ยังไม่ได้ทอยจะหายไป
+  if (diceToRoll && !dialogDice.value) dialogDice.value = diceToRoll
+
+  if (!done.length && !skipped.length) return
+
+  // กางลิสต์ให้เห็นของที่เพิ่งได้ ไม่งั้นเหมือนไม่มีอะไรเกิดขึ้น
+  if (gotResource) showDialogResources.value = true
+
+  _notifyEffects(done, skipped)
+  autoApplyResult.value = { done, skipped }
+  setTimeout(() => { autoApplyResult.value = null }, 4500)
+}
+
+const isEffectApplied = (source, index) => autoAppliedKeys.value.has(_effectKey(source, index))
+
+// ─── Dialog Dice ───────────────────────────────────────────────────────────
+// scope 'each' = ต่างคนต่างทอย / 'once' = ทอยครั้งเดียวใช้ผลร่วมกัน (Host ทอย แล้ว sync)
+const dialogDice = ref(null) // { effect, source, index, key, value, rolling, row } | null
+
+// "ลดเลือดมอนสเตอร์ตามที่ทอยได้" เกิดตอน dialog ที่ยังไม่มี HP ให้หัก — เก็บไว้ใช้ตอนเข้า hunting
+const pendingMonsterDiceDamage = ref(0)
+
+// action ที่รอทอยเต๋าเสร็จก่อนถึงจะไปบทถัดไป
+const pendingProceedAction = ref(null)
+
+const _diceRowFor = (table, value) => table.find((r) => value >= r.min && value <= r.max) ?? null
+const diceIsOnce = computed(() => dialogDice.value?.effect?.scope === 'once')
+const diceCanRoll = computed(() => {
+  if (!dialogDice.value || dialogDice.value.rolling || dialogDice.value.value != null) return false
+  return !diceIsOnce.value || !room.inRoom || room.isHost
+})
+
+const _resolveDice = (value) => {
+  const d = dialogDice.value
+  if (!d) return
+  const row = d.effect.type === 'diceRoll' ? _diceRowFor(d.effect.table, value) : null
+  dialogDice.value = { ...d, value, rolling: false, row }
+
+  if (d.effect.type === 'diceMonsterDamage') {
+    // มอนสเตอร์ยังไม่โผล่ในช่วง dialog — เก็บไว้หักตอนเข้า hunting
+    pendingMonsterDiceDamage.value = (pendingMonsterDiceDamage.value ?? 0) + value
+    addNotif(`🎲 ทอยได้ ${value} — ลด HP ${d.effect.monster} ${value} หน่วยเมื่อเริ่มล่า`, 'info')
+  } else if (row) {
+    const done = []
+    const skipped = []
+    row.effects.forEach((e) => {
+      if (!isAutoEffect(e)) { skipped.push({ label: effectLabel(e), type: e.type }); return }
+      if (!canApplyEffect(e)) { done.push({ label: effectLabel(e), type: e.type }); return }
+      const problem = _applyOneEffect(e)
+      if (problem) skipped.push({ label: `${effectLabel(e)} — ${problem}`, type: e.type })
+      else {
+        done.push({ label: effectLabel(e), type: e.type })
+        if (e.type === 'gainResource') showDialogResources.value = true
+      }
+    })
+
+    addNotif(`🎲 ทอยได้ ${value} — ${row.text}`, 'info')
+    if (done.length || skipped.length) {
+      setTimeout(() => _notifyEffects(done, skipped), 150)
+      autoApplyResult.value = { done, skipped }
+      setTimeout(() => { autoApplyResult.value = null }, 4500)
+    }
+  }
+
+  autoAppliedKeys.value = new Set(autoAppliedKeys.value).add(d.key)
+}
+
+const rollDialogDice = () => {
+  const d = dialogDice.value
+  if (!d || !diceCanRoll.value) return
+  dialogDice.value = { ...d, rolling: true }
+  const final = Math.ceil(Math.random() * 6)
+
+  let ticks = 0
+  const spin = setInterval(() => {
+    dialogDice.value = { ...dialogDice.value, value: null, face: Math.ceil(Math.random() * 6) }
+    if (++ticks >= 12) {
+      clearInterval(spin)
+      if (diceIsOnce.value && room.inRoom && room.isHost) room.setDialogDice?.(d.diceKey, final)
+      _resolveDice(final)
+    }
+  }, 60)
+}
+
+const closeDialogDice = () => {
+  dialogDice.value = null
+  const action = pendingProceedAction.value
+  if (!action) return
+  pendingProceedAction.value = null
+  _proceedWithAction(action)
+}
+
+// Guest: Host ทอยผลแบบ 'once' มาแล้ว → ใช้ผลเดียวกัน
+watch(() => room.dialogDice, (all) => {
+  const d = dialogDice.value
+  if (!d || !room.inRoom || room.isHost || d.value != null) return
+  const val = all?.[d.diceKey]
+  if (typeof val === 'number') _resolveDice(val)
+}, { deep: true })
+
+// เข้าบทสนทนาใหม่ = เริ่มนับใหม่ ไม่งั้นจะข้าม effect ของบทถัดไป
+// เต๋าที่ยังทอยไม่เสร็จปล่อยค้างไว้ — Guest ที่ทอยช้ากว่า Host จะได้ทอยต่อจนจบ
+watch(currentDialogId, () => {
+  autoAppliedKeys.value = new Set()
+  autoApplyResult.value = null
+  if (dialogDice.value?.value != null) dialogDice.value = null
+})
+
+// เข้าบทสนทนาที่มี effects → จัดการให้ทันที (ทั้ง Host และ Guest ต่างทำส่วนของตัวเอง)
+// ข้ามตอน reconnect เพราะ state ที่ apply ไปแล้วถูก restore มาจาก Firebase อยู่แล้ว
+watch(
+  [() => currentDialog.value, () => phase.value],
+  ([dialog, p]) => {
+    if (p !== 'dialog' || !dialog?.effects?.length || _isReconnecting) return
+    nextTick(() => {
+      if (_isReconnecting) return
+      applyEffects(dialog.effects, 'dialog')
+    })
+  },
+  { immediate: true },
+)
 
 const isPartBrokenById = (partId) => {
   if (!partId) return false
@@ -3748,7 +4123,7 @@ const openPackDrawer = () => {
       </div>
 
       <!-- Dialog Resource Quick-Add -->
-      <div v-if="selectedQuest.dialog_resources?.length" class="dr-panel">
+      <div v-if="dialogResourceList.length" class="dr-panel">
         <button class="dr-toggle" @click="showDialogResources = !showDialogResources">
           <span>📦 Resources ที่อาจได้ระหว่าง Dialog</span>
           <span class="dr-toggle-arrow">{{ showDialogResources ? '▲' : '▼' }}</span>
@@ -3756,7 +4131,7 @@ const openPackDrawer = () => {
         <transition name="dr-slide">
           <div v-if="showDialogResources" class="dr-grid">
             <div
-              v-for="r in selectedQuest.dialog_resources"
+              v-for="r in dialogResourceList"
               :key="`${r.resource_type_id}-${r.item_id}`"
               class="dr-item"
             >
@@ -3924,6 +4299,23 @@ const openPackDrawer = () => {
           {{ currentDialog.consequences }}
         </div>
 
+        <div v-if="autoCompleteEnabled && currentDialog.effects?.length" class="fx-panel fx-panel-parchment">
+          <div class="fx-list">
+            <span
+              v-for="(e, i) in currentDialog.effects"
+              :key="i"
+              class="fx-chip"
+              :class="{
+                'fx-manual': !isAutoEffect(e),
+                'fx-done': isAutoEffect(e) && isEffectApplied('dialog', i),
+              }"
+            >
+              <span class="fx-mark">{{ !isAutoEffect(e) ? '✋' : isEffectApplied('dialog', i) ? '✓' : '⚡' }}</span>
+              {{ effectLabel(e) }}
+            </span>
+          </div>
+        </div>
+
         <div class="parchment-notch bottom"></div>
       </div>
 
@@ -3967,6 +4359,74 @@ const openPackDrawer = () => {
       </div>
     </div>
 
+    <!-- ═══════════ DIALOG DICE ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="dialogDice" class="dd-overlay">
+          <div class="dd-modal">
+            <p class="dd-title">🎲 ทอยลูกเต๋า</p>
+            <p class="dd-scope">
+              {{ diceIsOnce ? 'ทอยครั้งเดียว — ใช้ผลร่วมกันทั้งกลุ่ม' : 'ทุกคนทอยของตัวเอง' }}
+            </p>
+
+            <div class="dd-die-wrap">
+              <div class="rw-die dd-die" :class="{ rolling: dialogDice.rolling }">
+                <div class="die-face">
+                  <span
+                    v-for="pos in 9"
+                    :key="pos"
+                    class="die-dot"
+                    :class="{ visible: dotPatterns[dialogDice.value ?? dialogDice.face ?? 1]?.includes(pos - 1) }"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- ตารางผล -->
+            <div v-if="dialogDice.effect.table" class="dd-table">
+              <div
+                v-for="(row, i) in dialogDice.effect.table"
+                :key="i"
+                class="dd-row"
+                :class="{ 'dd-row-hit': dialogDice.row === row }"
+              >
+                <span class="dd-range">{{ row.min }}-{{ row.max }}</span>
+                <span class="dd-row-text">{{ row.text }}</span>
+              </div>
+            </div>
+
+            <p v-if="dialogDice.value != null" class="dd-result">
+              ทอยได้ <strong>{{ dialogDice.value }}</strong>
+              <template v-if="dialogDice.effect.type === 'diceMonsterDamage'">
+                — ลด HP {{ dialogDice.effect.monster }} {{ dialogDice.value }} หน่วย
+              </template>
+            </p>
+
+            <button v-if="diceCanRoll" class="dd-roll-btn" @click="rollDialogDice">ทอย!</button>
+            <p v-else-if="dialogDice.value == null" class="dd-waiting">
+              {{ dialogDice.rolling ? 'กำลังทอย...' : 'รอ Host ทอย...' }}
+            </p>
+            <button v-else class="dd-close-btn" @click="closeDialogDice">ตกลง</button>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ AUTO-APPLY RESULT TOAST ═══════════ -->
+    <teleport to="body">
+      <transition name="slain-fade">
+        <div v-if="autoApplyResult" class="fx-toast">
+          <span v-if="autoApplyResult.done.length" class="fx-toast-main">
+            ⚡ จัดการให้อัตโนมัติแล้ว
+            <span class="fx-toast-count">{{ autoApplyResult.done.length }}</span>
+          </span>
+          <span v-if="autoApplyResult.skipped.length" class="fx-toast-sub">
+            ✋ ต้องทำเอง {{ autoApplyResult.skipped.length }} รายการ
+          </span>
+        </div>
+      </transition>
+    </teleport>
+
     <!-- ═══════════ ACTION CONFIRM DRAWER ═══════════ -->
     <teleport to="body">
       <transition name="drawer-slide">
@@ -4008,6 +4468,26 @@ const openPackDrawer = () => {
           <div v-if="pendingAction.consequences" class="ad-consequences">
             <span class="ad-con-label">⚠ Effect</span>
             <p class="ad-con-text">{{ pendingAction.consequences }}</p>
+          </div>
+
+          <div v-if="autoCompleteEnabled && pendingAction.effects?.length" class="fx-panel">
+            <span v-if="hasApplicableEffects(pendingAction.effects)" class="fx-note">
+              ⚡ ระบบจะจัดการให้อัตโนมัติเมื่อ Proceed
+            </span>
+            <div class="fx-list">
+              <span
+                v-for="(e, i) in pendingAction.effects"
+                :key="i"
+                class="fx-chip"
+                :class="{
+                  'fx-manual': !isAutoEffect(e),
+                  'fx-done': isAutoEffect(e) && isEffectApplied('action', i),
+                }"
+              >
+                <span class="fx-mark">{{ !isAutoEffect(e) ? '✋' : isEffectApplied('action', i) ? '✓' : '⚡' }}</span>
+                {{ effectLabel(e) }}
+              </span>
+            </div>
           </div>
 
           <!-- Proceed votes (co-op) -->
@@ -4807,17 +5287,17 @@ const openPackDrawer = () => {
         </div>
         <div class="rw-tc-modifiers">
           <label
-            v-if="selectedMonster?.monster_id === GREAT_JAGRAS_ID"
+            v-if="activeSlayerCardId"
             class="rw-tc-toggle"
-            :class="{ active: jagrasSlayerActive, 'rw-tc-readonly': room.inRoom && !room.isHost }"
+            :class="{ active: slayerActive, 'rw-tc-readonly': room.inRoom && !room.isHost }"
           >
             <input
               type="checkbox"
-              :checked="jagrasSlayerActive"
+              :checked="slayerActive"
               :disabled="room.inRoom && !room.isHost"
-              @change="setJagrasSlayerModifier($event.target.checked)"
+              @change="setSlayerModifier($event.target.checked)"
             />
-            <span class="rw-tc-name">🃏 Jagras Slayer</span>
+            <span class="rw-tc-name">🃏 {{ activeSlayerCardName }}</span>
             <span class="rw-tc-effect rw-tc-effect-plus">+1 🎲</span>
           </label>
           <label
@@ -4867,17 +5347,17 @@ const openPackDrawer = () => {
         </p>
         <div class="rw-tc-modifiers rw-tc-modifiers-compact">
           <label
-            v-if="selectedMonster?.monster_id === GREAT_JAGRAS_ID"
+            v-if="activeSlayerCardId"
             class="rw-tc-toggle"
-            :class="{ active: jagrasSlayerActive, 'rw-tc-readonly': room.inRoom && !room.isHost }"
+            :class="{ active: slayerActive, 'rw-tc-readonly': room.inRoom && !room.isHost }"
           >
             <input
               type="checkbox"
-              :checked="jagrasSlayerActive"
+              :checked="slayerActive"
               :disabled="room.inRoom && !room.isHost"
-              @change="setJagrasSlayerModifier($event.target.checked)"
+              @change="setSlayerModifier($event.target.checked)"
             />
-            <span class="rw-tc-name">🃏 Jagras Slayer</span>
+            <span class="rw-tc-name">🃏 {{ activeSlayerCardName }}</span>
             <span class="rw-tc-effect rw-tc-effect-plus">+1 🎲</span>
           </label>
           <label
@@ -6246,8 +6726,12 @@ const openPackDrawer = () => {
             >
               <div class="tr-token-inner">
                 <div class="tr-token-back">?</div>
-                <div class="tr-token-front" :class="token.value > 0 ? 'val-pos' : token.value < 0 ? 'val-neg' : 'val-zero'">
-                  {{ token.value > 0 ? '+' : '' }}{{ token.value }}
+                <div
+                  class="tr-token-front"
+                  :class="token.value == null ? 'tr-token-pending' : token.value > 0 ? 'val-pos' : token.value < 0 ? 'val-neg' : 'val-zero'"
+                >
+                  <template v-if="token.value == null">…</template>
+                  <template v-else>{{ token.value > 0 ? '+' : '' }}{{ token.value }}</template>
                 </div>
               </div>
             </div>
@@ -10374,6 +10858,225 @@ const openPackDrawer = () => {
   font-style: italic;
 }
 
+/* ── Dialog Auto-Complete ── */
+.fx-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(60, 140, 90, 0.07);
+  border: 1px solid rgba(80, 180, 110, 0.25);
+}
+.fx-panel-parchment {
+  margin-top: 12px;
+  background: rgba(60, 110, 80, 0.1);
+  border-color: rgba(80, 160, 110, 0.3);
+}
+.fx-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.fx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 12px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #cfe8d5;
+  background: rgba(80, 180, 110, 0.12);
+  border: 1px solid rgba(80, 180, 110, 0.3);
+  transition: 0.15s;
+}
+.fx-chip.fx-done {
+  color: #7fd99a;
+  background: rgba(80, 200, 120, 0.2);
+  border-color: rgba(90, 210, 130, 0.55);
+}
+.fx-chip.fx-manual {
+  color: #e0c088;
+  background: rgba(200, 155, 60, 0.1);
+  border-color: rgba(200, 155, 60, 0.3);
+}
+.fx-mark {
+  font-size: 10px;
+  opacity: 0.9;
+}
+.fx-note {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #7fd99a;
+  opacity: 0.85;
+}
+
+.fx-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 96px;
+  transform: translateX(-50%);
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  max-width: min(90vw, 340px);
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(10, 14, 10, 0.95);
+  border: 1px solid rgba(90, 180, 120, 0.45);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+}
+.fx-toast-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #8fe0aa;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+.fx-toast-count {
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(90, 200, 130, 0.25);
+  font-size: 11px;
+  text-align: center;
+}
+.fx-toast-sub {
+  font-size: 11px;
+  color: #e0b060;
+  white-space: nowrap;
+}
+
+/* ── Dialog Dice ── */
+.dd-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(4px);
+}
+.dd-modal {
+  width: min(94vw, 400px);
+  max-height: 88vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 22px 20px;
+  border-radius: 14px;
+  background: linear-gradient(to bottom, #1a1408, #0d0a05);
+  border: 1px solid rgba(200, 155, 60, 0.45);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+.dd-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: bold;
+  color: #ffd27a;
+  letter-spacing: 2px;
+}
+.dd-scope {
+  margin: 0;
+  font-size: 11px;
+  color: #a88040;
+  letter-spacing: 0.5px;
+  text-align: center;
+}
+.dd-die-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0;
+}
+.dd-die {
+  width: 76px;
+  height: 76px;
+}
+.dd-table {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dd-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(124, 90, 43, 0.3);
+  transition: 0.2s;
+}
+.dd-row-hit {
+  background: rgba(80, 200, 120, 0.16);
+  border-color: rgba(90, 210, 130, 0.6);
+}
+.dd-range {
+  flex-shrink: 0;
+  min-width: 34px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #c89b3c;
+}
+.dd-row-hit .dd-range { color: #8fe0aa; }
+.dd-row-text {
+  font-size: 12px;
+  color: #d8c9a8;
+  line-height: 1.5;
+}
+.dd-result {
+  margin: 0;
+  font-size: 14px;
+  color: #ffd27a;
+  text-align: center;
+}
+.dd-result strong {
+  font-size: 20px;
+  color: #8fe0aa;
+}
+.dd-roll-btn,
+.dd-close-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(200, 155, 60, 0.5);
+  background: rgba(200, 155, 60, 0.15);
+  color: #ffd27a;
+  font-size: 14px;
+  font-weight: bold;
+  font-family: inherit;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.dd-roll-btn:hover,
+.dd-close-btn:hover {
+  background: rgba(200, 155, 60, 0.28);
+}
+.dd-close-btn {
+  border-color: rgba(90, 200, 130, 0.5);
+  background: rgba(70, 180, 110, 0.16);
+  color: #8fe0aa;
+}
+.dd-waiting {
+  margin: 0;
+  font-size: 12px;
+  color: #a88040;
+  font-style: italic;
+}
+
 .ad-stamp-tie {
   border-color: rgba(255, 153, 85, 0.4);
   color: #ff9955;
@@ -12499,6 +13202,15 @@ const openPackDrawer = () => {
   border: 2px solid #c89b3c;
   transform: rotateY(180deg);
   box-shadow: 0 0 16px rgba(200,155,60,0.4);
+}
+/* Guest ที่ค่ายังไม่ sync มา — กะพริบรอแทนที่จะโชว์ช่องว่าง */
+.tr-token-pending {
+  color: rgba(200,155,60,0.5);
+  animation: tr-pending-pulse 1s ease-in-out infinite;
+}
+@keyframes tr-pending-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.9; }
 }
 .tr-total-wrap {
   display: flex;
