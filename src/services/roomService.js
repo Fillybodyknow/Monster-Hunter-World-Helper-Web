@@ -268,6 +268,13 @@ export const pushDialogCounts = (code, hunterId, counts) =>
 export const clearAllDialogCounts = (code) =>
   remove(ref(db, `rooms/${code}/dialogCounts`))
 
+// ── Dialog Dice (ผลทอยแบบ "ทอยครั้งเดียว" ใช้ร่วมกันทั้งกลุ่ม) ──
+export const pushDialogDice = (code, key, value) =>
+  set(ref(db, `rooms/${code}/dialogDice/${key}`), value)
+
+export const clearDialogDice = (code) =>
+  remove(ref(db, `rooms/${code}/dialogDice`))
+
 export const pushActionVote = (code, hunterId, action) =>
   set(ref(db, `rooms/${code}/actionVotes/${hunterId}`), action)
 
