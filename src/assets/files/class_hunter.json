@@ -230,5 +230,63 @@
       }
     },
     "thumbnail": "assets/img/class/lance.png"
+  },
+  {
+    "hunter_class_id": 9,
+    "hunter_class": "Hunting Horn",
+    "starter_set": {
+      "weapon": {
+        "weapon_type_id": 1,
+        "item_id": 1,
+        "is_equip": true
+      },
+      "armors": {
+        "helm": {
+          "equip_set_id": 2,
+          "equip_id": 1,
+          "is_equip": true
+        },
+        "mail": {
+          "equip_set_id": 2,
+          "equip_id": 2,
+          "is_equip": true
+        },
+        "greaves": {
+          "equip_set_id": 2,
+          "equip_id": 3,
+          "is_equip": true
+        }
+      }
+    },
+    "thumbnail": "assets/img/class/hunting_horn.png"
+  },
+  {
+    "hunter_class_id": 10,
+    "hunter_class": "Gunlance",
+    "starter_set": {
+      "weapon": {
+        "weapon_type_id": 1,
+        "item_id": 1,
+        "is_equip": true
+      },
+      "armors": {
+        "helm": {
+          "equip_set_id": 1,
+          "equip_id": 1,
+          "is_equip": true
+        },
+        "mail": {
+          "equip_set_id": 1,
+          "equip_id": 2,
+          "is_equip": true
+        },
+        "greaves": {
+          "equip_set_id": 1,
+          "equip_id": 3,
+          "is_equip": true
+        }
+      }
+    },
+    "thumbnail": "assets/img/class/gunlance.png"
   }
 ]

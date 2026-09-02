@@ -131,6 +131,16 @@
                         "id": 8,
                         "name": "Lance",
                         "thumbnail": "assets/img/equiments/weapons/lanceR1.png"
+                    },
+                    {
+                        "id": 9,
+                        "name": "Hunting Horn",
+                        "thumbnail": "assets/img/equiments/weapons/hunting_hornR1.png"
+                    },
+                    {
+                        "id": 10,
+                        "name": "Gunlance",
+                        "thumbnail": "assets/img/equiments/weapons/gunlanceR1.png"
                     }
                 ]
             },
@@ -176,6 +186,16 @@
                         "id": 8,
                         "name": "Lance",
                         "thumbnail": "assets/img/equiments/weapons/lanceR2.png"
+                    },
+                    {
+                        "id": 9,
+                        "name": "Hunting Horn",
+                        "thumbnail": "assets/img/equiments/weapons/hunting_hornR2.png"
+                    },
+                    {
+                        "id": 10,
+                        "name": "Gunlance",
+                        "thumbnail": "assets/img/equiments/weapons/gunlanceR2.png"
                     }
                 ]
             },
@@ -221,6 +241,16 @@
                         "id": 8,
                         "name": "Lance",
                         "thumbnail": "assets/img/equiments/weapons/lanceR3.png"
+                    },
+                    {
+                        "id": 9,
+                        "name": "Hunting Horn",
+                        "thumbnail": "assets/img/equiments/weapons/hunting_hornR3.png"
+                    },
+                    {
+                        "id": 10,
+                        "name": "Gunlance",
+                        "thumbnail": "assets/img/equiments/weapons/gunlanceR3.png"
                     }
                 ]
             },
@@ -266,6 +296,16 @@
                         "id": 8,
                         "name": "Lance",
                         "thumbnail": "assets/img/equiments/weapons/lanceR4.png"
+                    },
+                    {
+                        "id": 9,
+                        "name": "Hunting Horn",
+                        "thumbnail": "assets/img/equiments/weapons/hunting_hornR4.png"
+                    },
+                    {
+                        "id": 10,
+                        "name": "Gunlance",
+                        "thumbnail": "assets/img/equiments/weapons/gunlanceR4.png"
                     }
                 ]
             }
