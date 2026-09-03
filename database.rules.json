@@ -5,6 +5,12 @@
         ".read": "auth != null",
         ".write": "auth != null"
       }
+    },
+    "lobbies": {
+      ".read": "auth != null",
+      "$roomCode": {
+        ".write": "auth != null"
+      }
     }
   }
 }

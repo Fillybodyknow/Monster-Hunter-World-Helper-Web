@@ -1,5 +1,25 @@
 import { db, authReady } from './firebase'
 import { ref, set, get, update, onValue, remove, onDisconnect, push } from 'firebase/database'
+import { getWeapons } from './equipService'
+
+// สรุปอาวุธที่ถืออยู่ให้เพื่อนร่วมตี้เห็น (ชื่อ + rarity + ไอคอน)
+// Firebase ไม่รับ undefined — คืน null ถ้าหาไม่เจอ
+const buildWeaponSummary = async (hunter) => {
+  try {
+    const equipped = hunter?.equipments?.weapons?.find((w) => w.is_equip)
+    if (!equipped) return null
+    const w = await getWeapons(hunter.hunter_class_id, equipped.weapon_type_id, equipped.item_id)
+    if (!w) return null
+    return {
+      name: w.item ?? '',
+      rarity: w.rarity ?? 0,
+      thumbnail: w.thumbnail ?? '',
+      weapon_type: w.weapon_type ?? '',
+    }
+  } catch {
+    return null
+  }
+}
 
 const generateRoomCode = () => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -45,6 +65,8 @@ export const createRoom = async (hunter) => {
     exists = snap.exists()
   }
 
+  const weapon = await buildWeaponSummary(hunter)
+
   const roomData = {
     code,
     hostId: hunter.hunter_id,
@@ -56,6 +78,8 @@ export const createRoom = async (hunter) => {
         hunter_name: hunter.hunter_name,
         hunter_class_id: hunter.hunter_class_id,
         palico_name: hunter.palico_name,
+        campaign_day: hunter.campaign_day ?? 1,
+        weapon,
         isHost: true,
         joinedAt: Date.now(),
       },
@@ -91,11 +115,23 @@ export const joinRoom = async (code, hunter) => {
     hunter_name: hunter.hunter_name,
     hunter_class_id: hunter.hunter_class_id,
     palico_name: hunter.palico_name,
+    campaign_day: hunter.campaign_day ?? 1,
+    weapon: await buildWeaponSummary(hunter),
     isHost: existing?.isHost ?? false,
     joinedAt: existing?.joinedAt ?? Date.now(),
   })
 
   return room
+}
+
+// อัปเดต day/อาวุธของตัวเองในห้อง — เรียกได้ซ้ำ ๆ ใช้กับห้องที่เข้าไปก่อนหน้าแล้วด้วย
+export const updateHunterProfile = async (code, hunter) => {
+  await authReady()
+  if (!code || !hunter?.hunter_id) return
+  return update(ref(db, `rooms/${code}/hunters/${hunter.hunter_id}`), {
+    campaign_day: hunter.campaign_day ?? 1,
+    weapon: await buildWeaponSummary(hunter),
+  })
 }
 
 // ── Leave Room ───────────────────────────────────────────
@@ -312,3 +348,37 @@ export const pushHqReady = (code, hunterId, ready) =>
   set(ref(db, `rooms/${code}/hqState/${hunterId}/ready`), ready)
 export const clearHqState = (code) =>
   remove(ref(db, `rooms/${code}/hqState`))
+
+// ── Lobby Board (ประกาศห้องให้คนอื่นเห็นและกด Join) ──────────
+// แยกจาก rooms/ เพราะต้อง list ทั้งหมด — เก็บแค่ข้อมูลที่ใช้แสดงบนการ์ด
+// ไม่มี state เกมและไม่มีรหัสผ่าน (เก็บ hash ไว้ใน rooms/ แทน)
+export const publishLobby = async (code, data) => {
+  await authReady()
+  const lobbyRef = ref(db, `lobbies/${code}`)
+  // Host หลุด = ห้องหาย ไม่ทิ้งประกาศค้างไว้บนบอร์ด
+  onDisconnect(lobbyRef).remove()
+  return set(lobbyRef, { ...data, code, updatedAt: Date.now() })
+}
+
+export const updateLobby = (code, patch) =>
+  update(ref(db, `lobbies/${code}`), { ...patch, updatedAt: Date.now() })
+
+export const removeLobby = (code) => remove(ref(db, `lobbies/${code}`))
+
+export const listenLobbies = (callback) => {
+  let unsub = () => {}
+  authReady().then(() => {
+    unsub = onValue(ref(db, 'lobbies'), (snap) => callback(snap.val() ?? {}))
+  })
+  return () => unsub()
+}
+
+// รหัสผ่านห้อง — เก็บ hash ไว้ใน rooms/ ไม่ใช่ lobbies/ ที่ใครก็อ่านได้
+export const setRoomPassword = (code, hash) =>
+  set(ref(db, `rooms/${code}/passwordHash`), hash ?? null)
+
+export const getRoomPassword = async (code) => {
+  await authReady()
+  const snap = await get(ref(db, `rooms/${code}/passwordHash`))
+  return snap.exists() ? snap.val() : null
+}

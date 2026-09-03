@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onActivated, inject } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onActivated, onUnmounted, inject } from 'vue'
 
 defineOptions({ name: 'Quest' })
 import ancientData from '@/assets/files/ancient-quest-book.json'
@@ -9,6 +9,7 @@ import { hunter, loadHunter, saveHunter } from '@/stores/hunter'
 import monsterInfoData from '@/assets/files/monster_info.json'
 import timeCardData from '@/assets/files/time_card_management.json'
 import hunterClassData from '@/assets/files/class_hunter.json'
+import roomNameTemplates from '@/assets/files/room_name_templates.json'
 const getHunterClass = (id) => hunterClassData.find((c) => c.hunter_class_id === id)
 import monsterPartsData from '@/assets/files/monster_parts.json'
 import elementalData from '@/assets/files/elemental.json'
@@ -25,9 +26,77 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 const addNotif = inject('addNotif', () => {})
 
 // Coop
-const showCoopLobby = ref(false)
 const showCoopModeSelect = ref(false)
-const showJoinInput = ref(false)
+
+// ── Co-op Room Board (หน้าเต็ม ไม่ใช่ modal) ─────────────────
+const passwordFor = ref(null)
+const passwordInput = ref('')
+const joiningCode = ref('')
+const browserError = ref('')
+
+const openRoomBoard = () => {
+  browserError.value = ''
+  passwordFor.value = null
+  joinError.value = ''
+  phase.value = 'rooms'
+  room.startLobbyBrowse?.()
+}
+
+const closeRoomBoard = () => {
+  room.stopLobbyBrowse?.()
+  passwordFor.value = null
+  browserError.value = ''
+  phase.value = 'book'
+}
+
+const _enterLobby = async (code) => {
+  joiningCode.value = code
+  browserError.value = ''
+  try {
+    await room.join(code, hunter.value)
+    room.stopLobbyBrowse?.()
+    passwordFor.value = null
+    phase.value = 'lobby'
+  } catch (e) {
+    browserError.value = e.message
+  } finally {
+    joiningCode.value = ''
+  }
+}
+
+const handleJoinLobby = async (lobby) => {
+  if (!hunter.value || joiningCode.value) return
+  if (lobby.hasPassword) {
+    passwordFor.value = lobby
+    passwordInput.value = ''
+    browserError.value = ''
+    return
+  }
+  await _enterLobby(lobby.code)
+}
+
+const submitLobbyPassword = async () => {
+  const lobby = passwordFor.value
+  if (!lobby || joiningCode.value) return
+  joiningCode.value = lobby.code
+  const ok = await room.verifyLobbyPassword?.(lobby.code, passwordInput.value.trim())
+  joiningCode.value = ''
+  if (!ok) {
+    browserError.value = 'รหัสไม่ถูกต้อง'
+    return
+  }
+  await _enterLobby(lobby.code)
+}
+
+// บอกเหตุผลตั้งแต่บนการ์ด ดีกว่าให้กดแล้วเด้ง error
+const lobbyJoinBlock = (lobby) => {
+  if ((lobby.memberCount ?? 0) >= 4) return 'ห้องเต็ม'
+  const taken = (lobby.members ?? []).some(
+    (m) => m.hunter_class_id === hunter.value?.hunter_class_id && m.hunter_id !== hunter.value?.hunter_id,
+  )
+  if (taken) return 'Class ซ้ำ'
+  return null
+}
 const joinCode = ref('')
 const joinError = ref('')
 const joinLoading = ref(false)
@@ -35,9 +104,30 @@ const joinLoading = ref(false)
 // Quest Mode: 'full' | 'minimal'
 const questMode = ref('full')
 
+// ── Post Quest: ตั้งชื่อห้อง + รหัสผ่าน ──────────────────────
+const roomName = ref('')
+const roomPassword = ref('')
+const useRoomPassword = ref(false)
+
+const randomRoomName = () => {
+  const list = roomNameTemplates.templates
+  const tpl = list[Math.floor(Math.random() * list.length)]
+  return tpl.replace('{monster}', selectedMonster.value?.monster_name ?? 'มอนสเตอร์')
+}
+
+// สุ่มชื่อใหม่ทุกครั้งที่เปิด เพราะเป้าหมายอาจเปลี่ยนไปแล้ว
+watch(showCoopModeSelect, (open) => {
+  if (!open) return
+  roomName.value = randomRoomName()
+  roomPassword.value = ''
+  useRoomPassword.value = false
+})
+
 const startCoopQuest = async () => {
   if (!hunter.value) return
   if (!room.inRoom) await room.create(hunter.value)
+  // ห้องที่ค้างอยู่จะข้าม create — เขียน day/อาวุธล่าสุดทับเสมอ
+  await room.syncMyProfile?.(hunter.value)
   const _exhausted = isQuestExhausted(selectedQuest.value)
   await room.setQuestInfo({
     monster_id: selectedMonster.value?.monster_id,
@@ -49,11 +139,25 @@ const startCoopQuest = async () => {
     exhausted_attempt: _exhausted,
     hq_max_actions: _exhausted ? 2 : 3,
   })
-  showCoopLobby.value = true
+  // ประกาศห้องขึ้นบอร์ดให้คนอื่นเห็นและกด Join ได้
+  await room.postLobby?.({
+    roomName: roomName.value.trim() || randomRoomName(),
+    password: useRoomPassword.value ? roomPassword.value.trim() : '',
+    questMode: questMode.value,
+    questInfo: {
+      monster_name: selectedMonster.value?.monster_name,
+      thumbnail: selectedMonster.value?.thumbnail,
+      quest_type: selectedQuest.value?.quest_type,
+      difficulty_level: selectedQuest.value?.difficulty_level,
+      exhausted_attempt: _exhausted,
+    },
+  })
+  phase.value = 'lobby'
 }
 
 const onCoopStart = () => {
-  showCoopLobby.value = false
+  // เควสเริ่มแล้ว ถอดออกจากบอร์ด ไม่ให้คนนอกเข้ามากลางเกม
+  room.closeLobby?.()
 
   if (!selectedMonster.value && room.questInfo) {
     const info = room.questInfo
@@ -145,7 +249,7 @@ const onCoopStart = () => {
 }
 
 const onCoopLeave = () => {
-  showCoopLobby.value = false
+  phase.value = 'book'
 }
 
 const handleJoinQuest = async () => {
@@ -154,9 +258,10 @@ const handleJoinQuest = async () => {
   joinError.value = ''
   try {
     await room.join(joinCode.value.trim().toUpperCase(), hunter.value)
-    showJoinInput.value = false
     joinCode.value = ''
-    showCoopLobby.value = true
+    // เข้าห้องได้แล้วก็ไม่ต้องดูบอร์ดต่อ
+    room.stopLobbyBrowse?.()
+    phase.value = 'lobby'
   } catch (e) {
     joinError.value = e.message
     addNotif(`❌ ${e.message}`, 'error')
@@ -167,6 +272,8 @@ const handleJoinQuest = async () => {
 
 onMounted(loadHunter)
 onActivated(loadHunter)
+// กัน listener ค้างถ้าออกจากหน้าโดยไม่ได้ปิดบอร์ด
+onUnmounted(() => room.stopLobbyBrowse?.())
 
 const phase = ref('book')
 const selectedBook = ref(null)
@@ -805,18 +912,39 @@ watch(() => room.joinSignal, () => {
   if (room.syncedDialogId) {
     doNav(room.syncedDialogId)
   } else {
-    const stop = watch([() => room.syncedDialogId, () => room.syncedPhase], ([id, newSp]) => {
-      if (newSp === 'hqVote' || newSp === 'hq' || newSp === 'handlerStart') {
-        stop()
-        _resolveQuestFromRoom()
-        isExhaustedAttempt.value = room.questInfo?.exhausted_attempt ?? false
-        phase.value = newSp
-        return
-      }
-      if (!id) return
-      stop()
-      doNav(id)
-    })
+    // ไม่มีทั้ง dialog และ phase = เควสยังไม่เริ่ม → เพิ่งหลุดจากล็อบบี้ พากลับเข้าไปใหม่
+    if (room.questInfo) {
+      _resolveQuestFromRoom()
+      isExhaustedAttempt.value = room.questInfo.exhausted_attempt ?? false
+      if (room.questModeState) questMode.value = room.questModeState
+      phase.value = 'lobby'
+    }
+    // questInfo อาจมาช้ากว่า joinSignal — เฝ้าไว้ด้วย ไม่งั้นค้างหน้า Quest Board
+    const stop = watch(
+      [() => room.syncedDialogId, () => room.syncedPhase, () => room.questInfo],
+      ([id, newSp, qi]) => {
+        if (newSp === 'hqVote' || newSp === 'hq' || newSp === 'handlerStart') {
+          stop()
+          _resolveQuestFromRoom()
+          isExhaustedAttempt.value = room.questInfo?.exhausted_attempt ?? false
+          phase.value = newSp
+          return
+        }
+        if (id) {
+          stop()
+          doNav(id)
+          return
+        }
+        // เควสยังไม่เริ่ม = ยังอยู่ในล็อบบี้ (ไม่ stop เพราะต้องรอ Host กดเริ่มต่อ)
+        if (qi && phase.value !== 'lobby') {
+          _resolveQuestFromRoom()
+          isExhaustedAttempt.value = qi.exhausted_attempt ?? false
+          if (room.questModeState) questMode.value = room.questModeState
+          phase.value = 'lobby'
+        }
+      },
+      { immediate: true },
+    )
   }
 })
 
@@ -1395,6 +1523,7 @@ const onFail = () => {
 
 const goBack = () => {
   const map = {
+    rooms: () => closeRoomBoard(),
     huntingPanel: () => { phase.value = 'hunting' },
     detail: () => { phase.value = 'quest'; selectedQuest.value = null },
     quest: () => { phase.value = 'monster'; selectedMonster.value = null },
@@ -3626,7 +3755,7 @@ const openPackDrawer = () => {
       </div>
       <p class="board-subtitle">Commission Quest Board</p>
 
-      <!-- Join Quest -->
+      <!-- Co-op -->
       <div class="join-quest-bar">
         <div v-if="room.inRoom" class="join-quest-inroom">
           <span class="join-quest-icon">⚔</span>
@@ -3634,37 +3763,14 @@ const openPackDrawer = () => {
           <span class="join-room-count">{{ room.hunterCount }}/4 Hunters</span>
           <button class="join-leave-btn" @click="room.leave()">ออก</button>
         </div>
-        <div v-else-if="!showJoinInput" class="join-quest-entry">
-          <!-- Reconnect button ถ้ามี saved room code -->
-          <div v-if="room.savedRoomCode" class="reconnect-bar">
-            <span class="reconnect-label">🔌 ห้องล่าสุด</span>
-            <span class="reconnect-code">{{ room.savedRoomCode }}</span>
-            <button
-              class="reconnect-btn"
-              @click="joinCode = room.savedRoomCode; handleJoinQuest()"
-              :disabled="joinLoading"
-            >{{ joinLoading ? '...' : 'Reconnect' }}</button>
-            <button class="reconnect-clear" @click="room.clearSavedRoom()">✕</button>
+        <button v-else class="coop-board-entry" @click="openRoomBoard">
+          <span class="cbe-icon">📜</span>
+          <div class="cbe-text">
+            <span class="cbe-title">Co-op Room Board</span>
+            <span class="cbe-sub">ดูห้องที่เปิดอยู่ · เข้าร่วมด้วย Room Code</span>
           </div>
-          <button class="join-quest-btn" @click="showJoinInput = true">
-            🚪 Join Quest (Co-op)
-          </button>
-        </div>
-        <div v-else class="join-quest-form">
-          <input
-            v-model="joinCode"
-            class="join-code-input"
-            maxlength="6"
-            placeholder="Room Code"
-            @keyup.enter="handleJoinQuest"
-            autofocus
-          />
-          <button class="join-submit-btn" @click="handleJoinQuest" :disabled="joinLoading || joinCode.length < 6">
-            {{ joinLoading ? '...' : 'เข้าร่วม' }}
-          </button>
-          <button class="join-cancel-btn" @click="showJoinInput = false; joinError = ''">ยกเลิก</button>
-        </div>
-        <p v-if="joinError" class="join-error">{{ joinError }}</p>
+          <span class="cbe-arrow">▶</span>
+        </button>
       </div>
 
       <div class="cal-months-row">
@@ -3933,7 +4039,7 @@ const openPackDrawer = () => {
 
     </div>
 
-    <CoopLobbyModal :show="showCoopLobby" @start="onCoopStart" @leave="onCoopLeave" />
+    <CoopLobbyModal v-if="phase === 'lobby'" @start="onCoopStart" @leave="onCoopLeave" />
 
     <!-- ═══════════ HQ VOTE PHASE ═══════════ -->
     <div v-if="phase === 'hqVote'" class="phase-hq-vote">
@@ -4069,6 +4175,172 @@ const openPackDrawer = () => {
       </div>
     </div>
 
+    <!-- ═══════════ CO-OP ROOM BOARD ═══════════ -->
+    <div v-if="phase === 'rooms'" class="phase-rooms">
+      <div class="board-header">
+        <div class="board-ornament">✦</div>
+        <h1 class="board-title">Co-op Room Board</h1>
+        <div class="board-ornament">✦</div>
+      </div>
+      <p class="board-subtitle">Join a Hunting Party</p>
+
+      <div class="rb-content">
+      <button class="rb-back" @click="closeRoomBoard">← กลับหน้า Quest Board</button>
+
+      <!-- เข้าด้วย Room Code / Reconnect -->
+      <div class="rb-code-panel">
+        <div v-if="room.savedRoomCode" class="reconnect-bar">
+          <span class="reconnect-label">🔌 ห้องล่าสุด</span>
+          <span class="reconnect-code">{{ room.savedRoomCode }}</span>
+          <button
+            class="reconnect-btn"
+            @click="joinCode = room.savedRoomCode; handleJoinQuest()"
+            :disabled="joinLoading"
+          >{{ joinLoading ? '...' : 'Reconnect' }}</button>
+          <button class="reconnect-clear" @click="room.clearSavedRoom()">✕</button>
+        </div>
+
+        <div class="rb-code-row">
+          <input
+            v-model="joinCode"
+            class="join-code-input rb-code-input"
+            maxlength="6"
+            placeholder="ROOM CODE"
+            @keyup.enter="handleJoinQuest"
+          />
+          <button
+            class="join-submit-btn"
+            @click="handleJoinQuest"
+            :disabled="joinLoading || joinCode.length < 6"
+          >{{ joinLoading ? '...' : '🚪 เข้าร่วม' }}</button>
+        </div>
+        <p v-if="joinError" class="join-error">{{ joinError }}</p>
+      </div>
+
+      <!-- รายการห้อง -->
+      <div class="rb-list-head">
+        <div class="rb-list-line"></div>
+        <span class="rb-list-label">ห้องที่เปิดอยู่ · {{ room.lobbyList.length }}</span>
+        <div class="rb-list-line"></div>
+      </div>
+
+      <div class="rb-board">
+        <div v-if="!room.lobbyList.length" class="rb-empty">
+          <span class="rb-empty-icon">🏕</span>
+          <p class="rb-empty-text">ยังไม่มีห้องเปิดอยู่ตอนนี้</p>
+          <p class="rb-empty-sub">เลือกเควสแล้วกด Post Quest เพื่อเปิดห้องเอง</p>
+        </div>
+
+        <div v-else class="rb-list">
+        <div v-for="lobby in room.lobbyList" :key="lobby.code" class="rb-card">
+
+          <div class="rb-card-top">
+            <img
+              v-if="lobby.questInfo?.thumbnail"
+              :src="getImg(lobby.questInfo.thumbnail)"
+              class="rb-monster-img"
+            />
+            <div class="rb-card-main">
+              <div class="rb-name-row">
+                <span class="rb-name">{{ lobby.roomName }}</span>
+                <span v-if="lobby.hasPassword" class="rb-lock" title="ต้องใช้รหัสผ่าน">🔒</span>
+              </div>
+              <div class="rb-quest-row">
+                <span class="rb-monster-name">{{ lobby.questInfo?.monster_name ?? '—' }}</span>
+                <span v-if="lobby.questInfo?.difficulty_level" class="rb-stars">
+                  <span
+                    v-for="i in lobby.questInfo.difficulty_level"
+                    :key="i"
+                    :style="{ color: starColor(lobby.questInfo.difficulty_level, i - 1) }"
+                  >★</span>
+                </span>
+              </div>
+              <div class="rb-tag-row">
+                <span v-if="lobby.questInfo?.quest_type" class="rb-tag">{{ lobby.questInfo.quest_type }}</span>
+                <span class="rb-tag rb-tag-mode">{{ lobby.questMode === 'minimal' ? 'Minimal' : 'Full' }}</span>
+                <span v-if="lobby.questInfo?.exhausted_attempt" class="rb-tag rb-tag-warn">HQ บังคับ</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="rb-members">
+            <div class="rb-members-head">
+              <span class="rb-members-label">Hunters</span>
+              <span class="rb-members-count">{{ lobby.memberCount ?? 0 }}/4</span>
+            </div>
+
+            <div class="rb-member-grid">
+              <div
+                v-for="m in (lobby.members ?? [])"
+                :key="m.hunter_id"
+                class="rb-member-cell"
+                :class="{ 'rb-member-host': m.hunter_id === lobby.hostId }"
+                :title="`${m.hunter_name} · ${getHunterClass(m.hunter_class_id)?.hunter_class ?? ''} · DAY ${m.campaign_day ?? 1}${m.weapon ? ' · ' + m.weapon.name : ''}`"
+              >
+                <img
+                  v-if="getHunterClass(m.hunter_class_id)?.thumbnail"
+                  :src="getImg(getHunterClass(m.hunter_class_id).thumbnail)"
+                  class="rb-member-icon"
+                />
+                <span class="rb-member-name">{{ m.hunter_name }}</span>
+                <span v-if="m.hunter_id === lobby.hostId" class="rb-host-tag">HOST</span>
+              </div>
+
+              <div
+                v-for="i in Math.max(0, 4 - (lobby.memberCount ?? 0))"
+                :key="'slot' + i"
+                class="rb-member-cell rb-member-empty"
+              >
+                <span class="rb-empty-slot-text">ว่าง</span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            class="rb-join-btn"
+            :disabled="!!lobbyJoinBlock(lobby) || joiningCode === lobby.code"
+            @click="handleJoinLobby(lobby)"
+          >
+            <template v-if="joiningCode === lobby.code">กำลังเข้าร่วม...</template>
+            <template v-else-if="lobbyJoinBlock(lobby)">{{ lobbyJoinBlock(lobby) }}</template>
+            <template v-else>{{ lobby.hasPassword ? '🔒 เข้าร่วม' : 'เข้าร่วม' }}</template>
+          </button>
+          </div>
+        </div>
+      </div>
+
+      <p v-if="browserError && !passwordFor" class="rb-error">{{ browserError }}</p>
+      </div>
+
+      <!-- Password prompt -->
+      <Teleport to="body">
+        <Transition name="slain-fade">
+          <div v-if="passwordFor" class="rb-pass-overlay" @click.self="passwordFor = null">
+            <div class="rb-pass-box">
+              <p class="rb-pass-title">🔒 ห้องนี้ต้องใช้รหัส</p>
+              <p class="rb-pass-room">{{ passwordFor.roomName }}</p>
+              <input
+                v-model="passwordInput"
+                class="rb-pass-input"
+                maxlength="20"
+                placeholder="กรอกรหัส"
+                @keyup.enter="submitLobbyPassword"
+              />
+              <p v-if="browserError" class="rb-error">{{ browserError }}</p>
+              <div class="rb-pass-actions">
+                <button class="rb-pass-cancel" @click="passwordFor = null; browserError = ''">ยกเลิก</button>
+                <button
+                  class="rb-pass-ok"
+                  :disabled="!passwordInput.trim() || !!joiningCode"
+                  @click="submitLobbyPassword"
+                >{{ joiningCode ? '...' : 'เข้าร่วม' }}</button>
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </Teleport>
+    </div>
+
     <!-- ═══════════ CO-OP QUEST MODE MODAL ═══════════ -->
     <Teleport to="body">
       <Transition name="slain-fade">
@@ -4087,9 +4359,41 @@ const openPackDrawer = () => {
                 <span class="qmode-desc">HP · Part Damage · Status · Element เท่านั้น</span>
               </button>
             </div>
+            <div class="rn-section">
+              <label class="rn-label">ชื่อห้อง</label>
+              <div class="rn-input-row">
+                <input
+                  v-model="roomName"
+                  class="rn-input"
+                  type="text"
+                  maxlength="60"
+                  placeholder="ตั้งชื่อห้องของคุณ"
+                />
+                <button class="rn-dice-btn" title="สุ่มชื่อใหม่" @click="roomName = randomRoomName()">🎲</button>
+              </div>
+
+              <label class="rn-lock-toggle" :class="{ 'rn-lock-on': useRoomPassword }">
+                <input type="checkbox" v-model="useRoomPassword" />
+                <span class="rn-lock-icon">{{ useRoomPassword ? '🔒' : '🔓' }}</span>
+                <span class="rn-lock-text">ตั้งรหัสเข้าห้อง</span>
+              </label>
+              <input
+                v-if="useRoomPassword"
+                v-model="roomPassword"
+                class="rn-input rn-pass-input"
+                type="text"
+                maxlength="20"
+                placeholder="รหัสผ่าน"
+              />
+            </div>
+
             <div class="cqm-actions">
               <button class="coop-mode-cancel" @click="showCoopModeSelect = false; questMode = 'full'">ยกเลิก</button>
-              <button class="coop-mode-confirm" @click="showCoopModeSelect = false; startCoopQuest()">สร้าง Lobby</button>
+              <button
+                class="coop-mode-confirm"
+                :disabled="useRoomPassword && !roomPassword.trim()"
+                @click="showCoopModeSelect = false; startCoopQuest()"
+              >สร้าง Lobby</button>
             </div>
           </div>
         </div>
@@ -8026,6 +8330,614 @@ const openPackDrawer = () => {
   margin: 0;
   text-align: center;
 }
+/* ── Room Browser ── */
+/* ทางเข้า Co-op บนหน้า Quest Board */
+.coop-board-entry {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(80,180,110,0.45);
+  background: rgba(80,180,110,0.1);
+  font-family: inherit;
+  cursor: pointer;
+  transition: 0.15s;
+  text-align: left;
+}
+.coop-board-entry:hover {
+  background: rgba(80,190,115,0.2);
+  border-color: rgba(110,220,150,0.7);
+}
+.cbe-icon { font-size: 20px; flex-shrink: 0; }
+.cbe-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cbe-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: #8fe0aa;
+  letter-spacing: 1px;
+}
+.cbe-sub {
+  font-size: 10px;
+  color: rgba(143,224,170,0.65);
+}
+.cbe-arrow {
+  font-size: 11px;
+  color: rgba(143,224,170,0.6);
+  flex-shrink: 0;
+}
+
+/* ── Co-op Room Board (หน้าเต็ม) ── */
+.phase-rooms {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 40px;
+}
+.rb-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+/* กระดานไม้และใบประกาศกินเต็มความกว้าง */
+.rb-code-panel {
+  width: 100%;
+  max-width: 560px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.rb-board {
+  width: 100%;
+}
+.rb-back {
+  align-self: flex-start;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(124,90,43,0.45);
+  background: rgba(0,0,0,0.25);
+  color: #a88040;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.rb-back:hover {
+  background: rgba(200,155,60,0.12);
+  color: #ffd27a;
+}
+.rb-code-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(124,90,43,0.35);
+  background: rgba(0,0,0,0.25);
+}
+.rb-code-row {
+  display: flex;
+  gap: 8px;
+}
+.rb-code-input {
+  flex: 1;
+  min-width: 0;
+}
+.rb-list-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+.rb-list-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(200,155,60,0.35));
+}
+.rb-list-line:last-child {
+  background: linear-gradient(to left, transparent, rgba(200,155,60,0.35));
+}
+.rb-list-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #7c5a2b;
+  white-space: nowrap;
+}
+
+/* กระดานว่าง — ใบประกาศเปล่าแผ่นเดียว */
+.rb-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 34px 16px;
+  border: 1px solid #b8a173;
+  border-radius: 2px;
+  transform: rotate(-0.5deg);
+  background: linear-gradient(168deg, #efe4c8, #dccba6);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.45), inset 0 0 26px rgba(150,120,70,0.14);
+}
+.rb-empty-icon { font-size: 32px; opacity: 0.55; }
+.rb-empty-text { margin: 0; font-size: 13px; color: #4a3a1e; }
+.rb-empty-sub { margin: 0; font-size: 11px; color: rgba(90,70,40,0.75); text-align: center; }
+
+/* ── กระดานประกาศ: ไม้ + ใบประกาศปิดหมุด ── */
+.rb-board {
+  padding: 18px 16px 22px;
+  border-radius: 6px;
+  /* ลายไม้: เส้นแนวตั้งถี่ ๆ ซ้อนบนไล่เฉดน้ำตาล */
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(0,0,0,0.16) 0px,
+      rgba(0,0,0,0.16) 1px,
+      transparent 1px,
+      transparent 7px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,220,160,0.045) 0px,
+      rgba(255,220,160,0.045) 2px,
+      transparent 2px,
+      transparent 23px
+    ),
+    linear-gradient(175deg, #4a3520 0%, #46331f 22%, #3a2917 58%, #43301c 100%);
+  border: 4px solid #2e2113;
+  box-shadow:
+    inset 0 0 60px rgba(0,0,0,0.55),
+    inset 0 2px 0 rgba(255,220,160,0.08),
+    0 4px 14px rgba(0,0,0,0.5);
+}
+
+.rb-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+/* ใบประกาศแคบกว่ากระดาน ให้เห็นพื้นไม้รอบ ๆ เหมือนบอร์ดจริง */
+.rb-card,
+.rb-empty {
+  width: 100%;
+  max-width: 460px;
+  /* rb-empty อยู่ใต้ .rb-board ที่เป็น block — ต้องดันเข้ากลางเอง */
+  margin-left: auto;
+  margin-right: auto;
+}
+/* ใบประกาศ — กระดาษเก่าปิดหมุดบนกระดาน */
+.rb-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 16px 14px 13px;
+  border: 1px solid #b8a173;
+  border-radius: 2px;
+  color: #3a2c18;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(140,110,60,0.13), transparent 42%),
+    radial-gradient(circle at 88% 92%, rgba(120,95,50,0.15), transparent 45%),
+    linear-gradient(168deg, #efe4c8 0%, #e6d9b8 45%, #dccbA6 100%);
+  box-shadow:
+    0 3px 8px rgba(0,0,0,0.45),
+    inset 0 0 26px rgba(150,120,70,0.14);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+/* เอียงสลับกันให้เหมือนคนติดด้วยมือ */
+.rb-card:nth-child(3n+1) { transform: rotate(-0.7deg); }
+.rb-card:nth-child(3n+2) { transform: rotate(0.6deg); }
+.rb-card:nth-child(3n+3) { transform: rotate(-0.3deg); }
+.rb-card:hover {
+  transform: rotate(0deg) translateY(-2px);
+  box-shadow:
+    0 7px 16px rgba(0,0,0,0.55),
+    inset 0 0 26px rgba(150,120,70,0.14);
+  z-index: 1;
+}
+/* หมุดปักกลางด้านบน */
+.rb-card::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f0d9a0, #a8762c 60%, #6b4718);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.6);
+}
+.rb-card-top {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.rb-monster-img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.35);
+  flex-shrink: 0;
+}
+.rb-card-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.rb-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rb-name {
+  font-size: 13px;
+  font-weight: bold;
+  color: #ffd27a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rb-lock { font-size: 12px; flex-shrink: 0; }
+.rb-quest-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.rb-monster-name { font-size: 12px; color: #c89b3c; }
+.rb-stars { font-size: 10px; letter-spacing: 1px; }
+.rb-tag-row {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.rb-tag {
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(200,155,60,0.12);
+  border: 1px solid rgba(200,155,60,0.3);
+  color: #a88040;
+  letter-spacing: 0.5px;
+}
+.rb-tag-mode {
+  background: rgba(60,100,200,0.12);
+  border-color: rgba(90,140,230,0.35);
+  color: #7ab3ff;
+}
+.rb-tag-warn {
+  background: rgba(200,90,40,0.14);
+  border-color: rgba(220,110,50,0.4);
+  color: #ff9955;
+}
+.rb-members {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(124,90,43,0.25);
+}
+.rb-members-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.rb-members-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #7c5a2b;
+}
+.rb-members-count {
+  font-size: 11px;
+  font-weight: bold;
+  color: #a88040;
+}
+/* 1x4 — บนใบประกาศเอาแค่ว่าใครอยู่และคลาสอะไร (กันคลาสซ้ำ)
+   ข้อมูลเต็มดูได้ในหน้า Lobby หรือ hover ที่ช่อง */
+.rb-member-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+.rb-member-cell {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 7px 4px;
+  border-radius: 6px;
+  background: rgba(200,155,60,0.07);
+  border: 1px solid rgba(124,90,43,0.3);
+}
+.rb-member-host {
+  border-color: rgba(200,155,60,0.6);
+  background: rgba(200,155,60,0.14);
+}
+.rb-member-icon {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.rb-member-name {
+  max-width: 100%;
+  font-size: 10px;
+  font-weight: bold;
+  color: #ffd27a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rb-host-tag {
+  font-size: 7px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(200,155,60,0.25);
+  border: 1px solid rgba(200,155,60,0.5);
+  color: #ffd27a;
+}
+.rb-member-empty {
+  justify-content: center;
+  min-height: 62px;
+  border-style: dashed;
+  background: transparent;
+}
+.rb-empty-slot-text {
+  font-size: 9px;
+  color: rgba(124,90,43,0.55);
+  letter-spacing: 1px;
+}
+.rb-join-btn {
+  width: 100%;
+  padding: 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(200,155,60,0.5);
+  background: rgba(200,155,60,0.14);
+  color: #ffd27a;
+  font-size: 12px;
+  font-weight: bold;
+  font-family: inherit;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.rb-join-btn:hover:not(:disabled) {
+  background: rgba(200,155,60,0.3);
+  border-color: #c89b3c;
+}
+.rb-join-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── สีบนกระดาษ: ทับโทนทอง/ดำเดิมด้วยหมึกน้ำตาลให้อ่านออก ── */
+.rb-card .rb-name { color: #2f2312; }
+.rb-card .rb-monster-name { color: #6b4a1e; font-weight: bold; }
+.rb-card .rb-monster-img {
+  background: rgba(90,70,40,0.12);
+  border: 1px solid rgba(120,95,55,0.3);
+}
+.rb-card .rb-tag {
+  background: rgba(120,95,55,0.14);
+  border-color: rgba(120,95,55,0.4);
+  color: #6b542e;
+}
+.rb-card .rb-tag-mode {
+  background: rgba(45,85,150,0.12);
+  border-color: rgba(45,85,150,0.4);
+  color: #2c5f9e;
+}
+.rb-card .rb-tag-warn {
+  background: rgba(170,70,25,0.13);
+  border-color: rgba(170,70,25,0.42);
+  color: #9c4a15;
+}
+.rb-card .rb-members {
+  border-top: 1px dashed rgba(120,95,55,0.45);
+}
+.rb-card .rb-members-label,
+.rb-card .rb-members-count { color: #6b542e; }
+
+.rb-card .rb-member-cell {
+  background: rgba(120,95,55,0.09);
+  border-color: rgba(120,95,55,0.32);
+}
+.rb-card .rb-member-host {
+  background: rgba(180,140,60,0.2);
+  border-color: rgba(150,110,40,0.55);
+}
+.rb-card .rb-member-name { color: #2f2312; }
+.rb-card .rb-host-tag {
+  background: rgba(160,120,45,0.28);
+  border-color: rgba(140,100,35,0.6);
+  color: #5c4212;
+}
+.rb-card .rb-empty-slot-text { color: rgba(90,70,40,0.5); }
+.rb-card .rb-member-empty { border-color: rgba(120,95,55,0.4); }
+
+/* ปุ่มบนใบประกาศ — เหมือนตราประทับรับงาน */
+.rb-card .rb-join-btn {
+  border-color: rgba(120,80,30,0.55);
+  background: rgba(150,110,45,0.16);
+  color: #5c4212;
+}
+.rb-card .rb-join-btn:hover:not(:disabled) {
+  background: rgba(150,110,45,0.32);
+  border-color: rgba(110,70,25,0.85);
+}
+.rb-error {
+  margin: 0;
+  font-size: 12px;
+  color: #ff8866;
+  text-align: center;
+}
+
+.rb-pass-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0,0,0,0.8);
+}
+.rb-pass-box {
+  width: min(90vw, 320px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  border-radius: 14px;
+  background: linear-gradient(to bottom, #1a1408, #0d0a05);
+  border: 1px solid rgba(200,155,60,0.5);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.85);
+}
+.rb-pass-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: bold;
+  color: #ffd27a;
+  text-align: center;
+}
+.rb-pass-room {
+  margin: 0;
+  font-size: 12px;
+  color: #a88040;
+  text-align: center;
+}
+.rb-pass-input {
+  padding: 11px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(124,90,43,0.5);
+  background: rgba(0,0,0,0.4);
+  color: #ffd27a;
+  font-size: 14px;
+  font-family: inherit;
+  letter-spacing: 3px;
+  text-align: center;
+}
+.rb-pass-input:focus {
+  outline: none;
+  border-color: #c89b3c;
+}
+.rb-pass-actions {
+  display: flex;
+  gap: 8px;
+}
+.rb-pass-cancel {
+  flex: 1;
+  padding: 11px;
+  border-radius: 8px;
+  border: 1px solid rgba(124,90,43,0.45);
+  background: transparent;
+  color: #a88040;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.rb-pass-ok {
+  flex: 2;
+  padding: 11px;
+  border-radius: 8px;
+  border: 1px solid rgba(200,155,60,0.6);
+  background: rgba(200,155,60,0.2);
+  color: #ffd27a;
+  font-size: 13px;
+  font-weight: bold;
+  font-family: inherit;
+  cursor: pointer;
+}
+.rb-pass-ok:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Post Quest: ชื่อห้อง + รหัส ── */
+.rn-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(124,90,43,0.3);
+}
+.rn-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #7c5a2b;
+}
+.rn-input-row {
+  display: flex;
+  gap: 8px;
+}
+.rn-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(124,90,43,0.5);
+  background: rgba(0,0,0,0.35);
+  color: #ffd27a;
+  font-size: 13px;
+  font-family: inherit;
+}
+.rn-input:focus {
+  outline: none;
+  border-color: #c89b3c;
+  box-shadow: 0 0 0 2px rgba(200,155,60,0.15);
+}
+.rn-input::placeholder { color: rgba(168,128,64,0.5); }
+.rn-dice-btn {
+  flex-shrink: 0;
+  width: 42px;
+  border-radius: 8px;
+  border: 1px solid rgba(124,90,43,0.5);
+  background: rgba(200,155,60,0.1);
+  color: #ffd27a;
+  font-size: 17px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.rn-dice-btn:hover {
+  background: rgba(200,155,60,0.25);
+  border-color: #c89b3c;
+}
+.rn-lock-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(124,90,43,0.35);
+  background: rgba(0,0,0,0.2);
+  cursor: pointer;
+  transition: 0.15s;
+}
+.rn-lock-toggle input { accent-color: #c89b3c; cursor: pointer; }
+.rn-lock-on {
+  border-color: rgba(200,155,60,0.6);
+  background: rgba(200,155,60,0.1);
+}
+.rn-lock-icon { font-size: 14px; }
+.rn-lock-text {
+  font-size: 12px;
+  color: #a88040;
+  letter-spacing: 0.5px;
+}
+.rn-lock-on .rn-lock-text { color: #ffd27a; }
+.rn-pass-input { letter-spacing: 2px; }
+
 .cqm-actions {
   display: grid;
   grid-template-columns: 1fr 2fr;
@@ -8224,10 +9136,6 @@ const openPackDrawer = () => {
   background: rgba(60,100,200,0.06);
   border: 1px solid rgba(60,100,200,0.2);
 }
-.join-quest-entry {
-  display: flex;
-  justify-content: center;
-}
 .reconnect-bar {
   display: flex;
   align-items: center;
@@ -8277,25 +9185,6 @@ const openPackDrawer = () => {
 }
 .reconnect-clear:hover { color: #ff6b6b; }
 
-.join-quest-btn {
-  background: none;
-  border: 1px dashed rgba(90,159,255,0.4);
-  border-radius: 8px;
-  color: #7ab3ff;
-  font-size: 13px;
-  padding: 10px 24px;
-  cursor: pointer;
-  font-family: inherit;
-  letter-spacing: 1px;
-  transition: 0.2s;
-}
-.join-quest-btn:hover { background: rgba(60,100,200,0.1); border-style: solid; }
-
-.join-quest-form {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
 .join-code-input {
   flex: 1;
   background: rgba(0,0,0,0.4);
@@ -8324,15 +9213,6 @@ const openPackDrawer = () => {
 }
 .join-submit-btn:hover:not(:disabled) { background: rgba(60,100,200,0.3); }
 .join-submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-.join-cancel-btn {
-  background: none;
-  border: none;
-  color: #7c5a2b;
-  font-size: 12px;
-  cursor: pointer;
-  font-family: inherit;
-}
 
 .join-quest-inroom {
   display: flex;
