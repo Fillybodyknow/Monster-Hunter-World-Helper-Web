@@ -229,7 +229,7 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
               {{ selfOffline ? 'คุณขาดการเชื่อมต่อ' : 'Host ขาดการเชื่อมต่อ' }}
             </p>
             <p class="disconnect-sub">
-              {{ selfOffline ? 'กำลังเชื่อมต่อใหม่อัตโนมัติ — ไม่ต้อง refresh' : 'กำลัง Reconnect...' }}
+              {{ selfOffline ? 'กำลังเชื่อมต่อใหม่อัตโนมัติ' : 'กำลัง Reconnect...' }}
             </p>
             <button v-if="showLeaveButton" class="disconnect-leave-btn" @click="room.leave()">ออกจากตี้</button>
           </div>

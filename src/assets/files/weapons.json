@@ -3514,5 +3514,591 @@
         ]
       }
     ]
+  },
+  {
+    "hunter_class_id": 13,
+    "weapons_list": [
+      {
+        "weapon_type_id": 1,
+        "weapon_type": "Ore",
+        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Chain Blitz",
+            "rarity": 1,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 10,
+              "damage_2": 2,
+              "damage_3": 0,
+              "damage_4": 0
+            },
+            "remove": "",
+            "add": ""
+          },
+          {
+            "item_id": 2,
+            "item": "High Chain Blitz",
+            "rarity": 2,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 6,
+              "damage_2": 6,
+              "damage_3": 0,
+              "damage_4": 0
+            },
+            "remove": "5 Normal Ammo 1",
+            "add": "5 Rapid Normal Ammo 1"
+          },
+          {
+            "item_id": 3,
+            "item": "Cross Blitz",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 6,
+              "damage_2": 4,
+              "damage_3": 2,
+              "damage_4": 0
+            },
+            "remove": "5 Normal Ammo 1\n2 Normal Ammo 2",
+            "add": "5 Rapid Normal Ammo 1\n2 Normal Ammo 3"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 2,
+        "weapon_type": "Monster Bone",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Hunter's Rifle",
+            "rarity": 1,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 6,
+              "damage_2": 4,
+              "damage_3": 0,
+              "damage_4": 0
+            },
+            "remove": "",
+            "add": ""
+          },
+          {
+            "item_id": 2,
+            "item": "Power Rifle",
+            "rarity": 2,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 5,
+              "damage_3": 2,
+              "damage_4": 0
+            },
+            "remove": "2 Poison Ammo 1",
+            "add": "2 Recover Ammo 1"
+          },
+          {
+            "item_id": 3,
+            "item": "Sniper Shot",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 4,
+              "damage_3": 3,
+              "damage_4": 0
+            },
+            "remove": "2 Poison Ammo 1\n2 Spread Ammo 1",
+            "add": "2 Recover Ammo 1\n2 Spread Ammo 2"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 3,
+        "weapon_type": "Great Jagras",
+        "thumbnail": "assets/img/equiments/sets/Great_Jagras.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Jagras Blitz",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 7,
+              "damage_3": 2,
+              "damage_4": 0
+            },
+            "remove": "5 Normal Ammo 1",
+            "add": "5 Water Ammo"
+          },
+          {
+            "item_id": 2,
+            "item": "Jagras Fire",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 5,
+              "damage_3": 8,
+              "damage_4": 1
+            },
+            "remove": "5 Normal Ammo 1\n2 Poison Ammo 1",
+            "add": "5 Water Ammo\n2 Recover Ammo 2"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 4,
+        "weapon_type": "Rathalos",
+        "thumbnail": "assets/img/equiments/sets/Rathalos.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Flame Blitz",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 5,
+              "damage_3": 4,
+              "damage_4": 0
+            },
+            "remove": "5 Normal Ammo 1",
+            "add": "5 Rapid Flaming Ammo"
+          },
+          {
+            "item_id": 2,
+            "item": "Rathbuster",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 4,
+              "damage_2": 4,
+              "damage_3": 4,
+              "damage_4": 2
+            },
+            "remove": "5 Normal Ammo 1\n2 Normal Ammo 2",
+            "add": "5 Rapid Flaming Ammo\n2 Flaming Ammo"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 5,
+        "weapon_type": "Barroth",
+        "thumbnail": "assets/img/equiments/sets/barroth.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Carapace Rifle",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 2,
+              "damage_3": 5,
+              "damage_4": 0
+            },
+            "remove": "2 Poison Ammo 1",
+            "add": "2 Armour Ammo 1"
+          },
+          {
+            "item_id": 2,
+            "item": "Barroth Shot",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 9,
+              "damage_3": 2,
+              "damage_4": 1
+            },
+            "remove": "2 Poison Ammo 1\n2 Pierce Ammo 1",
+            "add": "2 Armour Ammo 1\n2 Paralysis Ammo"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 6,
+        "weapon_type": "Jyuratodus",
+        "thumbnail": "assets/img/equiments/sets/jyuratodus.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Madness Rifle",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 4,
+              "damage_2": 3,
+              "damage_3": 3,
+              "damage_4": 0
+            },
+            "remove": "2 Normal Ammo 2",
+            "add": "2 Rapid Water Ammo"
+          },
+          {
+            "item_id": 2,
+            "item": "Jyura Bullet",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 5,
+              "damage_3": 4,
+              "damage_4": 0
+            },
+            "remove": "2 Normal Ammo 2\n2 Poison Ammo 1",
+            "add": "2 Rapid Water Ammo\n2 Sleep Ammo 1"
+          }
+        ]
+      }
+    ],
+    "weapon_priority_set": [
+      {
+        "weapon_type_id": 1,
+        "priority": [
+          [1, 1],
+          [1, 2],
+          [1, 3]
+        ]
+      },
+      {
+        "weapon_type_id": 2,
+        "priority": [
+          [2, 1],
+          [2, 2],
+          [2, 3]
+        ]
+      },
+      {
+        "weapon_type_id": 3,
+        "priority": [
+          [1, 1],
+          [3, 1],
+          [3, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 4,
+        "priority": [
+          [1, 1],
+          [4, 1],
+          [4, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 5,
+        "priority": [
+          [2, 1],
+          [5, 1],
+          [5, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 6,
+        "priority": [
+          [2, 1],
+          [6, 1],
+          [6, 2]
+        ]
+      }
+    ]
+  },
+  {
+    "hunter_class_id": 14,
+    "weapons_list": [
+      {
+        "weapon_type_id": 1,
+        "weapon_type": "Ore",
+        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Iron Assault",
+            "rarity": 1,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 9,
+              "damage_2": 3,
+              "damage_3": 0,
+              "damage_4": 0
+            },
+            "remove": "",
+            "add": ""
+          },
+          {
+            "item_id": 2,
+            "item": "Steel Assault",
+            "rarity": 2,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 7,
+              "damage_2": 4,
+              "damage_3": 1,
+              "damage_4": 0
+            },
+            "remove": "2 Pierce Ammo 2",
+            "add": "2 Pierce Ammo 3"
+          },
+          {
+            "item_id": 3,
+            "item": "Chrome Assault",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 5,
+              "damage_2": 4,
+              "damage_3": 3,
+              "damage_4": 0
+            },
+            "remove": "2 Pierce Ammo 2\n2 Normal Ammo 2",
+            "add": "2 Pierce Ammo 3\n2 Normal Ammo 3"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 2,
+        "weapon_type": "Monster Bone",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Bone Shooter",
+            "rarity": 1,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 6,
+              "damage_2": 4,
+              "damage_3": 0,
+              "damage_4": 0
+            },
+            "remove": "",
+            "add": ""
+          },
+          {
+            "item_id": 2,
+            "item": "Heavy Shooter",
+            "rarity": 2,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 4,
+              "damage_2": 5,
+              "damage_3": 1,
+              "damage_4": 0
+            },
+            "remove": "2 Sticky Ammo 1",
+            "add": "2 Sticky Ammo 2"
+          },
+          {
+            "item_id": 3,
+            "item": "Power Shooter",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 4,
+              "damage_2": 4,
+              "damage_3": 2,
+              "damage_4": 0
+            },
+            "remove": "2 Sticky Ammo 1\n2 Spread Ammo 1",
+            "add": "2 Sticky Ammo 2\n2 Spread Ammo 2"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 3,
+        "weapon_type": "Great Jagras",
+        "thumbnail": "assets/img/equiments/sets/Great_Jagras.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Jagras Assault",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 4,
+              "damage_2": 4,
+              "damage_3": 4,
+              "damage_4": 0
+            },
+            "remove": "2 Pierce Ammo I",
+            "add": "2 Aqua Ammo"
+          },
+          {
+            "item_id": 2,
+            "item": "Jagras Cannon",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 6,
+              "damage_2": 1,
+              "damage_3": 5,
+              "damage_4": 2
+            },
+            "remove": "2 Pierce Ammo I\nWyvern Snipe\nAny 1 Card",
+            "add": "2 Aqua Ammo\n2 Jagras Wyvern Heart"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 4,
+        "weapon_type": "Tobi-Kadachi",
+        "thumbnail": "assets/img/equiments/sets/Tobi-Kadachi.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Pulsar Shooter",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 4,
+              "damage_2": 2,
+              "damage_3": 3,
+              "damage_4": 1
+            },
+            "remove": "2 Pierce Ammo II",
+            "add": "2 Electrical Ammo"
+          },
+          {
+            "item_id": 2,
+            "item": "Kadachi Lion",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 4,
+              "damage_2": 3,
+              "damage_3": 3,
+              "damage_4": 2
+            },
+            "remove": "2 Pierce Ammo II\n2 Spread Ammo I",
+            "add": "2 Electrical Ammo\n2 Thunder Ammo"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 5,
+        "weapon_type": "Pukei-Pukei",
+        "thumbnail": "assets/img/equiments/sets/pukei-pukei.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Blooming Shooter",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 3,
+              "damage_3": 4,
+              "damage_4": 0
+            },
+            "remove": "5 Normal Ammo 1",
+            "add": "5 Poison Ammo"
+          },
+          {
+            "item_id": 2,
+            "item": "Datura Blaster",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 3,
+              "damage_3": 4,
+              "damage_4": 2
+            },
+            "remove": "5 Normal Ammo 1\n2 Cluster Bomb 1",
+            "add": "5 Poison Ammo\n2 Improved Poison Ammo"
+          }
+        ]
+      },
+      {
+        "weapon_type_id": 6,
+        "weapon_type": "Diablos",
+        "thumbnail": "assets/img/equiments/sets/diablos.png",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Diablos Shooter",
+            "rarity": 3,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 4,
+              "damage_3": 3,
+              "damage_4": 2
+            },
+            "remove": "2 Normal Ammo 2",
+            "add": "2 Brutal Ammo"
+          },
+          {
+            "item_id": 2,
+            "item": "Dual Threat",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 2,
+              "damage_2": 6,
+              "damage_3": 3,
+              "damage_4": 3
+            },
+            "remove": "2 Normal Ammo 2\n1 Wyvernsnipe\nAny 1 Card",
+            "add": "2 Brutal Ammo\n2 Wyvern Ammo"
+          }
+        ]
+      }
+    ],
+    "weapon_priority_set": [
+      {
+        "weapon_type_id": 1,
+        "priority": [
+          [1, 1],
+          [1, 2],
+          [1, 3]
+        ]
+      },
+      {
+        "weapon_type_id": 2,
+        "priority": [
+          [2, 1],
+          [2, 2],
+          [2, 3]
+        ]
+      },
+      {
+        "weapon_type_id": 3,
+        "priority": [
+          [1, 1],
+          [3, 1],
+          [3, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 4,
+        "priority": [
+          [2, 1],
+          [4, 1],
+          [4, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 5,
+        "priority": [
+          [2, 1],
+          [5, 1],
+          [5, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 6,
+        "priority": [
+          [2, 1],
+          [6, 1],
+          [6, 2]
+        ]
+      }
+    ]
   }
 ]

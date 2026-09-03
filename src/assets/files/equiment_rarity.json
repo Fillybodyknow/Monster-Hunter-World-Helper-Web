@@ -151,6 +151,16 @@
                         "id": 12,
                         "name": "Insect Glaive",
                         "thumbnail": "assets/img/equiments/weapons/insect_glaiveR1.png"
+                    },
+                    {
+                        "id": 13,
+                        "name": "Light Bowgun",
+                        "thumbnail": "assets/img/equiments/weapons/light_bowgunR1.png"
+                    },
+                    {
+                        "id": 14,
+                        "name": "Heavy Bowgun",
+                        "thumbnail": "assets/img/equiments/weapons/heavy_bowgunR1.png"
                     }
                 ]
             },
@@ -216,6 +226,16 @@
                         "id": 12,
                         "name": "Insect Glaive",
                         "thumbnail": "assets/img/equiments/weapons/insect_glaiveR2.png"
+                    },
+                    {
+                        "id": 13,
+                        "name": "Light Bowgun",
+                        "thumbnail": "assets/img/equiments/weapons/light_bowgunR2.png"
+                    },
+                    {
+                        "id": 14,
+                        "name": "Heavy Bowgun",
+                        "thumbnail": "assets/img/equiments/weapons/heavy_bowgunR2.png"
                     }
                 ]
             },
@@ -281,6 +301,16 @@
                         "id": 12,
                         "name": "Insect Glaive",
                         "thumbnail": "assets/img/equiments/weapons/insect_glaiveR3.png"
+                    },
+                    {
+                        "id": 13,
+                        "name": "Light Bowgun",
+                        "thumbnail": "assets/img/equiments/weapons/light_bowgunR3.png"
+                    },
+                    {
+                        "id": 14,
+                        "name": "Heavy Bowgun",
+                        "thumbnail": "assets/img/equiments/weapons/heavy_bowgunR3.png"
                     }
                 ]
             },
@@ -346,6 +376,16 @@
                         "id": 12,
                         "name": "Insect Glaive",
                         "thumbnail": "assets/img/equiments/weapons/insect_glaiveR4.png"
+                    },
+                    {
+                        "id": 13,
+                        "name": "Light Bowgun",
+                        "thumbnail": "assets/img/equiments/weapons/light_bowgunR4.png"
+                    },
+                    {
+                        "id": 14,
+                        "name": "Heavy Bowgun",
+                        "thumbnail": "assets/img/equiments/weapons/heavy_bowgunR4.png"
                     }
                 ]
             }
