@@ -89,6 +89,14 @@ const submitLobbyPassword = async () => {
 }
 
 // บอกเหตุผลตั้งแต่บนการ์ด ดีกว่าให้กดแล้วเด้ง error
+// สีป้ายตามชนิดเควส — Assigned คงสีเดิม, Investigation ฟ้า, Tempered ม่วง
+const questTypeTone = (type) => {
+  if (!type) return ''
+  if (type.includes('Tempered')) return 'qt-tempered'
+  if (type.includes('Investigation')) return 'qt-invest'
+  return ''
+}
+
 const lobbyJoinBlock = (lobby) => {
   if ((lobby.memberCount ?? 0) >= 4) return 'ห้องเต็ม'
   const taken = (lobby.members ?? []).some(
@@ -979,6 +987,9 @@ const pendingOutcome = ref(null)
 const showResultAnim = ref(false)
 const isDismissing = ref(false)
 const pendingRewardAfterAnim = ref(false)
+// เควสแพ้ก็ยังได้เทรดของที่เก็บมาระหว่างทาง — ต้องจำผลไว้ว่าจบยังไงตอนปิดเทรด
+const pendingTradeAfterAnim = ref(false)
+const questOutcome = ref(null) // 'complete' | 'fail'
 const resultAnimType = ref(null)
 const resultMonsterName = ref('')
 
@@ -1065,6 +1076,7 @@ watch(() => room.outcomeResult, (result) => {
 const confirmOutcome = () => {
   const type = pendingOutcome.value
   pendingOutcome.value = null
+  questOutcome.value = type
   if (room.inRoom) room.clearOutcome?.()
   resultMonsterName.value = selectedMonster.value?.monster_name ?? ''
   if (type === 'complete') {
@@ -1080,7 +1092,9 @@ const confirmOutcome = () => {
     resultAnimType.value = 'fail'
     showResultAnim.value = true
     playOutcomeSound('fail')
-    onFail()
+    // เล่นคนเดียวไม่มีใครให้เทรดด้วย — จบเลย
+    if (room.inRoom) pendingTradeAfterAnim.value = true
+    else onFail()
   }
   setTimeout(dismissResult, 8000)
 }
@@ -1088,7 +1102,7 @@ const confirmOutcome = () => {
 const _doDismissResult = () => {
   if (isDismissing.value) return
   isDismissing.value = true
-  if (!pendingRewardAfterAnim.value) fadeOutOutcomeSound()
+  if (!pendingRewardAfterAnim.value && !pendingTradeAfterAnim.value) fadeOutOutcomeSound()
   setTimeout(() => {
     showResultAnim.value = false
     resultAnimType.value = null
@@ -1097,6 +1111,9 @@ const _doDismissResult = () => {
     if (pendingRewardAfterAnim.value) {
       pendingRewardAfterAnim.value = false
       goToRewardPhase()
+    } else if (pendingTradeAfterAnim.value) {
+      pendingTradeAfterAnim.value = false
+      goToTradeOnly()
     }
   }, 500)
 }
@@ -1437,6 +1454,8 @@ const incrementDay = () => {
 }
 
 const resetToBookPhase = () => {
+  questOutcome.value = null
+  pendingTradeAfterAnim.value = false
   currentDialogId.value = null
   selectedQuest.value = null
   selectedMonster.value = null
@@ -3506,22 +3525,29 @@ const openTradePicker = (r) => {
   tradePicker.value = { resource_type_id: r.resource_type_id, item_id: r.item_id, max: r.quantity, qty: 1 }
 }
 
+// โยนของลงกองกลาง + ตัดออกจากคลังตัวเอง
+const _offerItem = (resource_type_id, item_id, qty) => {
+  if (qty <= 0) return
+  room.addToTradePool?.({ resource_type_id, item_id, quantity: qty })
+  const hunters = getHunters()
+  const h = hunters.find((x) => x.hunter_id === hunter.value?.hunter_id)
+  if (!h?.inventory) return
+  const inv = h.inventory.find((i) => i.resource_type_id === resource_type_id && i.item_id === item_id)
+  if (!inv) return
+  inv.quantity -= qty
+  if (inv.quantity <= 0) {
+    h.inventory = h.inventory.filter(
+      (i) => !(i.resource_type_id === resource_type_id && i.item_id === item_id),
+    )
+  }
+  saveHunters(hunters)
+  loadHunter()
+}
+
 const confirmOfferTrade = () => {
   const p = tradePicker.value
   if (!p || p.qty <= 0) return
-  room.addToTradePool?.({ resource_type_id: p.resource_type_id, item_id: p.item_id, quantity: p.qty })
-  // ลด inventory
-  const hunters = getHunters()
-  const h = hunters.find((x) => x.hunter_id === hunter.value?.hunter_id)
-  if (h?.inventory) {
-    const inv = h.inventory.find((i) => i.resource_type_id === p.resource_type_id && i.item_id === p.item_id)
-    if (inv) {
-      inv.quantity -= p.qty
-      if (inv.quantity <= 0) h.inventory = h.inventory.filter((i) => !(i.resource_type_id === p.resource_type_id && i.item_id === p.item_id))
-      saveHunters(hunters)
-      loadHunter()
-    }
-  }
+  _offerItem(p.resource_type_id, p.item_id, p.qty)
   tradePicker.value = null
 }
 
@@ -3579,7 +3605,10 @@ const _doConfirmRewards = () => {
   }
   fadeOutOutcomeSound()
   if (room.inRoom) room.leave()
-  onComplete()
+  // ปิดเทรดแล้วค่อยสรุปผลตามที่จบจริง — แพ้กับชนะนับ attempt ไม่เหมือนกัน
+  if (questOutcome.value === 'fail') onFail()
+  else onComplete()
+  questOutcome.value = null
 }
 
 const _saveRewardsToInventory = () => {
@@ -3610,6 +3639,19 @@ const confirmRewards = () => {
     return
   }
   _doConfirmRewards()
+}
+
+// แพ้แล้วข้ามส่วนรางวัลไปเทรดอย่างเดียว (ไม่ได้ล่าสำเร็จ ไม่มีเต๋าให้ทอย)
+const goToTradeOnly = () => {
+  claimedRewards.value = []
+  phase.value = 'reward'
+  rewardPhase.value = 'trade'
+  if (room.inRoom && room.isHost) {
+    room.clearAllPartyDice?.()
+    room.clearAllPartyRewards?.()
+    room.clearTrade?.()
+    room.syncPhase?.('trade')
+  }
 }
 
 const goToRewardPhase = () => {
@@ -3755,6 +3797,23 @@ const openPackDrawer = () => {
       </div>
       <p class="board-subtitle">Commission Quest Board</p>
 
+      <div class="cal-months-row">
+        <div v-for="(_, mi) in calMonths" :key="mi" class="campaign-calendar">
+          <div class="cal-header">
+            <span class="cal-title">MONTH {{ mi + 1 }}</span>
+            <span class="cal-day-label">DAY {{ hunter?.campaign_day ?? 1 }}</span>
+          </div>
+          <div class="cal-grid">
+            <div
+              v-for="n in 31"
+              :key="n"
+              class="cal-cell"
+              :class="{ filled: mi * 31 + n <= (hunter?.campaign_day ?? 1) }"
+            ></div>
+          </div>
+        </div>
+      </div>
+
       <!-- Co-op -->
       <div class="join-quest-bar">
         <div v-if="room.inRoom" class="join-quest-inroom">
@@ -3771,23 +3830,6 @@ const openPackDrawer = () => {
           </div>
           <span class="cbe-arrow">▶</span>
         </button>
-      </div>
-
-      <div class="cal-months-row">
-        <div v-for="(_, mi) in calMonths" :key="mi" class="campaign-calendar">
-          <div class="cal-header">
-            <span class="cal-title">MONTH {{ mi + 1 }}</span>
-            <span class="cal-day-label">DAY {{ hunter?.campaign_day ?? 1 }}</span>
-          </div>
-          <div class="cal-grid">
-            <div
-              v-for="n in 31"
-              :key="n"
-              class="cal-cell"
-              :class="{ filled: mi * 31 + n <= (hunter?.campaign_day ?? 1) }"
-            ></div>
-          </div>
-        </div>
       </div>
 
       <div class="book-grid">
@@ -4239,6 +4281,7 @@ const openPackDrawer = () => {
               v-if="lobby.questInfo?.thumbnail"
               :src="getImg(lobby.questInfo.thumbnail)"
               class="rb-monster-img"
+              :class="questTypeTone(lobby.questInfo.quest_type)"
             />
             <div class="rb-card-main">
               <div class="rb-name-row">
@@ -4256,55 +4299,54 @@ const openPackDrawer = () => {
                 </span>
               </div>
               <div class="rb-tag-row">
-                <span v-if="lobby.questInfo?.quest_type" class="rb-tag">{{ lobby.questInfo.quest_type }}</span>
+                <span
+                  v-if="lobby.questInfo?.quest_type"
+                  class="rb-tag"
+                  :class="questTypeTone(lobby.questInfo.quest_type)"
+                >{{ lobby.questInfo.quest_type }}</span>
                 <span class="rb-tag rb-tag-mode">{{ lobby.questMode === 'minimal' ? 'Minimal' : 'Full' }}</span>
                 <span v-if="lobby.questInfo?.exhausted_attempt" class="rb-tag rb-tag-warn">HQ บังคับ</span>
               </div>
             </div>
           </div>
 
-          <div class="rb-members">
-            <div class="rb-members-head">
-              <span class="rb-members-label">Hunters</span>
+          <div class="rb-footer">
+            <div class="rb-members">
               <span class="rb-members-count">{{ lobby.memberCount ?? 0 }}/4</span>
-            </div>
 
-            <div class="rb-member-grid">
-              <div
-                v-for="m in (lobby.members ?? [])"
-                :key="m.hunter_id"
-                class="rb-member-cell"
-                :class="{ 'rb-member-host': m.hunter_id === lobby.hostId }"
-                :title="`${m.hunter_name} · ${getHunterClass(m.hunter_class_id)?.hunter_class ?? ''} · DAY ${m.campaign_day ?? 1}${m.weapon ? ' · ' + m.weapon.name : ''}`"
-              >
-                <img
-                  v-if="getHunterClass(m.hunter_class_id)?.thumbnail"
-                  :src="getImg(getHunterClass(m.hunter_class_id).thumbnail)"
-                  class="rb-member-icon"
-                />
-                <span class="rb-member-name">{{ m.hunter_name }}</span>
-                <span v-if="m.hunter_id === lobby.hostId" class="rb-host-tag">HOST</span>
-              </div>
+              <div class="rb-member-icons">
+                <span
+                  v-for="m in (lobby.members ?? [])"
+                  :key="m.hunter_id"
+                  class="rb-member-slot"
+                  :class="{ 'rb-member-host': m.hunter_id === lobby.hostId }"
+                  :title="`${m.hunter_name} · ${getHunterClass(m.hunter_class_id)?.hunter_class ?? ''} · DAY ${m.campaign_day ?? 1}${m.weapon ? ' · ' + m.weapon.name : ''}`"
+                >
+                  <img
+                    v-if="getHunterClass(m.hunter_class_id)?.thumbnail"
+                    :src="getImg(getHunterClass(m.hunter_class_id).thumbnail)"
+                    class="rb-member-icon"
+                  />
+                </span>
 
-              <div
-                v-for="i in Math.max(0, 4 - (lobby.memberCount ?? 0))"
-                :key="'slot' + i"
-                class="rb-member-cell rb-member-empty"
-              >
-                <span class="rb-empty-slot-text">ว่าง</span>
+                <span
+                  v-for="i in Math.max(0, 4 - (lobby.memberCount ?? 0))"
+                  :key="'slot' + i"
+                  class="rb-member-slot rb-member-empty"
+                ></span>
               </div>
             </div>
+
+            <button
+              class="rb-join-btn"
+              :disabled="!!lobbyJoinBlock(lobby) || joiningCode === lobby.code"
+              @click="handleJoinLobby(lobby)"
+            >
+              <template v-if="joiningCode === lobby.code">กำลังเข้าร่วม...</template>
+              <template v-else-if="lobbyJoinBlock(lobby)">{{ lobbyJoinBlock(lobby) }}</template>
+              <template v-else>{{ lobby.hasPassword ? '🔒 เข้าร่วม' : 'เข้าร่วม' }}</template>
+            </button>
           </div>
-
-          <button
-            class="rb-join-btn"
-            :disabled="!!lobbyJoinBlock(lobby) || joiningCode === lobby.code"
-            @click="handleJoinLobby(lobby)"
-          >
-            <template v-if="joiningCode === lobby.code">กำลังเข้าร่วม...</template>
-            <template v-else-if="lobbyJoinBlock(lobby)">{{ lobbyJoinBlock(lobby) }}</template>
-            <template v-else>{{ lobby.hasPassword ? '🔒 เข้าร่วม' : 'เข้าร่วม' }}</template>
-          </button>
           </div>
         </div>
       </div>
@@ -5924,9 +5966,40 @@ const openPackDrawer = () => {
         <p class="rw-title">⚔ Trade ของกัน</p>
         <p class="rw-sub">โยน Item ลงกองกลาง หรือหยิบ Item ของคนอื่น</p>
 
-        <!-- My inventory -->
+        <!-- กองกลาง — อยู่บนสุดเพราะต้องคอยดูว่ามีอะไรใหม่ -->
         <div class="trade-section">
-          <div class="trade-inv-header">
+          <div class="trade-head">
+            <p class="rw-section-label">🔄 กองกลาง</p>
+            <span class="trade-hint">แตะเพื่อรับ</span>
+          </div>
+
+          <div v-if="room.tradePool.length" class="trade-grid">
+            <button
+              v-for="item in room.tradePool"
+              :key="item.key"
+              class="trade-slot trade-slot-pool"
+              :class="{ 'trade-slot-mine': item.fromHunterId === room.myHunterId }"
+              :title="`${getResourceItem(item.resource_type_id, item.item_id)?.item} ×${item.quantity} — ${item.fromHunterName}`"
+              @click="item.fromHunterId === room.myHunterId ? returnFromTrade(item) : takeFromTrade(item)"
+            >
+              <span class="trade-slot-qty">×{{ item.quantity }}</span>
+              <img
+                :src="getImg(getResourceItem(item.resource_type_id, item.item_id)?.thumbnail)"
+                class="trade-slot-img"
+              />
+              <span class="trade-slot-name">{{ getResourceItem(item.resource_type_id, item.item_id)?.item }}</span>
+              <span class="trade-slot-owner">{{ item.fromHunterId === room.myHunterId ? 'ของคุณ' : item.fromHunterName }}</span>
+              <span class="trade-slot-action">{{ item.fromHunterId === room.myHunterId ? '↩ คืน' : '↑ รับ' }}</span>
+            </button>
+          </div>
+          <p v-else class="trade-empty">ยังไม่มีใครโยน Item ลงกองกลาง</p>
+        </div>
+
+        <div class="trade-divider"><span>↑ รับ &nbsp;·&nbsp; โยน ↓</span></div>
+
+        <!-- คลังของฉัน -->
+        <div class="trade-section">
+          <div class="trade-head">
             <p class="rw-section-label">🎒 Inventory ของฉัน</p>
             <input
               v-model="tradeSearch"
@@ -5935,58 +6008,56 @@ const openPackDrawer = () => {
               @click.stop
             />
           </div>
-          <div v-if="filteredInventory.length" class="trade-item-list trade-item-list-scroll">
-            <div v-for="r in filteredInventory" :key="`${r.resource_type_id}-${r.item_id}`" class="trade-item">
-              <img :src="getImg(getResourceItem(r.resource_type_id, r.item_id)?.thumbnail)" class="trade-item-img" />
-              <span class="trade-item-name">{{ getResourceItem(r.resource_type_id, r.item_id)?.item }}</span>
-              <span class="trade-item-qty">×{{ r.quantity }}</span>
-              <button class="trade-offer-btn" @click="openTradePicker(r)">↓ Trade</button>
-            </div>
+
+          <div v-if="filteredInventory.length" class="trade-grid trade-grid-scroll">
+            <button
+              v-for="r in filteredInventory"
+              :key="`${r.resource_type_id}-${r.item_id}`"
+              class="trade-slot trade-slot-inv"
+              :title="`${getResourceItem(r.resource_type_id, r.item_id)?.item} ×${r.quantity}`"
+              @click="openTradePicker(r)"
+            >
+              <span class="trade-slot-qty">×{{ r.quantity }}</span>
+              <img
+                :src="getImg(getResourceItem(r.resource_type_id, r.item_id)?.thumbnail)"
+                class="trade-slot-img"
+              />
+              <span class="trade-slot-name">{{ getResourceItem(r.resource_type_id, r.item_id)?.item }}</span>
+            </button>
           </div>
           <p v-else class="trade-empty">
             {{ tradeSearch ? 'ไม่พบ Item ที่ค้นหา' : 'ไม่มี Item ใน Inventory' }}
           </p>
-
-          <!-- Quantity picker -->
-          <div v-if="tradePicker" class="trade-picker">
-            <span class="trade-picker-name">{{ getResourceItem(tradePicker.resource_type_id, tradePicker.item_id)?.item }}</span>
-            <div class="trade-picker-qty">
-              <button @click="tradePicker.qty = Math.max(1, tradePicker.qty - 1)">−</button>
-              <span>{{ tradePicker.qty }}</span>
-              <button @click="tradePicker.qty = Math.min(tradePicker.max, tradePicker.qty + 1)">+</button>
-              <span class="trade-picker-max">/ {{ tradePicker.max }}</span>
-            </div>
-            <div class="trade-picker-btns">
-              <button class="trade-offer-btn" @click="confirmOfferTrade">✓ ยืนยัน Trade</button>
-              <button class="trade-cancel-btn" @click="tradePicker = null">ยกเลิก</button>
-            </div>
-          </div>
         </div>
 
-        <!-- Trade pool -->
-        <div class="trade-section trade-pool-section">
-          <p class="rw-section-label">🔄 กองกลาง Trade</p>
-          <div v-if="room.tradePool.length" class="trade-item-list">
-            <div v-for="item in room.tradePool" :key="item.key" class="trade-item"
-              :class="{ 'trade-mine': item.fromHunterId === room.myHunterId }">
-              <img :src="getImg(getResourceItem(item.resource_type_id, item.item_id)?.thumbnail)" class="trade-item-img" />
-              <span class="trade-item-name">{{ getResourceItem(item.resource_type_id, item.item_id)?.item }}</span>
-              <span class="trade-item-qty">×{{ item.quantity }}</span>
-              <span class="trade-from">{{ item.fromHunterName }}</span>
-              <button
-                v-if="item.fromHunterId !== room.myHunterId"
-                class="trade-take-btn"
-                @click="takeFromTrade(item)"
-              >↑ รับ</button>
-              <button
-                v-else
-                class="trade-cancel-btn"
-                @click="returnFromTrade(item)"
-              >↩ คืน</button>
+        <!-- เลือกจำนวนก่อนโยน -->
+        <Teleport to="body">
+          <Transition name="slain-fade">
+            <div v-if="tradePicker" class="tp-overlay" @click.self="tradePicker = null">
+              <div class="tp-modal">
+                <img
+                  :src="getImg(getResourceItem(tradePicker.resource_type_id, tradePicker.item_id)?.thumbnail)"
+                  class="tp-img"
+                />
+                <p class="tp-name">{{ getResourceItem(tradePicker.resource_type_id, tradePicker.item_id)?.item }}</p>
+
+                <div class="tp-qty">
+                  <button class="tp-step" :disabled="tradePicker.qty <= 1" @click="tradePicker.qty--">−</button>
+                  <span class="tp-val">{{ tradePicker.qty }}</span>
+                  <button class="tp-step" :disabled="tradePicker.qty >= tradePicker.max" @click="tradePicker.qty++">+</button>
+                </div>
+                <button class="tp-all" @click="tradePicker.qty = tradePicker.max">
+                  เลือกทั้งหมด ({{ tradePicker.max }})
+                </button>
+
+                <div class="tp-actions">
+                  <button class="tp-cancel" @click="tradePicker = null">ยกเลิก</button>
+                  <button class="tp-confirm" @click="confirmOfferTrade">↓ โยนลงกอง</button>
+                </div>
+              </div>
             </div>
-          </div>
-          <p v-else class="trade-empty">ยังไม่มีใครโยน Item ลงกองกลาง</p>
-        </div>
+          </Transition>
+        </Teleport>
 
         <!-- Close trade vote -->
         <div class="trade-close-row">
@@ -8561,8 +8632,8 @@ const openPackDrawer = () => {
   align-items: flex-start;
 }
 .rb-monster-img {
-  width: 52px;
-  height: 52px;
+  width: 66px;
+  height: 66px;
   object-fit: contain;
   border-radius: 8px;
   background: rgba(0,0,0,0.35);
@@ -8617,95 +8688,104 @@ const openPackDrawer = () => {
   border-color: rgba(90,140,230,0.35);
   color: #7ab3ff;
 }
+/* รูปมอนเรืองแสงจากกลางกรอบออกมา — Assigned ไม่เรือง ให้เควสพิเศษเด่นออกมา
+   เขียนเจาะจงที่ .rb-monster-img เพราะ .qt-* มี background ของป้ายติดมาด้วย */
+.rb-monster-img.qt-invest {
+  background:
+    radial-gradient(circle at center,
+      rgba(150,205,255,1) 0%,
+      rgba(150,205,255,1) 30%,
+      rgba(95,160,245,0.5) 48%,
+      rgba(60,115,200,0.16) 66%,
+      transparent 84%),
+    rgba(0,0,0,0.35);
+  border-color: rgba(95,150,235,0.55);
+}
+.rb-monster-img.qt-tempered {
+  background:
+    radial-gradient(circle at center,
+      rgba(232,175,255,1) 0%,
+      rgba(232,175,255,1) 30%,
+      rgba(190,120,250,0.52) 48%,
+      rgba(150,78,210,0.17) 66%,
+      transparent 84%),
+    rgba(0,0,0,0.35);
+  border-color: rgba(185,115,245,0.6);
+}
+
+/* ชนิดเควส — ยิ่งยากยิ่งเข้ม */
+.qt-invest {
+  background: rgba(60,110,210,0.14);
+  border-color: rgba(90,150,240,0.45);
+  color: #7ab3ff;
+}
+.qt-tempered {
+  background: rgba(140,70,200,0.16);
+  border-color: rgba(170,110,230,0.5);
+  color: #cc77ff;
+}
 .rb-tag-warn {
   background: rgba(200,90,40,0.14);
   border-color: rgba(220,110,50,0.4);
   color: #ff9955;
 }
-.rb-members {
+/* แถวล่างการ์ด: ผู้เล่นซ้าย ปุ่มเข้าร่วมขวาสุด */
+.rb-footer {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-top: 8px;
+  align-items: center;
+  gap: 10px;
+  padding-top: 9px;
   border-top: 1px solid rgba(124,90,43,0.25);
 }
-.rb-members-head {
+.rb-members {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-.rb-members-label {
-  font-size: 9px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: #7c5a2b;
+  align-items: center;
+  gap: 8px;
 }
 .rb-members-count {
+  flex-shrink: 0;
   font-size: 11px;
   font-weight: bold;
   color: #a88040;
 }
-/* 1x4 — บนใบประกาศเอาแค่ว่าใครอยู่และคลาสอะไร (กันคลาสซ้ำ)
-   ข้อมูลเต็มดูได้ในหน้า Lobby หรือ hover ที่ช่อง */
-.rb-member-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 5px;
-}
-.rb-member-cell {
-  min-width: 0;
+/* เหลือแค่ไอคอนคลาส — พอให้รู้ว่าตี้มีใครและคลาสซ้ำกับเราไหม
+   รายละเอียดเต็มอยู่ใน tooltip และหน้า Lobby */
+.rb-member-icons {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 7px 4px;
-  border-radius: 6px;
-  background: rgba(200,155,60,0.07);
-  border: 1px solid rgba(124,90,43,0.3);
+  gap: 4px;
+  flex-wrap: wrap;
 }
-.rb-member-host {
-  border-color: rgba(200,155,60,0.6);
-  background: rgba(200,155,60,0.14);
-}
-.rb-member-icon {
-  width: 26px;
-  height: 26px;
-  object-fit: contain;
+.rb-member-slot {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: rgba(200,155,60,0.08);
+  border: 1px solid rgba(124,90,43,0.35);
   flex-shrink: 0;
 }
-.rb-member-name {
-  max-width: 100%;
-  font-size: 10px;
-  font-weight: bold;
-  color: #ffd27a;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.rb-member-host {
+  border-color: rgba(200,155,60,0.7);
+  background: rgba(200,155,60,0.18);
 }
-.rb-host-tag {
-  font-size: 7px;
-  font-weight: bold;
-  letter-spacing: 1px;
-  padding: 0 4px;
-  border-radius: 3px;
-  background: rgba(200,155,60,0.25);
-  border: 1px solid rgba(200,155,60,0.5);
-  color: #ffd27a;
+.rb-member-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 .rb-member-empty {
-  justify-content: center;
-  min-height: 62px;
   border-style: dashed;
+  border-color: rgba(124,90,43,0.3);
   background: transparent;
 }
-.rb-empty-slot-text {
-  font-size: 9px;
-  color: rgba(124,90,43,0.55);
-  letter-spacing: 1px;
-}
 .rb-join-btn {
-  width: 100%;
-  padding: 9px;
+  flex-shrink: 0;
+  padding: 9px 16px;
   border-radius: 8px;
   border: 1px solid rgba(200,155,60,0.5);
   background: rgba(200,155,60,0.14);
@@ -8714,6 +8794,7 @@ const openPackDrawer = () => {
   font-weight: bold;
   font-family: inherit;
   letter-spacing: 1px;
+  white-space: nowrap;
   cursor: pointer;
   transition: 0.15s;
 }
@@ -8740,18 +8821,51 @@ const openPackDrawer = () => {
   border-color: rgba(45,85,150,0.4);
   color: #2c5f9e;
 }
+/* บนกระดาษพื้นสว่าง — ใช้สีเข้มขึ้นถึงจะเห็นแสงจากกลางกรอบ */
+.rb-card .rb-monster-img.qt-invest {
+  background:
+    radial-gradient(circle at center,
+      rgba(80,155,250,1) 0%,
+      rgba(80,155,250,1) 30%,
+      rgba(55,115,205,0.48) 48%,
+      rgba(45,92,170,0.15) 66%,
+      transparent 84%),
+    rgba(90,70,40,0.08);
+  border-color: rgba(50,105,190,0.55);
+}
+.rb-card .rb-monster-img.qt-tempered {
+  background:
+    radial-gradient(circle at center,
+      rgba(178,92,248,1) 0%,
+      rgba(178,92,248,1) 30%,
+      rgba(140,65,205,0.5) 48%,
+      rgba(115,52,170,0.16) 66%,
+      transparent 84%),
+    rgba(90,70,40,0.08);
+  border-color: rgba(135,62,200,0.6);
+}
+
+/* บนกระดาษต้องเข้มขึ้นถึงจะอ่านออก */
+.rb-card .qt-invest {
+  background: rgba(45,85,150,0.14);
+  border-color: rgba(45,85,150,0.45);
+  color: #2c5f9e;
+}
+.rb-card .qt-tempered {
+  background: rgba(110,55,160,0.15);
+  border-color: rgba(110,55,160,0.5);
+  color: #6b2f9c;
+}
 .rb-card .rb-tag-warn {
   background: rgba(170,70,25,0.13);
   border-color: rgba(170,70,25,0.42);
   color: #9c4a15;
 }
-.rb-card .rb-members {
+.rb-card .rb-footer {
   border-top: 1px dashed rgba(120,95,55,0.45);
 }
-.rb-card .rb-members-label,
 .rb-card .rb-members-count { color: #6b542e; }
-
-.rb-card .rb-member-cell {
+.rb-card .rb-member-slot {
   background: rgba(120,95,55,0.09);
   border-color: rgba(120,95,55,0.32);
 }
@@ -8759,14 +8873,7 @@ const openPackDrawer = () => {
   background: rgba(180,140,60,0.2);
   border-color: rgba(150,110,40,0.55);
 }
-.rb-card .rb-member-name { color: #2f2312; }
-.rb-card .rb-host-tag {
-  background: rgba(160,120,45,0.28);
-  border-color: rgba(140,100,35,0.6);
-  color: #5c4212;
-}
-.rb-card .rb-empty-slot-text { color: rgba(90,70,40,0.5); }
-.rb-card .rb-member-empty { border-color: rgba(120,95,55,0.4); }
+.rb-card .rb-member-empty { border-color: rgba(120,95,55,0.35); }
 
 /* ปุ่มบนใบประกาศ — เหมือนตราประทับรับงาน */
 .rb-card .rb-join-btn {
@@ -12562,6 +12669,55 @@ const openPackDrawer = () => {
 }
 
 /* ══════════════════════════════════════════
+   PHASE TRANSITION
+   v-if สร้าง element ใหม่ทุกครั้งที่เปลี่ยน phase
+   → animation เล่นเองโดยไม่ต้องห่อ <Transition>
+   (ห่อไม่ได้เพราะ phase แต่ละอันอยู่คนละที่ มี teleport คั่น
+   และ cross-fade จะทำให้สองหน้าซ้อนกันจนดันความสูง)
+══════════════════════════════════════════ */
+.phase-book,
+.phase-monster,
+.phase-quest,
+.phase-detail,
+.phase-rooms,
+.phase-hq-vote,
+.phase-hq,
+.phase-dialog,
+.phase-hunting,
+.phase-hunting-panel,
+.phase-reward {
+  animation: phase-in 0.3s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes phase-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* เคารพการตั้งค่าผู้ใช้ที่ขอลดการเคลื่อนไหว */
+@media (prefers-reduced-motion: reduce) {
+  .phase-book,
+  .phase-monster,
+  .phase-quest,
+  .phase-detail,
+  .phase-rooms,
+  .phase-hq-vote,
+  .phase-hq,
+  .phase-dialog,
+  .phase-hunting,
+  .phase-hunting-panel,
+  .phase-reward {
+    animation: none;
+  }
+}
+
+/* ══════════════════════════════════════════
    HUNTING PANEL
 ══════════════════════════════════════════ */
 .phase-hunting-panel {
@@ -15758,128 +15914,258 @@ const openPackDrawer = () => {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: rgba(10, 8, 4, 0.5);
-  border: 1px solid rgba(124,90,43,0.3);
 }
-.trade-pool-section {
-  border-color: rgba(90,159,255,0.35);
-  background: rgba(60,100,200,0.05);
-}
-
-.trade-item-list { display: flex; flex-direction: column; gap: 6px; }
-.trade-item-list-scroll {
-  max-height: 200px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-right: 2px;
-}
-.trade-inv-header {
+.trade-head {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-.trade-inv-header .rw-section-label { margin: 0; }
-.trade-search-input {
-  flex: 1;
-  max-width: 150px;
-  background: rgba(0,0,0,0.4);
-  border: 1px solid rgba(124,90,43,0.4);
-  border-radius: 6px;
-  color: #d4c090;
-  font-size: 11px;
-  padding: 4px 8px;
-  font-family: inherit;
-  outline: none;
-  transition: border-color 0.15s;
-}
-.trade-search-input:focus { border-color: #c89b3c; }
-.trade-search-input::placeholder { color: rgba(124,90,43,0.5); }
-.trade-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  background: rgba(200,155,60,0.06);
-  border: 1px solid rgba(124,90,43,0.2);
-}
-.trade-item.trade-mine {
-  border-color: rgba(200,155,60,0.4);
-  background: rgba(200,155,60,0.08);
-}
-.trade-item-img { width: 28px; height: 28px; object-fit: contain; flex-shrink: 0; }
-.trade-item-name { flex: 1; font-size: 12px; color: #d4c090; }
-.trade-item-qty { font-size: 12px; font-weight: bold; color: #ffd27a; min-width: 28px; text-align: right; }
-.trade-from { font-size: 10px; color: #7ab3ff; }
-
-.trade-offer-btn, .trade-take-btn, .trade-cancel-btn {
-  font-size: 11px;
-  padding: 3px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-family: inherit;
-  transition: 0.15s;
-  white-space: nowrap;
-}
-.trade-offer-btn {
-  border: 1px solid rgba(255,150,0,0.45);
-  background: rgba(255,150,0,0.08);
-  color: #ffb347;
-}
-.trade-offer-btn:hover { background: rgba(255,150,0,0.2); }
-.trade-take-btn {
-  border: 1px solid rgba(100,220,100,0.45);
-  background: rgba(60,180,60,0.08);
-  color: #7cfc00;
-}
-.trade-take-btn:hover { background: rgba(60,180,60,0.2); }
-.trade-cancel-btn {
-  border: 1px solid rgba(124,90,43,0.4);
-  background: rgba(0,0,0,0.2);
-  color: #7c5a2b;
-}
-.trade-cancel-btn:hover { color: #a88040; }
-
-.trade-empty { font-size: 11px; color: rgba(124,90,43,0.4); text-align: center; margin: 0; padding: 8px 0; }
-
-.trade-picker {
-  margin-top: 8px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: rgba(200,155,60,0.08);
-  border: 1px solid rgba(200,155,60,0.35);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.trade-picker-name { font-size: 13px; color: #ffd27a; font-weight: bold; }
-.trade-picker-qty {
-  display: flex;
-  align-items: center;
   gap: 10px;
 }
-.trade-picker-qty button {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 1px solid rgba(200,155,60,0.4);
-  background: rgba(200,155,60,0.1);
+.trade-head .rw-section-label { margin: 0; }
+.trade-hint {
+  font-size: 10px;
+  color: rgba(124,90,43,0.75);
+  white-space: nowrap;
+}
+.trade-search-input {
+  width: 130px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(124,90,43,0.4);
+  background: rgba(0,0,0,0.35);
   color: #ffd27a;
-  font-size: 16px;
+  font-size: 11px;
+  font-family: inherit;
+}
+.trade-search-input:focus { outline: none; border-color: #c89b3c; }
+.trade-search-input::placeholder { color: rgba(124,90,43,0.5); }
+
+/* ── ช่องไอเทมแบบคลังของ ── */
+.trade-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+.trade-grid-scroll {
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.trade-slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(124,90,43,0.4);
+  background: rgba(0,0,0,0.3);
+  font-family: inherit;
   cursor: pointer;
+  transition: 0.15s;
+}
+.trade-slot:hover {
+  border-color: rgba(200,155,60,0.75);
+  background: rgba(200,155,60,0.1);
+  transform: translateY(-2px);
+}
+.trade-slot:active { transform: translateY(0); }
+.trade-slot-img {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+}
+.trade-slot-qty {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  font-size: 11px;
+  font-weight: bold;
+  color: #ffd27a;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.55);
+}
+.trade-slot-name {
+  width: 100%;
+  font-size: 10px;
+  line-height: 1.3;
+  color: #d4c090;
+  text-align: center;
+  /* ชื่อไอเทมยาว — ตัดที่สองบรรทัดให้ทุกช่องสูงเท่ากัน */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.trade-slot-owner {
+  font-size: 9px;
+  color: #7ab3ff;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* ป้ายบอกว่าแตะแล้วเกิดอะไร — ชัดขึ้นตอน hover */
+.trade-slot-action {
+  margin-top: 2px;
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  opacity: 0.75;
+  transition: opacity 0.15s;
+}
+.trade-slot:hover .trade-slot-action { opacity: 1; }
+.trade-slot-pool .trade-slot-action {
+  background: rgba(60,180,60,0.16);
+  border: 1px solid rgba(60,180,60,0.45);
+  color: #7fd99a;
+}
+.trade-slot-mine {
+  border-color: rgba(60,100,200,0.5);
+  background: rgba(60,100,200,0.08);
+}
+.trade-slot-mine .trade-slot-action {
+  background: rgba(124,90,43,0.18);
+  border-color: rgba(124,90,43,0.5);
+  color: #a88040;
+}
+.trade-divider {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 10px;
+  margin: 2px 0;
+}
+.trade-divider::before,
+.trade-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(200,155,60,0.3), transparent);
+}
+.trade-divider span {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: rgba(124,90,43,0.85);
+  white-space: nowrap;
+}
+
+.trade-empty {
+  font-size: 11px;
+  color: rgba(124,90,43,0.5);
+  text-align: center;
+  margin: 0;
+  padding: 18px 0;
+  border: 1px dashed rgba(124,90,43,0.3);
+  border-radius: 8px;
+}
+
+/* ── เลือกจำนวนก่อนโยน ── */
+.tp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1250;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(5px);
+}
+.tp-modal {
+  width: min(90vw, 300px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 22px 20px;
+  border-radius: 14px;
+  background: linear-gradient(to bottom, #1a1408, #0d0a05);
+  border: 1px solid rgba(200,155,60,0.45);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+}
+.tp-img { width: 64px; height: 64px; object-fit: contain; }
+.tp-name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: bold;
+  color: #ffd27a;
+  text-align: center;
+}
+.tp-qty {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.tp-step {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  border: 1px solid rgba(200,155,60,0.5);
+  background: rgba(200,155,60,0.12);
+  color: #ffd27a;
+  font-size: 22px;
+  font-family: inherit;
+  cursor: pointer;
   transition: 0.15s;
 }
-.trade-picker-qty button:hover { background: rgba(200,155,60,0.25); }
-.trade-picker-qty span { font-size: 18px; font-weight: bold; color: #ffd27a; min-width: 24px; text-align: center; }
-.trade-picker-max { font-size: 12px; color: #7c5a2b; }
-.trade-picker-btns { display: flex; gap: 8px; }
+.tp-step:hover:not(:disabled) { background: rgba(200,155,60,0.28); }
+.tp-step:disabled { opacity: 0.35; cursor: not-allowed; }
+.tp-val {
+  min-width: 46px;
+  font-size: 26px;
+  font-weight: bold;
+  color: #ffd27a;
+  text-align: center;
+}
+.tp-all {
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(124,90,43,0.5);
+  background: transparent;
+  color: #a88040;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.tp-all:hover { background: rgba(200,155,60,0.15); color: #ffd27a; }
+.tp-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-top: 2px;
+}
+.tp-cancel {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(124,90,43,0.45);
+  background: transparent;
+  color: #a88040;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.tp-confirm {
+  flex: 2;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,150,0,0.5);
+  background: rgba(255,150,0,0.16);
+  color: #ffa940;
+  font-size: 13px;
+  font-weight: bold;
+  font-family: inherit;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.tp-confirm:hover { background: rgba(255,150,0,0.3); }
 
 .trade-close-row { display: flex; justify-content: flex-end; }
 

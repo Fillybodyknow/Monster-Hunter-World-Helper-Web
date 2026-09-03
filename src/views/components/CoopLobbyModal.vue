@@ -9,6 +9,15 @@ const room = useRoomStore()
 const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 const getClass = (id) => hunterClassData.find((c) => c.hunter_class_id === id)
 
+// สีป้ายตามชนิดเควส — ชุดเดียวกับหน้า Room Board
+// Tempered ต้องเช็คก่อน เพราะชื่อเต็มคือ "Tempered Investigation Quest"
+const questTypeTone = (type) => {
+  if (!type) return ''
+  if (type.includes('Tempered')) return 'qt-tempered'
+  if (type.includes('Investigation')) return 'qt-invest'
+  return ''
+}
+
 // Countdown state
 const countdownMsg = ref('')
 const counting = ref(false)
@@ -79,6 +88,37 @@ const starColor = computed(() => {
 <template>
   <div class="cl-page">
 
+    <!-- ทุกคนพร้อม → ปิดจอด้วยหน้ากำลังออกล่า -->
+    <Teleport to="body">
+      <Transition name="cl-fade">
+        <div v-if="counting" class="cl-loading">
+          <div class="cl-loading-box">
+            <div class="cl-loading-party">
+              <div
+                v-for="(h, i) in room.hunters"
+                :key="h.hunter_id"
+                class="cl-loading-hunter"
+                :style="{ animationDelay: i * 0.14 + 's' }"
+                :title="h.hunter_name"
+              >
+                <img
+                  v-if="getClass(h.hunter_class_id)?.thumbnail"
+                  :src="getImg(getClass(h.hunter_class_id).thumbnail)"
+                  class="cl-loading-icon"
+                />
+                <span v-else class="cl-loading-icon-fallback">⚔</span>
+              </div>
+            </div>
+            <p class="cl-loading-text">{{ countdownMsg }}</p>
+            <div class="cl-loading-bar">
+              <div class="cl-loading-fill"></div>
+            </div>
+            <p class="cl-loading-sub">กำลังเตรียมการล่า...</p>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
     <div class="board-header">
       <div class="board-ornament">✦</div>
       <h1 class="board-title">Co-op Lobby</h1>
@@ -97,13 +137,6 @@ const starColor = computed(() => {
         </span>
       </button>
 
-      <!-- Countdown แทรกในหน้า ไม่ใช่ overlay ทับ -->
-      <Transition name="cl-fade">
-        <div v-if="counting" class="cl-countdown">
-          <span class="cl-countdown-text">{{ countdownMsg }}</span>
-        </div>
-      </Transition>
-
       <!-- ใบประกาศที่ทีมนี้รับไว้ ปักอยู่บนกระดาน -->
       <div class="cl-notice">
 
@@ -112,11 +145,14 @@ const starColor = computed(() => {
           v-if="room.questInfo.thumbnail"
           :src="getImg(room.questInfo.thumbnail)"
           class="cl-quest-img"
+          :class="questTypeTone(room.questInfo.quest_type)"
         />
         <div class="cl-quest-body">
           <span class="cl-quest-name">{{ room.questInfo.monster_name }}</span>
           <div class="cl-quest-meta">
-            <span class="cl-tag">{{ room.questInfo.quest_type }}</span>
+            <span class="cl-tag" :class="questTypeTone(room.questInfo.quest_type)">
+              {{ room.questInfo.quest_type }}
+            </span>
             <span class="cl-stars" :style="{ color: starColor }">
               <span v-for="i in room.questInfo.difficulty_level" :key="i">★</span>
             </span>
@@ -213,6 +249,23 @@ const starColor = computed(() => {
   flex-direction: column;
   gap: 14px;
   padding-bottom: 40px;
+  /* เข้าหน้าแบบเดียวกับ phase อื่นใน Quest.vue */
+  animation: phase-in 0.3s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes phase-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cl-page { animation: none; }
 }
 .cl-inner {
   width: 100%;
@@ -292,27 +345,95 @@ const starColor = computed(() => {
   letter-spacing: 1px;
 }
 
-/* ── Countdown ── */
-.cl-countdown {
-  padding: 12px;
-  border-radius: 10px;
+/* ── หน้ากำลังออกล่า (ทุกคน Ready แล้ว) ── */
+.cl-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(6, 4, 2, 0.93);
+  backdrop-filter: blur(10px);
+}
+.cl-loading-box {
+  width: min(90vw, 340px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.cl-loading-party {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+/* เต้นเหลื่อมกันทีละคน ให้เห็นว่าทั้งตี้กำลังออกเดินทาง */
+.cl-loading-hunter {
+  animation: cl-bob 1.5s ease-in-out infinite;
+}
+.cl-loading-icon {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 12px rgba(200,155,60,0.55));
+}
+.cl-loading-icon-fallback {
+  display: inline-block;
+  width: 42px;
+  font-size: 30px;
   text-align: center;
-  background: rgba(80,180,110,0.14);
-  border: 1px solid rgba(90,210,130,0.5);
-  animation: cl-pulse 1.2s ease-in-out infinite;
+  color: #ffd27a;
+  filter: drop-shadow(0 0 12px rgba(200,155,60,0.55));
 }
-.cl-countdown-text {
-  font-size: 15px;
+@keyframes cl-bob {
+  0%, 100% { transform: translateY(4px) scale(0.94); opacity: 0.7; }
+  50%      { transform: translateY(-5px) scale(1.06); opacity: 1; }
+}
+.cl-loading-text {
+  margin: 0;
+  font-size: 17px;
   font-weight: bold;
-  color: #8fe0aa;
+  color: #ffd27a;
   letter-spacing: 2px;
+  text-align: center;
+  min-height: 24px;
 }
-@keyframes cl-pulse {
-  0%, 100% { opacity: 0.75; }
-  50% { opacity: 1; }
+/* แถบเดินตามเวลานับถอยหลังจริง (4 วินาที) */
+.cl-loading-bar {
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(200,155,60,0.15);
 }
-.cl-fade-enter-active, .cl-fade-leave-active { transition: opacity 0.25s ease; }
+.cl-loading-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #7c5a2b, #ffd27a);
+  animation: cl-fill 4s linear forwards;
+}
+@keyframes cl-fill {
+  from { width: 0; }
+  to   { width: 100%; }
+}
+.cl-loading-sub {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #7c5a2b;
+}
+.cl-fade-enter-active, .cl-fade-leave-active { transition: opacity 0.3s ease; }
 .cl-fade-enter-from, .cl-fade-leave-to { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cl-loading-hunter { animation: none; }
+}
 
 /* ── กระดานไม้ + ใบประกาศ (ชุดเดียวกับหน้า Room Board) ── */
 .cl-board {
@@ -445,8 +566,8 @@ const starColor = computed(() => {
   border: 1px solid rgba(124,90,43,0.35);
 }
 .cl-quest-img {
-  width: 58px;
-  height: 58px;
+  width: 66px;
+  height: 66px;
   object-fit: contain;
   border-radius: 8px;
   background: rgba(0,0,0,0.35);
@@ -482,6 +603,41 @@ const starColor = computed(() => {
 .cl-stars {
   font-size: 11px;
   letter-spacing: 1px;
+}
+/* รูปมอนเรืองแสงจากกลางกรอบ (Assigned ไม่เรือง) */
+.cl-notice .cl-quest-img.qt-invest {
+  background:
+    radial-gradient(circle at center,
+      rgba(80,155,250,1) 0%,
+      rgba(80,155,250,1) 30%,
+      rgba(55,115,205,0.48) 48%,
+      rgba(45,92,170,0.15) 66%,
+      transparent 84%),
+    rgba(90,70,40,0.08);
+  border: 1px solid rgba(50,105,190,0.55);
+}
+.cl-notice .cl-quest-img.qt-tempered {
+  background:
+    radial-gradient(circle at center,
+      rgba(178,92,248,1) 0%,
+      rgba(178,92,248,1) 30%,
+      rgba(140,65,205,0.5) 48%,
+      rgba(115,52,170,0.16) 66%,
+      transparent 84%),
+    rgba(90,70,40,0.08);
+  border: 1px solid rgba(135,62,200,0.6);
+}
+
+/* ป้ายชนิดเควสอยู่บนกระดาษ — ใช้โทนเข้มให้อ่านออก */
+.cl-notice .qt-invest {
+  background: rgba(45,85,150,0.14);
+  border-color: rgba(45,85,150,0.45);
+  color: #2c5f9e;
+}
+.cl-notice .qt-tempered {
+  background: rgba(110,55,160,0.15);
+  border-color: rgba(110,55,160,0.5);
+  color: #6b2f9c;
 }
 .cl-warn {
   font-size: 10px;
