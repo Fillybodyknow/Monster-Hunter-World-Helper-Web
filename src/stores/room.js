@@ -148,13 +148,39 @@ export const useRoomStore = defineStore('room', () => {
     registerDisconnect(roomCode.value, myHunterId.value, true)
   }
 
-  // Auto re-register when Firebase reconnects (handles host disconnect overlay)
-  watch(isFirebaseConnected, (connected) => {
-    if (connected && roomCode.value && isHost.value) {
+  // Auto re-register presence เมื่อ Firebase กลับมาเชื่อมต่อ — ทั้ง Host และ Guest
+  // ตอนหลุด server ยิง onDisconnect ไปแล้ว → ค่าใน DB ค้างเป็น false
+  // ถ้าไม่เขียนทับเป็น true ที่นี่ เพื่อนในตี้จะเห็นว่าเรายังหลุดอยู่ตลอดจนกว่าจะ refresh หน้า
+  watch(isFirebaseConnected, (connected, wasConnected) => {
+    if (!connected || !roomCode.value || !myHunterId.value) return
+
+    if (isHost.value) {
       setHostConnected(roomCode.value, true)
       registerDisconnect(roomCode.value, myHunterId.value, true)
+    } else {
+      // registerDisconnect เขียน connected = true ให้ในตัว แล้ว arm onDisconnect รอบใหม่
+      registerDisconnect(roomCode.value, myHunterId.value, false)
     }
+
+    // หลุดจริงแล้วกลับมา (ไม่ใช่ค่าเริ่มต้น) → ให้ Quest.vue restore state เหมือนตอน rejoin
+    // ไม่งั้น deck/phase ที่เดินหน้าไประหว่างที่เราหลุดจะไม่ถูก sync กลับมา
+    if (wasConnected === false) joinSignal.value++
   })
+
+  // มือถือ/แท็บที่ถูกพักไว้: socket อาจค้างแบบ half-open จน .info/connected ไม่พลิกเป็น false
+  // พอผู้เล่นกลับมาเปิดแอปอีกครั้ง ให้ยืนยัน presence ทันที ไม่ต้องรอ timeout ของ Firebase
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return
+      if (!roomCode.value || !myHunterId.value || !isFirebaseConnected.value) return
+      if (isHost.value) {
+        setHostConnected(roomCode.value, true)
+        registerDisconnect(roomCode.value, myHunterId.value, true)
+      } else {
+        registerDisconnect(roomCode.value, myHunterId.value, false)
+      }
+    })
+  }
 
   const create = async (hunter) => {
     const code = await createRoom(hunter)

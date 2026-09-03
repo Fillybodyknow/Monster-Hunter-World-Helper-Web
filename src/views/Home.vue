@@ -22,6 +22,8 @@ const addNotif = (message, type = 'info') => {
 provide('addNotif', addNotif)
 
 // Auto-reconnect เมื่อ Firebase reconnect และมี savedRoomCode
+// เคสนี้คือ "หลุดจนห้องถูก reset ไปแล้ว" (roomData กลายเป็น null) — ต้อง join ใหม่ทั้งหมด
+// ส่วนเคสที่ยังอยู่ในห้อง store จะ re-register presence + bump joinSignal ให้เอง
 let _autoReconnecting = false
 watch(isFirebaseConnected, async (connected, wasConnected) => {
   if (!connected || wasConnected) return
@@ -36,6 +38,17 @@ watch(isFirebaseConnected, async (connected, wasConnected) => {
     _autoReconnecting = false
   }
 })
+
+// แจ้งเตือนสถานะการเชื่อมต่อของ "ตัวเอง" — เดิมผู้เล่นไม่รู้เลยว่าเน็ตตัวเองหลุด
+watch(isFirebaseConnected, (connected, wasConnected) => {
+  if (!room.inRoom) return
+  if (!connected) addNotif('🔌 คุณขาดการเชื่อมต่อ — กำลังเชื่อมต่อใหม่อัตโนมัติ', 'warn')
+  else if (wasConnected === false) addNotif('✅ กลับมาเชื่อมต่อแล้ว', 'info')
+})
+
+// Overlay: แยกให้ชัดว่าเน็ตตัวเองหลุด หรือ Host หลุด
+const selfOffline = computed(() => room.inRoom && !isFirebaseConnected.value)
+const hostOffline = computed(() => room.inRoom && isFirebaseConnected.value && !room.hostConnected)
 
 // Watch: ตรวจ connected state ของสมาชิก
 const _connectedCache = ref({}) // { hunterId: boolean }
@@ -209,11 +222,15 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
     <!-- ── Disconnect Overlay ── -->
     <teleport to="body">
       <Transition name="notif-slide">
-        <div v-if="room.inRoom && (!isFirebaseConnected || !room.hostConnected)" class="disconnect-overlay">
+        <div v-if="selfOffline || hostOffline" class="disconnect-overlay">
           <div class="disconnect-box">
             <div class="disconnect-spinner"></div>
-            <p class="disconnect-title">Host ขาดการเชื่อมต่อ</p>
-            <p class="disconnect-sub">กำลัง Reconnect...</p>
+            <p class="disconnect-title">
+              {{ selfOffline ? 'คุณขาดการเชื่อมต่อ' : 'Host ขาดการเชื่อมต่อ' }}
+            </p>
+            <p class="disconnect-sub">
+              {{ selfOffline ? 'กำลังเชื่อมต่อใหม่อัตโนมัติ — ไม่ต้อง refresh' : 'กำลัง Reconnect...' }}
+            </p>
             <button v-if="showLeaveButton" class="disconnect-leave-btn" @click="room.leave()">ออกจากตี้</button>
           </div>
         </div>
