@@ -3,7 +3,6 @@ import { ref, watch, computed } from 'vue'
 import { useRoomStore } from '@/stores/room'
 import hunterClassData from '@/assets/files/class_hunter.json'
 
-const props = defineProps({ show: Boolean })
 const emit = defineEmits(['start', 'leave'])
 
 const room = useRoomStore()
@@ -36,22 +35,22 @@ const startCountdown = () => {
 
   setTimeout(() => {
     clearInterval(_countdownTimer)
-    counting.value = false
-    countdownMsg.value = ''
+    // ไม่ล้างสถานะนับถอยหลัง — หน้านี้จะถูกปิดตอน phase เปลี่ยน
+    // ถ้าล้าง Guest ที่ยังรอ Host จะเห็นปุ่ม Ready เด้งกลับมาเหมือนยังไม่ได้เริ่ม
     emit('start')
   }, 4000)
 }
 
 // Host: when allReady → push questStartAt to Firebase
 watch(() => room.allReady, (ready) => {
-  if (ready && props.show && room.isHost) {
+  if (ready && room.isHost) {
     room.triggerQuestStart()
   }
 })
 
 // Watch questStartAt (for guests — host triggers, guests follow)
 watch(() => room.questStartAt, (val) => {
-  if (val && props.show && !counting.value) startCountdown()
+  if (val && !counting.value) startCountdown()
 })
 
 const handleReady = () => room.setReady(!room.amReady)
@@ -78,413 +77,620 @@ const starColor = computed(() => {
 </script>
 
 <template>
-  <Teleport to="body">
-    <div v-if="show" class="cml-overlay">
-      <div class="cml-panel">
+  <div class="cl-page">
 
-        <!-- Header -->
-        <div class="cml-header">
-          <span class="cml-title">⚔ Co-op Lobby</span>
-          <div class="cml-code-wrap" @click="copyCode" title="คลิกเพื่อคัดลอก">
-            <span class="cml-code-label">{{ copied ? '✓ Copied!' : 'Room Code (กดเพื่อคัดลอก)' }}</span>
-            <span class="cml-code" :class="{ copied }">{{ room.roomCode }}</span>
+    <div class="board-header">
+      <div class="board-ornament">✦</div>
+      <h1 class="board-title">Co-op Lobby</h1>
+      <div class="board-ornament">✦</div>
+    </div>
+    <p class="board-subtitle">Waiting for Hunters</p>
+
+    <div class="cl-board">
+    <div class="cl-inner">
+
+      <!-- Room Code — เด่นสุดในหน้า เพราะเป็นสิ่งที่ต้องบอกเพื่อน -->
+      <button class="cl-code-banner" :class="{ copied }" @click="copyCode">
+        <span class="cl-code-label">{{ copied ? '✓ คัดลอกแล้ว' : 'ROOM CODE — แตะเพื่อคัดลอก' }}</span>
+        <span class="cl-code">
+          <span v-for="(ch, i) in room.roomCode" :key="i" class="cl-code-char">{{ ch }}</span>
+        </span>
+      </button>
+
+      <!-- Countdown แทรกในหน้า ไม่ใช่ overlay ทับ -->
+      <Transition name="cl-fade">
+        <div v-if="counting" class="cl-countdown">
+          <span class="cl-countdown-text">{{ countdownMsg }}</span>
+        </div>
+      </Transition>
+
+      <!-- ใบประกาศที่ทีมนี้รับไว้ ปักอยู่บนกระดาน -->
+      <div class="cl-notice">
+
+      <div v-if="room.questInfo" class="cl-quest">
+        <img
+          v-if="room.questInfo.thumbnail"
+          :src="getImg(room.questInfo.thumbnail)"
+          class="cl-quest-img"
+        />
+        <div class="cl-quest-body">
+          <span class="cl-quest-name">{{ room.questInfo.monster_name }}</span>
+          <div class="cl-quest-meta">
+            <span class="cl-tag">{{ room.questInfo.quest_type }}</span>
+            <span class="cl-stars" :style="{ color: starColor }">
+              <span v-for="i in room.questInfo.difficulty_level" :key="i">★</span>
+            </span>
+          </div>
+          <div v-if="room.questInfo.exhausted_attempt" class="cl-warn">
+            ⚠ จะบังคับเข้า HQ (2 กิจกรรม)
+          </div>
+        </div>
+      </div>
+
+      <!-- Hunters -->
+      <div class="cl-section-head">
+        <div class="cl-line"></div>
+        <span class="cl-section-label">
+          Hunters · {{ room.hunters.filter(h => h.ready).length }}/{{ room.hunterCount }} Ready
+        </span>
+        <div class="cl-line"></div>
+      </div>
+
+      <div class="cl-hunter-grid">
+        <div
+          v-for="h in room.hunters"
+          :key="h.hunter_id"
+          class="cl-hunter"
+          :class="{ ready: h.ready, me: h.hunter_id === room.myHunterId }"
+        >
+          <div class="cl-hunter-head">
+            <img
+              v-if="getClass(h.hunter_class_id)?.thumbnail"
+              :src="getImg(getClass(h.hunter_class_id).thumbnail)"
+              class="cl-hunter-icon"
+            />
+            <span class="cl-hunter-name">{{ h.hunter_name }}</span>
+          </div>
+
+          <div class="cl-hunter-meta">
+            <span v-if="h.isHost" class="cl-host-tag">HOST</span>
+            <span class="cl-hunter-class">{{ getClass(h.hunter_class_id)?.hunter_class }}</span>
+            <span class="cl-day">DAY {{ h.campaign_day ?? 1 }}</span>
+          </div>
+
+          <div v-if="h.weapon" class="cl-weapon">
+            <img
+              v-if="h.weapon.thumbnail"
+              :src="getImg(h.weapon.thumbnail)"
+              class="cl-weapon-icon"
+              :title="`Rarity ${h.weapon.rarity}`"
+            />
+            <span class="cl-weapon-name" :class="'cl-rar-' + (h.weapon.rarity || 1)">
+              {{ h.weapon.name }}
+            </span>
+          </div>
+          <div v-else class="cl-weapon cl-weapon-none">ไม่มีข้อมูลอาวุธ</div>
+
+          <div class="cl-ready" :class="h.ready ? 'is-ready' : 'not-ready'">
+            {{ h.ready ? '✓ Ready' : 'รอ Ready' }}
           </div>
         </div>
 
-        <!-- Quest Info -->
-        <div v-if="room.questInfo" class="cml-quest-info">
-          <img
-            v-if="room.questInfo.thumbnail"
-            :src="getImg(room.questInfo.thumbnail)"
-            class="cml-quest-monster-img"
-          />
-          <div class="cml-quest-detail">
-            <span class="cml-quest-name">{{ room.questInfo.monster_name }}</span>
-            <div class="cml-quest-meta">
-              <span class="cml-quest-type">{{ room.questInfo.quest_type }}</span>
-              <span class="cml-quest-stars" :style="{ color: starColor }">
-                <span v-for="i in room.questInfo.difficulty_level" :key="i">★</span>
-              </span>
-            </div>
-            <div v-if="room.questInfo.exhausted_attempt" class="cml-exhausted-badge">
-              ⚠ จะบังคับเข้า HQ (2 กิจกรรม)
-            </div>
-          </div>
+        <div v-for="i in (4 - room.hunterCount)" :key="`e${i}`" class="cl-hunter cl-hunter-empty">
+          <span class="cl-empty-text">รอ Hunter</span>
         </div>
-
-        <!-- Countdown overlay -->
-        <Transition name="cml-fade">
-          <div v-if="counting" class="cml-countdown">
-            <p class="cml-countdown-text">{{ countdownMsg }}</p>
-          </div>
-        </Transition>
-
-        <!-- Hunter list -->
-        <div class="cml-hunters">
-          <div
-            v-for="h in room.hunters"
-            :key="h.hunter_id"
-            class="cml-hunter-card"
-            :class="{ ready: h.ready, 'is-me': h.hunter_id === room.myHunterId }"
-          >
-            <div class="cml-hunter-left">
-              <img
-                v-if="getClass(h.hunter_class_id)?.thumbnail"
-                :src="getImg(getClass(h.hunter_class_id).thumbnail)"
-                class="cml-hunter-icon"
-              />
-              <div class="cml-hunter-info">
-                <span class="cml-hunter-name">{{ h.hunter_name }}</span>
-                <span class="cml-hunter-class">{{ getClass(h.hunter_class_id)?.hunter_class }}</span>
-              </div>
-            </div>
-            <div class="cml-hunter-right">
-              <span v-if="h.isHost" class="cml-badge host">HOST</span>
-              <span class="cml-ready-badge" :class="h.ready ? 'ready' : 'not-ready'">
-                {{ h.ready ? '✓ Ready' : 'Not Ready' }}
-              </span>
-            </div>
-          </div>
-
-          <!-- Empty slots -->
-          <div v-for="i in (4 - room.hunterCount)" :key="`e${i}`" class="cml-hunter-card empty">
-            <span class="cml-empty">รอ Hunter เข้าร่วม...</span>
-          </div>
-        </div>
-
-        <!-- Status text -->
-        <p class="cml-status">
-          <span v-if="room.allReady">✦ ทุกคน Ready แล้ว!</span>
-          <span v-else>รอ Hunter กด Ready ({{ room.hunters.filter(h => h.ready).length }}/{{ room.hunterCount }})</span>
-        </p>
-
-        <!-- Actions -->
-        <div class="cml-actions">
-          <button
-            class="cml-btn-ready"
-            :class="{ active: room.amReady }"
-            @click="handleReady"
-            :disabled="counting"
-          >
-            {{ room.amReady ? '✓ Ready!' : 'Ready' }}
-          </button>
-          <button class="cml-btn-leave" @click="handleLeave" :disabled="counting">
-            {{ room.isHost ? 'ยุบ Room' : 'ออก' }}
-          </button>
-        </div>
+      </div>
 
       </div>
+
+      <p class="cl-status" :class="{ 'all-ready': room.allReady }">
+        <span v-if="room.allReady">✦ ทุกคน Ready แล้ว — กำลังเริ่ม</span>
+        <span v-else>รอ Hunter กด Ready ให้ครบ</span>
+      </p>
+
+      <div class="cl-actions">
+        <button
+          class="cl-btn-ready"
+          :class="{ active: room.amReady }"
+          @click="handleReady"
+          :disabled="counting"
+        >
+          {{ room.amReady ? '✓ Ready!' : 'Ready' }}
+        </button>
+        <button class="cl-btn-leave" @click="handleLeave" :disabled="counting">
+          {{ room.isHost ? '🗑 ยุบ Room' : '🚪 ออก' }}
+        </button>
+      </div>
+
     </div>
-  </Teleport>
+    </div>
+  </div>
 </template>
 
 <style scoped>
-.cml-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.75);
-  backdrop-filter: blur(8px);
-  z-index: 300;
+.cl-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 40px;
+}
+.cl-inner {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* หัวเรื่องชุดเดียวกับหน้าอื่น — scoped เลยต้องมีสำเนาของตัวเอง */
+.board-header {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  gap: 12px;
 }
-
-.cml-panel {
-  background: linear-gradient(160deg, #1c1508, #13100a, #1c1508);
-  border: 2px solid #7c5a2b;
-  border-radius: 16px;
-  width: min(440px, 100%);
-  overflow: hidden;
-  position: relative;
-  box-shadow: 0 0 40px rgba(0,0,0,0.8), 0 0 20px rgba(200,155,60,0.1);
-}
-
-.cml-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 20px;
-  border-bottom: 1px solid rgba(124,90,43,0.4);
-  background: rgba(200,155,60,0.05);
-}
-
-.cml-title {
-  font-size: 15px;
-  font-weight: bold;
-  color: #ffd27a;
-  letter-spacing: 2px;
-}
-
-.cml-code-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 1px;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 6px;
-  transition: background 0.15s;
-}
-.cml-code-wrap:hover { background: rgba(200,155,60,0.08); }
-
-.cml-code-label {
-  font-size: 9px;
+.board-ornament {
   color: #7c5a2b;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  transition: color 0.2s;
+  font-size: 14px;
 }
-.cml-code {
+.board-title {
+  margin: 0;
   font-size: 20px;
   font-weight: bold;
-  font-family: monospace;
   color: #ffd27a;
-  letter-spacing: 4px;
-  text-shadow: 0 0 10px rgba(255,210,122,0.4);
-  transition: color 0.2s;
+  letter-spacing: 3px;
+  text-transform: uppercase;
 }
-.cml-code.copied {
-  color: #7cfc00;
-  text-shadow: 0 0 10px rgba(100,255,100,0.5);
+.board-subtitle {
+  margin: 0;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #7c5a2b;
 }
 
-/* Quest Info */
-.cml-quest-info {
+/* ── Room Code ── */
+.cl-code-banner {
+  width: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  margin: 0 20px;
-  padding: 12px 14px;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(200,155,60,0.35);
+  background: linear-gradient(to bottom, rgba(200,155,60,0.12), rgba(200,155,60,0.04));
+  font-family: inherit;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.cl-code-banner:hover { border-color: rgba(200,155,60,0.7); }
+.cl-code-banner.copied { border-color: rgba(90,210,130,0.7); }
+.cl-code-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #7c5a2b;
+}
+.cl-code-banner.copied .cl-code-label { color: #7fd99a; }
+.cl-code {
+  display: flex;
+  gap: 6px;
+}
+.cl-code-char {
+  min-width: 28px;
+  padding: 4px 0;
+  border-radius: 6px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(124,90,43,0.5);
+  font-family: monospace;
+  font-size: 20px;
+  font-weight: bold;
+  color: #ffd27a;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+/* ── Countdown ── */
+.cl-countdown {
+  padding: 12px;
   border-radius: 10px;
-  background: rgba(0,0,0,0.3);
-  border: 1px solid rgba(124,90,43,0.3);
+  text-align: center;
+  background: rgba(80,180,110,0.14);
+  border: 1px solid rgba(90,210,130,0.5);
+  animation: cl-pulse 1.2s ease-in-out infinite;
 }
-.cml-quest-monster-img {
-  width: 56px;
-  height: 56px;
+.cl-countdown-text {
+  font-size: 15px;
+  font-weight: bold;
+  color: #8fe0aa;
+  letter-spacing: 2px;
+}
+@keyframes cl-pulse {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}
+.cl-fade-enter-active, .cl-fade-leave-active { transition: opacity 0.25s ease; }
+.cl-fade-enter-from, .cl-fade-leave-to { opacity: 0; }
+
+/* ── กระดานไม้ + ใบประกาศ (ชุดเดียวกับหน้า Room Board) ── */
+.cl-board {
+  width: 100%;
+  padding: 22px 16px 26px;
+  border-radius: 6px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(0,0,0,0.16) 0px,
+      rgba(0,0,0,0.16) 1px,
+      transparent 1px,
+      transparent 7px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,220,160,0.045) 0px,
+      rgba(255,220,160,0.045) 2px,
+      transparent 2px,
+      transparent 23px
+    ),
+    linear-gradient(175deg, #4a3520 0%, #46331f 22%, #3a2917 58%, #43301c 100%);
+  border: 4px solid #2e2113;
+  box-shadow:
+    inset 0 0 60px rgba(0,0,0,0.55),
+    inset 0 2px 0 rgba(255,220,160,0.08),
+    0 4px 14px rgba(0,0,0,0.5);
+}
+.cl-notice {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+  padding: 18px 16px 16px;
+  border: 1px solid #b8a173;
+  border-radius: 2px;
+  color: #3a2c18;
+  transform: rotate(-0.4deg);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(140,110,60,0.13), transparent 42%),
+    radial-gradient(circle at 88% 92%, rgba(120,95,50,0.15), transparent 45%),
+    linear-gradient(168deg, #efe4c8 0%, #e6d9b8 45%, #dccba6 100%);
+  box-shadow:
+    0 3px 8px rgba(0,0,0,0.45),
+    inset 0 0 26px rgba(150,120,70,0.14);
+}
+/* หมุดปักหัวใบประกาศ */
+.cl-notice::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f0d9a0, #a8762c 60%, #6b4718);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.6);
+}
+
+/* ── หมึกบนกระดาษ: ทับโทนทอง/ดำเดิมให้อ่านออก ── */
+.cl-notice .cl-quest {
+  background: rgba(120,95,55,0.08);
+  border-color: rgba(120,95,55,0.32);
+}
+.cl-notice .cl-quest-img {
+  background: rgba(90,70,40,0.12);
+  border: 1px solid rgba(120,95,55,0.3);
+}
+.cl-notice .cl-quest-name { color: #2f2312; }
+.cl-notice .cl-tag {
+  background: rgba(120,95,55,0.14);
+  border-color: rgba(120,95,55,0.4);
+  color: #6b542e;
+}
+.cl-notice .cl-warn { color: #9c4a15; }
+.cl-notice .cl-section-label { color: #6b542e; }
+.cl-notice .cl-line {
+  background: linear-gradient(to right, transparent, rgba(120,95,55,0.5));
+}
+.cl-notice .cl-line:last-child {
+  background: linear-gradient(to left, transparent, rgba(120,95,55,0.5));
+}
+.cl-notice .cl-hunter {
+  background: rgba(120,95,55,0.09);
+  border-color: rgba(120,95,55,0.32);
+}
+.cl-notice .cl-hunter.me { border-color: rgba(150,110,40,0.6); }
+.cl-notice .cl-hunter.ready {
+  border-color: rgba(45,120,70,0.55);
+  background: rgba(60,140,85,0.12);
+}
+.cl-notice .cl-hunter-name { color: #2f2312; }
+.cl-notice .cl-hunter-class { color: #6b542e; }
+.cl-notice .cl-host-tag {
+  background: rgba(160,120,45,0.28);
+  border-color: rgba(140,100,35,0.6);
+  color: #5c4212;
+}
+.cl-notice .cl-day {
+  background: rgba(45,85,150,0.12);
+  border-color: rgba(45,85,150,0.35);
+  color: #2c5f9e;
+}
+.cl-notice .cl-rar-1 { color: #5f5f5f; }
+.cl-notice .cl-rar-2 { color: #2f7d4f; }
+.cl-notice .cl-rar-3 { color: #2c5f9e; }
+.cl-notice .cl-rar-4 { color: #7b3fa0; }
+.cl-notice .cl-weapon-none { color: rgba(90,70,40,0.65); }
+.cl-notice .cl-ready.is-ready {
+  background: rgba(60,140,85,0.22);
+  color: #256b42;
+}
+.cl-notice .cl-ready.not-ready {
+  background: rgba(120,95,55,0.16);
+  color: rgba(90,70,40,0.8);
+}
+.cl-notice .cl-hunter-empty { border-color: rgba(120,95,55,0.4); }
+.cl-notice .cl-empty-text { color: rgba(90,70,40,0.5); }
+
+/* ── Quest ── */
+.cl-quest {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.28);
+  border: 1px solid rgba(124,90,43,0.35);
+}
+.cl-quest-img {
+  width: 58px;
+  height: 58px;
   object-fit: contain;
-  filter: drop-shadow(0 0 8px rgba(200,155,60,0.3));
+  border-radius: 8px;
+  background: rgba(0,0,0,0.35);
+  flex-shrink: 0;
 }
-.cml-quest-detail {
+.cl-quest-body {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
-.cml-quest-name {
+.cl-quest-name {
   font-size: 15px;
   font-weight: bold;
   color: #ffd27a;
 }
-.cml-quest-meta {
+.cl-quest-meta {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
-.cml-quest-type {
+.cl-tag {
+  font-size: 9px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(200,155,60,0.12);
+  border: 1px solid rgba(200,155,60,0.3);
+  color: #a88040;
+  letter-spacing: 0.5px;
+}
+.cl-stars {
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+.cl-warn {
+  font-size: 10px;
+  color: #ff9955;
+}
+
+/* ── Section head ── */
+.cl-section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+.cl-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(200,155,60,0.35));
+}
+.cl-line:last-child {
+  background: linear-gradient(to left, transparent, rgba(200,155,60,0.35));
+}
+.cl-section-label {
   font-size: 10px;
   letter-spacing: 2px;
-  color: #a88040;
   text-transform: uppercase;
-  background: rgba(200,155,60,0.1);
-  border: 1px solid rgba(200,155,60,0.25);
-  border-radius: 4px;
-  padding: 2px 6px;
-}
-.cml-quest-stars {
-  font-size: 13px;
-  letter-spacing: 1px;
-}
-.cml-exhausted-badge {
-  font-size: 10px;
-  letter-spacing: 1px;
-  color: #ffaa33;
-  background: rgba(255,140,0,0.1);
-  border: 1px solid rgba(255,140,0,0.35);
-  border-radius: 4px;
-  padding: 2px 7px;
-  margin-top: 4px;
-  width: fit-content;
+  color: #7c5a2b;
+  white-space: nowrap;
 }
 
-/* Countdown overlay */
-.cml-countdown {
-  position: absolute;
-  inset: 0;
-  background: rgba(8,6,2,0.92);
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* ── Hunters 2x2 ── */
+.cl-hunter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
-.cml-countdown-text {
-  font-size: 24px;
-  font-weight: bold;
-  color: #ffd27a;
-  letter-spacing: 3px;
-  text-align: center;
-  text-shadow: 0 0 20px rgba(255,210,122,0.8);
-  animation: cml-pulse 1.2s ease-in-out infinite;
-}
-@keyframes cml-pulse {
-  0%,100% { transform: scale(1); opacity: 1; }
-  50%      { transform: scale(1.04); opacity: 0.8; }
-}
-
-.cml-fade-enter-active { transition: opacity 0.3s; }
-.cml-fade-leave-active { transition: opacity 0.3s; }
-.cml-fade-enter-from, .cml-fade-leave-to { opacity: 0; }
-
-/* Hunter list */
-.cml-hunters {
+.cl-hunter {
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 16px 20px;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.28);
+  border: 1px solid rgba(124,90,43,0.35);
+  transition: 0.2s;
 }
-
-.cml-hunter-card {
+.cl-hunter.me { border-color: rgba(200,155,60,0.6); }
+.cl-hunter.ready {
+  border-color: rgba(90,210,130,0.55);
+  background: rgba(80,180,110,0.1);
+}
+.cl-hunter-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-radius: 8px;
-  background: rgba(200,155,60,0.05);
-  border: 1px solid rgba(124,90,43,0.3);
-  transition: border-color 0.3s, background 0.3s;
+  gap: 7px;
+  min-width: 0;
 }
-.cml-hunter-card.ready {
-  border-color: rgba(100,220,100,0.5);
-  background: rgba(60,180,60,0.08);
+.cl-hunter-icon {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
-.cml-hunter-card.is-me {
-  border-color: rgba(200,155,60,0.6);
+.cl-hunter-name {
+  font-size: 12px;
+  font-weight: bold;
+  color: #ffd27a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.cml-hunter-card.empty {
+/* ไม่ wrap — ให้ชื่อคลาสตัดแทน ไม่งั้น DAY จะตกบรรทัดในช่องแคบ */
+.cl-hunter-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.cl-hunter-class {
+  font-size: 10px;
+  color: #a88040;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cl-day {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: #7ab3ff;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(60,100,200,0.14);
+  border: 1px solid rgba(90,140,230,0.3);
+}
+.cl-weapon {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.cl-weapon-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.cl-weapon-name {
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* rarity บอกด้วยสีชื่ออาวุธ ชุดเดียวกับหน้าบอร์ดห้อง */
+.cl-rar-1 { color: #b8b8b8; }
+.cl-rar-2 { color: #7fd99a; }
+.cl-rar-3 { color: #7ab3ff; }
+.cl-rar-4 { color: #cc77ff; }
+.cl-weapon-none {
+  font-size: 9px;
+  color: rgba(124,90,43,0.6);
+  font-style: italic;
+}
+.cl-host-tag {
+  font-size: 8px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(200,155,60,0.25);
+  border: 1px solid rgba(200,155,60,0.5);
+  color: #ffd27a;
+}
+.cl-ready {
+  padding: 4px;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+.cl-ready.is-ready {
+  background: rgba(80,200,120,0.2);
+  color: #8fe0aa;
+}
+.cl-ready.not-ready {
+  background: rgba(124,90,43,0.15);
+  color: rgba(168,128,64,0.8);
+}
+.cl-hunter-empty {
+  align-items: center;
   justify-content: center;
+  min-height: 118px;
   border-style: dashed;
-  border-color: rgba(124,90,43,0.2);
   background: transparent;
 }
-.cml-empty {
-  font-size: 11px;
-  color: rgba(124,90,43,0.35);
-  letter-spacing: 2px;
+.cl-empty-text {
+  font-size: 10px;
+  color: rgba(124,90,43,0.55);
+  letter-spacing: 1px;
 }
 
-.cml-hunter-left {
+/* ── Status + actions ── */
+.cl-status {
+  margin: 0;
+  text-align: center;
+  font-size: 11px;
+  color: #a88040;
+  letter-spacing: 1px;
+}
+.cl-status.all-ready { color: #8fe0aa; }
+.cl-actions {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
-.cml-hunter-icon {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-}
-.cml-hunter-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.cml-hunter-name {
+.cl-btn-ready {
+  flex: 2;
+  padding: 13px;
+  border-radius: 10px;
+  border: 1px solid rgba(90,210,130,0.5);
+  background: rgba(80,180,110,0.14);
+  color: #8fe0aa;
   font-size: 14px;
   font-weight: bold;
-  color: #ffd27a;
-}
-.cml-hunter-class {
-  font-size: 11px;
-  color: #a88040;
-}
-
-.cml-hunter-right {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.cml-badge.host {
-  font-size: 9px;
-  letter-spacing: 2px;
-  color: #ffd27a;
-  background: rgba(200,155,60,0.15);
-  border: 1px solid rgba(200,155,60,0.35);
-  border-radius: 4px;
-  padding: 2px 6px;
-}
-.cml-ready-badge {
-  font-size: 11px;
-  font-weight: bold;
-  border-radius: 4px;
-  padding: 3px 8px;
+  font-family: inherit;
   letter-spacing: 1px;
-  transition: 0.3s;
+  cursor: pointer;
+  transition: 0.15s;
 }
-.cml-ready-badge.ready {
-  color: #7cfc00;
-  background: rgba(60,180,60,0.15);
-  border: 1px solid rgba(60,180,60,0.4);
+.cl-btn-ready:hover:not(:disabled) { background: rgba(80,190,115,0.28); }
+.cl-btn-ready.active {
+  background: rgba(80,200,120,0.3);
+  border-color: rgba(110,220,150,0.8);
 }
-.cml-ready-badge.not-ready {
-  color: #7c5a2b;
-  background: rgba(0,0,0,0.2);
-  border: 1px solid rgba(124,90,43,0.25);
-}
-
-/* Status */
-.cml-status {
-  text-align: center;
-  font-size: 12px;
-  color: #a88040;
-  margin: 0;
-  padding: 0 20px 12px;
-  letter-spacing: 1px;
-}
-
-/* Actions */
-.cml-actions {
-  display: flex;
-  gap: 10px;
-  padding: 0 20px 20px;
-}
-
-.cml-btn-ready {
+.cl-btn-ready:disabled { opacity: 0.5; cursor: not-allowed; }
+.cl-btn-leave {
   flex: 1;
-  padding: 14px;
-  border-radius: 8px;
-  border: 2px solid rgba(124,90,43,0.5);
-  background: rgba(0,0,0,0.2);
-  color: #7c5a2b;
-  font-size: 15px;
-  font-weight: bold;
-  cursor: pointer;
-  font-family: inherit;
-  letter-spacing: 2px;
-  transition: 0.2s;
-}
-.cml-btn-ready.active {
-  border-color: #7cfc00;
-  background: rgba(60,180,60,0.15);
-  color: #7cfc00;
-  box-shadow: 0 0 16px rgba(100,255,100,0.3);
-}
-.cml-btn-ready:hover:not(:disabled):not(.active) {
-  border-color: #c89b3c;
-  color: #ffd27a;
-}
-.cml-btn-ready:disabled { opacity: 0.4; cursor: not-allowed; }
-
-.cml-btn-leave {
-  padding: 14px 18px;
-  border-radius: 8px;
-  border: 1px solid rgba(180,60,60,0.35);
-  background: rgba(180,60,60,0.08);
-  color: #ff6b6b;
+  padding: 13px;
+  border-radius: 10px;
+  border: 1px solid rgba(180,60,40,0.45);
+  background: rgba(180,60,40,0.1);
+  color: #e07060;
   font-size: 13px;
-  cursor: pointer;
   font-family: inherit;
-  transition: 0.2s;
+  cursor: pointer;
+  transition: 0.15s;
 }
-.cml-btn-leave:hover:not(:disabled) { background: rgba(180,60,60,0.18); }
-.cml-btn-leave:disabled { opacity: 0.4; cursor: not-allowed; }
+.cl-btn-leave:hover:not(:disabled) { background: rgba(180,60,40,0.25); }
+.cl-btn-leave:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

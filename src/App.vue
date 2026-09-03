@@ -549,3 +549,30 @@ const logo = `${import.meta.env.BASE_URL}assets/img/UI/icon.jpg`
   to   { opacity: 0; transform: translateX(60%) scale(0.95); }
 }
 </style>
+
+<style>
+/* ══════════════════════════════════════════
+   TOUCH — global (ไม่ scoped เพราะต้องครอบถึง
+   overlay ที่ Teleport ออกไปนอก #app ด้วย)
+══════════════════════════════════════════ */
+
+/* กดรัว ๆ ตอนสู้มอนสเตอร์ไม่ให้ถูกตีความเป็น double-tap zoom
+   'manipulation' ปิดเฉพาะ double-tap — pan กับ pinch-zoom ยังใช้ได้ปกติ */
+html,
+body {
+  touch-action: manipulation;
+}
+
+/* กดถี่ ๆ แล้วข้อความในปุ่มถูกลากเป็นแถบไฮไลต์ */
+button,
+[role='button'],
+label,
+.tt-token,
+.qs-slot,
+.dialog-potion-slot {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+</style>
