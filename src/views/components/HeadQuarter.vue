@@ -2140,4 +2140,337 @@ const poogiePat = () => { poogiePatted.value = true }
   .hq-trade-grid { grid-template-columns: 1fr; }
   .trade-give-list { grid-template-columns: 1fr; }
 }
+
+/* ══════════════════════════════════════════
+   MEDIEVAL PASS
+   ชุดวัสดุเดียวกับ Quest.vue / HQPhase.vue:
+   ไม้ = ป้าย/กรอบ · หนัง = แผงเครื่องมือ · กระดาษ = ของที่ต้องอ่าน
+   ทองเหลือง = ปุ่มหลัก · ครั่งแดง = ตราประทับ
+   วางท้ายไฟล์เพื่อให้ชนะลำดับ CSS ของกฎเดิม
+══════════════════════════════════════════ */
+
+/* ── หนัง ── */
+.hq-hunter-bar,
+.hq-camp-actions,
+.hq-activity-card,
+.rc-chips-wrap,
+.hq-action-bar {
+  border-radius: 4px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  border-left: 3px solid #7c5a2b;
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #2b1f13, #221809 55%, #281d10);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.07), 0 2px 6px rgba(0,0,0,0.45);
+}
+
+/* ── ป้ายไม้แขวนหน้าร้าน ── */
+.hq-loc-card {
+  border-radius: 3px;
+  border: 3px solid #2e2113;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(0,0,0,0.16) 0px,
+      rgba(0,0,0,0.16) 1px,
+      transparent 1px,
+      transparent 7px
+    ),
+    linear-gradient(175deg, #4a3520 0%, #3a2917 58%, #43301c 100%);
+  box-shadow: inset 0 0 30px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,220,160,0.07), 0 2px 8px rgba(0,0,0,0.45);
+}
+.hq-loc-card:hover:not(.loc-disabled) {
+  border-color: #4a3520;
+  box-shadow: inset 0 0 30px rgba(0,0,0,0.35), inset 0 2px 0 rgba(255,220,160,0.12), 0 5px 14px rgba(0,0,0,0.5);
+}
+.hq-loc-name { color: #f5e3ba; text-shadow: 0 1px 2px rgba(0,0,0,0.7); }
+.hq-loc-sub { color: #b89a68; }
+
+/* ── กระดาษ: ใบประกาศ / บทบรรยาย / บัญชี ── */
+.hq-notice,
+.hqa-flavor,
+.hq-quest-row {
+  border-radius: 2px;
+  color: #3a2c18;
+  background: linear-gradient(172deg, #f2e8cf 0%, #e9dcbd 55%, #dfceaa 100%);
+  border: 1px solid #b8a173;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.45), inset 0 0 20px rgba(150,120,70,0.12);
+}
+.hqa-flavor { border-left: 3px solid #9c4a15; }
+.hq-notice { border-left: 3px solid #9c4a15; }
+.hq-notice-stamp {
+  color: #9c4a15;
+  border: 1px solid rgba(150,60,20,0.5);
+  background: rgba(170,70,25,0.12);
+  border-radius: 2px;
+  padding: 3px 10px;
+  width: fit-content;
+  font-weight: bold;
+}
+.hq-notice-text { color: #4a3a22; }
+.hqa-flavor .hqa-desc,
+.hqa-flavor .hqa-flavor-sub,
+.hqa-flavor .hqa-flavor-result p { color: #4a3a22; }
+.hqa-flavor .hqa-flavor-en { color: #7a6238; }
+.hqa-flavor .hqa-stamp {
+  color: #9c4a15;
+  border-color: rgba(150,60,20,0.5);
+  background: rgba(170,70,25,0.12);
+  text-shadow: none;
+}
+.hqa-flavor .hqa-flavor-tip {
+  color: #4a3a22;
+  background: rgba(150,120,70,0.16);
+  border-radius: 2px;
+  border-left: 2px solid rgba(120,95,55,0.6);
+}
+.hqa-flavor .lodge-case {
+  background: rgba(150,120,70,0.12);
+  border: 1px dashed rgba(120,95,55,0.6);
+  border-radius: 2px;
+}
+.hqa-flavor .lodge-case-label { color: #7a6238; }
+.hqa-flavor .lodge-divider { background: linear-gradient(to right, transparent, rgba(120,95,55,0.5), transparent); }
+/* ปุ่มบนกระดาษ = หมึก ไม่ใช่หนัง */
+.hqa-flavor .hqa-btn {
+  background: linear-gradient(to bottom, rgba(200,155,60,0.26), rgba(150,110,35,0.16));
+  border-color: rgba(150,110,35,0.55);
+  color: #5c4212;
+}
+.hqa-flavor .hqa-btn:hover:not(:disabled) {
+  background: linear-gradient(to bottom, rgba(200,155,60,0.4), rgba(150,110,35,0.26));
+  color: #2f2312;
+}
+.hqa-flavor .hqa-btn-claim {
+  border-color: rgba(40,110,70,0.5);
+  background: rgba(50,150,95,0.16);
+  color: #1f6b45;
+}
+.hqa-flavor .hqa-btn-claim:hover:not(:disabled) { background: rgba(50,150,95,0.3); color: #14522f; }
+.hqa-flavor .hqa-elem-chip {
+  border-color: rgba(120,95,55,0.45);
+  background: rgba(150,120,70,0.12);
+  color: #4a3a22;
+}
+.hqa-flavor .hqa-elem-chip:hover { border-color: #8a6a35; background: rgba(150,120,70,0.22); }
+.hqa-flavor .hqa-elem-chip.chosen {
+  border-color: #8c2f22;
+  background: rgba(200,155,60,0.3);
+  color: #2f2312;
+  font-weight: bold;
+}
+/* Poogie: ชมพูสดอ่านไม่ออกบนกระดาษ */
+.hqa-poogie { border-left-color: #8c3a6a; }
+.hqa-poogie-result { color: #8c3a6a; font-weight: bold; }
+.hqa-flavor .hqa-btn-poogie {
+  border-color: rgba(150,60,105,0.5);
+  background: rgba(190,100,150,0.14);
+  color: #8c3a6a;
+}
+.hqa-flavor .hqa-btn-poogie:hover {
+  border-color: rgba(150,60,105,0.8);
+  background: rgba(190,100,150,0.26);
+  color: #6b2650;
+}
+/* ใบเควสในรายการรีเซ็ต Attempt */
+.hq-quest-row:hover { border-color: #8a6a35; box-shadow: 0 5px 12px rgba(0,0,0,0.5); }
+.hq-quest-row.selected {
+  border-color: #8c2f22;
+  background: linear-gradient(172deg, #f6e6c0, #ecd9ac);
+  box-shadow: inset 3px 0 0 #8c2f22, 0 2px 8px rgba(0,0,0,0.45);
+}
+.hqr-monster { color: #2f2312; }
+.hqr-attempts-used { color: #a3301f; }
+.hqr-attempts-sep { color: #8a7550; }
+.hqr-attempts-total { color: #7a6238; }
+.hqr-attempts-label { color: #7a6238; }
+.hqr-check { border-color: rgba(120,95,55,0.55); background: rgba(150,120,70,0.14); color: #8c2f22; }
+.hqr-check.checked { border-color: #8c2f22; background: rgba(170,60,35,0.22); }
+/* ป้ายชนิดเควสบนกระดาษ — สีสดอ่านไม่ออก ใช้โทนเข้ม */
+.hq-quest-row .stamp-investigation {
+  border-color: rgba(45,85,150,0.6);
+  color: #2c5f9e;
+  background: rgba(45,85,150,0.14);
+}
+.hq-quest-row .stamp-tempered {
+  border-color: rgba(110,55,160,0.6);
+  color: #6b2f9c;
+  background: rgba(110,55,160,0.14);
+}
+
+/* ── บัญชีทรัพยากร: กระดาษตีเส้น ขอบไม้ ── */
+.rc-table {
+  border-radius: 3px;
+  gap: 0;
+  border: 3px solid #5a4222;
+  color: #3a2c18;
+  background:
+    radial-gradient(circle at 10% 4%, rgba(140,110,60,0.13), transparent 40%),
+    radial-gradient(circle at 90% 96%, rgba(120,95,50,0.15), transparent 42%),
+    linear-gradient(168deg, #efe4c8 0%, #e6d9b8 45%, #dccba6 100%);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.5), inset 0 0 26px rgba(150,120,70,0.14);
+}
+.rc-row { background: transparent; border-bottom: 1px solid rgba(120,95,55,0.3); }
+.rc-row:nth-child(even) { background: rgba(150,120,70,0.07); }
+.rc-row:last-child { border-bottom: none; }
+.rc-row-match {
+  background: rgba(200,155,60,0.28);
+  box-shadow: inset 3px 0 0 #8c2f22, inset 0 0 18px rgba(150,110,35,0.25);
+}
+.rc-row-match:hover { background: rgba(200,155,60,0.42); }
+.rc-row-locked { opacity: 0.35; }
+.rc-row-num { color: #7a6238; }
+.rc-row-match .rc-row-num { color: #8c2f22; font-size: 14px; }
+.rc-item-name { color: #4a3a22; }
+.rc-row-match .rc-item-name { color: #2f2312; font-weight: bold; }
+.rc-item-img { border-radius: 2px; background: rgba(120,95,55,0.12); }
+
+/* ── เบี้ยไม้ / เหรียญทองเหลือง ── */
+.rc-die-chip {
+  border-radius: 50%;
+  border: 2px solid rgba(124,90,43,0.55);
+  background:
+    repeating-linear-gradient(120deg, rgba(0,0,0,0.12) 0px, rgba(0,0,0,0.12) 1px, transparent 1px, transparent 4px),
+    radial-gradient(circle at 38% 30%, #4a3520, #2b1f13 70%);
+  box-shadow: inset 0 0 8px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.5);
+  color: #c0985a;
+}
+.rc-die-chip.chip-selected {
+  border-color: #6b4f1c;
+  color: #2a1d06;
+  text-shadow: 0 1px 0 rgba(255,225,170,0.4);
+  background: radial-gradient(circle at 36% 28%, #e0bc63, #a8802a 62%, #7a5c1c);
+  box-shadow: inset 0 1px 2px rgba(255,230,180,0.45), 0 2px 6px rgba(0,0,0,0.55);
+}
+.rc-sum-badge {
+  padding: 4px 12px;
+  border-radius: 3px;
+  color: #2a1d06;
+  background: linear-gradient(to bottom, #b08a34, #7a5c1c);
+  border: 1px solid #6b4f1c;
+  text-shadow: 0 1px 0 rgba(255,225,170,0.35);
+  box-shadow: inset 0 1px 0 rgba(255,230,180,0.4), 0 2px 5px rgba(0,0,0,0.5);
+}
+
+/* ── ทองเหลือง: ปุ่มหลัก ── */
+.rc-btn-primary,
+.btn-add-day {
+  border-radius: 3px;
+  border: 1px solid #6b4f1c;
+  background: linear-gradient(to bottom, #b08a34 0%, #8a6a22 48%, #6b501a 100%);
+  color: #2a1d06;
+  font-weight: bold;
+  text-shadow: 0 1px 0 rgba(255,225,170,0.35);
+  box-shadow: inset 0 1px 0 rgba(255,230,180,0.4), 0 2px 6px rgba(0,0,0,0.5);
+}
+.rc-btn-primary:hover:not(:disabled),
+.btn-add-day:hover:not(:disabled) {
+  background: linear-gradient(to bottom, #c99f42 0%, #9d7a29 48%, #7a5c1f 100%);
+  box-shadow: inset 0 1px 0 rgba(255,230,180,0.5), 0 3px 10px rgba(0,0,0,0.55);
+}
+
+/* ── หนัง: ปุ่มรอง ── */
+.rc-btn-secondary,
+.hq-back-btn,
+.btn-clear-sel,
+.hqa-btn,
+.hq-btn-cancel,
+.tgc-btn,
+.hq-trade-item,
+.trade-give-row {
+  border-radius: 3px;
+  background: linear-gradient(170deg, #2b1f13, #1c1409);
+  border: 1px solid rgba(124, 90, 43, 0.5);
+}
+.rc-btn-secondary:hover:not(:disabled),
+.hq-back-btn:hover,
+.btn-clear-sel:hover,
+.hqa-btn:hover:not(:disabled),
+.hq-btn-cancel:hover,
+.hq-trade-item:hover {
+  border-color: #c89b3c;
+  background: linear-gradient(170deg, #3a2a18, #241a0e);
+  color: #ffd27a;
+}
+
+/* ── ครั่งแดง: ปุ่มทำลาย / ตราประทับเตือน ── */
+.btn-reset,
+.hq-btn-confirm,
+.hqa-btn-reset {
+  border-radius: 3px;
+  border: 1px solid #5e1c14;
+  background: linear-gradient(to bottom, #7a2a1e 0%, #4d1a13 50%, #2c0f0a 100%);
+  color: #ffb3a3;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+  box-shadow: inset 0 1px 0 rgba(255,180,160,0.22), 0 3px 8px rgba(0,0,0,0.55);
+}
+.btn-reset:hover:not(:disabled),
+.hq-btn-confirm:hover:not(:disabled),
+.hqa-btn-reset:hover:not(:disabled) {
+  background: linear-gradient(to bottom, #943627 0%, #5e2118 50%, #38140d 100%);
+}
+.hq-confirm-modal {
+  border-radius: 3px;
+  border: 3px solid #2e2113;
+  background:
+    repeating-linear-gradient(100deg, rgba(0,0,0,0.14) 0px, rgba(0,0,0,0.14) 1px, transparent 1px, transparent 5px),
+    linear-gradient(170deg, #2b1f13, #1c1409 55%, #241a0e);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.07), 0 10px 34px rgba(0,0,0,0.85);
+}
+.hq-confirm-stamp {
+  border-radius: 3px;
+  color: #ffb3a3;
+  border-color: rgba(200,60,60,0.45);
+  background: linear-gradient(to bottom, rgba(190,70,50,0.28), rgba(140,45,32,0.16));
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+}
+
+/* ── ใบราคาบนแผงพ่อค้า ── */
+.hqa-trade-card {
+  border-radius: 2px;
+  border: 1px solid #b8a173;
+  color: #3a2c18;
+  background: linear-gradient(172deg, #f2e8cf, #e0d3b2);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+.hqa-trade-card:hover:not(.disabled) {
+  border-color: #8a6a35;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgba(0,0,0,0.5);
+}
+.htc-cost { color: #9c4a15; }
+.htc-arrow { color: #8a6a35; }
+.htc-gain { color: #2f2312; }
+.htc-lock { color: #7a6238; }
+/* การ์ดจ้าง Palico อยู่บนกระดาษอยู่แล้ว — ใช้เส้นประแทนกระดาษซ้อนกระดาษ */
+.hqa-flavor .hqa-trade-card {
+  background: rgba(150,120,70,0.14);
+  border: 1px dashed rgba(120,95,55,0.65);
+  box-shadow: none;
+}
+.hqa-flavor .hqa-trade-card:hover:not(.disabled) {
+  background: rgba(150,120,70,0.26);
+  border-color: #8a6a35;
+  box-shadow: none;
+}
+/* stamp/ปุ่มยืนยันของ Lodge อยู่ใน modal พื้นมืด — คงเขียวสว่างไว้ */
+.lodge-stamp { color: #90d890; border-color: rgba(80,200,80,0.4); background: rgba(60,160,60,0.12); }
+.lodge-btn-confirm { border-color: #3a7a3a; background: linear-gradient(to bottom,#1f4520,#0f210f); color: #90d890; }
+
+/* ── contrast: สีจางเกินบนพื้นหนังที่สว่างขึ้น ── */
+.hq-ornament,
+.rc-section-label,
+.rc-skip-hint,
+.trade-give-label,
+.trade-give-owned,
+.hq-empty-title { color: #a88040; }
+.hq-empty-sub { color: #7c5a2b; }
+.hq-empty { border-color: rgba(124,90,43,0.45); border-radius: 3px; background: rgba(0,0,0,0.2); }
+.hq-title { text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
 </style>

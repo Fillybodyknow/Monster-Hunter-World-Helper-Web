@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onActivated, onUnmounted, inject } from 'vue'
+import { h as vh, ref, computed, watch, nextTick, onMounted, onActivated, onUnmounted, inject } from 'vue'
 
 defineOptions({ name: 'Quest' })
 import ancientData from '@/assets/files/ancient-quest-book.json'
@@ -23,6 +23,32 @@ import { openCraftLookup } from '@/composables/useCraftLookup'
 
 const room = useRoomStore()
 const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
+
+// เหรียญ icon class แทนชื่อ hunter — ใช้ในข้อความ "รอ ... " ที่มีหลายจุด
+const ClassMedal = (props) => {
+  // id ที่ส่งเข้ามามีทั้งแบบ string (drawerId จาก Firebase) และ number — เทียบเป็น string เสมอ
+  const target = room.hunters.find(
+    (x) => String(x.hunter_id) === String(props.hunterId),
+  )
+  const cls = getHunterClass(target?.hunter_class_id)
+  return vh(
+    'span',
+    { class: 'class-medal', title: target?.hunter_name ?? 'Hunter' },
+    [
+      cls?.thumbnail
+        ? vh('img', { src: getImg(cls.thumbnail), class: 'class-medal-icon' })
+        : vh('span', { class: 'class-medal-fallback' }, (target?.hunter_name ?? '?').slice(0, 1)),
+    ],
+  )
+}
+ClassMedal.props = ['hunterId']
+
+// ใครโหวต action ไหน — คืนเป็น hunter เต็มก้อนเพื่อเอาไปวาดเหรียญ class
+const votersOf = (actionId) =>
+  Object.entries(room.dialogVotes ?? {})
+    .filter(([, aid]) => String(aid) === String(actionId))
+    .map(([hid]) => room.hunters.find((x) => String(x.hunter_id) === String(hid)))
+    .filter(Boolean)
 const addNotif = inject('addNotif', () => {})
 
 // Coop
@@ -53,12 +79,15 @@ const _enterLobby = async (code) => {
   joiningCode.value = code
   browserError.value = ''
   try {
-    await room.join(code, hunter.value)
+    const snap = await room.join(code, hunter.value, _validateQuestEntry)
+    notifyQuestEntry(snap?.questInfo)
     room.stopLobbyBrowse?.()
     passwordFor.value = null
     phase.value = 'lobby'
   } catch (e) {
+    // Class ซ้ำ / ห้องหาย — ไม่ได้กันไว้ที่ปุ่มแล้ว ต้องบอกให้ชัดตรงนี้แทน
     browserError.value = e.message
+    addNotif(`❌ ${e.message}`, 'error')
   } finally {
     joiningCode.value = ''
   }
@@ -88,7 +117,6 @@ const submitLobbyPassword = async () => {
   await _enterLobby(lobby.code)
 }
 
-// บอกเหตุผลตั้งแต่บนการ์ด ดีกว่าให้กดแล้วเด้ง error
 // สีป้ายตามชนิดเควส — Assigned คงสีเดิม, Investigation ฟ้า, Tempered ม่วง
 const questTypeTone = (type) => {
   if (!type) return ''
@@ -97,13 +125,13 @@ const questTypeTone = (type) => {
   return ''
 }
 
+// ปิดปุ่มเฉพาะห้องเต็มกับสิทธิ์ลง Quest — Class ซ้ำ ปล่อยให้กดแล้วค่อยเด้ง error
 const lobbyJoinBlock = (lobby) => {
+  // อยู่ในตี้อยู่แล้ว = กลับเข้าห้อง ต่อให้ห้องเต็มก็ต้องเข้าได้
+  const isRejoin = (lobby.members ?? []).some((m) => m.hunter_id === hunter.value?.hunter_id)
+  if (isRejoin) return null
   if ((lobby.memberCount ?? 0) >= 4) return 'ห้องเต็ม'
-  const taken = (lobby.members ?? []).some(
-    (m) => m.hunter_class_id === hunter.value?.hunter_class_id && m.hunter_id !== hunter.value?.hunter_id,
-  )
-  if (taken) return 'Class ซ้ำ'
-  return null
+  return questJoinBlock(lobby.questInfo)?.short ?? null
 }
 const joinCode = ref('')
 const joinError = ref('')
@@ -141,6 +169,7 @@ const startCoopQuest = async () => {
     monster_id: selectedMonster.value?.monster_id,
     monster_name: selectedMonster.value?.monster_name,
     thumbnail: selectedMonster.value?.thumbnail,
+    quest_id: selectedQuest.value?.quest_id,
     quest_type: selectedQuest.value?.quest_type,
     difficulty_level: selectedQuest.value?.difficulty_level,
     campaign_day: hunter.value.campaign_day ?? 1,
@@ -153,8 +182,10 @@ const startCoopQuest = async () => {
     password: useRoomPassword.value ? roomPassword.value.trim() : '',
     questMode: questMode.value,
     questInfo: {
+      monster_id: selectedMonster.value?.monster_id,
       monster_name: selectedMonster.value?.monster_name,
       thumbnail: selectedMonster.value?.thumbnail,
+      quest_id: selectedQuest.value?.quest_id,
       quest_type: selectedQuest.value?.quest_type,
       difficulty_level: selectedQuest.value?.difficulty_level,
       exhausted_attempt: _exhausted,
@@ -265,7 +296,12 @@ const handleJoinQuest = async () => {
   joinLoading.value = true
   joinError.value = ''
   try {
-    await room.join(joinCode.value.trim().toUpperCase(), hunter.value)
+    const snap = await room.join(
+      joinCode.value.trim().toUpperCase(),
+      hunter.value,
+      _validateQuestEntry,
+    )
+    notifyQuestEntry(snap?.questInfo)
     joinCode.value = ''
     // เข้าห้องได้แล้วก็ไม่ต้องดูบอร์ดต่อ
     room.stopLobbyBrowse?.()
@@ -288,6 +324,37 @@ const selectedBook = ref(null)
 const selectedMonster = ref(null)
 const selectedQuest = ref(null)
 const currentDialogId = ref(null)
+
+// ── ของที่ผูกกับ "เควสนี้" เท่านั้น ────────────────────────
+// รอยหมุดบนกระดาน — บอกว่าเดินมาลึกแค่ไหนในเส้นทางนี้
+// เก็บเรียงตามลำดับที่เจอ ไม่ซ้ำ (ย้อนกลับมาบทเดิมไม่เพิ่มหมุด)
+const visitedDialogIds = ref([])
+// บทนี้เพิ่งเข้าครั้งแรกไหม — ใช้ตัดสินว่าจะวูบคบไฟหรือไม่
+const isNewDialog = ref(false)
+// เพิ่งได้ Track Token → ตั้งธงไว้ให้ "บทถัดไป" เล่นรอยเท้า
+const trailPending = ref(false)
+// บทปัจจุบันต้องเล่นรอยเท้าไหม
+const showTrail = ref(false)
+const dialogResourceCounts = ref({})
+const showDialogResources = ref(false)
+
+// ต้องล้างทุกครั้งที่ขึ้นเควสใหม่ ไม่งั้นของจากเควสก่อนตกค้างข้ามมา
+function _clearPerQuestLocalState() {
+  trailPending.value = false
+  showTrail.value = false
+  visitedDialogIds.value = []
+  dialogResourceCounts.value = {}
+  showDialogResources.value = false
+}
+watch(currentDialogId, (id) => {
+  if (id == null) return
+  const fresh = !visitedDialogIds.value.includes(id)
+  isNewDialog.value = fresh
+  if (fresh) visitedDialogIds.value.push(id)
+  // รอยเท้าโชว์เฉพาะบทที่ตามหลังการได้ Track Token — ใช้ธงแล้วเคลียร์ทิ้ง
+  showTrail.value = trailPending.value
+  trailPending.value = false
+})
 
 // ─── HQ Vote ─────────────────────────────────────────────
 const myHqVote = ref(null)  // 'hq' | 'quest' | null
@@ -396,6 +463,7 @@ watch(() => room.inRoom, (inRoom, wasInRoom) => {
     selectedMonster.value = null
     selectedQuest.value = null
     currentDialogId.value = null
+    _clearPerQuestLocalState()
   }
 })
 
@@ -432,8 +500,9 @@ const selectMonster = (monster) => {
 const getAttempted = (monster_id, quest_id) => {
   if (!hunter.value) return 0
   return (
-    hunter.value.attempted_quest.find((a) => a.monster_id === monster_id && a.quest_id === quest_id)
-      ?.attempted ?? 0
+    (hunter.value.attempted_quest ?? []).find(
+      (a) => a.monster_id === monster_id && a.quest_id === quest_id,
+    )?.attempted ?? 0
   )
 }
 
@@ -458,6 +527,69 @@ const attemptsLeft = (quest) => {
   return Math.max(0, quest.starting_point.length - used)
 }
 
+// ── สิทธิ์ลงเควสของ "ตัวเรา" อ้างอิงด้วย id ──────────────────
+// ใช้ตอนดูห้องคนอื่นบนบอร์ด ซึ่งยังไม่มี selectedMonster/selectedQuest
+const ALL_MONSTERS = [...ancientData, ...wildspireData]
+const findMonster = (monster_id) => ALL_MONSTERS.find((m) => m.monster_id === monster_id)
+const questTotalAttempts = (monster_id, quest_id) =>
+  findMonster(monster_id)?.quest?.find((q) => q.quest_id === quest_id)?.starting_point?.length ?? 0
+const questAttemptsLeft = (monster_id, quest_id) =>
+  Math.max(0, questTotalAttempts(monster_id, quest_id) - getAttempted(monster_id, quest_id))
+
+// ไม่กันไม่ให้เข้าห้อง แค่บอกให้รู้ตัวก่อนว่าเควสนี้ "เรา" อยู่ในสถานะไหน
+// เงื่อนไขเข้าห้องของ Investigation / Tempered — Assigned Quest ไม่เช็คเลย
+// (คนที่ผ่านแล้วต้องเข้าไปช่วยผู้เล่นใหม่ได้ตลอด)
+// ห้องรุ่นเก่าไม่มี id ติดมา — ปล่อยผ่าน ดีกว่ากันคนเข้าผิด ๆ
+const questJoinBlock = (info) => {
+  const monster_id = info?.monster_id
+  const quest_id = info?.quest_id
+  if (!monster_id || !quest_id || quest_id === 1) return null
+  if (!isAssignedComplete(monster_id))
+    return {
+      short: 'ยังไม่ปลดล็อก',
+      msg: 'ยังไม่ผ่าน Assigned Quest ของมอนสเตอร์ตัวนี้ — ต้องผ่านก่อนถึงจะเข้าร่วมได้',
+    }
+  // Attempt หมดเข้าได้เฉพาะห้องที่ Host ก็หมดเหมือนกัน (ห้องที่บังคับเข้า HQ อยู่แล้ว)
+  if (questAttemptsLeft(monster_id, quest_id) === 0 && !info.exhausted_attempt)
+    return {
+      short: 'Attempt หมด',
+      msg: 'คุณลง Quest นี้ครบจำนวนครั้งแล้ว — เข้าร่วมได้เฉพาะห้องที่ Host ลงครบเหมือนกัน',
+    }
+  return null
+}
+// กันไว้ที่ชั้น join ด้วย ไม่งั้นเข้าด้วย Room Code ก็ข้ามปุ่มที่ปิดไว้ได้
+const _validateQuestEntry = (snap) => questJoinBlock(snap?.questInfo)?.msg ?? null
+
+// เข้าห้อง Attempt หมดร่วมกันได้ แต่ต้องรู้ตัวว่ารอบนี้ไม่ถูกนับให้
+// Assigned Quest ที่ผ่านแล้วไม่ต้องเตือน — ป้าย 0/1 กับบรรทัดในล็อบบี้บอกอยู่แล้ว
+const notifyQuestEntry = (info) => {
+  if (!info?.monster_id || !info?.quest_id || info.quest_id === 1) return
+  if (questAttemptsLeft(info.monster_id, info.quest_id) === 0)
+    addNotif('⚠ คุณลง Quest นี้ครบจำนวนครั้งแล้ว — รอบนี้จะไม่นับ Attempt เพิ่มให้', 'warn')
+}
+
+// ป้ายบนการ์ดห้อง บอกว่าห้องนี้ "เรา" เหลือสิทธิ์เท่าไร
+const lobbyAttemptTag = (lobby) => {
+  const info = lobby.questInfo
+  if (!info?.monster_id || !info?.quest_id) return null
+  const total = questTotalAttempts(info.monster_id, info.quest_id)
+  if (!total) return null
+  const left = questAttemptsLeft(info.monster_id, info.quest_id)
+  return { cls: left > 0 ? 'rb-tag-att' : 'rb-tag-warn', text: `📜 ${left}/${total}` }
+}
+
+// บอกตัวเองตั้งแต่ในล็อบบี้ว่ารอบนี้จะโดนหัก Attempt หรือไม่
+const myAttemptNote = computed(() => {
+  const quest = selectedQuest.value
+  if (!quest || !selectedMonster.value) return null
+  const total = quest.starting_point.length
+  const left = attemptsLeft(quest)
+  if (left > 0) return { counts: true, text: `📜 นับ Attempt · เหลือ ${left}/${total}` }
+  if (quest.quest_id === 1)
+    return { counts: false, text: '🤝 โหมดช่วยเหลือ · ผ่าน Assigned Quest แล้ว ไม่นับ Attempt' }
+  return { counts: false, text: '⚠ Attempt ครบแล้ว · รอบนี้ไม่นับเพิ่ม' }
+})
+
 const selectQuest = (quest) => {
   if (!isQuestUnlocked(selectedMonster.value.monster_id, quest.quest_id)) return
   if (quest.quest_id === 1 && isQuestExhausted(quest)) return
@@ -476,8 +608,7 @@ const getDialog = (dialogId) =>
   selectedMonster.value?.quest_dialogs?.find(d => d.dialog_id === dialogId) ?? null
 
 const startQuest = () => {
-  dialogResourceCounts.value = {}
-  showDialogResources.value = false
+  _clearPerQuestLocalState()
   initTrackTokens()
   if (questMode.value === 'full') {
     buildTimeCardDeck()
@@ -759,18 +890,46 @@ watch(() => room.allProceeded, (ready) => {
 
 // Resolve monster/quest จาก questInfo (ใช้ตอน reconnect / guest join)
 const _resolveQuestFromRoom = () => {
-  if (selectedMonster.value || !room.questInfo) return
   const info = room.questInfo
+  if (!info) return
+
+  // ตรงกับที่เลือกไว้อยู่แล้ว (เช่น reconnect เข้าเควสเดิม) → ไม่ต้องทำอะไร
+  const sameQuest =
+    selectedMonster.value?.monster_id === info.monster_id &&
+    selectedQuest.value?.quest_type === info.quest_type &&
+    selectedQuest.value?.difficulty_level === info.difficulty_level
+  if (sameQuest) return
+
   const allMonsters = [...ancientData, ...wildspireData]
   const monster = allMonsters.find((m) => m.monster_id === info.monster_id)
   if (!monster) return
+
+  // เควสในห้องเป็นคนละอันกับที่ถืออยู่ → ล้างของติดมาจากเควสก่อนหน้าให้หมด
+  // Guest ไม่เคยเรียก startQuest() (มีแต่ Host เรียก) เลยไม่มีจุดล้างของตัวเอง
+  const switchingQuest = !!selectedMonster.value
   selectedMonster.value = monster
   selectedBook.value = ancientData.includes(monster) ? books[0] : books[1]
   const quest = monster.quest?.find(
     (q) => q.quest_type === info.quest_type && q.difficulty_level === info.difficulty_level,
   )
-  if (quest) selectedQuest.value = quest
+  selectedQuest.value = quest ?? null
+  if (switchingQuest) _clearPerQuestLocalState()
 }
+
+
+// Guest ที่เพิ่งเข้าห้อง: ผูก monster/quest ทันทีที่ questInfo มาถึง
+// ไม่งั้นในล็อบบี้จะยังไม่รู้ว่าเควสนี้หัก Attempt ของเราหรือเปล่า
+watch(
+  () => {
+    const q = room.questInfo
+    return q ? `${q.monster_id}|${q.quest_type}|${q.difficulty_level}` : null
+  },
+  (key) => {
+    if (!key || !room.inRoom) return
+    _resolveQuestFromRoom()
+  },
+  { immediate: true },
+)
 
 // Silent sync — ไม่มี animation ใช้ตอน reconnect
 const _syncToPhase = (dialogId, applyHuntState = false) => {
@@ -1352,12 +1511,24 @@ const removeCardFromDeck = (behavior_name) => {
 }
 
 const showShuffleAnim = ref(false)
+// 'behavior' = กอง Behaviour ของมอนสเตอร์ · 'time' = กอง Time Card
+const shuffleDeckKind = ref('behavior')
+
 const shuffleCardBacks = computed(() => {
+  if (shuffleDeckKind.value === 'time') {
+    // Time Card ใช้หลังการ์ดใบเดียวกันหมด
+    return Array.from({ length: 6 }, () => timeCardData.back_time_card_img ?? null)
+  }
   const pool = behaviorDeck.value
   return Array.from({ length: 6 }, (_, i) => pool[i % Math.max(pool.length, 1)]?.back_card_img ?? null)
 })
+const shuffleLabel = computed(() =>
+  shuffleDeckKind.value === 'time' ? '🔀 กำลังสับกอง Time Card...' : '🔀 กำลังสับกอง Behaviour...',
+)
+
 let _shuffleTimer = null
-const _playShuffleAnim = () => {
+const _playShuffleAnim = (kind = 'behavior') => {
+  shuffleDeckKind.value = kind
   showShuffleAnim.value = false
 
   requestAnimationFrame(() => {
@@ -1366,9 +1537,9 @@ const _playShuffleAnim = () => {
     _shuffleTimer = setTimeout(() => { showShuffleAnim.value = false }, 2000)
   })
 }
-const _triggerShuffleAnim = () => {
-  _playShuffleAnim()
-  if (room.inRoom && room.isHost) room.triggerShuffle?.()
+const _triggerShuffleAnim = (kind = 'behavior') => {
+  _playShuffleAnim(kind)
+  if (room.inRoom && room.isHost) room.triggerShuffle?.(kind)
 }
 
 const reshuffleDiscardIntoDeck = () => {
@@ -1437,6 +1608,7 @@ watch([() => room.behaviorDeckState, () => room.joinSignal], ([state], [prev]) =
 const incrementAttempted = () => {
   const monster_id = selectedMonster.value.monster_id
   const quest_id = selectedQuest.value.quest_id
+  if (!hunter.value.attempted_quest) hunter.value.attempted_quest = []
   const entry = hunter.value.attempted_quest.find(
     (a) => a.monster_id === monster_id && a.quest_id === quest_id,
   )
@@ -1454,6 +1626,7 @@ const incrementDay = () => {
 }
 
 const resetToBookPhase = () => {
+  _clearPerQuestLocalState()
   questOutcome.value = null
   pendingTradeAfterAnim.value = false
   currentDialogId.value = null
@@ -1525,15 +1698,23 @@ const resetToBookPhase = () => {
   phase.value = 'book'
 }
 
+// นับ Attempt ตามเซฟของ "ตัวเอง" ไม่ใช่ธง exhausted_attempt ของ Host
+// คนที่ผ่าน Assigned Quest แล้วเข้ามาช่วยเพื่อน หรือคนที่ลงครบโควตาแล้ว จะไม่ถูกหักซ้ำ
+// ส่วนคนที่ยังมีสิทธิ์เหลือก็ถูกหักตามจริง แม้ Host จะหมดสิทธิ์ไปแล้วก็ตาม
+const myAttemptCounts = () => {
+  if (!hunter.value || !selectedMonster.value || !selectedQuest.value) return false
+  return !isQuestExhausted(selectedQuest.value)
+}
+
 const onComplete = () => {
-  if (!isExhaustedAttempt.value) incrementAttempted()
+  if (myAttemptCounts()) incrementAttempted()
   incrementDay()
   if (room.inRoom) room.leave()
   resetToBookPhase()
 }
 
 const onFail = () => {
-  if (selectedQuest.value.quest_id !== 1 && !isExhaustedAttempt.value) incrementAttempted()
+  if (selectedQuest.value.quest_id !== 1 && myAttemptCounts()) incrementAttempted()
   incrementDay()
   if (room.inRoom) room.leave()
   resetToBookPhase()
@@ -1841,6 +2022,7 @@ const addRedCardsAndShuffle = () => {
   redCardCounts.value = {}
   showTimeCardManage.value = false
   _pushTimeCardState()
+  if (toAdd.length) _triggerShuffleAnim('time')
 }
 
 
@@ -2486,9 +2668,15 @@ const endTurn = () => {
 }
 
 // Host watches for guest pending requests; all watch for drawn cards to animate
-watch(() => room.shuffleSignal, (val) => {
-  if (!val || !room.inRoom || room.isHost || _suppressAnimations) return
-  _playShuffleAnim()
+const _shuffleSignalAt = computed(() => {
+  const s = room.shuffleSignal
+  return s && typeof s === 'object' ? (s.at ?? null) : s
+})
+watch(_shuffleSignalAt, (at) => {
+  if (!at || !room.inRoom || room.isHost || _suppressAnimations) return
+  // ห้องรุ่นเก่าส่งมาเป็นตัวเลข timestamp เฉย ๆ — ถือเป็นกอง Behaviour ตามเดิม
+  const sig = room.shuffleSignal
+  _playShuffleAnim(sig && typeof sig === 'object' ? (sig.kind ?? 'behavior') : 'behavior')
 })
 
 // ── Activation (Turn Limit) System ───────────────────────
@@ -3014,10 +3202,6 @@ const getResourceItem = (resource_type_id, item_id) => {
   return type?.resources.find((r) => r.item_id === item_id) ?? null
 }
 
-// ── Dialog Resources quick-add ────────────────────────────
-const dialogResourceCounts = ref({})
-const showDialogResources = ref(false)
-
 // dialog_resources ครอบคลุมไม่ครบทุกอย่างที่ effects แจก — รวมของที่เก็บได้แล้วเข้ามาด้วย
 // ไม่งั้นของที่ Auto-Complete เพิ่มให้จะไม่โผล่ในลิสต์ (แม้จะเข้า inventory จริงตอนจบ dialog)
 const dialogResourceList = computed(() => {
@@ -3205,7 +3389,7 @@ const _applyOneEffect = (e) => {
         { ...card, uid: `rc_${card.time_card_id}_${Date.now()}` },
       ])
       _pushTimeCardState()
-      _triggerShuffleAnim()
+      _triggerShuffleAnim('time')
       return null
     }
 
@@ -3219,7 +3403,15 @@ const _applyOneEffect = (e) => {
   }
 }
 
+// ธงรอยเท้าต้องติดกับ "ทุกคน" ไม่ใช่แค่คนที่ลงมือ apply
+// Track Token เป็น shared state ที่ Host ทำคนเดียว ถ้าไปดักใน _applyOneEffect
+// ฝั่ง Guest จะไม่เคยติดธง — เลยดักตอนอ่านรายการ effect แทน
+const _noteTrailEffects = (effects) => {
+  if (effects?.some((e) => e.type === 'gainTrackToken')) trailPending.value = true
+}
+
 const applyEffects = (effects, source) => {
+  _noteTrailEffects(effects)
   if (!autoCompleteEnabled.value || !effects?.length) return
   const done = []
   const skipped = []
@@ -3310,6 +3502,7 @@ const _resolveDice = (value) => {
     pendingMonsterDiceDamage.value = (pendingMonsterDiceDamage.value ?? 0) + value
     addNotif(`🎲 ทอยได้ ${value} — ลด HP ${d.effect.monster} ${value} หน่วยเมื่อเริ่มล่า`, 'info')
   } else if (row) {
+    _noteTrailEffects(row.effects)
     const done = []
     const skipped = []
     row.effects.forEach((e) => {
@@ -3332,7 +3525,35 @@ const _resolveDice = (value) => {
   }
 
   autoAppliedKeys.value = new Set(autoAppliedKeys.value).add(d.key)
+
+  // แชร์ผลของตัวเองให้ทั้งตี้เห็นว่าใครได้อะไร
+  if (room.inRoom && d.diceKey) {
+    const items = (row?.effects ?? [])
+      .filter((e) => e.type === 'gainResource' && e.type_id != null && e.item_id != null)
+      .map((e) => ({ t: e.type_id, i: e.item_id, n: e.n ?? 1 }))
+    room.setMyDiceResult?.(d.diceKey, { value, text: row?.text ?? '', items })
+  }
 }
+
+// ── ผลทอยของทั้งตี้ (โหมด "ทุกคนทอยของตัวเอง") ──
+const dicePartyResults = computed(() => {
+  const key = dialogDice.value?.diceKey
+  if (!key || !room.inRoom) return []
+  const all = room.diceResults?.[key] ?? {}
+  // ผลของตัวเองเห็นอยู่แล้วจากลูกเต๋าด้านบน — แสดงแต่ของเพื่อนร่วมตี้
+  return room.hunters
+    .filter((h) => h.hunter_id !== room.myHunterId)
+    .map((h) => ({ hunter: h, result: all[h.hunter_id] ?? null }))
+})
+
+// นับเฉพาะคนที่ยังต่ออยู่ — คนที่หลุดจะไม่มีวันทอย Host จะค้างกดยืนยันไม่ได้
+const diceActiveRows = computed(() =>
+  dicePartyResults.value.filter((r) => r.hunter.connected !== false),
+)
+const diceExpectedCount = computed(() => diceActiveRows.value.length)
+const diceRolledCount = computed(() => dicePartyResults.value.filter((r) => r.result).length)
+// ทุกคนทอยครบหรือยัง — ใช้ปลดล็อกปุ่มยืนยันของ Host
+const diceAllRolled = computed(() => diceActiveRows.value.every((r) => r.result))
 
 const rollDialogDice = () => {
   const d = dialogDice.value
@@ -3352,12 +3573,21 @@ const rollDialogDice = () => {
 }
 
 const closeDialogDice = () => {
+  if (room.inRoom && room.isHost) room.clearDiceResultsAll?.()
   dialogDice.value = null
   const action = pendingProceedAction.value
   if (!action) return
   pendingProceedAction.value = null
   _proceedWithAction(action)
 }
+
+// Host กดยืนยันแล้ว → ผลถูกล้าง กล่องของทุกคนปิดตาม
+watch(() => room.diceResults, (all) => {
+  if (!room.inRoom || room.isHost) return
+  const key = dialogDice.value?.diceKey
+  if (!key || dialogDice.value?.value == null) return
+  if (!all || !all[key]) dialogDice.value = null
+}, { deep: true })
 
 // Guest: Host ทอยผลแบบ 'once' มาแล้ว → ใช้ผลเดียวกัน
 watch(() => room.dialogDice, (all) => {
@@ -3520,6 +3750,16 @@ const filteredInventory = computed(() => {
     getResourceItem(r.resource_type_id, r.item_id)?.item?.toLowerCase().includes(q)
   )
 })
+
+// สรุปของบนโต๊ะ — เดิมต้องนับเอาเองจากช่องที่เห็น
+const tradePoolTotal = computed(() =>
+  room.tradePool.reduce((s, it) => s + (it.quantity ?? 0), 0),
+)
+const tradeMineTotal = computed(() =>
+  room.tradePool
+    .filter((it) => it.fromHunterId === room.myHunterId)
+    .reduce((s, it) => s + (it.quantity ?? 0), 0),
+)
 
 const openTradePicker = (r) => {
   tradePicker.value = { resource_type_id: r.resource_type_id, item_id: r.item_id, max: r.quantity, qty: 1 }
@@ -4081,7 +4321,12 @@ const openPackDrawer = () => {
 
     </div>
 
-    <CoopLobbyModal v-if="phase === 'lobby'" @start="onCoopStart" @leave="onCoopLeave" />
+    <CoopLobbyModal
+      v-if="phase === 'lobby'"
+      :attempt-note="myAttemptNote"
+      @start="onCoopStart"
+      @leave="onCoopLeave"
+    />
 
     <!-- ═══════════ HQ VOTE PHASE ═══════════ -->
     <div v-if="phase === 'hqVote'" class="phase-hq-vote">
@@ -4306,6 +4551,11 @@ const openPackDrawer = () => {
                 >{{ lobby.questInfo.quest_type }}</span>
                 <span class="rb-tag rb-tag-mode">{{ lobby.questMode === 'minimal' ? 'Minimal' : 'Full' }}</span>
                 <span v-if="lobby.questInfo?.exhausted_attempt" class="rb-tag rb-tag-warn">HQ บังคับ</span>
+                <span
+                  v-if="lobbyAttemptTag(lobby)"
+                  class="rb-tag"
+                  :class="lobbyAttemptTag(lobby).cls"
+                >{{ lobbyAttemptTag(lobby).text }}</span>
               </div>
             </div>
           </div>
@@ -4444,6 +4694,14 @@ const openPackDrawer = () => {
 
     <!-- ═══════════ DIALOG PHASE ═══════════ -->
     <div v-if="phase === 'dialog' && currentDialog" class="phase-dialog">
+      <div class="board-header">
+        <div class="board-ornament">✦</div>
+        <h1 class="board-title dlg-title">Quest Log</h1>
+        <div class="board-ornament">✦</div>
+      </div>
+      <p class="board-subtitle">บันทึกการเดินทาง</p>
+
+      <!-- แถบหนัง: เป้าหมาย · ยา · กระเป๋า -->
       <div class="dialog-tag-row">
         <img :src="getImg(selectedMonster.thumbnail)" class="dialog-tag-img" />
         <div>
@@ -4634,8 +4892,37 @@ const openPackDrawer = () => {
         </Transition>
       </Teleport>
 
-      <div class="dialog-parchment">
+      <!-- กระดานไม้: ใบบันทึกปักหมุด + ใบตัวเลือก -->
+      <div class="dlg-board">
+
+      <!-- รอยหมุดสะสม: เดินมากี่บทแล้วในเส้นทางนี้ -->
+      <div v-if="visitedDialogIds.length > 1" class="dlg-trail" :title="`ผ่านมาแล้ว ${visitedDialogIds.length} บท`">
+        <span
+          v-for="id in visitedDialogIds"
+          :key="id"
+          class="trail-pin"
+          :class="{ 'trail-pin-now': id === currentDialogId }"
+        ></span>
+      </div>
+
+      <!-- คบไฟกวาด — เฉพาะบทที่เพิ่งเข้าครั้งแรก ไม่ใช่ทุกครั้งที่เปลี่ยนบท -->
+      <div v-if="isNewDialog" class="torch-sweep" :key="'sweep-' + currentDialogId"></div>
+
+      <!-- รอยเท้ามอนสเตอร์ที่กำลังตาม -->
+      <div v-if="showTrail" class="trail-steps" :key="'steps-' + currentDialogId">
+        <span v-for="n in 3" :key="n" class="trail-step" :style="`--i:${n}`">
+          <img
+            class="ts-print"
+            :src="getImg('assets/img/UI/monster_footprint.png')"
+            alt=""
+          />
+        </span>
+      </div>
+
+      <Transition name="parch" mode="out-in" :duration="{ enter: 760, leave: 170 }">
+      <div class="dialog-parchment" :key="currentDialogId">
         <div class="parchment-notch top"></div>
+        <span v-for="n in 5" :key="'dust' + n" class="pin-dust" :style="`--i:${n}`"></span>
 
         <p v-if="currentDialog.title" class="dp-title">{{ currentDialog.title }}</p>
         <div class="dp-rule"></div>
@@ -4664,16 +4951,20 @@ const openPackDrawer = () => {
 
         <div class="parchment-notch bottom"></div>
       </div>
+      </Transition>
 
-      <div class="dialog-choices">
+      <div class="dialog-choices" :key="'choices-' + currentDialogId">
         <p class="choices-label">
-          {{ room.inRoom ? '— Vote Your Action —' : '— Choose Your Action —' }}
+          <span class="choices-rule"></span>
+          {{ room.inRoom ? 'Vote Your Action' : 'Choose Your Action' }}
+          <span class="choices-rule"></span>
         </p>
         <button
-          v-for="action in currentDialog.actions"
+          v-for="(action, ai) in currentDialog.actions"
           :key="action.action_id"
           class="choice-btn"
           :class="{ 'voted-me': room.inRoom && room.myVote == action.action_id }"
+          :style="{ '--ai': ai }"
           @click="doAction(action)"
         >
           <div class="choice-header">
@@ -4687,13 +4978,9 @@ const openPackDrawer = () => {
               {{ room.votesByAction[action.action_id] }} vote
             </span>
           </div>
-          <!-- Voters list -->
-          <div v-if="room.inRoom && room.votersByAction[action.action_id]?.length" class="vote-voters">
-            <span
-              v-for="name in room.votersByAction[action.action_id]"
-              :key="name"
-              class="vote-voter-chip"
-            >{{ name }}</span>
+          <!-- Voters list — โชว์เป็น icon class ไม่ใช่ชื่อ -->
+          <div v-if="room.inRoom && votersOf(action.action_id).length" class="vote-voters">
+            <ClassMedal v-for="v in votersOf(action.action_id)" :key="v.hunter_id" :hunter-id="v.hunter_id" />
           </div>
           <div v-if="action.required_dialog" class="choice-requirement">
             <span class="req-icon">⚠</span>{{ action.required_dialog }}
@@ -4702,6 +4989,7 @@ const openPackDrawer = () => {
             {{ action.consequences }}
           </div>
         </button>
+      </div>
       </div>
     </div>
 
@@ -4748,10 +5036,72 @@ const openPackDrawer = () => {
               </template>
             </p>
 
+            <!-- ผลของทั้งตี้ (เฉพาะโหมดทุกคนทอยเอง) -->
+            <div v-if="room.inRoom && !diceIsOnce && dicePartyResults.length" class="dd-party">
+              <p class="dd-party-head">
+                ผลของเพื่อนร่วมตี้
+                <span class="dd-party-count">{{ diceRolledCount }}/{{ diceExpectedCount }}</span>
+              </p>
+              <div
+                v-for="row in dicePartyResults"
+                :key="row.hunter.hunter_id"
+                class="dd-party-row"
+                :class="{ 'dd-party-waiting': !row.result }"
+              >
+                <!-- ชื่ออยู่ใน title ของไอคอน — เอาเมาส์ชี้ก็รู้ว่าใคร โดยไม่กินที่ในบรรทัด -->
+                <img
+                  v-if="getHunterClass(row.hunter.hunter_class_id)?.thumbnail"
+                  :src="getImg(getHunterClass(row.hunter.hunter_class_id).thumbnail)"
+                  class="dd-party-class"
+                  :title="row.hunter.hunter_name"
+                />
+                <span class="dd-party-sep">|</span>
+
+                <template v-if="!row.result">
+                  <span class="dd-party-pending">
+                    {{ row.hunter.connected === false ? 'ขาดการเชื่อมต่อ' : 'กำลังทอย...' }}
+                  </span>
+                </template>
+                <template v-else-if="row.result.items?.length">
+                  <span
+                    v-for="(it, ii) in row.result.items"
+                    :key="ii"
+                    class="dd-party-item"
+                  >
+                    <img
+                      v-if="getResourceItem(it.t, it.i)?.thumbnail"
+                      :src="getImg(getResourceItem(it.t, it.i).thumbnail)"
+                      class="dd-party-item-img"
+                    />
+                    <span class="dd-party-item-name">
+                      - {{ getResourceItem(it.t, it.i)?.item ?? '?' }}<template v-if="it.n > 1"> ×{{ it.n }}</template>
+                    </span>
+                  </span>
+                </template>
+                <span v-else class="dd-party-none">{{ row.result.text || 'ไม่ได้ไอเทม' }}</span>
+              </div>
+            </div>
+
             <button v-if="diceCanRoll" class="dd-roll-btn" @click="rollDialogDice">ทอย!</button>
             <p v-else-if="dialogDice.value == null" class="dd-waiting">
               {{ dialogDice.rolling ? 'กำลังทอย...' : 'รอ Host ทอย...' }}
             </p>
+
+            <!-- ทอยเองทุกคน + อยู่ในตี้ → รอครบแล้วให้ Host กดยืนยันคนเดียว -->
+            <template v-else-if="room.inRoom && !diceIsOnce">
+              <button
+                v-if="room.isHost"
+                class="dd-close-btn"
+                :disabled="!diceAllRolled"
+                @click="closeDialogDice"
+              >
+                {{ diceAllRolled ? 'ยืนยัน — ไปต่อ' : `รออีก ${Math.max(0, diceExpectedCount - diceRolledCount)} คน` }}
+              </button>
+              <p v-else class="dd-waiting">
+                {{ diceAllRolled ? 'รอ Host กดยืนยัน...' : `รออีก ${Math.max(0, diceExpectedCount - diceRolledCount)} คนทอย` }}
+              </p>
+            </template>
+
             <button v-else class="dd-close-btn" @click="closeDialogDice">ตกลง</button>
           </div>
         </div>
@@ -4843,9 +5193,15 @@ const openPackDrawer = () => {
               :key="h.hunter_id"
               class="ad-proceed-chip"
               :class="{ voted: (room.proceedVotes ?? {})[h.hunter_id] }"
+              :title="h.hunter_name"
             >
-              {{ h.hunter_name.split(' ')[0] }}
-              <span>{{ (room.proceedVotes ?? {})[h.hunter_id] ? ' ✓' : ' …' }}</span>
+              <img
+                v-if="getHunterClass(h.hunter_class_id)?.thumbnail"
+                :src="getImg(getHunterClass(h.hunter_class_id).thumbnail)"
+                class="class-medal-icon"
+              />
+              <span v-else class="class-medal-fallback">{{ (h.hunter_name || '?').slice(0, 1) }}</span>
+              <span class="class-medal-tick">{{ (room.proceedVotes ?? {})[h.hunter_id] ? '✓' : '…' }}</span>
             </span>
           </div>
 
@@ -5763,7 +6119,7 @@ const openPackDrawer = () => {
             :key="h.hunter_id"
             class="rw-party-row"
           >
-            <span class="rw-party-name">{{ h.hunter_name }}</span>
+            <ClassMedal :hunter-id="h.hunter_id" />
             <div class="rw-dice-row rw-dice-row-sm">
               <div
                 v-for="(val, idx) in room.partyDice[h.hunter_id]"
@@ -5924,7 +6280,7 @@ const openPackDrawer = () => {
             :key="h.hunter_id"
             class="rw-party-reward-row"
           >
-            <span class="rw-party-name">{{ h.hunter_name }}</span>
+            <ClassMedal :hunter-id="h.hunter_id" />
             <div class="rw-claimed-list">
               <div
                 v-for="r in room.partyRewards[h.hunter_id]"
@@ -5963,14 +6319,23 @@ const openPackDrawer = () => {
 
       <!-- ── Trade Phase ── -->
       <div v-else-if="rewardPhase === 'trade'" class="rw-trade">
-        <p class="rw-title">⚔ Trade ของกัน</p>
-        <p class="rw-sub">โยน Item ลงกองกลาง หรือหยิบ Item ของคนอื่น</p>
+        <div class="board-header">
+          <div class="board-ornament">✦</div>
+          <h1 class="board-title trade-title">Trade Post</h1>
+          <div class="board-ornament">✦</div>
+        </div>
+        <p class="board-subtitle">แลกของกันในตี้</p>
 
-        <!-- กองกลาง — อยู่บนสุดเพราะต้องคอยดูว่ามีอะไรใหม่ -->
-        <div class="trade-section">
+        <!-- โต๊ะกลางวง — อยู่บนสุดเพราะต้องคอยดูว่ามีอะไรใหม่ -->
+        <div class="trade-section trade-table">
           <div class="trade-head">
-            <p class="rw-section-label">🔄 กองกลาง</p>
-            <span class="trade-hint">แตะเพื่อรับ</span>
+            <p class="rw-section-label">🔄 ของบนโต๊ะ</p>
+            <span class="trade-tally">
+              <span class="trade-tally-n">{{ tradePoolTotal }}</span> ชิ้น
+              <template v-if="tradeMineTotal">
+                · ของคุณ <span class="trade-tally-mine">{{ tradeMineTotal }}</span>
+              </template>
+            </span>
           </div>
 
           <div v-if="room.tradePool.length" class="trade-grid">
@@ -5992,15 +6357,15 @@ const openPackDrawer = () => {
               <span class="trade-slot-action">{{ item.fromHunterId === room.myHunterId ? '↩ คืน' : '↑ รับ' }}</span>
             </button>
           </div>
-          <p v-else class="trade-empty">ยังไม่มีใครโยน Item ลงกองกลาง</p>
+          <p v-else class="trade-empty">โต๊ะยังว่าง — วาง Item จากเป้ลงมาได้เลย</p>
         </div>
 
-        <div class="trade-divider"><span>↑ รับ &nbsp;·&nbsp; โยน ↓</span></div>
+        <div class="trade-divider"><span>▲ หยิบขึ้น &nbsp;·&nbsp; วางลง ▼</span></div>
 
-        <!-- คลังของฉัน -->
-        <div class="trade-section">
+        <!-- เป้ของเรา -->
+        <div class="trade-section trade-pack">
           <div class="trade-head">
-            <p class="rw-section-label">🎒 Inventory ของฉัน</p>
+            <p class="rw-section-label">🎒 เป้ของคุณ</p>
             <input
               v-model="tradeSearch"
               class="trade-search-input"
@@ -6026,7 +6391,7 @@ const openPackDrawer = () => {
             </button>
           </div>
           <p v-else class="trade-empty">
-            {{ tradeSearch ? 'ไม่พบ Item ที่ค้นหา' : 'ไม่มี Item ใน Inventory' }}
+            {{ tradeSearch ? 'ไม่พบ Item ที่ค้นหา' : 'ในเป้ไม่มี Item เหลือแล้ว' }}
           </p>
         </div>
 
@@ -6059,6 +6424,26 @@ const openPackDrawer = () => {
           </Transition>
         </Teleport>
 
+        <!-- ใครพร้อมปิดแล้วบ้าง — เดิมเห็นแค่ตัวเลข ไม่รู้ว่ารอใคร -->
+        <div class="trade-ready-row">
+          <span class="trade-ready-label">พร้อมปิดเควส</span>
+          <span
+            v-for="h in room.hunters"
+            :key="h.hunter_id"
+            class="trade-ready-chip"
+            :class="{ 'is-ready': room.actionVotes[h.hunter_id] === 'closeTrade' }"
+            :title="h.hunter_name"
+          >
+            <img
+              v-if="getHunterClass(h.hunter_class_id)?.thumbnail"
+              :src="getImg(getHunterClass(h.hunter_class_id).thumbnail)"
+              class="class-medal-icon"
+            />
+            <span v-else class="class-medal-fallback">{{ (h.hunter_name || '?').slice(0, 1) }}</span>
+            <span class="class-medal-tick">{{ room.actionVotes[h.hunter_id] === 'closeTrade' ? '✓' : '…' }}</span>
+          </span>
+        </div>
+
         <!-- Close trade vote -->
         <div class="trade-close-row">
           <button
@@ -6067,7 +6452,10 @@ const openPackDrawer = () => {
             :disabled="room.myActionVote === 'closeTrade'"
             @click="voteCloseTrade"
           >
-            <span v-if="room.actionVoteCount('closeTrade') > 0">
+            <span v-if="room.myActionVote === 'closeTrade'">
+              ✓ รออีก {{ room.hunterCount - room.actionVoteCount('closeTrade') }} คน
+            </span>
+            <span v-else-if="room.actionVoteCount('closeTrade') > 0">
               ✦ ปิดเควส ({{ room.actionVoteCount('closeTrade') }}/{{ room.hunterCount }})
             </span>
             <span v-else>✦ ปิดเควส</span>
@@ -6079,7 +6467,7 @@ const openPackDrawer = () => {
     <!-- ═══════════ SHUFFLE ANIMATION OVERLAY ═══════════ -->
     <teleport to="body">
       <Transition name="slain-fade">
-        <div v-if="showShuffleAnim" class="shuf-overlay">
+        <div v-if="showShuffleAnim" class="shuf-overlay" :class="'shuf-' + shuffleDeckKind">
           <div class="shuf-stage">
             <!-- Ghost cards fan out -->
             <div v-for="(back, i) in shuffleCardBacks.slice(1)" :key="i" :class="`shuf-ghost shuf-ghost-${i + 1}`">
@@ -6090,7 +6478,7 @@ const openPackDrawer = () => {
               <img v-if="shuffleCardBacks[0]" :src="getImg(shuffleCardBacks[0])" class="shuf-card-img" />
             </div>
           </div>
-          <p class="shuf-label">🔀 กำลังสับกอง...</p>
+          <p class="shuf-label">{{ shuffleLabel }}</p>
         </div>
       </Transition>
     </teleport>
@@ -6169,7 +6557,7 @@ const openPackDrawer = () => {
               <button v-if="isNitrotoadDrawer" class="nt-roll-btn" :disabled="nitrotoadDie.rolling" @click="rollNitrotoad">
                 🎲 ทอย
               </button>
-              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === nitrotoadDrawerId)?.hunter_name ?? 'Hunter' }} ทอยลูกเต๋า...</p>
+              <p v-else class="nt-waiting">รอ <ClassMedal :hunter-id="nitrotoadDrawerId" /> ทอยลูกเต๋า...</p>
             </template>
 
             <!-- Step: Rolling (ทุกคนเห็น animation พร้อมกัน) -->
@@ -6199,7 +6587,7 @@ const openPackDrawer = () => {
                 {{ nitrotoadRoll <= 3 ? '✓ เพิ่ม Break Token บน Part ที่เลือก' : '✕ Hunter ได้รับ Blastblight' }}
               </p>
               <button v-if="isNitrotoadDrawer" class="nt-roll-btn" @click="confirmNitrotoad">ดำเนินการ</button>
-              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === nitrotoadDrawerId)?.hunter_name ?? 'Hunter' }} ดำเนินการ...</p>
+              <p v-else class="nt-waiting">รอ <ClassMedal :hunter-id="nitrotoadDrawerId" /> ดำเนินการ...</p>
             </template>
 
             <!-- Step: Part Select (1-3) -->
@@ -6258,7 +6646,7 @@ const openPackDrawer = () => {
                   </div>
                 </div>
               </template>
-              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === nitrotoadDrawerId)?.hunter_name ?? 'Hunter' }} เลือก Part...</p>
+              <p v-else class="nt-waiting">รอ <ClassMedal :hunter-id="nitrotoadDrawerId" /> เลือก Part...</p>
             </template>
 
             <!-- Step: Blastblight (4-6) -->
@@ -6297,7 +6685,7 @@ const openPackDrawer = () => {
                 </div>
               </div>
               <button v-if="isParatoadDrawer" class="nt-roll-btn" @click="rollParatoad">🎲 ทอย</button>
-              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === paratoadDrawerId)?.hunter_name ?? 'Hunter' }} ทอยลูกเต๋า...</p>
+              <p v-else class="nt-waiting">รอ <ClassMedal :hunter-id="paratoadDrawerId" /> ทอยลูกเต๋า...</p>
             </template>
 
             <template v-else-if="paratoadStep === 'rolling'">
@@ -6325,7 +6713,7 @@ const openPackDrawer = () => {
                 {{ paratoadRoll <= 3 ? '✓ วาง Paralysis Token บน Monster' : '✕ Hunter ได้รับ Paralysis' }}
               </p>
               <button v-if="isParatoadDrawer" class="nt-roll-btn" @click="confirmParatoad">ดำเนินการ</button>
-              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === paratoadDrawerId)?.hunter_name ?? 'Hunter' }} ดำเนินการ...</p>
+              <p v-else class="nt-waiting">รอ <ClassMedal :hunter-id="paratoadDrawerId" /> ดำเนินการ...</p>
             </template>
 
             <template v-else-if="paratoadStep === 'paralysis'">
@@ -6375,7 +6763,7 @@ const openPackDrawer = () => {
                 </div>
               </div>
               <button v-if="isPoisoncupDrawer" class="nt-roll-btn" @click="rollPoisoncup">🎲 ทอย</button>
-              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === poisoncupDrawerId)?.hunter_name ?? 'Hunter' }} ทอยลูกเต๋า...</p>
+              <p v-else class="nt-waiting">รอ <ClassMedal :hunter-id="poisoncupDrawerId" /> ทอยลูกเต๋า...</p>
             </template>
 
             <template v-else-if="poisoncupStep === 'rolling'">
@@ -6403,7 +6791,7 @@ const openPackDrawer = () => {
                 {{ poisoncupRoll <= 3 ? '✓ วาง Poison Token บน Monster' : '✕ Hunter ได้รับ Poison' }}
               </p>
               <button v-if="isPoisoncupDrawer" class="nt-roll-btn" @click="confirmPoisoncup">ดำเนินการ</button>
-              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === poisoncupDrawerId)?.hunter_name ?? 'Hunter' }} ดำเนินการ...</p>
+              <p v-else class="nt-waiting">รอ <ClassMedal :hunter-id="poisoncupDrawerId" /> ดำเนินการ...</p>
             </template>
 
             <template v-else-if="poisoncupStep === 'poison'">
@@ -6453,7 +6841,7 @@ const openPackDrawer = () => {
                 </div>
               </div>
               <button v-if="isSleeptoadDrawer" class="nt-roll-btn" @click="rollSleeptoad">🎲 ทอย</button>
-              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === sleeptoadDrawerId)?.hunter_name ?? 'Hunter' }} ทอยลูกเต๋า...</p>
+              <p v-else class="nt-waiting">รอ <ClassMedal :hunter-id="sleeptoadDrawerId" /> ทอยลูกเต๋า...</p>
             </template>
 
             <template v-else-if="sleeptoadStep === 'rolling'">
@@ -6481,7 +6869,7 @@ const openPackDrawer = () => {
                 {{ sleeptoadRoll <= 3 ? '✓ วาง Sleep Token บน Monster' : '✕ Hunter ได้รับ Sleep' }}
               </p>
               <button v-if="isSleeptoadDrawer" class="nt-roll-btn" @click="confirmSleeptoad">ดำเนินการ</button>
-              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === sleeptoadDrawerId)?.hunter_name ?? 'Hunter' }} ดำเนินการ...</p>
+              <p v-else class="nt-waiting">รอ <ClassMedal :hunter-id="sleeptoadDrawerId" /> ดำเนินการ...</p>
             </template>
 
             <template v-else-if="sleeptoadStep === 'sleep'">
@@ -6530,7 +6918,7 @@ const openPackDrawer = () => {
                 </div>
               </div>
               <button v-if="isRoarDrawer" class="nt-roll-btn" @click="rollRoar">🎲 ทอย</button>
-              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === roarDrawerId)?.hunter_name ?? 'Hunter' }} ทอยลูกเต๋า...</p>
+              <p v-else class="nt-waiting">รอ <ClassMedal :hunter-id="roarDrawerId" /> ทอยลูกเต๋า...</p>
             </template>
 
             <template v-else-if="roarStep === 'rolling'">
@@ -6559,7 +6947,7 @@ const openPackDrawer = () => {
                 <span v-if="roarRoll > timeCardDeck.length"> (เหลือแค่ {{ timeCardDeck.length }} ใบ)</span>
               </p>
               <button v-if="isRoarDrawer" class="nt-roll-btn" @click="confirmRoar">ดำเนินการ</button>
-              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === roarDrawerId)?.hunter_name ?? 'Hunter' }} ดำเนินการ...</p>
+              <p v-else class="nt-waiting">รอ <ClassMedal :hunter-id="roarDrawerId" /> ดำเนินการ...</p>
             </template>
           </div>
         </div>
@@ -6585,7 +6973,7 @@ const openPackDrawer = () => {
                 </div>
               </div>
               <button v-if="isBoulderDrawer" class="nt-roll-btn" @click="rollBoulder">🎲 ทอย</button>
-              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === boulderDrawerId)?.hunter_name ?? 'Hunter' }} ทอยลูกเต๋า...</p>
+              <p v-else class="nt-waiting">รอ <ClassMedal :hunter-id="boulderDrawerId" /> ทอยลูกเต๋า...</p>
             </template>
 
             <template v-else-if="boulderStep === 'rolling'">
@@ -6613,7 +7001,7 @@ const openPackDrawer = () => {
                 {{ boulderRoll <= 3 ? '✓ Monster รับ 5 ความเสียหาย' : '✕ Hunter รับ 2 ความเสียหาย' }}
               </p>
               <button v-if="isBoulderDrawer" class="nt-roll-btn" @click="confirmBoulder">ดำเนินการ</button>
-              <p v-else class="nt-waiting">รอ {{ room.hunters.find(h => h.hunter_id === boulderDrawerId)?.hunter_name ?? 'Hunter' }} ดำเนินการ...</p>
+              <p v-else class="nt-waiting">รอ <ClassMedal :hunter-id="boulderDrawerId" /> ดำเนินการ...</p>
             </template>
 
             <template v-else-if="boulderStep === 'hunter-damage'">
@@ -7494,19 +7882,20 @@ const openPackDrawer = () => {
   display: flex;
   flex-direction: column;
   width: 160px;
-  border: 1px solid #c89b3c;
-  border-radius: 6px;
+  border: 2px solid #0f0b08;
+  border-radius: 2px;
   overflow: hidden;
-  box-shadow: 0 0 10px rgba(200, 155, 60, 0.2);
-  background: #1a1208;
+  box-shadow: inset 0 1px 0 rgba(240,220,180,0.1), 0 3px 10px rgba(0, 0, 0, 0.55);
+  background: linear-gradient(170deg, #2b1f13, #16110d);
 }
 
 .cal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #c89b3c;
-  padding: 3px 6px;
+  background: linear-gradient(to bottom, #c9a24a, #8a6a1e);
+  border-bottom: 1px solid rgba(0,0,0,0.5);
+  padding: 4px 7px;
 }
 
 .cal-title {
@@ -7540,9 +7929,9 @@ const openPackDrawer = () => {
 }
 
 .cal-cell.filled {
-  background: #c89b3c;
-  border-color: #ffd27a;
-  box-shadow: 0 0 3px rgba(255, 210, 100, 0.35);
+  background: linear-gradient(to bottom, #c9a24a, #8a6a1e);
+  border-color: #6b4f1c;
+  box-shadow: inset 0 1px 0 rgba(255, 230, 180, 0.35);
 }
 
 .book-grid {
@@ -7555,14 +7944,28 @@ const openPackDrawer = () => {
 .book-card {
   position: relative;
   display: flex;
-  border-radius: 8px;
+  border-radius: 2px 4px 4px 2px;
   overflow: hidden;
   cursor: pointer;
-  border: 2px solid #7c5a2b;
+  border: 2px solid #1a1209;
   background: #17120c;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  /* หุ้มมุมทองเหลืองสี่มุม */
+  box-shadow:
+    inset 0 0 0 1px rgba(200, 155, 60, 0.16),
+    0 5px 22px rgba(0, 0, 0, 0.65);
   transition: 0.25s;
   min-height: 180px;
+}
+.book-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 22px 16px, rgba(226,196,142,0.3) 0 2px, transparent 2.6px),
+    radial-gradient(circle at calc(100% - 16px) 16px, rgba(226,196,142,0.3) 0 2px, transparent 2.6px),
+    radial-gradient(circle at 22px calc(100% - 16px), rgba(226,196,142,0.3) 0 2px, transparent 2.6px),
+    radial-gradient(circle at calc(100% - 16px) calc(100% - 16px), rgba(226,196,142,0.3) 0 2px, transparent 2.6px);
 }
 .book-wip {
   cursor: not-allowed;
@@ -7598,11 +8001,21 @@ const openPackDrawer = () => {
   transform: translateY(-4px);
 }
 
+/* สันหนังสือ มีร่องเย็บสามเส้น */
 .book-spine {
-  width: 18px;
+  width: 20px;
   flex-shrink: 0;
-  background: linear-gradient(to right, #0d0a06, var(--book-bg), #0d0a06);
-  border-right: 1px solid rgba(255, 200, 80, 0.2);
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 26px,
+      rgba(0,0,0,0.5) 26px 28px,
+      rgba(226,196,142,0.12) 28px 29px,
+      transparent 29px 55px
+    ),
+    linear-gradient(to right, #0d0a06, var(--book-bg), #0d0a06);
+  border-right: 2px solid rgba(0, 0, 0, 0.6);
+  box-shadow: inset -2px 0 4px rgba(0,0,0,0.5);
 }
 
 .book-body {
@@ -7691,35 +8104,89 @@ const openPackDrawer = () => {
   text-align: center;
 }
 
+/* กระดานไม้ของสมาคม — ใบประกาศปักหมุดอยู่บนนี้ */
 .monster-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-  gap: 12px;
-  max-width: 600px;
-  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 16px;
   width: 100%;
+  padding: 20px 16px 24px;
+  border-radius: 6px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(0,0,0,0.16) 0px,
+      rgba(0,0,0,0.16) 1px,
+      transparent 1px,
+      transparent 7px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,220,160,0.045) 0px,
+      rgba(255,220,160,0.045) 2px,
+      transparent 2px,
+      transparent 23px
+    ),
+    linear-gradient(175deg, #4a3520 0%, #46331f 22%, #3a2917 58%, #43301c 100%);
+  border: 4px solid #2e2113;
+  box-shadow:
+    inset 0 0 60px rgba(0,0,0,0.55),
+    inset 0 2px 0 rgba(255,220,160,0.08),
+    0 4px 14px rgba(0,0,0,0.5);
 }
 
+/* ใบประกาศกระดาษ เอียงสลับกันเหมือนคนติดด้วยมือ */
 .wanted-card {
   position: relative;
-  border-radius: 6px;
-  border: 1px solid #7c5a2b;
-  background: linear-gradient(to bottom, #2a1e10, #17120c);
+  width: 128px;
+  flex: 0 0 auto;
+  border-radius: 2px;
+  border: 1px solid #b8a173;
+  color: #3a2c18;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(140,110,60,0.13), transparent 42%),
+    radial-gradient(circle at 88% 92%, rgba(120,95,50,0.15), transparent 45%),
+    linear-gradient(168deg, #efe4c8 0%, #e6d9b8 45%, #dccba6 100%);
+  box-shadow:
+    0 3px 8px rgba(0,0,0,0.45),
+    inset 0 0 26px rgba(150,120,70,0.14);
   cursor: pointer;
-  transition: 0.2s;
-  overflow: hidden;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
   padding-bottom: 8px;
+}
+.wanted-card:nth-child(3n+1) { transform: rotate(-0.8deg); }
+.wanted-card:nth-child(3n+2) { transform: rotate(0.6deg); }
+.wanted-card:nth-child(3n+3) { transform: rotate(-0.3deg); }
+
+/* หมุดปักกลางด้านบน */
+.wanted-card::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f0d9a0, #a8762c 60%, #6b4718);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.6);
+  z-index: 6;
 }
 
 .wanted-card:hover {
-  border-color: #c89b3c;
-  box-shadow: 0 0 14px rgba(200, 155, 60, 0.5);
-  transform: translateY(-3px);
+  border-color: #8a6a35;
+  transform: rotate(0deg) translateY(-3px);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.55), inset 0 0 26px rgba(150,120,70,0.14);
+  z-index: 1;
 }
 
 .wanted-card.cleared {
-  border-color: #3a7a3a;
+  border-color: rgba(40, 110, 70, 0.5);
 }
+.wanted-card.cleared .wanted-img { opacity: 0.72; }
+.wanted-card.cleared .wanted-name { color: #5a4a30; }
 
 .wanted-card.monster-wip {
   cursor: not-allowed;
@@ -7737,34 +8204,46 @@ const openPackDrawer = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0,0,0,0.35);
+  background: rgba(60, 46, 24, 0.42);
 }
 .monster-wip-icon { font-size: 22px; }
 
 .wanted-top {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  padding: 5px 7px;
-  background: rgba(0, 0, 0, 0.4);
-  border-bottom: 1px solid rgba(124, 90, 43, 0.4);
+  padding: 6px 7px 5px;
+  background: rgba(150, 120, 70, 0.14);
+  border-bottom: 1px solid rgba(120, 95, 55, 0.35);
 }
 
 .wanted-label {
   font-size: 8px;
-  color: #7c5a2b;
+  color: #7a6238;
   letter-spacing: 1px;
   text-transform: uppercase;
+  font-weight: bold;
 }
 
+/* ตราหมึกเขียวประทับเฉียงบนใบประกาศ — absolute เพื่อไม่ให้เบียดข้อความในแถวหัว */
 .cleared-stamp {
-  font-size: 7px;
-  color: #3cb83c;
-  border: 1px solid #3cb83c;
-  padding: 1px 4px;
-  border-radius: 3px;
-  letter-spacing: 0.5px;
+  position: absolute;
+  top: 22px;
+  right: -7px;
+  z-index: 4;
+  transform: rotate(-11deg);
+  font-size: 8px;
   font-weight: bold;
+  letter-spacing: 1.5px;
+  color: #1f6b45;
+  padding: 2px 7px;
+  border: 2px solid rgba(40, 110, 70, 0.55);
+  border-radius: 2px;
+  background: rgba(214, 232, 218, 0.55);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  /* หมึกซึมไม่สม่ำเสมอ */
+  opacity: 0.92;
 }
 
 .wanted-img-wrap {
@@ -7783,7 +8262,8 @@ const openPackDrawer = () => {
 .wanted-name {
   text-align: center;
   font-size: 11px;
-  color: #e0c88a;
+  font-weight: bold;
+  color: #2f2312;
   padding: 0 6px;
   line-height: 1.3;
 }
@@ -7791,15 +8271,25 @@ const openPackDrawer = () => {
 /* ══════════════════════════════════════════
    QUEST SCROLL LIST
 ══════════════════════════════════════════ */
+/* ป้ายไม้ประกาศเป้าหมาย */
 .target-banner {
   display: flex;
   align-items: center;
   gap: 16px;
   padding: 14px 16px;
-  border-radius: 8px;
-  background: linear-gradient(to right, rgba(40, 28, 14, 0.95), rgba(20, 15, 10, 0.95));
-  border: 1px solid #7c5a2b;
-  border-left: 4px solid #c89b3c;
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(0,0,0,0.16) 0px,
+      rgba(0,0,0,0.16) 1px,
+      transparent 1px,
+      transparent 7px
+    ),
+    linear-gradient(175deg, #4a3520 0%, #3a2917 58%, #43301c 100%);
+  border: 3px solid #2e2113;
+  border-left: 4px solid #6b4f1c;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.5), 0 3px 10px rgba(0,0,0,0.5);
   margin-bottom: 4px;
 }
 
@@ -7810,7 +8300,7 @@ const openPackDrawer = () => {
 }
 .target-label {
   font-size: 10px;
-  color: #7c5a2b;
+  color: #b89a68;
   letter-spacing: 2px;
   text-transform: uppercase;
   margin: 0;
@@ -7832,11 +8322,22 @@ const openPackDrawer = () => {
   gap: 12px;
 }
 
+/* ใบเควสบนแผงหนัง — สันซ้ายเป็นแกนม้วน */
 .scroll-card {
   position: relative;
-  border-radius: 8px;
-  border: 1px solid #7c5a2b;
-  background: linear-gradient(135deg, #221810, #17120c 50%, #201510);
+  border-radius: 3px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  border-left: 3px solid #7c5a2b;
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #2b1f13, #221809 55%, #281d10);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.07), 0 3px 10px rgba(0,0,0,0.5);
   overflow: hidden;
   transition: 0.2s;
 }
@@ -8004,10 +8505,18 @@ const openPackDrawer = () => {
 
 .detail-commission {
   padding: 16px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #221810, #17120c);
-  border: 1px solid #7c5a2b;
-  border-top: 3px solid #c89b3c;
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(0,0,0,0.16) 0px,
+      rgba(0,0,0,0.16) 1px,
+      transparent 1px,
+      transparent 7px
+    ),
+    linear-gradient(175deg, #4a3520 0%, #3a2917 58%, #43301c 100%);
+  border: 3px solid #2e2113;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.5), 0 3px 10px rgba(0,0,0,0.5);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -8061,15 +8570,29 @@ const openPackDrawer = () => {
   margin: 0;
 }
 
+/* ชื่อคลาสบอกอยู่แล้วว่าเป็นกระดาษ — ทำให้เป็นกระดาษจริงเสียที */
 .parchment-stats {
   padding: 14px 16px;
-  border-radius: 8px;
-  background: rgba(28, 20, 10, 0.95);
-  border: 1px solid rgba(124, 90, 43, 0.5);
+  border-radius: 2px;
+  color: #3a2c18;
+  background:
+    radial-gradient(circle at 10% 6%, rgba(140,110,60,0.13), transparent 42%),
+    radial-gradient(circle at 90% 94%, rgba(120,95,50,0.15), transparent 45%),
+    linear-gradient(168deg, #efe4c8 0%, #e6d9b8 45%, #dccba6 100%);
+  border: 1px solid #b8a173;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.5), inset 0 0 26px rgba(150,120,70,0.14);
   display: flex;
   flex-direction: column;
   gap: 0;
 }
+.parchment-stats .pstat-label { color: #7a6238; }
+.parchment-stats .pstat-val { color: #2f2312; }
+.parchment-stats .pstat-divider { background: rgba(120,95,55,0.35); }
+.parchment-stats .time-pip { background: rgba(120,95,55,0.55); }
+.parchment-stats .time-num,
+.parchment-stats .time-more { color: #4a3a22; }
+.parchment-stats .sf-val { color: #2f2312; }
+.parchment-stats .val-danger { color: #a3301f; }
 
 .pstat {
   display: flex;
@@ -8127,26 +8650,34 @@ const openPackDrawer = () => {
 
 .starting-scroll {
   position: relative;
-  padding: 16px;
-  border-radius: 6px;
-  background: linear-gradient(to bottom, #1e1610, #17120c);
-  border: 1px solid rgba(124, 90, 43, 0.4);
+  padding: 18px 16px 16px;
+  border-radius: 2px;
+  color: #3a2c18;
+  background:
+    radial-gradient(circle at 10% 6%, rgba(140,110,60,0.13), transparent 42%),
+    linear-gradient(168deg, #efe4c8 0%, #e6d9b8 45%, #dccba6 100%);
+  border: 1px solid #b8a173;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.5), inset 0 0 26px rgba(150,120,70,0.14);
 }
 
+/* แถบชื่อเสียบขอบบนกระดาษ */
 .scroll-tab {
   position: absolute;
   top: -1px;
   left: 16px;
   padding: 2px 12px;
-  background: #2a1e10;
-  border: 1px solid rgba(124, 90, 43, 0.4);
+  background: rgba(150,120,70,0.22);
+  border: 1px solid rgba(120,95,55,0.45);
   border-bottom: none;
   font-size: 10px;
-  color: #a88040;
+  font-weight: bold;
+  color: #7a6238;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  border-radius: 4px 4px 0 0;
+  border-radius: 0 0 2px 2px;
 }
+.starting-scroll .scroll-flavor-title { color: #2f2312; }
+.starting-scroll .scroll-flavor-body { color: #4a3a22; }
 
 .scroll-flavor-title {
   font-size: 13px;
@@ -8187,10 +8718,12 @@ const openPackDrawer = () => {
   justify-content: center;
   gap: 10px;
   padding: 16px;
-  border-radius: 8px;
-  border: 2px solid #c89b3c;
-  background: linear-gradient(to bottom, #3a2c1a, #1a1208);
-  color: #ffd27a;
+  border-radius: 3px;
+  border: 1px solid #6b4f1c;
+  background: linear-gradient(to bottom, #b08a34 0%, #8a6a22 48%, #6b501a 100%);
+  text-shadow: 0 1px 0 rgba(255,225,170,0.35);
+  box-shadow: inset 0 1px 0 rgba(255,230,180,0.4), 0 3px 8px rgba(0,0,0,0.55);
+  color: #2a1d06;
   font-size: 16px;
   font-weight: bold;
   letter-spacing: 2px;
@@ -8202,10 +8735,11 @@ const openPackDrawer = () => {
 }
 
 .btn-embark:hover {
-  background: linear-gradient(to bottom, #4a3820, #2a1e10);
+  background: linear-gradient(to bottom, #c99f42 0%, #9d7a29 48%, #7a5c1f 100%);
   box-shadow:
-    0 0 20px rgba(200, 155, 60, 0.6),
-    0 0 40px rgba(200, 155, 60, 0.2);
+    inset 0 1px 0 rgba(255,230,180,0.5),
+    0 5px 16px rgba(0, 0, 0, 0.6),
+    0 0 22px rgba(200, 155, 60, 0.35);
   transform: translateY(-2px);
 }
 
@@ -8409,9 +8943,19 @@ const openPackDrawer = () => {
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(80,180,110,0.45);
-  background: rgba(80,180,110,0.1);
+  border-radius: 4px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  border-left: 3px solid #2f7d4f;
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #1e2617, #161c10);
+  box-shadow: inset 0 1px 0 rgba(200,255,200,0.05), 0 2px 6px rgba(0,0,0,0.45);
   font-family: inherit;
   cursor: pointer;
   transition: 0.15s;
@@ -8729,6 +9273,12 @@ const openPackDrawer = () => {
   border-color: rgba(220,110,50,0.4);
   color: #ff9955;
 }
+/* สิทธิ์ลงเควสของเราเองบนการ์ดห้อง */
+.rb-tag-att {
+  background: rgba(200,155,60,0.14);
+  border-color: rgba(200,155,60,0.4);
+  color: #ffd27a;
+}
 /* แถวล่างการ์ด: ผู้เล่นซ้าย ปุ่มเข้าร่วมขวาสุด */
 .rb-footer {
   display: flex;
@@ -8860,6 +9410,11 @@ const openPackDrawer = () => {
   background: rgba(170,70,25,0.13);
   border-color: rgba(170,70,25,0.42);
   color: #9c4a15;
+}
+.rb-card .rb-tag-att {
+  background: rgba(150,110,35,0.14);
+  border-color: rgba(150,110,35,0.45);
+  color: #7a5a12;
 }
 .rb-card .rb-footer {
   border-top: 1px dashed rgba(120,95,55,0.45);
@@ -9517,14 +10072,16 @@ const openPackDrawer = () => {
   text-transform: uppercase;
   margin: 0;
 }
+/* ช่องวางการ์ดกรอบไม้ */
 .mt-card {
   position: relative;
   width: min(320px, 42vw);
   height: min(212px, 30vw);
-  border-radius: 8px;
+  border-radius: 3px;
   overflow: hidden;
-  border: 1px solid rgba(124,90,43,0.4);
+  border: 3px solid #2e2113;
   background: rgba(10,8,4,0.6);
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.5);
 }
 .mt-card-img { width: 100%; height: 100%; object-fit: cover; }
 .mt-card-empty {
@@ -9551,54 +10108,73 @@ const openPackDrawer = () => {
   gap: 36px;
   pointer-events: none;
 }
+/* ขนาดการ์ดกับระยะกางเก็บเป็นตัวแปร — Behaviour เป็นแนวนอน แต่ Time Card เป็นแนวตั้ง */
 .shuf-stage {
   position: relative;
+  --card-w: min(280px, 72vw);
+  --card-h: min(196px, 50vw);
+  --card-r: 12px;
+  --fan-x: 180px;
+  --fan-y: 55px;
+  --fan-top: 90px;
   width: min(500px, 94vw);
   height: min(240px, 48vw);
 }
+/* Time Card: แนวตั้ง ~170:234 — กางแคบลงในแนวนอน แต่กว้างขึ้นในแนวตั้ง */
+.shuf-time .shuf-stage {
+  --card-w: min(164px, 45vw);
+  --card-h: min(234px, 64vw);
+  --card-r: 5px;
+  --fan-x: 132px;
+  --fan-y: 74px;
+  --fan-top: 112px;
+  height: min(290px, 74vw);
+}
 .shuf-ghost, .shuf-top-card {
   position: absolute;
-  width: min(280px, 72vw);
-  height: min(196px, 50vw);
-  border-radius: 12px;
+  width: var(--card-w);
+  height: var(--card-h);
+  border-radius: var(--card-r);
   overflow: hidden;
   top: 50%; left: 50%;
-  margin: calc(min(196px, 50vw) / -2) 0 0 calc(min(280px, 72vw) / -2);
+  margin: calc(var(--card-h) / -2) 0 0 calc(var(--card-w) / -2);
   box-shadow: 0 16px 50px rgba(0,0,0,0.8), 0 4px 12px rgba(0,0,0,0.5);
 }
+/* การ์ดแนวตั้งใช้ contain ไม่งั้นภาพโดนครอปหัวท้าย */
 .shuf-card-img { width: 100%; height: 100%; object-fit: cover; }
+.shuf-time .shuf-card-img { object-fit: cover; }
 
 /* Ghost 1: bottom-left → center */
 @keyframes sg1 {
-  0%   { transform: translate(-180px, 55px) rotate(-28deg) scale(0.92); opacity: 0; }
+  0%   { transform: translate(calc(var(--fan-x) * -1), var(--fan-y)) rotate(-28deg) scale(0.92); opacity: 0; }
   8%   { opacity: 1; }
   65%  { transform: translate(-18px, 6px) rotate(-4deg) scale(1.02); }
   100% { transform: translate(-5px, 3px) rotate(-3deg) scale(1); opacity: 1; }
 }
 /* Ghost 2: bottom-right → center */
 @keyframes sg2 {
-  0%   { transform: translate(180px, 55px) rotate(28deg) scale(0.92); opacity: 0; }
+  0%   { transform: translate(var(--fan-x), var(--fan-y)) rotate(28deg) scale(0.92); opacity: 0; }
   8%   { opacity: 1; }
   65%  { transform: translate(18px, 6px) rotate(4deg) scale(1.02); }
   100% { transform: translate(6px, 2px) rotate(3deg) scale(1); opacity: 1; }
 }
 /* Ghost 3: mid-left → center */
 @keyframes sg3 {
-  0%   { transform: translate(-140px, -20px) rotate(-18deg) scale(0.94); opacity: 0; }
+  0%   { transform: translate(calc(var(--fan-x) * -0.78), calc(var(--fan-y) * -0.36)) rotate(-18deg) scale(0.94); opacity: 0; }
   14%  { opacity: 1; }
   65%  { transform: translate(-12px, -3px) rotate(-2deg) scale(1.01); }
   100% { transform: translate(-3px, -4px) rotate(-2deg) scale(1); opacity: 1; }
 }
 /* Ghost 4: mid-right → center */
 @keyframes sg4 {
-  0%   { transform: translate(140px, -20px) rotate(18deg) scale(0.94); opacity: 0; }
+  0%   { transform: translate(calc(var(--fan-x) * 0.78), calc(var(--fan-y) * -0.36)) rotate(18deg) scale(0.94); opacity: 0; }
   14%  { opacity: 1; }
   65%  { transform: translate(12px, -3px) rotate(2deg) scale(1.01); }
   100% { transform: translate(4px, -3px) rotate(2deg) scale(1); opacity: 1; }
 }
 /* Ghost 5: top-center → center */
 @keyframes sg5 {
-  0%   { transform: translate(0, -90px) rotate(-8deg) scale(0.9); opacity: 0; }
+  0%   { transform: translate(0, calc(var(--fan-top) * -1)) rotate(-8deg) scale(0.9); opacity: 0; }
   20%  { opacity: 1; }
   65%  { transform: translate(0, -8px) rotate(-1deg) scale(1.01); }
   100% { transform: translate(-2px, -5px) rotate(-1deg) scale(1); opacity: 1; }
@@ -9636,18 +10212,21 @@ const openPackDrawer = () => {
   100% { opacity: 0; }
 }
 .mt-card-name { font-size: 11px; color: #a88040; margin: 0; text-align: center; }
+/* ปุ่มเหล็กตีขึ้นรูป ชุบเลือด */
 .mt-draw-btn {
   padding: 14px;
-  border-radius: 8px;
-  border: 2px solid #8c3a3a;
-  background: linear-gradient(to bottom, #3a1a1a, #1a0d0d);
-  color: #ff6b6b;
+  border-radius: 3px;
+  border: 1px solid #5e1c14;
+  background: linear-gradient(to bottom, #7a2a1e 0%, #4d1a13 50%, #2c0f0a 100%);
+  color: #ffb3a3;
   font-size: 15px;
   font-weight: bold;
   cursor: pointer;
   font-family: inherit;
   letter-spacing: 1px;
   transition: 0.2s;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+  box-shadow: inset 0 1px 0 rgba(255,180,160,0.22), 0 3px 8px rgba(0,0,0,0.55);
 }
 .mt-draw-btn:hover:not(:disabled) { box-shadow: 0 0 20px rgba(255,80,80,0.5); }
 .mt-draw-btn:disabled { opacity: 0.3; cursor: not-allowed; }
@@ -9853,7 +10432,18 @@ const openPackDrawer = () => {
 .nt-rule { font-size: 12px; color: #7c5a2b; margin: 0; letter-spacing: 1px; }
 .nt-rule-good { color: #c89b3c; font-weight: bold; }
 .nt-rule-bad  { color: #cc6644; font-weight: bold; }
-.nt-waiting { font-size: 12px; color: #5a3d1f; margin: 0; font-style: italic; letter-spacing: 1px; }
+.nt-waiting {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #5a3d1f;
+  margin: 0;
+  font-style: italic;
+  letter-spacing: 1px;
+}
+/* เหรียญในบรรทัดข้อความ — ย่อลงให้พอดีกับความสูงบรรทัด */
 .nt-roll-result { font-size: 14px; color: #f0ddb0; margin: 0; letter-spacing: 1px; }
 .nt-roll-btn {
   padding: 10px 32px;
@@ -10254,16 +10844,16 @@ const openPackDrawer = () => {
 .mt-mgmt-btn {
   flex: 1;
   padding: 8px;
-  border-radius: 6px;
-  border: 1px solid rgba(90,159,255,0.35);
-  background: rgba(60,100,200,0.08);
-  color: #7ab3ff;
+  border-radius: 3px;
+  border: 1px solid rgba(200,155,60,0.4);
+  background: linear-gradient(170deg, #2b1f13, #1c1409);
+  color: #c0985a;
   font-size: 12px;
   cursor: pointer;
   font-family: inherit;
   transition: 0.15s;
 }
-.mt-mgmt-btn:hover:not(:disabled) { background: rgba(60,100,200,0.18); }
+.mt-mgmt-btn:hover:not(:disabled) { background: rgba(200,155,60,0.18); color: #ffd27a; }
 .mt-mgmt-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
 /* ── Deck Manager ── */
@@ -10275,59 +10865,65 @@ const openPackDrawer = () => {
   display: flex; align-items: center; justify-content: center;
   padding: 16px;
 }
+/* กระดาษบัญชีการ์ด ขอบไม้ */
 .dm-modal {
-  background: linear-gradient(160deg, #1c1508, #13100a);
-  border: 2px solid #7c5a2b;
-  border-radius: 14px;
+  background:
+    radial-gradient(circle at 12% 6%, rgba(140,110,60,0.13), transparent 42%),
+    radial-gradient(circle at 88% 94%, rgba(120,95,50,0.15), transparent 45%),
+    linear-gradient(168deg, #efe4c8 0%, #e6d9b8 45%, #dccba6 100%);
+  border: 3px solid #5a4222;
+  border-radius: 3px;
+  color: #3a2c18;
   width: min(600px, 96vw);
   max-height: 90vh;
   display: flex; flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 0 40px rgba(0,0,0,0.8);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.8), inset 0 0 26px rgba(150,120,70,0.14);
 }
 .dm-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(124,90,43,0.4);
-  background: rgba(200,155,60,0.06);
+  border-bottom: 1px solid rgba(120,95,55,0.45);
+  background: rgba(150,120,70,0.14);
   flex-shrink: 0;
 }
-.dm-title { font-size: 14px; font-weight: bold; color: #ffd27a; }
-.dm-close { background: none; border: none; color: #7c5a2b; font-size: 16px; cursor: pointer; }
-.dm-close:hover { color: #ffd27a; }
+.dm-title { font-size: 14px; font-weight: bold; color: #2f2312; }
+.dm-close { background: none; border: none; color: #6b542e; font-size: 16px; cursor: pointer; }
+.dm-close:hover { color: #2f2312; }
 .dm-tabs {
-  display: flex; border-bottom: 1px solid rgba(124,90,43,0.25);
+  display: flex; border-bottom: 1px solid rgba(120,95,55,0.35);
   flex-shrink: 0;
 }
 .dm-tab {
   flex: 1; padding: 12px 6px;
   font-size: 13px; font-family: inherit;
   background: none; border: none;
-  color: #7c5a2b; cursor: pointer;
+  color: #7a6238; cursor: pointer;
   transition: 0.15s; letter-spacing: 0.5px;
 }
-.dm-tab.active { color: #ffd27a; border-bottom: 2px solid #c89b3c; }
-.dm-tab:hover { color: #a88040; }
+.dm-tab.active { color: #2f2312; font-weight: bold; border-bottom: 2px solid #8c2f22; }
+.dm-tab:hover { color: #2f2312; }
 .dm-list { overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
 .dm-random-special-btn {
   width: 100%;
   padding: 10px;
   margin-bottom: 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(120,80,200,0.5);
-  background: rgba(120,80,200,0.15);
-  color: #a98cf0;
+  border-radius: 3px;
+  border: 1px solid rgba(150,110,35,0.55);
+  background: linear-gradient(to bottom, rgba(200,155,60,0.26), rgba(150,110,35,0.16));
+  color: #5c4212;
   font-size: 13px;
   font-weight: 700;
+  font-family: inherit;
   cursor: pointer;
   transition: background 0.15s;
 }
-.dm-random-special-btn:hover { background: rgba(120,80,200,0.3); }
+.dm-random-special-btn:hover { background: linear-gradient(to bottom, rgba(200,155,60,0.4), rgba(150,110,35,0.26)); }
 .dm-card-row {
   display: flex; align-items: center; gap: 14px;
-  padding: 10px 12px; border-radius: 8px;
-  background: rgba(200,155,60,0.05);
-  border: 1px solid rgba(124,90,43,0.2);
+  padding: 10px 12px; border-radius: 2px;
+  background: rgba(150,120,70,0.1);
+  border: 1px solid rgba(120,95,55,0.3);
 }
 .dm-card-thumb { width: 100px; height: 72px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
 .dm-card-zoomable { cursor: zoom-in; transition: transform 0.15s; }
@@ -10335,24 +10931,24 @@ const openPackDrawer = () => {
 .cz-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; align-items: center; justify-content: center; cursor: zoom-out; }
 .cz-img { max-width: 90vw; max-height: 85vh; object-fit: contain; border-radius: 10px; box-shadow: 0 8px 40px rgba(0,0,0,0.7); cursor: default; }
 .dm-card-banished { filter: grayscale(80%) opacity(0.5); }
-.dm-card-name { flex: 1; font-size: 14px; color: #d4c090; font-weight: bold; }
-.dm-card-name-banished { color: #7c5a2b; }
+.dm-card-name { flex: 1; font-size: 14px; color: #2f2312; font-weight: bold; }
+.dm-card-name-banished { color: #8a7550; }
 .dm-btn {
-  font-size: 13px; padding: 10px 16px; border-radius: 8px;
+  font-size: 13px; padding: 10px 16px; border-radius: 3px;
   cursor: pointer; font-family: inherit; white-space: nowrap;
   transition: 0.15s; font-weight: bold;
 }
 .dm-btn-banish {
-  border: 1px solid rgba(180,60,60,0.4);
-  background: rgba(180,60,60,0.08); color: #ff6b6b;
+  border: 1px solid rgba(150,50,30,0.45);
+  background: rgba(170,60,35,0.12); color: #a3301f;
 }
-.dm-btn-banish:hover { background: rgba(180,60,60,0.2); }
+.dm-btn-banish:hover { background: rgba(170,60,35,0.25); }
 .dm-btn-restore {
-  border: 1px solid rgba(100,220,100,0.4);
-  background: rgba(60,180,60,0.08); color: #7cfc00;
+  border: 1px solid rgba(40,110,70,0.5);
+  background: rgba(50,150,95,0.16); color: #1f6b45;
 }
-.dm-btn-restore:hover { background: rgba(60,180,60,0.2); }
-.dm-empty { font-size: 11px; color: rgba(124,90,43,0.4); text-align: center; padding: 12px 0; }
+.dm-btn-restore:hover { background: rgba(50,150,95,0.3); }
+.dm-empty { font-size: 11px; color: #8a7550; text-align: center; padding: 12px 0; }
 
 /* ── Monster Attack Transition ── */
 .ma-trans-enter-active { transition: opacity 0.25s ease; }
@@ -10633,8 +11229,10 @@ const openPackDrawer = () => {
   position: absolute;
   bottom: -9px;
   right: -10px;
-  background: #c9a227;
-  color: #1a1000;
+  background: radial-gradient(circle at 35% 30%, #f0d9a0, #c9a227 60%, #8a6a18);
+  border: 1px solid rgba(60,42,10,0.5);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.55);
+  color: #241800;
   font-size: 13px;
   font-weight: 700;
   border-radius: 12px;
@@ -11080,9 +11678,19 @@ const openPackDrawer = () => {
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  border-radius: 10px;
-  background: rgba(10,8,4,0.5);
-  border: 1px solid rgba(124,90,43,0.3);
+  border-radius: 4px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  border-left: 3px solid #7c5a2b;
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #2b1f13, #221809 55%, #281d10);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.07), 0 2px 6px rgba(0,0,0,0.45);
   flex-wrap: wrap;
 }
 .token-total-label {
@@ -11113,15 +11721,26 @@ const openPackDrawer = () => {
 .chip-zero  { border-color: rgba(200,155,60,0.4);  color: #ffd27a; background: rgba(200,155,60,0.08); }
 .chip-hidden{ border-color: rgba(124,90,43,0.3);   color: rgba(200,155,60,0.4); background: rgba(30,22,8,0.6); }
 .token-total-sum { display: flex; align-items: baseline; gap: 2px; white-space: nowrap; }
-.token-total-sum-label { font-size: 12px; color: #7c5a2b; }
+.token-total-sum-label { font-size: 12px; color: #a88040; }
 .token-total-sum-val { font-size: 20px; font-weight: bold; }
 .token-total-hidden { font-size: 12px; opacity: 0.6; }
 
 /* ── Track Token Panel ── */
+/* แผงเครื่องมือทั้งสามใช้หน้าตาหนังชุดเดียวกับแถบเป้าหมาย */
 .tt-panel {
-  border-radius: 10px;
-  border: 1px solid rgba(124, 90, 43, 0.35);
-  background: rgba(10, 8, 4, 0.5);
+  border-radius: 4px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  border-left: 3px solid #7c5a2b;
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #2b1f13, #221809 55%, #281d10);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.07), 0 2px 6px rgba(0,0,0,0.45);
   padding: 10px 14px;
   display: flex;
   flex-direction: column;
@@ -11169,12 +11788,22 @@ const openPackDrawer = () => {
   align-items: center;
   gap: 2px;
 }
+/* เบี้ยไม้คว่ำ — เปิดแล้วกลายเป็นเหรียญทองเหลือง */
 .tt-token-face {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  border: 2px solid rgba(124,90,43,0.5);
-  background: rgba(30,22,8,0.8);
+  border: 2px solid rgba(124,90,43,0.55);
+  background:
+    repeating-linear-gradient(
+      120deg,
+      rgba(0,0,0,0.12) 0px,
+      rgba(0,0,0,0.12) 1px,
+      transparent 1px,
+      transparent 4px
+    ),
+    radial-gradient(circle at 38% 30%, #4a3520, #2b1f13 70%);
+  box-shadow: inset 0 0 8px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -11185,7 +11814,8 @@ const openPackDrawer = () => {
 .tt-token.revealed .tt-token-face {
   cursor: default;
   border-color: #c89b3c;
-  background: rgba(50,35,10,0.9);
+  background: radial-gradient(circle at 36% 28%, #6b5326, #3a2a10 72%);
+  box-shadow: inset 0 1px 2px rgba(255,220,160,0.25), 0 1px 3px rgba(0,0,0,0.5);
 }
 .tt-hidden { font-size: 18px; color: rgba(200,155,60,0.4); font-weight: bold; }
 .tt-value { font-size: 16px; font-weight: bold; }
@@ -11205,22 +11835,27 @@ const openPackDrawer = () => {
   justify-content: center;
   padding: 16px;
 }
+/* กระดาษวางบนโต๊ะ ขอบไม้หนา */
 .tt-modal {
-  background: linear-gradient(160deg, #1c1508, #13100a);
-  border: 2px solid #7c5a2b;
-  border-radius: 14px;
-  padding: 24px 20px;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(140,110,60,0.13), transparent 42%),
+    radial-gradient(circle at 88% 92%, rgba(120,95,50,0.15), transparent 45%),
+    linear-gradient(168deg, #efe4c8 0%, #e6d9b8 45%, #dccba6 100%);
+  border: 3px solid #5a4222;
+  border-radius: 3px;
+  color: #3a2c18;
+  padding: 22px 20px;
   width: min(280px, 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  box-shadow: 0 0 40px rgba(0,0,0,0.8);
+  box-shadow: 0 10px 34px rgba(0,0,0,0.75), inset 0 0 26px rgba(150,120,70,0.14);
 }
 .tt-modal-title {
-  font-size: 13px;
+  font-size: 12px;
   letter-spacing: 3px;
-  color: #a88040;
+  color: #6b542e;
   text-transform: uppercase;
   margin: 0;
 }
@@ -11228,13 +11863,19 @@ const openPackDrawer = () => {
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  border: 2px solid #c89b3c;
-  background: rgba(50,35,10,0.9);
+  border: 2px solid #8a6a35;
+  background: rgba(150,120,70,0.18);
+  box-shadow: inset 0 0 14px rgba(120,95,55,0.3);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .tt-modal-val { font-size: 24px !important; }
+/* หมึกบนกระดาษ — สีเรืองแสงเดิมอ่านไม่ออกบนพื้นสว่าง */
+.tt-modal .val-pos  { color: #1f6b45; }
+.tt-modal .val-zero { color: #7a5a12; }
+.tt-modal .val-neg  { color: #a3301f; }
+.tt-modal .tt-hidden { color: rgba(90,70,40,0.55); }
 .tt-modal-btns {
   display: flex;
   flex-direction: column;
@@ -11244,7 +11885,7 @@ const openPackDrawer = () => {
 .tt-modal-btn {
   width: 100%;
   padding: 10px;
-  border-radius: 8px;
+  border-radius: 3px;
   font-size: 14px;
   font-weight: bold;
   cursor: pointer;
@@ -11252,23 +11893,23 @@ const openPackDrawer = () => {
   transition: 0.15s;
 }
 .tt-modal-reveal {
-  border: 1px solid rgba(100,220,100,0.5);
-  background: rgba(60,180,60,0.1);
-  color: #7cfc00;
+  border: 1px solid rgba(40,110,70,0.5);
+  background: rgba(50,150,95,0.16);
+  color: #1f6b45;
 }
-.tt-modal-reveal:hover { background: rgba(60,180,60,0.2); }
+.tt-modal-reveal:hover { background: rgba(50,150,95,0.3); }
 .tt-modal-discard {
-  border: 1px solid rgba(180,60,60,0.4);
-  background: rgba(180,60,60,0.08);
-  color: #ff6b6b;
+  border: 1px solid rgba(150,50,30,0.45);
+  background: rgba(170,60,35,0.12);
+  color: #a3301f;
 }
-.tt-modal-discard:hover { background: rgba(180,60,60,0.2); }
+.tt-modal-discard:hover { background: rgba(170,60,35,0.25); }
 .tt-modal-cancel {
-  border: 1px solid rgba(124,90,43,0.3);
-  background: rgba(10,8,4,0.5);
-  color: #7c5a2b;
+  border: 1px solid rgba(120,95,55,0.4);
+  background: rgba(120,95,55,0.1);
+  color: #6b542e;
 }
-.tt-modal-cancel:hover { color: #a88040; }
+.tt-modal-cancel:hover { background: rgba(120,95,55,0.2); color: #3a2c18; }
 
 .tt-empty {
   font-size: 11px;
@@ -11279,9 +11920,19 @@ const openPackDrawer = () => {
 
 /* ── Time Card Panel ── */
 .tc-panel {
-  border-radius: 10px;
-  border: 1px solid rgba(124, 90, 43, 0.35);
-  background: rgba(10, 8, 4, 0.5);
+  border-radius: 4px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  border-left: 3px solid #7c5a2b;
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #2b1f13, #221809 55%, #281d10);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.07), 0 2px 6px rgba(0,0,0,0.45);
   padding: 10px 14px;
   display: flex;
   flex-direction: column;
@@ -11323,8 +11974,10 @@ const openPackDrawer = () => {
   position: absolute;
   bottom: -6px;
   right: -8px;
-  background: #c9a227;
-  color: #1a1000;
+  background: radial-gradient(circle at 35% 30%, #f0d9a0, #c9a227 60%, #8a6a18);
+  border: 1px solid rgba(60,42,10,0.5);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.55);
+  color: #241800;
   font-size: 11px;
   font-weight: 700;
   border-radius: 10px;
@@ -11359,11 +12012,11 @@ const openPackDrawer = () => {
 }
 .tc-btn-discard:hover:not(:disabled) { background: rgba(180, 60, 40, 0.45); }
 .tc-btn-manage {
-  background: rgba(80, 80, 200, 0.2);
-  color: #9090f0;
-  border: 1px solid rgba(80, 80, 200, 0.4);
+  background: rgba(200, 155, 60, 0.12);
+  color: #ffd27a;
+  border: 1px solid rgba(200, 155, 60, 0.45);
 }
-.tc-btn-manage:hover { background: rgba(80, 80, 200, 0.38); }
+.tc-btn-manage:hover { background: rgba(200, 155, 60, 0.26); }
 .tc-last-discard {
   display: flex;
   align-items: center;
@@ -11398,9 +12051,14 @@ const openPackDrawer = () => {
   padding: 16px;
 }
 .tc-modal {
-  background: #1a1304;
-  border: 1px solid rgba(201,162,39,0.4);
-  border-radius: 14px;
+  background:
+    radial-gradient(circle at 12% 6%, rgba(140,110,60,0.13), transparent 42%),
+    radial-gradient(circle at 88% 94%, rgba(120,95,50,0.15), transparent 45%),
+    linear-gradient(168deg, #efe4c8 0%, #e6d9b8 45%, #dccba6 100%);
+  border: 3px solid #5a4222;
+  border-radius: 3px;
+  color: #3a2c18;
+  box-shadow: 0 10px 34px rgba(0,0,0,0.75), inset 0 0 26px rgba(150,120,70,0.14);
   padding: 20px 18px;
   width: min(480px, 96vw);
   max-height: 85vh;
@@ -11412,19 +12070,20 @@ const openPackDrawer = () => {
 .tc-modal-title {
   font-size: 16px;
   font-weight: 700;
-  color: #c9a227;
+  color: #2f2312;
   margin: 0;
   text-align: center;
 }
 .tc-modal-sub {
   font-size: 12px;
-  color: rgba(201,162,39,0.65);
+  color: #6b542e;
   margin: 0;
   text-align: center;
 }
+.tc-modal-sub strong { color: #2f2312; }
 .tc-modal-section {
   font-size: 12px;
-  color: rgba(201,162,39,0.55);
+  color: #6b542e;
   margin: 0;
   font-style: italic;
 }
@@ -11440,20 +12099,20 @@ const openPackDrawer = () => {
   align-items: center;
   gap: 5px;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 2px;
   padding: 8px 4px 6px;
-  border: 2px solid rgba(201,162,39,0.15);
-  background: rgba(255,255,255,0.03);
+  border: 2px solid rgba(120,95,55,0.25);
+  background: rgba(150,120,70,0.08);
   transition: border-color 0.15s, background 0.15s;
   user-select: none;
 }
 .tc-red-grid:has(.selected) .tc-red-card:not(.selected) {
   opacity: 0.35;
 }
-.tc-red-card:hover { border-color: rgba(201,162,39,0.4); background: rgba(201,162,39,0.07); }
+.tc-red-card:hover { border-color: rgba(120,95,55,0.55); background: rgba(150,120,70,0.18); }
 .tc-red-card.selected {
-  border-color: #c9a227;
-  background: rgba(201,162,39,0.14);
+  border-color: #8c2f22;
+  background: rgba(170,60,35,0.14);
 }
 .tc-red-check {
   position: absolute;
@@ -11461,7 +12120,7 @@ const openPackDrawer = () => {
   right: 6px;
   font-size: 12px;
   font-weight: 700;
-  color: #c9a227;
+  color: #8c2f22;
   opacity: 0;
   transition: opacity 0.15s;
 }
@@ -11474,7 +12133,7 @@ const openPackDrawer = () => {
 }
 .tc-red-name {
   font-size: 10px;
-  color: #dba860;
+  color: #4a3a22;
   text-align: center;
   line-height: 1.3;
 }
@@ -11486,30 +12145,41 @@ const openPackDrawer = () => {
 }
 .tc-modal-btn {
   padding: 9px 18px;
-  border-radius: 8px;
+  border-radius: 3px;
   border: none;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+  font-family: inherit;
   transition: background 0.15s;
 }
 .tc-modal-add {
-  background: rgba(80, 200, 120, 0.25);
-  color: #6fcf97;
-  border: 1px solid rgba(80, 200, 120, 0.4);
+  background: rgba(50, 150, 95, 0.18);
+  color: #1f6b45;
+  border: 1px solid rgba(40, 110, 70, 0.5);
 }
-.tc-modal-add:hover { background: rgba(80, 200, 120, 0.42); }
+.tc-modal-add:hover { background: rgba(50, 150, 95, 0.32); }
 .tc-modal-cancel {
-  background: rgba(120,120,120,0.15);
-  color: rgba(200,200,200,0.6);
-  border: 1px solid rgba(120,120,120,0.3);
+  background: rgba(120,95,55,0.1);
+  color: #6b542e;
+  border: 1px solid rgba(120,95,55,0.4);
 }
-.tc-modal-cancel:hover { background: rgba(120,120,120,0.28); }
+.tc-modal-cancel:hover { background: rgba(120,95,55,0.22); color: #3a2c18; }
 
 .dr-panel {
-  border-radius: 10px;
-  border: 1px solid rgba(124, 90, 43, 0.35);
-  background: rgba(10, 8, 4, 0.5);
+  border-radius: 4px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  border-left: 3px solid #7c5a2b;
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #2b1f13, #221809 55%, #281d10);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.07), 0 2px 6px rgba(0,0,0,0.45);
   overflow: hidden;
 }
 .dr-toggle {
@@ -11518,16 +12188,16 @@ const openPackDrawer = () => {
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  background: rgba(200, 155, 60, 0.06);
+  background: transparent;
   border: none;
-  color: #a88040;
+  color: #c0985a;
   font-size: 12px;
   letter-spacing: 1px;
   cursor: pointer;
   font-family: inherit;
-  transition: background 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
-.dr-toggle:hover { background: rgba(200, 155, 60, 0.1); }
+.dr-toggle:hover { background: rgba(200, 155, 60, 0.1); color: #ffd27a; }
 .dr-toggle-arrow { font-size: 10px; }
 
 .dr-grid {
@@ -11544,8 +12214,9 @@ const openPackDrawer = () => {
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
-  border-radius: 6px;
-  background: rgba(30, 22, 8, 0.6);
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(124, 90, 43, 0.22);
 }
 .dr-item-img {
   width: 28px;
@@ -11608,74 +12279,343 @@ const openPackDrawer = () => {
 .dr-slide-enter-from, .dr-slide-leave-to { max-height: 0; opacity: 0; overflow: hidden; }
 .dr-slide-enter-to, .dr-slide-leave-from { max-height: 600px; opacity: 1; }
 
+/* ══════════════════════════════════════════
+   DIALOG PHASE — ใบบันทึกปักหมุดบนกระดานไม้
+   ใช้ภาษาเดียวกับหน้า Co-op Room: ไม้ + กระดาษ + หมึก + ครั่ง
+══════════════════════════════════════════ */
+.dlg-title { font-size: 19px; }
+.phase-dialog .board-subtitle { margin-top: -10px; }
+
+/* แถบหนังคาดบนสุด — เป้าหมาย ยา กระเป๋า */
 .dialog-tag-row {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 9px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  border-left: 3px solid #7c5a2b;
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #2b1f13, #221809 55%, #281d10);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.07), 0 2px 6px rgba(0,0,0,0.45);
 }
 
+/* วงแหวนทองเหลืองรอบรูปมอน */
 .dialog-tag-img {
   width: 40px;
   height: 40px;
   object-fit: contain;
-  filter: drop-shadow(0 0 4px rgba(255, 200, 100, 0.3));
+  border-radius: 50%;
+  padding: 3px;
+  background: radial-gradient(circle at 50% 40%, rgba(200,155,60,0.16), rgba(0,0,0,0.35));
+  border: 1px solid rgba(200, 155, 60, 0.5);
+  box-shadow: inset 0 0 8px rgba(0,0,0,0.6);
 }
 .dialog-tag-monster {
   display: block;
   font-size: 14px;
   color: #ffd27a;
+  letter-spacing: 0.5px;
 }
 .dialog-tag-quest {
   display: block;
-  font-size: 11px;
+  font-size: 10px;
   color: #a88040;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
 }
 
-.dialog-parchment {
+/* ── กระดานไม้ที่ปักใบบันทึกกับใบตัวเลือก ── */
+.dlg-board {
   position: relative;
-  padding: 20px 20px 24px;
+  overflow: hidden;
+  width: 100%;
+  /* padding บนกว้างขึ้น: เว้นที่ให้แถวหมุดสะสม และกันใบใหม่โดนตัดตอนร่วงลงมา */
+  padding: 38px 14px 24px;
   border-radius: 6px;
-  background: linear-gradient(160deg, #211810, #1a1208 40%, #1e160c);
-  border: 1px solid rgba(200, 155, 60, 0.25);
-  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  /* ลายไม้ชุดเดียวกับ Room Board */
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(0,0,0,0.16) 0px,
+      rgba(0,0,0,0.16) 1px,
+      transparent 1px,
+      transparent 7px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,220,160,0.045) 0px,
+      rgba(255,220,160,0.045) 2px,
+      transparent 2px,
+      transparent 23px
+    ),
+    linear-gradient(175deg, #4a3520 0%, #46331f 22%, #3a2917 58%, #43301c 100%);
+  border: 4px solid #2e2113;
+  box-shadow:
+    inset 0 0 60px rgba(0,0,0,0.55),
+    inset 0 2px 0 rgba(255,220,160,0.08),
+    0 4px 14px rgba(0,0,0,0.5);
 }
 
+/* ══════════════════════════════════════════
+   ลูกเล่นตอนเปลี่ยนบท
+══════════════════════════════════════════ */
+
+/* ① รอยหมุดสะสมบนขอบกระดาน — บอกความลึกของเส้นทาง */
+.dlg-trail {
+  position: absolute;
+  top: 7px;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  padding: 0 14px;
+  pointer-events: none;
+}
+.trail-pin {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #a8865a, #5e4520 62%, #3a2a12);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  opacity: 0.55;
+}
+/* หมุดของบทปัจจุบัน — ทองเหลืองสด ใหญ่กว่าเพื่อน */
+.trail-pin-now {
+  width: 10px;
+  height: 10px;
+  opacity: 1;
+  background: radial-gradient(circle at 35% 30%, #f0d9a0, #a8762c 60%, #6b4718);
+  box-shadow: 0 0 8px rgba(200, 155, 60, 0.55), 0 1px 3px rgba(0, 0, 0, 0.7);
+  animation: pin-set 0.35s cubic-bezier(0.22, 1.3, 0.36, 1) backwards;
+  animation-delay: 0.2s;
+}
+@keyframes pin-set {
+  0%   { transform: scale(2.1); opacity: 0; }
+  55%  { transform: scale(0.86); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ⑤ คบไฟกวาดผ่านกระดานตอนเปลี่ยนบท */
+.torch-sweep {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 30% 120% at 0% 50%,
+    rgba(255, 170, 70, 0.22) 0%,
+    rgba(220, 120, 30, 0.1) 40%,
+    transparent 72%
+  );
+  animation: torch-pass 0.62s ease-out both;
+}
+@keyframes torch-pass {
+  0%   { opacity: 0; transform: translateX(-30%); }
+  25%  { opacity: 1; }
+  100% { opacity: 0; transform: translateX(115%); }
+}
+
+/* ⑥ รอยเท้ามอนสเตอร์ที่กำลังตาม */
+.trail-steps {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+/* ── 3 รอยเท้าไล่เฉียงขึ้นจากล่างซ้ายไปขวาบน ──
+   --t = เวลาที่รอยนั้นเริ่มปรากฏ */
+.trail-step {
+  --flip: 1;
+  --zig: 1;
+  --t: calc(0.16s + (var(--i) - 1) * 0.52s);
+  position: absolute;
+  left: calc(12% + (var(--i) - 1) * 31%);
+  top: calc(62% - (var(--i) - 1) * 22%);
+  width: 88px;
+  height: 88px;
+  /* เยื้องตั้งฉากกับแนวเดิน — สลับข้างทีละรอย */
+  margin: calc(var(--zig) * 26px) 0 0 calc(var(--zig) * 21px);
+  transform:
+    rotate(calc(-24deg + (var(--i) - 1) * 11deg + var(--zig) * 6deg))
+    scaleX(var(--flip));
+}
+/* เท้าอีกข้าง: พลิกภาพ + เยื้องไปคนละทาง */
+.trail-step:nth-child(even) {
+  --flip: -1;
+  --zig: -1;
+}
+
+/* รอยเท้า: ค่อย ๆ ปรากฏพร้อมกดลง ค้างไว้ แล้วค่อย ๆ จางหาย */
+.ts-print {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  filter:
+    sepia(0.9) saturate(1.5) brightness(0.5)
+    drop-shadow(0 0 3px rgba(255, 226, 178, 0.45))
+    drop-shadow(0 2px 2px rgba(0, 0, 0, 0.6));
+  animation: stomp-press 2.8s ease-in-out both;
+  animation-delay: var(--t);
+}
+@keyframes stomp-press {
+  0%   { opacity: 0;    transform: scale(1.4); }
+  26%  { opacity: 0.5;  transform: scale(0.94); }  /* ลงถึงพื้น — ยุบเกินขนาดจริงเล็กน้อย */
+  36%  { opacity: 0.55; transform: scale(1.03); }
+  46%  { opacity: 0.55; transform: scale(1); }
+  66%  { opacity: 0.48; transform: scale(1); }
+  100% { opacity: 0;    transform: scale(1); }
+}
+
+
+
+
+/* ── ใบบันทึก (กระดาษเก่า) ── */
+.dialog-parchment {
+  z-index: 3;
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 22px 20px 22px;
+  border: 1px solid #b8a173;
+  border-radius: 2px;
+  color: #3a2c18;
+  transform: rotate(-0.4deg);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(140,110,60,0.13), transparent 42%),
+    radial-gradient(circle at 88% 92%, rgba(120,95,50,0.15), transparent 45%),
+    linear-gradient(168deg, #efe4c8 0%, #e6d9b8 45%, #dccba6 100%);
+  box-shadow:
+    0 3px 10px rgba(0,0,0,0.5),
+    inset 0 0 26px rgba(150,120,70,0.14);
+}
+
+/* สลับใบ: ใบเก่าเอียงปลิวออกซ้าย ใบใหม่ร่วงลงมาแล้วเด้งเข้าที่ */
+.parch-leave-active { animation: parch-out 0.16s ease-in forwards; }
+.parch-enter-active { animation: parch-in 0.28s cubic-bezier(0.22, 1.25, 0.36, 1) both; }
+@keyframes parch-out {
+  0%   { opacity: 1; transform: rotate(-0.4deg) translate(0, 0); }
+  100% { opacity: 0; transform: rotate(-4.5deg) translate(-30px, 12px); }
+}
+@keyframes parch-in {
+  0%   { opacity: 0; transform: translateY(-24px) rotate(1.8deg) scale(0.985); }
+  62%  { opacity: 1; transform: translateY(3px) rotate(-1deg) scale(1.005); }
+  100% { opacity: 1; transform: translateY(0) rotate(-0.4deg) scale(1); }
+}
+
+/* หมุดตอกลงทีหลังใบร่วงถึงที่ */
+.parch-enter-active .parchment-notch.top {
+  animation: pin-punch 0.3s cubic-bezier(0.22, 1.4, 0.36, 1) both;
+  animation-delay: 0.16s;
+}
+@keyframes pin-punch {
+  0%   { transform: translateX(-50%) translateY(-14px) scale(1.8); opacity: 0; }
+  60%  { transform: translateX(-50%) translateY(1px) scale(0.85); opacity: 1; }
+  100% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
+}
+
+/* ฝุ่นฟุ้งตอนหมุดตอกลง */
+.pin-dust {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(150, 122, 78, 0.8);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+.parch-enter-active .pin-dust {
+  animation: dust-puff 0.44s ease-out both;
+  animation-delay: calc(0.2s + (var(--i) - 1) * 0.015s);
+}
+@keyframes dust-puff {
+  0%   { opacity: 0; transform: translate(-50%, 0) scale(0.5); }
+  25%  { opacity: 0.7; }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + (var(--i) - 3) * 13px), -14px) scale(1.5);
+  }
+}
+
+/* ② หมึกเขียนไล่ทีละบรรทัด */
+.parch-enter-active .dp-title { animation: ink-in 0.3s ease-out both; animation-delay: 0.1s; }
+.parch-enter-active .dp-rule {
+  animation: rule-draw 0.3s ease-out both;
+  animation-delay: 0.18s;
+  transform-origin: left center;
+}
+.parch-enter-active .dp-body { animation: ink-in 0.34s ease-out both; animation-delay: 0.24s; }
+.parch-enter-active .dp-consequence { animation: ink-in 0.3s ease-out both; animation-delay: 0.34s; }
+.parch-enter-active .fx-panel-parchment { animation: ink-in 0.3s ease-out both; animation-delay: 0.4s; }
+@keyframes ink-in {
+  0%   { opacity: 0; transform: translateY(4px); filter: blur(1.5px); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+@keyframes rule-draw {
+  0%   { opacity: 0; transform: scaleX(0); }
+  100% { opacity: 1; transform: scaleX(1); }
+}
+
+/* หมุดปักหัวกระดาษ + ลายเชิงท้ายกระดาษ */
 .parchment-notch {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  width: 40px;
-  height: 6px;
-  background: rgba(200, 155, 60, 0.2);
-  border-radius: 0 0 4px 4px;
 }
-
 .parchment-notch.top {
-  top: 0;
+  top: -6px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f0d9a0, #a8762c 60%, #6b4718);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.6);
 }
 .parchment-notch.bottom {
-  bottom: 0;
-  border-radius: 4px 4px 0 0;
+  bottom: 7px;
+  width: 70px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(120,95,55,0.55), transparent);
 }
 
 .dp-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: bold;
-  color: #ffd27a;
+  color: #2f2312;
   margin: 0 0 10px;
-  line-height: 1.4;
+  line-height: 1.5;
+  letter-spacing: 0.3px;
+  text-align: center;
 }
 
 .dp-rule {
   height: 1px;
-  background: linear-gradient(to right, transparent, rgba(200, 155, 60, 0.3), transparent);
-  margin: 10px 0;
+  background: linear-gradient(to right, transparent, rgba(120,95,55,0.5), transparent);
+  margin: 10px 0 12px;
 }
 
 .dp-body {
   font-size: 13px;
-  color: #d0b880;
-  line-height: 1.8;
+  color: #4a3a22;
+  line-height: 1.85;
   margin: 0;
   font-style: italic;
 }
@@ -11683,83 +12623,148 @@ const openPackDrawer = () => {
 .dp-consequence {
   margin-top: 14px;
   padding: 10px 14px;
-  border-radius: 6px;
-  background: rgba(200, 155, 60, 0.07);
-  border-left: 3px solid #c89b3c;
+  border-radius: 2px;
+  background: rgba(150,120,70,0.14);
+  border-left: 3px solid #9c4a15;
   font-size: 12px;
-  color: #f0d9a0;
+  color: #4a3a22;
   line-height: 1.6;
 }
 
 .dp-consequence-label {
   display: block;
   font-size: 9px;
-  color: #c89b3c;
+  color: #9c4a15;
   letter-spacing: 2px;
   text-transform: uppercase;
   margin-bottom: 4px;
+  font-weight: bold;
+}
+
+/* หมึกบนกระดาษ — ทับโทนสว่างของ fx-panel เดิมให้อ่านออก */
+.dialog-parchment .fx-panel-parchment {
+  border-radius: 2px;
+  background: rgba(60,120,80,0.12);
+  border-color: rgba(40,110,70,0.4);
+}
+.dialog-parchment .fx-chip {
+  color: #2c5f42;
+  background: rgba(60,140,90,0.14);
+  border-color: rgba(40,110,70,0.42);
+}
+.dialog-parchment .fx-chip.fx-done {
+  color: #1f6b45;
+  background: rgba(50,150,95,0.2);
+  border-color: rgba(40,130,85,0.6);
+}
+.dialog-parchment .fx-chip.fx-manual {
+  color: #7a5a12;
+  background: rgba(150,110,35,0.14);
+  border-color: rgba(150,110,35,0.45);
 }
 
 .dialog-choices {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 10px;
 }
 
 .choices-label {
-  font-size: 11px;
-  color: #7c5a2b;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 480px;
+  font-size: 10px;
+  color: #d8c39a;
   letter-spacing: 3px;
   text-transform: uppercase;
   margin: 0;
-  text-align: center;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+}
+.choices-rule {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(230,205,150,0.4));
+}
+.choices-rule:last-child {
+  background: linear-gradient(to left, transparent, rgba(230,205,150,0.4));
 }
 
 /* ══════════════════════════════════════════
    ACTION CONFIRM MODAL
 ══════════════════════════════════════════ */
 /* ── Vote badges on action buttons ── */
+/* ใบที่เราโหวต — ขอบหมึกน้ำเงินคาดไว้ ไม่ทับเนื้อกระดาษ */
 .choice-btn.voted-me {
-  border-color: rgba(90, 159, 255, 0.7);
-  background: rgba(60, 100, 200, 0.08);
+  border-color: rgba(45, 85, 150, 0.75);
+  box-shadow:
+    0 2px 6px rgba(0,0,0,0.45),
+    inset 0 0 20px rgba(150,120,70,0.12),
+    inset 3px 0 0 rgba(45, 85, 150, 0.75);
 }
 .vote-badge {
   margin-left: auto;
   font-size: 10px;
   font-weight: bold;
-  color: #7ab3ff;
-  background: rgba(60, 100, 200, 0.2);
-  border: 1px solid rgba(60, 100, 200, 0.4);
+  color: #2c5f9e;
+  background: rgba(45, 85, 150, 0.14);
+  border: 1px solid rgba(45, 85, 150, 0.45);
   border-radius: 10px;
   padding: 2px 8px;
   letter-spacing: 0;
+  white-space: nowrap;
 }
 .vote-voters {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 4px;
+  gap: 5px;
+  margin-top: 6px;
+  padding-left: 34px;
 }
-.vote-voter-chip {
-  font-size: 10px;
-  color: #7ab3ff;
-  background: rgba(60, 100, 200, 0.12);
-  border-radius: 4px;
-  padding: 1px 6px;
-  letter-spacing: 0;
+.class-medal-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+.class-medal-fallback {
+  font-size: 12px;
+  font-weight: bold;
+  color: #ffd27a;
+  line-height: 1;
 }
 
 /* ── Action Bottom Drawer ── */
+/* ชั้นไม้ที่เลื่อนขึ้นมา — วางใบสั่งการไว้ข้างบน */
 .action-drawer {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   z-index: 300;
-  background: linear-gradient(to top, #13100a 80%, rgba(19,16,10,0.95));
-  border-top: 2px solid #c89b3c;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(0,0,0,0.16) 0px,
+      rgba(0,0,0,0.16) 1px,
+      transparent 1px,
+      transparent 7px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,220,160,0.045) 0px,
+      rgba(255,220,160,0.045) 2px,
+      transparent 2px,
+      transparent 23px
+    ),
+    linear-gradient(175deg, #4a3520 0%, #46331f 22%, #3a2917 58%, #43301c 100%);
+  border-top: 4px solid #2e2113;
   padding: 8px 20px 28px;
-  box-shadow: 0 -10px 40px rgba(0,0,0,0.7), 0 -2px 0 rgba(200,155,60,0.2);
+  box-shadow:
+    0 -10px 40px rgba(0,0,0,0.7),
+    inset 0 2px 0 rgba(255,220,160,0.08),
+    inset 0 0 60px rgba(0,0,0,0.45);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -11770,63 +12775,76 @@ const openPackDrawer = () => {
 .drawer-slide-enter-from, .drawer-slide-leave-to { transform: translateY(100%); }
 
 .action-drawer-handle {
-  width: 36px;
-  height: 3px;
+  width: 44px;
+  height: 4px;
   border-radius: 2px;
-  background: rgba(200, 155, 60, 0.3);
+  background: linear-gradient(to bottom, #f0d9a0, #a8762c 60%, #6b4718);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.6);
   margin: 0 auto 4px;
 }
 
 .ad-header { display: flex; flex-direction: column; gap: 8px; }
 
+/* ตราประทับหัวใบสั่งการ */
 .ad-stamp {
   font-size: 9px;
   letter-spacing: 5px;
   text-transform: uppercase;
-  color: #c89b3c;
-  border: 1px solid rgba(200, 155, 60, 0.35);
-  border-radius: 4px;
+  color: #f0d9a0;
+  border: 1px solid rgba(200, 155, 60, 0.5);
+  border-radius: 3px;
   padding: 3px 10px;
   width: fit-content;
-  background: rgba(200, 155, 60, 0.06);
+  background: linear-gradient(to bottom, rgba(200,155,60,0.22), rgba(140,100,30,0.14));
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
 }
 
+/* ใบสั่งการ: กระดาษวางบนชั้นไม้ */
 .ad-title-row {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: rgba(10, 8, 4, 0.6);
-  border: 1px solid rgba(124, 90, 43, 0.4);
-  border-left: 3px solid #c89b3c;
+  padding: 11px 13px;
+  border-radius: 2px;
+  color: #3a2c18;
+  background:
+    radial-gradient(circle at 96% 50%, rgba(140,110,60,0.14), transparent 38%),
+    linear-gradient(172deg, #f2e8cf 0%, #e9dcbd 55%, #dfceaa 100%);
+  border: 1px solid #b8a173;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.45), inset 0 0 20px rgba(150,120,70,0.12);
 }
+/* ตราครั่งชุดเดียวกับใบตัวเลือก */
 .ad-num {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: rgba(200, 155, 60, 0.15);
-  border: 1px solid #7c5a2b;
-  color: #c89b3c;
+  background: radial-gradient(circle at 34% 28%, #b6472f, #8c2f22 58%, #5e1c14);
+  border: 1px solid rgba(60,18,12,0.55);
+  color: #f6dcc0;
   font-size: 12px;
   font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,220,190,0.3);
 }
 .ad-title {
   font-size: 14px;
-  color: #ffd27a;
-  line-height: 1.4;
+  font-weight: bold;
+  color: #2f2312;
+  line-height: 1.45;
   padding-top: 2px;
 }
 
 .ad-consequences {
   padding: 10px 14px;
-  border-radius: 8px;
-  background: rgba(139, 90, 20, 0.08);
-  border: 1px solid rgba(200, 130, 40, 0.3);
+  border-radius: 2px;
+  color: #3a2c18;
+  background: linear-gradient(172deg, #ece1c4, #e0d3b2);
+  border: 1px solid #b8a173;
+  border-left: 3px solid #9c4a15;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -11835,14 +12853,39 @@ const openPackDrawer = () => {
   font-size: 9px;
   letter-spacing: 3px;
   text-transform: uppercase;
-  color: #a88040;
+  color: #9c4a15;
+  font-weight: bold;
 }
 .ad-con-text {
   margin: 0;
   font-size: 13px;
-  color: #f0ddb0;
+  color: #4a3a22;
   line-height: 1.6;
   font-style: italic;
+}
+
+/* หมึกบนกระดาษสำหรับพาเนล effect ในลิ้นชัก */
+.action-drawer .fx-panel {
+  border-radius: 2px;
+  background: linear-gradient(172deg, #e8e0c6, #ddd0ae);
+  border: 1px solid rgba(40,110,70,0.45);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+.action-drawer .fx-note { color: #1f6b45; opacity: 1; }
+.action-drawer .fx-chip {
+  color: #2c5f42;
+  background: rgba(60,140,90,0.14);
+  border-color: rgba(40,110,70,0.42);
+}
+.action-drawer .fx-chip.fx-done {
+  color: #1f6b45;
+  background: rgba(50,150,95,0.2);
+  border-color: rgba(40,130,85,0.6);
+}
+.action-drawer .fx-chip.fx-manual {
+  color: #7a5a12;
+  background: rgba(150,110,35,0.14);
+  border-color: rgba(150,110,35,0.45);
 }
 
 /* ── Dialog Auto-Complete ── */
@@ -11911,11 +12954,12 @@ const openPackDrawer = () => {
   gap: 4px;
   max-width: min(90vw, 340px);
   padding: 10px 18px;
-  border-radius: 999px;
-  background: rgba(10, 14, 10, 0.95);
-  border: 1px solid rgba(90, 180, 120, 0.45);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(6px);
+  border-radius: 3px;
+  color: #3a2c18;
+  background: linear-gradient(172deg, #f2e8cf 0%, #e6d9b8 60%, #dccba6 100%);
+  border: 1px solid #b8a173;
+  border-left: 3px solid #2f7d4f;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6), inset 0 0 18px rgba(150,120,70,0.12);
 }
 .fx-toast-main {
   display: inline-flex;
@@ -11923,7 +12967,7 @@ const openPackDrawer = () => {
   gap: 8px;
   font-size: 12px;
   font-weight: 600;
-  color: #8fe0aa;
+  color: #1f6b45;
   letter-spacing: 0.5px;
   white-space: nowrap;
 }
@@ -11931,13 +12975,14 @@ const openPackDrawer = () => {
   min-width: 18px;
   padding: 1px 6px;
   border-radius: 999px;
-  background: rgba(90, 200, 130, 0.25);
+  background: rgba(50, 150, 95, 0.22);
+  border: 1px solid rgba(40, 110, 70, 0.4);
   font-size: 11px;
   text-align: center;
 }
 .fx-toast-sub {
   font-size: 11px;
-  color: #e0b060;
+  color: #7a5a12;
   white-space: nowrap;
 }
 
@@ -11962,22 +13007,26 @@ const openPackDrawer = () => {
   align-items: center;
   gap: 12px;
   padding: 22px 20px;
-  border-radius: 14px;
-  background: linear-gradient(to bottom, #1a1408, #0d0a05);
-  border: 1px solid rgba(200, 155, 60, 0.45);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+  border-radius: 3px;
+  color: #3a2c18;
+  background:
+    radial-gradient(circle at 12% 6%, rgba(140,110,60,0.13), transparent 42%),
+    radial-gradient(circle at 88% 94%, rgba(120,95,50,0.15), transparent 45%),
+    linear-gradient(168deg, #efe4c8 0%, #e6d9b8 45%, #dccba6 100%);
+  border: 3px solid #5a4222;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), inset 0 0 26px rgba(150,120,70,0.14);
 }
 .dd-title {
   margin: 0;
   font-size: 16px;
   font-weight: bold;
-  color: #ffd27a;
+  color: #2f2312;
   letter-spacing: 2px;
 }
 .dd-scope {
   margin: 0;
   font-size: 11px;
-  color: #a88040;
+  color: #6b542e;
   letter-spacing: 0.5px;
   text-align: center;
 }
@@ -11990,6 +13039,11 @@ const openPackDrawer = () => {
   width: 76px;
   height: 76px;
 }
+/* ลูกเต๋ากระดูกบนกระดาษ — ต้องมีขอบไม่งั้นกลืนพื้น */
+.dd-modal .rw-die {
+  border: 1px solid rgba(90, 70, 40, 0.45);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+}
 .dd-table {
   width: 100%;
   display: flex;
@@ -12001,46 +13055,47 @@ const openPackDrawer = () => {
   align-items: flex-start;
   gap: 10px;
   padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(124, 90, 43, 0.3);
+  border-radius: 2px;
+  background: rgba(150, 120, 70, 0.1);
+  border: 1px solid rgba(120, 95, 55, 0.32);
   transition: 0.2s;
 }
 .dd-row-hit {
-  background: rgba(80, 200, 120, 0.16);
-  border-color: rgba(90, 210, 130, 0.6);
+  background: rgba(50, 150, 95, 0.18);
+  border-color: rgba(40, 120, 80, 0.6);
 }
 .dd-range {
   flex-shrink: 0;
   min-width: 34px;
   font-size: 12px;
   font-weight: bold;
-  color: #c89b3c;
+  color: #8a6a35;
 }
-.dd-row-hit .dd-range { color: #8fe0aa; }
+.dd-row-hit .dd-range { color: #1f6b45; }
 .dd-row-text {
   font-size: 12px;
-  color: #d8c9a8;
+  color: #4a3a22;
   line-height: 1.5;
 }
 .dd-result {
   margin: 0;
   font-size: 14px;
-  color: #ffd27a;
+  color: #3a2c18;
   text-align: center;
 }
 .dd-result strong {
   font-size: 20px;
-  color: #8fe0aa;
+  color: #1f6b45;
 }
+/* ปุ่มแผ่นทองเหลืองบนกระดาษ */
 .dd-roll-btn,
 .dd-close-btn {
   width: 100%;
   padding: 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(200, 155, 60, 0.5);
-  background: rgba(200, 155, 60, 0.15);
-  color: #ffd27a;
+  border-radius: 3px;
+  border: 1px solid rgba(150, 110, 35, 0.55);
+  background: linear-gradient(to bottom, rgba(200,155,60,0.26), rgba(150,110,35,0.16));
+  color: #5c4212;
   font-size: 14px;
   font-weight: bold;
   font-family: inherit;
@@ -12050,57 +13105,129 @@ const openPackDrawer = () => {
 }
 .dd-roll-btn:hover,
 .dd-close-btn:hover {
-  background: rgba(200, 155, 60, 0.28);
+  background: linear-gradient(to bottom, rgba(200,155,60,0.4), rgba(150,110,35,0.26));
 }
 .dd-close-btn {
-  border-color: rgba(90, 200, 130, 0.5);
-  background: rgba(70, 180, 110, 0.16);
-  color: #8fe0aa;
+  border-color: rgba(40, 110, 70, 0.5);
+  background: rgba(50, 150, 95, 0.16);
+  color: #1f6b45;
 }
+.dd-close-btn:hover { background: rgba(50, 150, 95, 0.3); }
 .dd-waiting {
   margin: 0;
   font-size: 12px;
-  color: #a88040;
+  color: #6b542e;
   font-style: italic;
 }
 
+/* ── ผลทอยของทั้งตี้ (บนกระดาษ) ── */
+.dd-party {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 10px;
+  border-radius: 2px;
+  background: rgba(150, 120, 70, 0.12);
+  border: 1px solid rgba(120, 95, 55, 0.35);
+}
+.dd-party-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 3px;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #7a6238;
+  font-weight: bold;
+}
+.dd-party-count { letter-spacing: 0; color: #8c2f22; }
+
+.dd-party-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: #4a3a22;
+  line-height: 1.5;
+}
+.dd-party-waiting { opacity: 0.5; }
+
+.dd-party-class {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));
+}
+.dd-party-sep { color: rgba(120, 95, 55, 0.7); }
+
+.dd-party-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.dd-party-item-img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.dd-party-item-name { color: #2f2312; }
+.dd-party-none { color: #7a6238; font-style: italic; }
+.dd-party-pending { color: #7a6238; font-style: italic; }
+
+.dd-close-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .ad-stamp-tie {
-  border-color: rgba(255, 153, 85, 0.4);
-  color: #ff9955;
-  background: rgba(255, 153, 85, 0.06);
+  border-color: rgba(200, 90, 40, 0.55);
+  color: #ffc9a0;
+  background: linear-gradient(to bottom, rgba(190,80,35,0.3), rgba(140,55,25,0.18));
 }
 .ad-tied-choices {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
+/* ใบตัวเลือกตอน Host ตัดสิน — กระดาษชุดเดียวกับ choice-btn */
 .ad-tied-btn {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 14px;
-  border-radius: 8px;
-  border: 1px solid rgba(200, 155, 60, 0.4);
-  background: rgba(10, 8, 4, 0.5);
-  color: #ffd27a;
+  padding: 11px 14px;
+  border-radius: 2px;
+  border: 1px solid #b8a173;
+  background:
+    radial-gradient(circle at 96% 50%, rgba(140,110,60,0.14), transparent 38%),
+    linear-gradient(172deg, #f2e8cf 0%, #e9dcbd 55%, #dfceaa 100%);
+  color: #2f2312;
   font-family: inherit;
   font-size: 14px;
+  font-weight: bold;
   cursor: pointer;
-  transition: 0.2s;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
   text-align: left;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.45), inset 0 0 20px rgba(150,120,70,0.12);
 }
 .ad-tied-btn:hover {
-  border-color: #c89b3c;
-  background: rgba(200, 155, 60, 0.1);
-  box-shadow: 0 0 10px rgba(200, 155, 60, 0.2);
+  border-color: #8a6a35;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.5), inset 0 0 20px rgba(150,120,70,0.12);
 }
 
 .ad-tie-msg {
   text-align: center;
   font-size: 11px;
-  color: #ff9955;
+  color: #ffb07a;
   letter-spacing: 1px;
   margin: 0;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.7);
 }
 
 .ad-proceed-votes {
@@ -12110,61 +13237,90 @@ const openPackDrawer = () => {
   justify-content: center;
 }
 .ad-proceed-chip {
-  font-size: 11px;
-  padding: 3px 10px;
-  border-radius: 12px;
-  border: 1px solid rgba(124,90,43,0.35);
-  color: #7c5a2b;
-  background: rgba(0,0,0,0.2);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 2px;
+  border: 1px solid rgba(200,155,60,0.3);
+  background: rgba(0,0,0,0.3);
+  opacity: 0.5;
   transition: 0.2s;
 }
+.ad-proceed-chip .class-medal-icon { width: 23px; height: 23px; }
 .ad-proceed-chip.voted {
-  border-color: rgba(100,220,100,0.5);
-  color: #7cfc00;
-  background: rgba(60,180,60,0.1);
+  opacity: 1;
+  border-color: rgba(90,210,130,0.55);
+  background: linear-gradient(170deg, #1e3324, #131f16);
+  box-shadow: 0 0 8px rgba(60, 170, 110, 0.3);
+}
+/* สถานะมุมล่างขวา — เดิมเป็นข้อความต่อท้ายชื่อ */
+.class-medal-tick {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  padding: 0 3px;
+  border-radius: 999px;
+  border: 1px solid rgba(40, 30, 12, 0.6);
+  background: radial-gradient(circle at 35% 30%, #6a5636, #3a2e1a);
+  color: #c0985a;
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 1.3;
+}
+.ad-proceed-chip.voted .class-medal-tick {
+  border-color: rgba(20, 50, 32, 0.6);
+  background: radial-gradient(circle at 35% 30%, #8fd9a8, #3f8f5f 60%, #24603c);
+  color: #0d2417;
 }
 
 .ad-btn-confirm.ad-voted {
-  border-color: #7cfc00;
-  background: rgba(60,180,60,0.15);
-  color: #7cfc00;
+  border-color: rgba(90,210,130,0.7);
+  background: linear-gradient(to bottom, rgba(70,180,110,0.3), rgba(40,120,75,0.2));
+  color: #8fe0aa;
 }
 
 .ad-buttons { display: flex; gap: 10px; }
 
+/* ปุ่มแผ่นทองเหลืองตอกหมุด */
 .ad-btn-confirm {
   flex: 1;
   padding: 12px;
-  border-radius: 8px;
-  border: 2px solid #7c5a2b;
-  background: linear-gradient(to bottom, #3a2c1a, #1a1208);
-  color: #ffd27a;
+  border-radius: 3px;
+  border: 1px solid #6b4f1c;
+  background: linear-gradient(to bottom, #b08a34 0%, #8a6a22 48%, #6b501a 100%);
+  color: #2a1d06;
   font-family: 'Georgia', serif;
   font-size: 14px;
+  font-weight: bold;
   letter-spacing: 1px;
   cursor: pointer;
   transition: 0.2s;
   min-height: 48px;
+  text-shadow: 0 1px 0 rgba(255,225,170,0.35);
+  box-shadow: inset 0 1px 0 rgba(255,230,180,0.4), 0 2px 6px rgba(0,0,0,0.5);
 }
 .ad-btn-confirm:hover:not(:disabled) {
-  border-color: #c89b3c;
-  box-shadow: 0 0 14px rgba(200, 155, 60, 0.35);
+  background: linear-gradient(to bottom, #c99f42 0%, #9d7a29 48%, #7a5c1f 100%);
+  box-shadow: inset 0 1px 0 rgba(255,230,180,0.5), 0 3px 10px rgba(0,0,0,0.55);
 }
 .ad-btn-confirm:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .ad-btn-cancel {
   padding: 12px 18px;
-  border-radius: 8px;
-  border: 1px solid rgba(124, 90, 43, 0.4);
-  background: rgba(10, 8, 4, 0.6);
-  color: #7c5a2b;
+  border-radius: 3px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  background: linear-gradient(170deg, #2b1f13, #1c1409);
+  color: #a88040;
   font-family: 'Georgia', serif;
   font-size: 13px;
   cursor: pointer;
   transition: 0.2s;
   min-height: 48px;
 }
-.ad-btn-cancel:hover { color: #a88040; border-color: #7c5a2b; }
+.ad-btn-cancel:hover { color: #ffd27a; border-color: #c89b3c; }
 
 @media (max-width: 480px) {
   /* Monster Turn responsive */
@@ -12198,24 +13354,61 @@ const openPackDrawer = () => {
   }
 }
 
+/* ── ใบตัวเลือก: แถบกระดาษปิดผนึกครั่ง ── */
 .choice-btn {
-  padding: 13px 16px;
-  border-radius: 8px;
-  border: 1px solid rgba(124, 90, 43, 0.6);
-  background: linear-gradient(to right, rgba(40, 28, 14, 0.9), rgba(20, 15, 10, 0.9));
-  color: #f5d7a1;
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  padding: 12px 14px 12px 16px;
+  border: 1px solid #b8a173;
+  border-radius: 2px;
+  background:
+    radial-gradient(circle at 96% 50%, rgba(140,110,60,0.14), transparent 38%),
+    linear-gradient(172deg, #f2e8cf 0%, #e9dcbd 55%, #dfceaa 100%);
+  color: #3a2c18;
   text-align: left;
   cursor: pointer;
-  transition: 0.2s;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
   font-family: inherit;
   min-height: 52px;
+  box-shadow:
+    0 2px 6px rgba(0,0,0,0.45),
+    inset 0 0 20px rgba(150,120,70,0.12);
+}
+/* เอียงสลับกันเหมือนคนวางด้วยมือ */
+.choice-btn { --rot: 0deg; transform: rotate(var(--rot)); }
+.choice-btn:nth-child(3n+2) { --rot: -0.5deg; }
+.choice-btn:nth-child(3n+3) { --rot: 0.45deg; }
+.choice-btn:nth-child(3n+4) { --rot: -0.25deg; }
+
+/* วางลงทีละใบตามลำดับ หลังใบบันทึกลงที่แล้ว */
+.choice-btn {
+  animation: choice-place 0.34s cubic-bezier(0.22, 1.2, 0.36, 1) backwards;
+  animation-delay: calc(0.3s + var(--ai, 0) * 0.075s);
+}
+@keyframes choice-place {
+  0%   { opacity: 0; transform: translateY(16px) rotate(calc(var(--rot) + 2.4deg)) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0) rotate(var(--rot)) scale(1); }
+}
+
+/* ตราครั่งประทับลงทีหลังใบ */
+.choice-btn .choice-num {
+  animation: seal-press 0.26s cubic-bezier(0.22, 1.5, 0.36, 1) backwards;
+  animation-delay: calc(0.42s + var(--ai, 0) * 0.075s);
+}
+@keyframes seal-press {
+  0%   { transform: scale(1.9); opacity: 0; }
+  60%  { transform: scale(0.88); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .choice-btn:hover {
-  border-color: #c89b3c;
-  box-shadow: 0 0 12px rgba(200, 155, 60, 0.3);
-  transform: translateX(6px);
-  background: linear-gradient(to right, rgba(58, 44, 26, 0.95), rgba(32, 24, 14, 0.95));
+  transform: rotate(0deg) translateY(-2px);
+  border-color: #8a6a35;
+  box-shadow:
+    0 6px 14px rgba(0,0,0,0.5),
+    inset 0 0 20px rgba(150,120,70,0.12);
+  z-index: 1;
 }
 
 .choice-header {
@@ -12224,42 +13417,44 @@ const openPackDrawer = () => {
   gap: 10px;
 }
 
+/* ตราครั่งประทับหมายเลข */
 .choice-num {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  background: rgba(200, 155, 60, 0.15);
-  border: 1px solid #7c5a2b;
-  color: #c89b3c;
+  background: radial-gradient(circle at 34% 28%, #b6472f, #8c2f22 58%, #5e1c14);
+  border: 1px solid rgba(60,18,12,0.55);
+  color: #f6dcc0;
   font-size: 11px;
   font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-top: 1px;
+  margin-top: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,220,190,0.3);
 }
 
 .choice-title {
   font-size: 14px;
   font-weight: bold;
-  color: #ffd27a;
-  line-height: 1.4;
+  color: #2f2312;
+  line-height: 1.45;
 }
 
 .choice-requirement {
   display: flex;
   align-items: flex-start;
   gap: 5px;
-  margin-top: 6px;
+  margin-top: 7px;
   padding: 5px 10px;
-  padding-left: 32px;
-  border-radius: 4px;
-  background: rgba(180, 100, 20, 0.1);
-  border-left: 2px solid #c07020;
+  padding-left: 34px;
+  border-radius: 2px;
+  background: rgba(170,70,25,0.1);
+  border-left: 2px solid #9c4a15;
   font-size: 11px;
-  color: #d4904a;
-  line-height: 1.4;
+  color: #8a3f12;
+  line-height: 1.45;
   font-style: italic;
 }
 
@@ -12271,10 +13466,47 @@ const openPackDrawer = () => {
 
 .choice-effect {
   margin-top: 6px;
-  padding-left: 32px;
+  padding-left: 34px;
   font-size: 11px;
-  color: #a88040;
-  line-height: 1.5;
+  color: #6b542e;
+  line-height: 1.55;
+}
+
+/* จอแคบ: ลดขอบกระดานกับกระดาษ ไม่งั้นเนื้อความเหลือนิดเดียว */
+@media (max-width: 480px) {
+  .dlg-board { padding: 32px 8px 20px; border-width: 3px; }
+  .dlg-trail { gap: 5px; }
+  .trail-step {
+    width: 58px;
+    height: 58px;
+    margin: calc(var(--zig) * 17px) 0 0 calc(var(--zig) * 13px);
+  }
+  .dialog-parchment { padding: 20px 14px; }
+  .choice-btn { padding: 11px 12px 11px 13px; }
+  .dialog-tag-row { gap: 9px; padding: 8px 10px; }
+  .dlg-title { font-size: 17px; }
+}
+
+/* กระดาษเอียงเป็นการตกแต่ง — ปิดให้คนที่ขอลดการเคลื่อนไหว */
+@media (prefers-reduced-motion: reduce) {
+  .dialog-parchment,
+  .choice-btn,
+  .choice-btn:hover { transform: none; }
+  .trail-step,
+  .pin-dust { display: none; }
+  .choice-btn,
+  .choice-btn .choice-num,
+  .torch-sweep,
+  .trail-pin-now,
+  .parch-enter-active,
+  .parch-leave-active,
+  .parch-enter-active .parchment-notch.top,
+  .parch-enter-active .dp-title,
+  .parch-enter-active .dp-rule,
+  .parch-enter-active .dp-body,
+  .parch-enter-active .dp-consequence,
+  .parch-enter-active .fx-panel-parchment { animation: none; }
+  .torch-sweep { display: none; }
 }
 
 /* ══════════════════════════════════════════
@@ -12286,29 +13518,43 @@ const openPackDrawer = () => {
   gap: 18px;
 }
 
+/* ใช้ .dp-* ร่วมกับใบบันทึกในเฟส Dialog — ต้องเป็นกระดาษเหมือนกันถึงจะอ่านออก */
 .hunt-intro-scroll {
-  padding: 16px;
-  border-radius: 6px;
-  background: rgba(20, 15, 10, 0.9);
-  border: 1px solid rgba(200, 155, 60, 0.2);
+  position: relative;
+  padding: 20px 18px;
+  border-radius: 2px;
+  color: #3a2c18;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(140,110,60,0.13), transparent 42%),
+    radial-gradient(circle at 88% 92%, rgba(120,95,50,0.15), transparent 45%),
+    linear-gradient(168deg, #efe4c8 0%, #e6d9b8 45%, #dccba6 100%);
+  border: 1px solid #b8a173;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.5), inset 0 0 26px rgba(150,120,70,0.14);
+  transform: rotate(-0.3deg);
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
+/* ใบประกาศจับตาย: กรอบไม้ + แสงคบไฟ */
 .hunt-portrait {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px 0;
-  border-radius: 8px;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(120, 30, 10, 0.3) 0%,
-    rgba(10, 5, 2, 0.95) 70%
-  );
-  border: 1px solid rgba(180, 60, 20, 0.4);
+  padding: 22px 0 18px;
+  border-radius: 4px;
+  background:
+    radial-gradient(
+      ellipse at center,
+      rgba(150, 45, 12, 0.32) 0%,
+      rgba(14, 8, 3, 0.96) 68%
+    );
+  border: 4px solid #2e2113;
+  box-shadow:
+    inset 0 0 50px rgba(0,0,0,0.6),
+    inset 0 2px 0 rgba(255,220,160,0.07),
+    0 4px 14px rgba(0,0,0,0.5);
   overflow: hidden;
 }
 
@@ -12343,10 +13589,13 @@ const openPackDrawer = () => {
   z-index: 1;
 }
 
+/* สมุดบันทึกภาคสนาม: ปกหนัง สันทองเหลือง */
 .field-notes {
-  border-radius: 8px;
+  border-radius: 4px;
   overflow: hidden;
   border: 1px solid rgba(124, 90, 43, 0.5);
+  border-left: 3px solid #7c5a2b;
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.07), 0 2px 6px rgba(0,0,0,0.45);
 }
 
 .field-notes-header {
@@ -12354,12 +13603,14 @@ const openPackDrawer = () => {
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  background: rgba(60, 45, 20, 0.8);
+  background: linear-gradient(to bottom, rgba(200,155,60,0.22), rgba(110,80,25,0.28));
+  border-bottom: 1px solid rgba(60,42,10,0.5);
   font-size: 12px;
-  color: #c89b3c;
+  color: #f0d9a0;
   letter-spacing: 1.5px;
   text-transform: uppercase;
   font-weight: bold;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
 }
 
 .fn-table {
@@ -12374,14 +13625,38 @@ const openPackDrawer = () => {
   padding: 13px 16px;
   gap: 10px;
   border-top: 1px solid rgba(124, 90, 43, 0.25);
-  background: rgba(20, 15, 10, 0.85);
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #2b1f13, #221809 55%, #281d10);
 }
 
 .fn-row.fn-mid {
-  background: rgba(28, 20, 12, 0.85);
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #33251b, #291d11);
 }
 .fn-row.fn-high {
-  background: rgba(35, 22, 14, 0.85);
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #3b2a1a, #2f2113);
 }
 
 .fn-level {
@@ -12395,7 +13670,7 @@ const openPackDrawer = () => {
 }
 .fn-label {
   font-size: 9px;
-  color: #7c5a2b;
+  color: #a88040;
   letter-spacing: 1px;
   text-transform: uppercase;
   margin-top: 2px;
@@ -12414,7 +13689,7 @@ const openPackDrawer = () => {
 }
 .fn-attack-label {
   font-size: 9px;
-  color: #7c5a2b;
+  color: #a88040;
   letter-spacing: 1px;
   text-transform: uppercase;
   margin-bottom: 2px;
@@ -12484,6 +13759,8 @@ const openPackDrawer = () => {
   display: flex;
   gap: 4px;
   align-items: center;
+  /* ดันยากับกระเป๋าไปชิดขวาเป็นกลุ่มเดียวกัน */
+  margin-left: auto;
 }
 .dialog-potion-slot {
   position: relative;
@@ -12642,10 +13919,12 @@ const openPackDrawer = () => {
   gap: 10px;
   width: 100%;
   padding: 16px;
-  border-radius: 8px;
-  border: 2px solid #c89b3c;
-  background: linear-gradient(to bottom, #3a2c1a, #1a1208);
-  color: #ffd27a;
+  border-radius: 3px;
+  border: 1px solid #6b4f1c;
+  background: linear-gradient(to bottom, #b08a34 0%, #8a6a22 48%, #6b501a 100%);
+  box-shadow: inset 0 1px 0 rgba(255,230,180,0.4), 0 3px 8px rgba(0,0,0,0.55);
+  text-shadow: 0 1px 0 rgba(255,225,170,0.35);
+  color: #2a1d06;
   font-size: 16px;
   font-weight: bold;
   letter-spacing: 2px;
@@ -12657,10 +13936,11 @@ const openPackDrawer = () => {
 }
 
 .btn-enter-hunt:hover {
-  background: linear-gradient(to bottom, #4a3820, #2a1e10);
+  background: linear-gradient(to bottom, #c99f42 0%, #9d7a29 48%, #7a5c1f 100%);
   box-shadow:
-    0 0 20px rgba(200, 155, 60, 0.6),
-    0 0 40px rgba(200, 155, 60, 0.2);
+    inset 0 1px 0 rgba(255,230,180,0.5),
+    0 5px 16px rgba(0, 0, 0, 0.6),
+    0 0 22px rgba(200, 155, 60, 0.35);
   transform: translateY(-2px);
 }
 
@@ -12731,18 +14011,29 @@ const openPackDrawer = () => {
 }
 
 /* — Header — */
+/* ป้ายไม้หัวเรื่องการล่า — คบไฟส่องจากกลาง */
 .hpanel-header {
   display: flex;
   align-items: center;
   gap: 14px;
   padding: 14px 16px;
-  border-radius: 8px;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(120, 30, 10, 0.25) 0%,
-    rgba(10, 5, 2, 0.95) 70%
-  );
-  border: 1px solid rgba(180, 60, 20, 0.4);
+  border-radius: 4px;
+  background:
+    radial-gradient(
+      ellipse at 30% 50%,
+      rgba(150, 45, 12, 0.3) 0%,
+      transparent 62%
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(0,0,0,0.16) 0px,
+      rgba(0,0,0,0.16) 1px,
+      transparent 1px,
+      transparent 7px
+    ),
+    linear-gradient(175deg, #4a3520 0%, #3a2917 58%, #43301c 100%);
+  border: 3px solid #2e2113;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.5), 0 3px 10px rgba(0,0,0,0.5);
 }
 
 /* Map button in header */
@@ -12750,17 +14041,18 @@ const openPackDrawer = () => {
   margin-left: auto;
   flex-shrink: 0;
   padding: 7px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(200,155,60,0.4);
-  background: rgba(200,155,60,0.08);
-  color: #c89b3c;
+  border-radius: 3px;
+  border: 1px solid #6b4f1c;
+  background: linear-gradient(to bottom, rgba(200,155,60,0.3), rgba(120,88,26,0.24));
+  color: #f0d9a0;
   font-size: 12px;
   font-family: inherit;
   letter-spacing: 1px;
   cursor: pointer;
   transition: 0.2s;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
 }
-.hpanel-map-btn:hover { background: rgba(200,155,60,0.18); color: #ffd27a; }
+.hpanel-map-btn:hover { background: linear-gradient(to bottom, rgba(200,155,60,0.48), rgba(140,102,30,0.34)); }
 
 /* ── Quick Status Strip ── */
 .hpanel-quick-strip {
@@ -12768,9 +14060,19 @@ const openPackDrawer = () => {
   flex-direction: column;
   gap: 8px;
   padding: 10px clamp(8px, 3vw, 16px);
-  background: rgba(0,0,0,0.25);
-  border: 1px solid rgba(124,90,43,0.25);
-  border-radius: 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  border-left: 3px solid #7c5a2b;
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #2b1f13, #221809 55%, #281d10);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.07), 0 2px 6px rgba(0,0,0,0.45);
 }
 
 .qs-trackers {
@@ -12790,7 +14092,7 @@ const openPackDrawer = () => {
 .qs-tracker-label {
   font-size: 10px;
   letter-spacing: 3px;
-  color: #7c5a2b;
+  color: #a88040;
   text-transform: uppercase;
 }
 
@@ -12800,13 +14102,15 @@ const openPackDrawer = () => {
   justify-content: center;
 }
 
+/* ช่องเสียบบนเข็มขัดหนัง — จมลงไปในเนื้อหนัง */
 .qs-slot {
   position: relative;
   width: clamp(42px, 12.5vw, 64px);
   height: clamp(42px, 12.5vw, 64px);
-  border-radius: 10px;
+  border-radius: 4px;
   border: 1px solid rgba(180,60,20,0.4);
   background: rgba(120,20,0,0.15);
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.55);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -12821,6 +14125,7 @@ const openPackDrawer = () => {
 .qs-slot-potion {
   border-color: rgba(60,180,100,0.4);
   background: rgba(20,120,60,0.1);
+  border-radius: 4px;
 }
 .qs-slot-potion:hover { background: rgba(60,180,100,0.2); }
 .qs-slot-empty { border-color: rgba(100,100,100,0.3); background: rgba(0,0,0,0.15); }
@@ -12971,14 +14276,16 @@ const openPackDrawer = () => {
 .msc-wrap {
   width: 100%;
 }
+/* ภาพเป้าหมายในกรอบไม้ ชุดเดียวกับใบประกาศจับตาย */
 .msc-portrait {
   position: relative;
   width: 100%;
   /* aspect-ratio: 1 / 1; */
-  border-radius: 10px;
+  border-radius: 4px;
   overflow: hidden;
-  background: radial-gradient(circle at 50% 60%, rgba(30, 20, 8, 0.95), rgba(8, 6, 2, 0.98));
-  border: 1px solid rgba(124, 90, 43, 0.4);
+  background: radial-gradient(circle at 50% 60%, rgba(40, 26, 10, 0.95), rgba(8, 6, 2, 0.98));
+  border: 3px solid #2e2113;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.6), 0 3px 10px rgba(0,0,0,0.5);
 
   display: flex;
   align-items: center;
@@ -13223,16 +14530,26 @@ const openPackDrawer = () => {
 .resist-col {
   flex: 1;
   padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(20, 15, 10, 0.9);
-  border: 1px solid rgba(124, 90, 43, 0.45);
+  border-radius: 4px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  border-left: 3px solid #7c5a2b;
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #2b1f13, #221809 55%, #281d10);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.07), 0 2px 6px rgba(0,0,0,0.45);
 }
 
 .resist-col-label {
   font-size: 9px;
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: #7c5a2b;
+  color: #a88040;
   margin: 0 0 7px;
 }
 
@@ -13365,10 +14682,19 @@ const openPackDrawer = () => {
   gap: 10px;
   align-items: flex-start;
   padding: 10px 12px;
-  border-radius: 8px;
-  background: rgba(60, 10, 100, 0.15);
-  border: 1px solid rgba(160, 80, 220, 0.3);
+  border-radius: 4px;
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #2c1b38, #211530);
+  border: 1px solid rgba(160, 80, 220, 0.35);
   border-left: 3px solid #a855f7;
+  box-shadow: inset 0 1px 0 rgba(220,180,255,0.08), 0 2px 6px rgba(0,0,0,0.45);
 }
 .hpanel-suffer-icon {
   width: 28px;
@@ -13395,15 +14721,18 @@ const openPackDrawer = () => {
   line-height: 1.5;
 }
 
+/* กฎพิเศษ = ของที่ต้องอ่าน → กระดาษ */
 .hpanel-special-rule {
   display: flex;
   gap: 12px;
   align-items: flex-start;
   padding: 12px 14px;
-  border-radius: 8px;
-  background: rgba(100, 60, 10, 0.12);
-  border: 1px solid rgba(200, 130, 40, 0.35);
-  border-left: 3px solid #c89b3c;
+  border-radius: 2px;
+  color: #3a2c18;
+  background: linear-gradient(172deg, #ece1c4, #e0d3b2);
+  border: 1px solid #b8a173;
+  border-left: 3px solid #9c4a15;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
 }
 
 .hpanel-parts-col {
@@ -13420,23 +14749,33 @@ const openPackDrawer = () => {
 .hpanel-rule-title {
   font-size: 13px;
   font-weight: bold;
-  color: #ffd27a;
+  color: #2f2312;
   margin: 0 0 4px;
 }
 
 .hpanel-rule-desc {
   font-size: 12px;
-  color: #c0a870;
+  color: #4a3a22;
   line-height: 1.7;
   margin: 0;
   font-style: italic;
 }
 
-/* — Section wrapper — */
+/* — Section wrapper: แผงหนัง หัวทองเหลือง — */
 .hpanel-section {
-  border-radius: 8px;
-  background: rgba(20, 15, 10, 0.9);
-  border: 1px solid rgba(124, 90, 43, 0.45);
+  border-radius: 4px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  border-left: 3px solid #7c5a2b;
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #2b1f13, #221809 55%, #281d10);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.07), 0 2px 6px rgba(0,0,0,0.45);
   overflow: hidden;
 }
 
@@ -13445,8 +14784,8 @@ const openPackDrawer = () => {
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  background: rgba(50, 36, 16, 0.7);
-  border-bottom: 1px solid rgba(124, 90, 43, 0.3);
+  background: linear-gradient(to bottom, rgba(200,155,60,0.2), rgba(110,80,25,0.26));
+  border-bottom: 1px solid rgba(60,42,10,0.5);
 }
 
 .hpanel-section-icon {
@@ -13458,7 +14797,8 @@ const openPackDrawer = () => {
   font-weight: bold;
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: #c89b3c;
+  color: #f0d9a0;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
   flex: 1;
 }
 
@@ -13866,9 +15206,10 @@ const openPackDrawer = () => {
   }
 
   .monster-grid {
-    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-    gap: 10px;
+    gap: 12px;
+    padding: 16px 12px 20px;
   }
+  .wanted-card { width: 108px; }
   .wanted-img {
     width: 58px;
     height: 58px;
@@ -13974,9 +15315,10 @@ const openPackDrawer = () => {
   }
 
   .monster-grid {
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-    gap: 8px;
+    gap: 10px;
+    padding: 14px 8px 18px;
   }
+  .wanted-card { width: 94px; }
   .wanted-img {
     width: 52px;
     height: 52px;
@@ -14173,6 +15515,41 @@ const openPackDrawer = () => {
 </style>
 
 <style>
+
+/* เหรียญ icon class (ClassMedal) — ต้องอยู่นอก scoped
+   เพราะ element ที่สร้างจาก render function ไม่ได้ติด data-v มาด้วย */
+.class-medal {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  width: 28px;
+  height: 28px;
+  border-radius: 2px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  background: linear-gradient(168deg, #3a2b1a, #241a0e);
+  box-shadow: inset 0 1px 0 rgba(255, 226, 178, 0.1), 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+.class-medal .class-medal-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+.class-medal .class-medal-fallback {
+  font-size: 12px;
+  font-weight: bold;
+  color: #ffd27a;
+  line-height: 1;
+}
+.vote-voters .class-medal { width: 26px; height: 26px; }
+.vote-voters .class-medal .class-medal-icon { width: 20px; height: 20px; }
+.nt-waiting .class-medal { width: 24px; height: 24px; }
+.nt-waiting .class-medal .class-medal-icon { width: 18px; height: 18px; }
+.rw-party-row .class-medal,
+.rw-party-reward-row .class-medal { width: 30px; height: 30px; }
+.rw-party-row .class-medal .class-medal-icon,
+.rw-party-reward-row .class-medal .class-medal-icon { width: 24px; height: 24px; }
 /* ══════════════════════════════════════════
    TOKEN REVEAL OVERLAY
 ══════════════════════════════════════════ */
@@ -15338,19 +16715,13 @@ const openPackDrawer = () => {
 /* ══════════════════════════════════════════
    PACK TOGGLE BUTTON
 ══════════════════════════════════════════ */
-.dialog-tag-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
+/* ปุ่มทองเหลืองบนแถบหนัง */
 .pack-toggle-btn {
-  margin-left: auto;
   flex-shrink: 0;
   background: rgba(12, 9, 4, 0.9);
   border: 1px solid rgba(200, 155, 60, 0.45);
-  border-radius: 20px;
-  padding: 5px 12px;
+  border-radius: 4px;
+  padding: 6px 12px;
   font-size: 12px;
   color: #c89b3c;
   cursor: pointer;
@@ -15624,14 +16995,25 @@ const openPackDrawer = () => {
   padding: 4px 2px;
 }
 
+/* ป้ายไม้ประกาศผลการล่า */
 .rw-header {
   display: flex;
   align-items: center;
   gap: 14px;
   padding: 14px 16px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(30, 22, 8, 0.95), rgba(20, 15, 6, 0.9));
-  border: 1px solid rgba(200, 155, 60, 0.4);
+  border-radius: 4px;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(200,155,60,0.16) 0%, transparent 60%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(0,0,0,0.16) 0px,
+      rgba(0,0,0,0.16) 1px,
+      transparent 1px,
+      transparent 7px
+    ),
+    linear-gradient(175deg, #4a3520 0%, #3a2917 58%, #43301c 100%);
+  border: 3px solid #2e2113;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.5), 0 3px 10px rgba(0,0,0,0.5);
 }
 .rw-trophy {
   font-size: 32px;
@@ -15655,7 +17037,7 @@ const openPackDrawer = () => {
   font-size: 9px;
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: #7c5a2b;
+  color: #a88040;
   margin: 0 0 8px;
 }
 
@@ -15672,18 +17054,21 @@ const openPackDrawer = () => {
   align-items: center;
   gap: 3px;
   padding: 12px 8px;
-  border-radius: 10px;
-  border: 1px solid rgba(124, 90, 43, 0.4);
-  background: rgba(20, 15, 8, 0.8);
-  color: #7c5a2b;
+  border-radius: 3px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  background: linear-gradient(170deg, #2b1f13, #1c1409);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.06);
+  color: #a88040;
+  font-family: inherit;
   cursor: pointer;
   transition: all 0.2s;
 }
 .rw-hunter-btn.active {
-  border-color: #c89b3c;
-  background: rgba(60, 40, 10, 0.9);
-  color: #ffd27a;
-  box-shadow: 0 0 12px rgba(200, 155, 60, 0.25);
+  border-color: #6b4f1c;
+  background: linear-gradient(to bottom, #b08a34 0%, #8a6a22 48%, #6b501a 100%);
+  color: #2a1d06;
+  text-shadow: 0 1px 0 rgba(255,225,170,0.35);
+  box-shadow: inset 0 1px 0 rgba(255,230,180,0.4), 0 2px 6px rgba(0,0,0,0.5);
 }
 .rw-hunter-num {
   font-size: 22px;
@@ -15705,9 +17090,10 @@ const openPackDrawer = () => {
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  border-radius: 8px;
-  background: rgba(10, 8, 4, 0.6);
-  border: 1px solid rgba(90, 61, 31, 0.4);
+  border-radius: 3px;
+  background: linear-gradient(170deg, #2b1f13, #1c1409);
+  border: 1px solid rgba(124, 90, 43, 0.45);
+  border-left: 3px solid #7c5a2b;
   margin-bottom: 14px;
 }
 .rw-qt-label {
@@ -15735,17 +17121,18 @@ const openPackDrawer = () => {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-radius: 8px;
-  background: rgba(10, 8, 4, 0.6);
-  border: 1px solid rgba(90, 61, 31, 0.4);
-  color: #7c5a2b;
+  border-radius: 3px;
+  background: linear-gradient(170deg, #2b1f13, #1c1409);
+  border: 1px solid rgba(124, 90, 43, 0.45);
+  color: #a88040;
   cursor: pointer;
   transition: all 0.2s;
 }
 .rw-tc-toggle.active {
   border-color: #c89b3c;
-  background: rgba(60, 40, 10, 0.9);
+  background: linear-gradient(170deg, #4a3520, #2e2113);
   color: #ffd27a;
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.12);
 }
 .rw-tc-toggle.rw-tc-readonly {
   cursor: default;
@@ -15815,37 +17202,43 @@ const openPackDrawer = () => {
 }
 
 /* Primary / Secondary buttons */
+/* ปุ่มหลัก = แผ่นทองเหลือง · ปุ่มรอง = หนัง */
 .rw-btn-primary {
   width: 100%;
   padding: 13px;
-  border-radius: 10px;
-  border: 1px solid #c89b3c;
-  background: linear-gradient(135deg, #3a2a0a, #241a06);
-  color: #ffd27a;
+  border-radius: 3px;
+  border: 1px solid #6b4f1c;
+  background: linear-gradient(to bottom, #b08a34 0%, #8a6a22 48%, #6b501a 100%);
+  color: #2a1d06;
   font-size: 14px;
   font-weight: bold;
+  font-family: inherit;
   letter-spacing: 1px;
   cursor: pointer;
   transition: all 0.2s;
+  text-shadow: 0 1px 0 rgba(255,225,170,0.35);
+  box-shadow: inset 0 1px 0 rgba(255,230,180,0.4), 0 2px 6px rgba(0,0,0,0.5);
 }
-.rw-btn-primary:hover {
-  background: linear-gradient(135deg, #4a3510, #2e2008);
-  box-shadow: 0 0 14px rgba(200, 155, 60, 0.3);
+.rw-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(to bottom, #c99f42 0%, #9d7a29 48%, #7a5c1f 100%);
+  box-shadow: inset 0 1px 0 rgba(255,230,180,0.5), 0 3px 10px rgba(0,0,0,0.55);
 }
 .rw-btn-secondary {
   flex: 1;
   padding: 10px;
-  border-radius: 8px;
+  border-radius: 3px;
   border: 1px solid rgba(124, 90, 43, 0.5);
-  background: rgba(20, 15, 8, 0.8);
+  background: linear-gradient(170deg, #2b1f13, #1c1409);
   color: #a88040;
   font-size: 12px;
+  font-family: inherit;
   cursor: pointer;
   transition: all 0.15s;
 }
-.rw-btn-secondary:hover {
+.rw-btn-secondary:hover:not(:disabled) {
   color: #ffd27a;
   border-color: #c89b3c;
+  background: linear-gradient(170deg, #3a2a18, #241a0e);
 }
 
 /* Dice roll screen */
@@ -15854,15 +17247,25 @@ const openPackDrawer = () => {
   flex-direction: column;
   gap: 14px;
 }
+/* ถาดหนังสำหรับทอยเต๋า — ขอบจมลงไป */
 .rw-dice-row {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   justify-content: center;
   padding: 16px;
-  border-radius: 12px;
-  background: rgba(10, 8, 4, 0.8);
-  border: 1px solid rgba(90, 61, 31, 0.4);
+  border-radius: 4px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #241a0f, #1a1209);
+  box-shadow: inset 0 3px 10px rgba(0,0,0,0.6);
 }
 @keyframes dice-shake {
   0%   { transform: rotate(-18deg) scale(1.15); }
@@ -15910,10 +17313,116 @@ const openPackDrawer = () => {
 /* ── Trade Phase ── */
 .rw-trade { display: flex; flex-direction: column; gap: 14px; }
 
+.trade-title { font-size: 19px; }
+.rw-trade .board-subtitle { margin-top: -10px; }
+
 .trade-section {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* ── โต๊ะกลางวง: ผ้าปูบนไม้ ของทุกคนมากองรวมกันตรงนี้ ── */
+.trade-table {
+  padding: 12px 12px 14px;
+  border-radius: 3px;
+  border: 3px solid #2e2113;
+  background:
+    /* ผ้าปูโต๊ะ — ลายทอเฉียง */
+    repeating-linear-gradient(
+      45deg,
+      rgba(0,0,0,0.07) 0px,
+      rgba(0,0,0,0.07) 2px,
+      transparent 2px,
+      transparent 7px
+    ),
+    radial-gradient(ellipse 70% 55% at 50% 45%, rgba(120, 62, 30, 0.28), transparent 72%),
+    linear-gradient(172deg, #3b2b1c 0%, #2f2216 55%, #251a11 100%);
+  box-shadow: inset 0 0 45px rgba(0,0,0,0.55), inset 0 2px 0 rgba(232,198,152,0.06), 0 3px 12px rgba(0,0,0,0.55);
+}
+
+/* ── เป้ของเรา: แผงหนัง ── */
+.trade-pack {
+  padding: 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  border-left: 3px solid #7c5a2b;
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #2b1f13, #221809 55%, #281d10);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.07), 0 2px 6px rgba(0,0,0,0.45);
+}
+
+/* สรุปของบนโต๊ะ */
+.trade-tally {
+  font-size: 10px;
+  color: #a88040;
+  white-space: nowrap;
+}
+.trade-tally-n {
+  font-size: 14px;
+  font-weight: bold;
+  color: #ffd27a;
+}
+.trade-tally-mine {
+  font-weight: bold;
+  color: #7fd99a;
+}
+
+/* ── ใครพร้อมปิดแล้วบ้าง ── */
+.trade-ready-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(124, 90, 43, 0.4);
+  background: rgba(0, 0, 0, 0.28);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.trade-ready-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #a88040;
+}
+.trade-ready-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 2px;
+  border: 1px solid rgba(124, 90, 43, 0.45);
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0.45;
+  transition: 0.2s;
+}
+.trade-ready-chip.is-ready {
+  opacity: 1;
+  border-color: rgba(90, 210, 130, 0.6);
+  background: linear-gradient(170deg, #1e3324, #131f16);
+  box-shadow: 0 0 8px rgba(60, 170, 110, 0.3);
+}
+.trade-ready-chip .class-medal-icon { width: 22px; height: 22px; }
+.trade-ready-chip .class-medal-tick {
+  border-color: rgba(40, 30, 12, 0.6);
+  background: radial-gradient(circle at 35% 30%, #6a5636, #3a2e1a);
+  color: #c0985a;
+}
+.trade-ready-chip.is-ready .class-medal-tick {
+  border-color: rgba(20, 50, 32, 0.6);
+  background: radial-gradient(circle at 35% 30%, #8fd9a8, #3f8f5f 60%, #24603c);
+  color: #0d2417;
 }
 .trade-head {
   display: flex;
@@ -15922,17 +17431,13 @@ const openPackDrawer = () => {
   gap: 10px;
 }
 .trade-head .rw-section-label { margin: 0; }
-.trade-hint {
-  font-size: 10px;
-  color: rgba(124,90,43,0.75);
-  white-space: nowrap;
-}
 .trade-search-input {
   width: 130px;
   padding: 5px 10px;
-  border-radius: 6px;
-  border: 1px solid rgba(124,90,43,0.4);
-  background: rgba(0,0,0,0.35);
+  border-radius: 3px;
+  border: 1px solid rgba(124,90,43,0.5);
+  background: rgba(0,0,0,0.4);
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
   color: #ffd27a;
   font-size: 11px;
   font-family: inherit;
@@ -15951,6 +17456,7 @@ const openPackDrawer = () => {
   overflow-y: auto;
   padding-right: 2px;
 }
+/* ช่องในลังไม้ */
 .trade-slot {
   position: relative;
   display: flex;
@@ -15958,16 +17464,17 @@ const openPackDrawer = () => {
   align-items: center;
   gap: 4px;
   padding: 10px 6px 8px;
-  border-radius: 10px;
-  border: 1px solid rgba(124,90,43,0.4);
-  background: rgba(0,0,0,0.3);
+  border-radius: 3px;
+  border: 1px solid rgba(124,90,43,0.45);
+  background: linear-gradient(170deg, #2b1f13, #1a1209);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.06), inset 0 -3px 8px rgba(0,0,0,0.4);
   font-family: inherit;
   cursor: pointer;
   transition: 0.15s;
 }
 .trade-slot:hover {
   border-color: rgba(200,155,60,0.75);
-  background: rgba(200,155,60,0.1);
+  background: linear-gradient(170deg, #3d2c19, #241a0e);
   transform: translateY(-2px);
 }
 .trade-slot:active { transform: translateY(0); }
@@ -16002,7 +17509,10 @@ const openPackDrawer = () => {
 }
 .trade-slot-owner {
   font-size: 9px;
-  color: #7ab3ff;
+  color: #cbb37e;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -16020,15 +17530,33 @@ const openPackDrawer = () => {
   transition: opacity 0.15s;
 }
 .trade-slot:hover .trade-slot-action { opacity: 1; }
+.trade-slot-pool {
+  /* ของที่วางบนผ้า — สว่างกว่าโต๊ะ + มีเงาทอดลงผ้า */
+  border-color: rgba(168, 128, 64, 0.6);
+  background: linear-gradient(168deg, #4a3722 0%, #3a2a19 55%, #2b1e11 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 226, 178, 0.12),
+    0 4px 10px rgba(0, 0, 0, 0.55);
+}
+.trade-slot-pool:hover {
+  border-color: rgba(214, 176, 96, 0.9);
+  background: linear-gradient(168deg, #5a432a, #3a2a19);
+}
 .trade-slot-pool .trade-slot-action {
   background: rgba(60,180,60,0.16);
   border: 1px solid rgba(60,180,60,0.45);
   color: #7fd99a;
 }
 .trade-slot-mine {
-  border-color: rgba(60,100,200,0.5);
-  background: rgba(60,100,200,0.08);
+  /* ของเราเอง — เย็นกว่านิดเดียว พอให้แยกออกจากของคนอื่นบนโต๊ะเดียวกัน */
+  border-color: rgba(112, 148, 200, 0.5);
+  background: linear-gradient(168deg, #2c3549 0%, #232b3c 55%, #1a2029 100%);
 }
+.trade-slot-mine:hover {
+  border-color: rgba(150, 184, 234, 0.8);
+  background: linear-gradient(168deg, #384462, #232b3c);
+}
+.trade-slot-mine .trade-slot-owner { color: #9fb9e0; }
 .trade-slot-mine .trade-slot-action {
   background: rgba(124,90,43,0.18);
   border-color: rgba(124,90,43,0.5);
@@ -16049,20 +17577,26 @@ const openPackDrawer = () => {
   background: linear-gradient(to right, transparent, rgba(200,155,60,0.3), transparent);
 }
 .trade-divider span {
+  padding: 3px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 90, 43, 0.4);
+  background: rgba(0, 0, 0, 0.35);
   font-size: 10px;
   letter-spacing: 2px;
-  color: rgba(124,90,43,0.85);
+  color: rgba(190, 152, 88, 0.95);
   white-space: nowrap;
 }
 
 .trade-empty {
   font-size: 11px;
-  color: rgba(124,90,43,0.5);
+  color: rgba(168,128,64,0.7);
   text-align: center;
   margin: 0;
-  padding: 18px 0;
-  border: 1px dashed rgba(124,90,43,0.3);
-  border-radius: 8px;
+  padding: 22px 0;
+  border: 1px dashed rgba(124,90,43,0.45);
+  border-radius: 3px;
+  background: rgba(0,0,0,0.22);
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.4);
 }
 
 /* ── เลือกจำนวนก่อนโยน ── */
@@ -16105,16 +17639,17 @@ const openPackDrawer = () => {
 .tp-step {
   width: 42px;
   height: 42px;
-  border-radius: 10px;
+  border-radius: 2px;
   border: 1px solid rgba(200,155,60,0.5);
-  background: rgba(200,155,60,0.12);
+  background: linear-gradient(170deg, #3a2b1a, #241a0e);
+  box-shadow: inset 0 1px 0 rgba(255, 226, 178, 0.1);
   color: #ffd27a;
   font-size: 22px;
   font-family: inherit;
   cursor: pointer;
   transition: 0.15s;
 }
-.tp-step:hover:not(:disabled) { background: rgba(200,155,60,0.28); }
+.tp-step:hover:not(:disabled) { background: linear-gradient(170deg, #4d3a22, #2e2112); border-color: #c89b3c; }
 .tp-step:disabled { opacity: 0.35; cursor: not-allowed; }
 .tp-val {
   min-width: 46px;
@@ -16125,7 +17660,7 @@ const openPackDrawer = () => {
 }
 .tp-all {
   padding: 5px 14px;
-  border-radius: 999px;
+  border-radius: 2px;
   border: 1px solid rgba(124,90,43,0.5);
   background: transparent;
   color: #a88040;
@@ -16144,45 +17679,60 @@ const openPackDrawer = () => {
 .tp-cancel {
   flex: 1;
   padding: 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(124,90,43,0.45);
-  background: transparent;
+  border-radius: 3px;
+  border: 1px solid rgba(124,90,43,0.5);
+  background: linear-gradient(170deg, #2b1f13, #1c1409);
   color: #a88040;
   font-size: 13px;
   font-family: inherit;
   cursor: pointer;
 }
+.tp-cancel:hover { color: #ffd27a; border-color: #c89b3c; }
 .tp-confirm {
   flex: 2;
   padding: 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,150,0,0.5);
-  background: rgba(255,150,0,0.16);
-  color: #ffa940;
+  border-radius: 3px;
+  border: 1px solid #6b4f1c;
+  background: linear-gradient(to bottom, #b08a34 0%, #8a6a22 48%, #6b501a 100%);
+  color: #2a1d06;
   font-size: 13px;
   font-weight: bold;
   font-family: inherit;
   cursor: pointer;
   transition: 0.15s;
+  text-shadow: 0 1px 0 rgba(255,225,170,0.35);
+  box-shadow: inset 0 1px 0 rgba(255,230,180,0.4), 0 2px 6px rgba(0,0,0,0.5);
 }
-.tp-confirm:hover { background: rgba(255,150,0,0.3); }
+.tp-confirm:hover { background: linear-gradient(to bottom, #c99f42 0%, #9d7a29 48%, #7a5c1f 100%); }
 
-.trade-close-row { display: flex; justify-content: flex-end; }
+.trade-close-row { display: flex; justify-content: center; }
+.trade-close-row .rw-btn-primary { min-width: 240px; }
 
 .rw-party-rewards {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 12px 14px;
-  border-radius: 8px;
-  background: rgba(60,100,200,0.05);
-  border: 1px solid rgba(60,100,200,0.2);
+  border-radius: 4px;
+  border: 1px solid rgba(124, 90, 43, 0.45);
+  border-left: 3px solid #2c5f9e;
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #1a2030, #141824);
+  box-shadow: inset 0 1px 0 rgba(200,220,255,0.05), 0 2px 6px rgba(0,0,0,0.45);
 }
 .rw-party-reward-row {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: flex-start;
+  gap: 10px;
 }
+.rw-party-reward-row .rw-claimed-list { flex: 1; }
 
 .rw-party-dice {
   display: flex;
@@ -16194,12 +17744,7 @@ const openPackDrawer = () => {
   align-items: center;
   gap: 10px;
 }
-.rw-party-name {
-  font-size: 11px;
-  color: #a88040;
-  min-width: 60px;
-  letter-spacing: 1px;
-}
+
 .rw-dice-row-sm {
   padding: 8px;
   gap: 6px;
@@ -16220,9 +17765,11 @@ const openPackDrawer = () => {
 
 .rw-reroll-status {
   padding: 10px 12px;
-  border-radius: 8px;
-  background: rgba(60,100,200,0.08);
-  border: 1px solid rgba(60,100,200,0.25);
+  border-radius: 4px;
+  border: 1px solid rgba(124, 90, 43, 0.45);
+  border-left: 3px solid #2c5f9e;
+  background: linear-gradient(170deg, #1a2030, #141824);
+  box-shadow: inset 0 1px 0 rgba(200,220,255,0.05), 0 2px 6px rgba(0,0,0,0.45);
 }
 .rw-reroll-waiting {
   display: flex;
@@ -16277,9 +17824,19 @@ const openPackDrawer = () => {
 
 .rw-dice-chips-wrap {
   padding: 12px 14px;
-  border-radius: 10px;
-  background: rgba(10, 8, 4, 0.8);
-  border: 1px solid rgba(90, 61, 31, 0.4);
+  border-radius: 4px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  border-left: 3px solid #7c5a2b;
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #2b1f13, #221809 55%, #281d10);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.07), 0 2px 6px rgba(0,0,0,0.45);
 }
 .rw-dice-chips {
   display: flex;
@@ -16287,6 +17844,7 @@ const openPackDrawer = () => {
   gap: 8px;
   align-items: center;
 }
+/* เบี้ยไม้จารึกเลข — เลือกแล้วกลายเป็นเหรียญทองเหลือง */
 .rw-die-chip {
   width: 38px;
   height: 38px;
@@ -16295,19 +17853,29 @@ const openPackDrawer = () => {
   justify-content: center;
   font-size: 16px;
   font-weight: bold;
-  border-radius: 8px;
-  border: 2px solid rgba(124, 90, 43, 0.5);
-  background: rgba(30, 22, 8, 0.9);
-  color: #a88040;
+  border-radius: 50%;
+  border: 2px solid rgba(124, 90, 43, 0.55);
+  background:
+    repeating-linear-gradient(
+      120deg,
+      rgba(0,0,0,0.12) 0px,
+      rgba(0,0,0,0.12) 1px,
+      transparent 1px,
+      transparent 4px
+    ),
+    radial-gradient(circle at 38% 30%, #4a3520, #2b1f13 70%);
+  box-shadow: inset 0 0 8px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.5);
+  color: #c0985a;
   cursor: pointer;
   transition: all 0.15s;
   user-select: none;
 }
 .rw-die-chip.chip-selected {
-  border-color: #ffd27a;
-  color: #ffd27a;
-  background: rgba(60, 40, 10, 0.9);
-  box-shadow: 0 0 10px rgba(255, 210, 122, 0.35);
+  border-color: #6b4f1c;
+  color: #2a1d06;
+  text-shadow: 0 1px 0 rgba(255,225,170,0.4);
+  background: radial-gradient(circle at 36% 28%, #e0bc63, #a8802a 62%, #7a5c1c);
+  box-shadow: inset 0 1px 2px rgba(255,230,180,0.45), 0 2px 6px rgba(0,0,0,0.55);
 }
 .rw-die-chip.chip-spent {
   opacity: 0.25;
@@ -16316,10 +17884,12 @@ const openPackDrawer = () => {
 }
 .rw-sum-badge {
   padding: 4px 12px;
-  border-radius: 20px;
-  background: rgba(200, 155, 60, 0.2);
-  border: 1px solid #c89b3c;
-  color: #ffd27a;
+  border-radius: 3px;
+  background: linear-gradient(to bottom, #b08a34, #7a5c1c);
+  border: 1px solid #6b4f1c;
+  color: #2a1d06;
+  text-shadow: 0 1px 0 rgba(255,225,170,0.35);
+  box-shadow: inset 0 1px 0 rgba(255,230,180,0.4), 0 2px 5px rgba(0,0,0,0.5);
   font-size: 14px;
   font-weight: bold;
 }
@@ -16330,50 +17900,59 @@ const openPackDrawer = () => {
   letter-spacing: 0.5px;
 }
 
-/* Reward table */
+/* ── บัญชีรางวัล: กระดาษตีเส้น ขอบไม้ ── */
 .rw-table {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  border-radius: 10px;
+  gap: 0;
+  border-radius: 3px;
   overflow: hidden;
-  border: 1px solid rgba(90, 61, 31, 0.4);
+  border: 3px solid #5a4222;
+  color: #3a2c18;
+  background:
+    radial-gradient(circle at 10% 4%, rgba(140,110,60,0.13), transparent 40%),
+    radial-gradient(circle at 90% 96%, rgba(120,95,50,0.15), transparent 42%),
+    linear-gradient(168deg, #efe4c8 0%, #e6d9b8 45%, #dccba6 100%);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.5), inset 0 0 26px rgba(150,120,70,0.14);
 }
 .rw-row {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  background: rgba(15, 11, 5, 0.85);
-  border-bottom: 1px solid rgba(60, 40, 15, 0.4);
+  background: transparent;
+  border-bottom: 1px solid rgba(120, 95, 55, 0.3);
   transition: all 0.15s;
   cursor: default;
+}
+.rw-row:nth-child(even) {
+  background: rgba(150, 120, 70, 0.07);
 }
 .rw-row:last-child {
   border-bottom: none;
 }
+/* แถวที่กดรับได้ — ทาบทองบนกระดาษ */
 .rw-row-claimable {
-  background: rgba(40, 28, 8, 0.95);
-  border-color: rgba(200, 155, 60, 0.4);
+  background: rgba(200, 155, 60, 0.28);
   cursor: pointer;
-  box-shadow: inset 0 0 16px rgba(200, 155, 60, 0.12);
+  box-shadow: inset 3px 0 0 #8c2f22, inset 0 0 18px rgba(150, 110, 35, 0.25);
 }
 .rw-row-claimable:hover {
-  background: rgba(55, 38, 10, 0.95);
-  box-shadow: inset 0 0 22px rgba(200, 155, 60, 0.2);
+  background: rgba(200, 155, 60, 0.42);
 }
 .rw-row-locked {
-  opacity: 0.4;
+  opacity: 0.35;
 }
 .rw-row-num {
   min-width: 22px;
   font-size: 12px;
   font-weight: bold;
-  color: #7c5a2b;
+  color: #7a6238;
   text-align: center;
 }
 .rw-row-claimable .rw-row-num {
-  color: #ffd27a;
+  color: #8c2f22;
+  font-size: 14px;
 }
 .rw-row-item {
   display: flex;
@@ -16389,13 +17968,13 @@ const openPackDrawer = () => {
 }
 .rw-item-name {
   font-size: 11px;
-  color: #c8a060;
+  color: #4a3a22;
   flex: 1;
 }
 .rw-craft-btn {
-  background: rgba(200,155,60,0.1);
-  border: 1px solid rgba(200,155,60,0.35);
-  border-radius: 6px;
+  background: rgba(150,110,35,0.14);
+  border: 1px solid rgba(150,110,35,0.45);
+  border-radius: 2px;
   font-size: 14px;
   cursor: pointer;
   padding: 4px 8px;
@@ -16405,23 +17984,24 @@ const openPackDrawer = () => {
   line-height: 1;
   flex-shrink: 0;
 }
-.rw-craft-btn:hover { background: rgba(200,155,60,0.25); }
+.rw-craft-btn:hover { background: rgba(150,110,35,0.3); }
 .rw-row-claimable .rw-item-name {
-  color: #ffd27a;
+  color: #2f2312;
+  font-weight: bold;
 }
 .rw-part-bonus {
   display: flex;
   align-items: center;
   gap: 4px;
   padding: 2px 7px;
-  border-radius: 10px;
-  border: 1px solid rgba(90, 61, 31, 0.5);
-  background: rgba(10, 8, 4, 0.6);
-  opacity: 0.5;
+  border-radius: 2px;
+  border: 1px solid rgba(120, 95, 55, 0.4);
+  background: rgba(150, 120, 70, 0.12);
+  opacity: 0.55;
 }
 .rw-part-bonus.bonus-active {
-  border-color: rgba(80, 200, 80, 0.5);
-  background: rgba(20, 60, 20, 0.5);
+  border-color: rgba(40, 120, 80, 0.55);
+  background: rgba(50, 150, 95, 0.2);
   opacity: 1;
 }
 .rw-bonus-icon {
@@ -16429,19 +18009,30 @@ const openPackDrawer = () => {
 }
 .rw-bonus-text {
   font-size: 9px;
-  color: #7c5a2b;
+  color: #7a6238;
   white-space: nowrap;
 }
 .rw-part-bonus.bonus-active .rw-bonus-text {
-  color: #7adf7a;
+  color: #1f6b45;
+  font-weight: bold;
 }
 
 /* Claimed summary */
 .rw-claimed {
   padding: 12px 14px;
-  border-radius: 10px;
-  background: rgba(10, 20, 10, 0.7);
-  border: 1px solid rgba(60, 140, 60, 0.35);
+  border-radius: 4px;
+  border: 1px solid rgba(124, 90, 43, 0.45);
+  border-left: 3px solid #2f7d4f;
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #1e2617, #161c10);
+  box-shadow: inset 0 1px 0 rgba(200,255,200,0.05), 0 2px 6px rgba(0,0,0,0.45);
 }
 .rw-claimed-list {
   display: flex;
@@ -16453,9 +18044,9 @@ const openPackDrawer = () => {
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  border-radius: 8px;
-  background: rgba(20, 35, 20, 0.8);
-  border: 1px solid rgba(60, 140, 60, 0.3);
+  border-radius: 2px;
+  background: rgba(40, 90, 55, 0.2);
+  border: 1px solid rgba(60, 140, 60, 0.35);
 }
 .rw-claimed-img {
   width: 22px;
@@ -16479,7 +18070,7 @@ const openPackDrawer = () => {
 }
 .rw-skip-hint {
   font-size: 10px;
-  color: #7c5a2b;
+  color: #a88040;
   text-align: center;
   letter-spacing: 0.5px;
 }
@@ -16510,4 +18101,31 @@ const openPackDrawer = () => {
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover { background: #a67c3b; }
+
+/* ══════════════════════════════════════════
+   MEDIEVAL PASS — กรอบไม้ให้กล่องยืนยันในเฟส Hunting
+   กล่องพวกนี้ตัวหนังสือทองบนพื้นมืดอยู่แล้ว เปลี่ยนแค่กรอบ
+   ไม่ต้องแปลงเป็นกระดาษ จะได้ไม่ต้องไล่แก้สีข้างในทั้งหมด
+   วางท้ายไฟล์เพื่อให้ชนะลำดับ CSS ของกฎเดิม
+══════════════════════════════════════════ */
+.dc-modal,
+.ct-modal,
+.nt-modal,
+.tp-modal,
+.map-modal-panel {
+  border-radius: 3px;
+  border: 3px solid #2e2113;
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #2b1f13, #1c1409 55%, #241a0e);
+  box-shadow:
+    inset 0 1px 0 rgba(255,220,160,0.07),
+    0 10px 34px rgba(0,0,0,0.8);
+}
 </style>

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import weaponsData from '@/assets/files/weapons.json'
 import armorsData from '@/assets/files/armors.json'
 import { hunter, loadHunter, saveHunter } from '@/stores/hunter'
@@ -238,6 +238,7 @@ const isEquipped = (node) => {
 }
 
 const getRarityIcon = (rarity) => {
+  if (!hunter.value) return ''
   const weaponTypeId = hunter.value.hunter_class_id
 
   const rarityGroup = rarityData[1].rarity_list.find((r) => r.equipment_rarity === rarity)
@@ -280,11 +281,6 @@ const weaponTree = computed(() => {
     }
   })
 })
-
-// ===== SELECT =====
-const selectWeapon = (w) => {
-  selectedWeapon.value = w
-}
 
 const hasWeapon = (node) => {
   if (!hunter.value) return false
@@ -393,16 +389,250 @@ const armorList = computed(() => {
     }))
 })
 
-// Collapse/Expand — openSets เก็บ key ที่เปิดอยู่ (default ทุก set ซ่อน)
-const openSets = ref(new Set())
-const toggleSet = (key) => {
-  if (openSets.value.has(key)) {
-    openSets.value = new Set([...openSets.value].filter(k => k !== key))
-  } else {
-    openSets.value = new Set([...openSets.value, key])
+// ─── ชั้นวางหมวด: เลือกได้ทีละหมวด แล้วค่อยแสดงรายการด้านล่าง ────────────────
+// เดิมเป็น accordion เปิดพร้อมกันได้หลายอัน ทำให้หน้ายาวมากและหาของไม่เจอ
+const selectedTypeKey = ref(null)
+
+const craftTypes = computed(() => {
+  if (activeTab.value === 'weapon') {
+    return weaponTree.value.map((tree, i) => {
+      const nodes = tree.nodes ?? []
+      return {
+        key: `w-${i}`,
+        name: tree.typeName,
+        thumbnail: tree.typeThumbnail,
+        tree,
+        total: nodes.length,
+        owned: nodes.filter((n) => hasWeapon(n)).length,
+        craftable: nodes.filter((n) => !hasWeapon(n) && canCraft(n)).length,
+        pinned: nodes.some((n) =>
+          isWhitelisted(whitelistKey('weapon', n.weapon_type_id, n.item_id)),
+        ),
+      }
+    })
   }
+  return armorList.value.map((set) => {
+    const equips = set.equips ?? []
+    return {
+      key: `a-${set.equip_set_id}`,
+      name: set.set_name,
+      thumbnail: set.thumbnail,
+      set,
+      total: equips.length,
+      owned: equips.filter((e) => hasArmor(set.equip_set_id, e.equip_id, e.armor_part_id)).length,
+      craftable: equips.filter(
+        (e) =>
+          !hasArmor(set.equip_set_id, e.equip_id, e.armor_part_id) &&
+          canCraftArmor(set.equip_set_id, e.equip_id),
+      ).length,
+      pinned: equips.some((e) =>
+        isWhitelisted(whitelistKey('armor', set.equip_set_id, e.equip_id)),
+      ),
+    }
+  })
+})
+
+const selectedType = computed(
+  () => craftTypes.value.find((t) => t.key === selectedTypeKey.value) ?? null,
+)
+
+// สะเก็ดไฟ — ตำแหน่ง/จังหวะ/ระยะลอย กำหนดมือให้ไม่สัมพันธ์กัน
+// ถ้าผูกทุกค่ากับ index มันจะกลายเป็นคลื่นกวาดข้างเดียวทันที
+// สังเกตว่า delay ไม่ได้เรียงตาม x และ drift มีทั้งซ้ายและขวา
+const EMBERS = [
+  { x: 11, delay: 0.0, dur: 5.4, drift: 14, rise: 176, size: 3 },
+  { x: 63, delay: 0.9, dur: 6.8, drift: -11, rise: 210, size: 2 },
+  { x: 29, delay: 2.6, dur: 4.9, drift: 21, rise: 150, size: 3 },
+  { x: 88, delay: 1.4, dur: 6.1, drift: -17, rise: 195, size: 2 },
+  { x: 47, delay: 3.7, dur: 5.6, drift: 8, rise: 168, size: 3 },
+  { x: 74, delay: 0.4, dur: 7.3, drift: 25, rise: 224, size: 2 },
+  { x: 19, delay: 4.5, dur: 5.1, drift: -6, rise: 158, size: 2 },
+  { x: 55, delay: 2.0, dur: 6.5, drift: -22, rise: 205, size: 3 },
+  { x: 95, delay: 5.2, dur: 5.9, drift: 12, rise: 182, size: 2 },
+]
+const emberStyle = (em) => ({
+  '--x': `${em.x}%`,
+  '--delay': `${em.delay}s`,
+  '--dur': `${em.dur}s`,
+  '--drift': `${em.drift}px`,
+  '--rise': `${-em.rise}px`,
+  '--sz': `${em.size}px`,
+})
+
+// สะเก็ดไฟตอนสูบลมจุดเตา — กระจายรอบกองไฟ ไม่ใช่ไล่เป็นแถว
+const IGNITE_SPARKS = [
+  { x: -6, delay: 0.02, drift: -34, rise: 82 },
+  { x: 52, delay: 0.16, drift: 26, rise: 64 },
+  { x: -48, delay: 0.09, drift: -12, rise: 96 },
+  { x: 22, delay: 0.24, drift: 40, rise: 71 },
+  { x: -26, delay: 0.05, drift: 18, rise: 58 },
+  { x: 70, delay: 0.13, drift: 33, rise: 88 },
+  { x: 8, delay: 0.3, drift: -22, rise: 62 },
+  { x: -66, delay: 0.19, drift: -41, rise: 76 },
+  { x: 38, delay: 0.07, drift: 9, rise: 92 },
+  { x: -14, delay: 0.27, drift: -28, rise: 55 },
+]
+const sparkStyle = (sp) => ({
+  '--x': `${sp.x}px`,
+  '--delay': `${sp.delay}s`,
+  '--drift': `${sp.drift}px`,
+  '--rise': `${-sp.rise}px`,
+})
+
+// ไอคอนแท็บ — ใช้ของจริงจากเกมแทน emoji
+// Weapon = อาวุธ R1 ของ Class ที่เล่นอยู่ · Armor = Mail R1 (armor_part_id 2)
+const weaponTabIcon = computed(() => getRarityIcon(1))
+const armorTabIcon = computed(() => getArmorRarityIcon(1, 2))
+
+// ─── สถานะเตา ───────────────────────────────────────────────
+// 'off' → 'igniting' → 'lit' → 'closing' (เก็บงาน/ยุบช่อง) → 'quenching' (ดับไฟ) → 'off'
+// จุดไฟครั้งเดียวตอนเปิดเตา สลับสายอื่นระหว่างที่เตายังติดไม่ต้องจุดใหม่
+const IGNITE_MS = 900
+const CLOSE_MS = 420
+const QUENCH_MS = 700
+const forgeState = ref('off')
+let _forgeTimer = null
+
+// คนที่ขอลดการเคลื่อนไหวไม่ควรต้องรอ animation ที่เขาไม่เห็นอยู่ดี
+const _prefersReducedMotion = () =>
+  typeof window !== 'undefined' &&
+  window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
+
+const _clearForgeTimer = () => {
+  clearTimeout(_forgeTimer)
+  _forgeTimer = null
 }
-const isCollapsed = (key) => !openSets.value.has(key)
+
+const _forgeOffNow = () => {
+  _clearForgeTimer()
+  forgeState.value = 'off'
+  selectedTypeKey.value = null
+}
+
+const _startQuench = () => {
+  forgeState.value = 'quenching'
+  _forgeTimer = setTimeout(_forgeOffNow, QUENCH_MS)
+}
+
+const _startIgnite = () => {
+  forgeState.value = 'igniting'
+  _forgeTimer = setTimeout(() => { forgeState.value = 'lit' }, IGNITE_MS)
+}
+
+const closeForge = () => {
+  if (forgeState.value === 'off' || forgeState.value === 'closing' || forgeState.value === 'quenching') return
+  _clearForgeTimer()
+  if (_prefersReducedMotion()) {
+    _forgeOffNow()
+    return
+  }
+  // ยังจุดไฟไม่เสร็จ ยังไม่มีงานบนโต๊ะให้เก็บ — ข้ามไปดับเลย
+  if (forgeState.value === 'igniting') {
+    _startQuench()
+    return
+  }
+  forgeState.value = 'closing'
+  nextTick(collapseBench)
+  _forgeTimer = setTimeout(_startQuench, CLOSE_MS)
+}
+
+const selectType = (key) => {
+  // กดระหว่างกำลังเก็บงาน → ยกเลิกการดับ กลับมาใช้เตาต่อ ไม่ต้องจุดใหม่
+  if (forgeState.value === 'closing') {
+    _clearForgeTimer()
+    _resetBenchHeight()
+    selectedTypeKey.value = key
+    forgeState.value = 'lit'
+    return
+  }
+  // กดระหว่างไฟกำลังดับ → ไฟดับไปแล้ว ต้องจุดใหม่
+  if (forgeState.value === 'quenching') {
+    _clearForgeTimer()
+    selectedTypeKey.value = key
+    _startIgnite()
+    return
+  }
+  // กดหมวดเดิมซ้ำ = ดับเตา
+  if (selectedTypeKey.value === key) {
+    closeForge()
+    return
+  }
+  selectedTypeKey.value = key
+  // เตาติดอยู่แล้ว (หรือกำลังจุด) → แค่สลับงาน ไม่จุดไฟซ้ำ
+  if (forgeState.value === 'lit' || forgeState.value === 'igniting') return
+  if (_prefersReducedMotion()) {
+    forgeState.value = 'lit'
+    return
+  }
+  _clearForgeTimer()
+  _startIgnite()
+}
+
+onUnmounted(_clearForgeTimer)
+
+// สลับแท็บ = เปลี่ยนของทั้งชุด ดับทันทีไม่ต้องเล่น animation
+watch(activeTab, _forgeOffNow)
+
+// ─── ขยายช่องเตาหลังไฟติด ────────────────────────────────────
+// max-height ต้องเป็นตัวเลขจริงถึงจะ transition ได้ (auto ทรานซิชันไม่ได้)
+// เลยวัด scrollHeight เอาตอนรันจริง แล้วคืนค่าเป็น auto เมื่อจบ
+const BENCH_OPEN_MS = 600
+const benchEl = ref(null)
+
+const BENCH_MIN_H = 190 // เท่าความสูงจอจุดเตา — ขยาย/ยุบต่อจากตรงนั้นพอดี
+let _benchCleanup = null
+
+const _resetBenchHeight = () => {
+  _benchCleanup?.()
+  const el = benchEl.value
+  if (!el) return
+  el.style.transition = ''
+  el.style.maxHeight = ''
+}
+
+// ยิง transition ของ max-height จาก from → to แล้วคืนค่าเป็น auto เมื่อจบ
+const _animateBenchHeight = (from, to, ms) => {
+  const el = benchEl.value
+  if (!el || _prefersReducedMotion()) return
+  _benchCleanup?.()
+
+  el.style.transition = 'none'
+  el.style.maxHeight = `${from}px`
+  void el.offsetHeight // บังคับ reflow ไม่งั้นเบราว์เซอร์ยุบสองค่าเป็นเฟรมเดียว
+  el.style.transition = `max-height ${ms}ms cubic-bezier(0.22, 0.61, 0.36, 1)`
+  el.style.maxHeight = `${to}px`
+
+  let fallback = null
+  const cleanup = (e) => {
+    // transitionend ยิงทุก property — สนใจเฉพาะ max-height
+    if (e && e.propertyName !== 'max-height') return
+    el.style.transition = ''
+    el.style.maxHeight = ''
+    el.removeEventListener('transitionend', cleanup)
+    clearTimeout(fallback)
+    _benchCleanup = null
+  }
+  // เผื่อ transitionend ไม่ยิง (แท็บถูกพัก / ความสูงบังเอิญเท่าเดิม)
+  fallback = setTimeout(cleanup, ms + 150)
+  el.addEventListener('transitionend', cleanup)
+  _benchCleanup = cleanup
+}
+
+const expandBench = () => {
+  const h = benchEl.value?.scrollHeight
+  if (h) _animateBenchHeight(BENCH_MIN_H, h, BENCH_OPEN_MS)
+}
+
+const collapseBench = () => {
+  const h = benchEl.value?.scrollHeight
+  if (h) _animateBenchHeight(h, BENCH_MIN_H, CLOSE_MS)
+}
+
+watch(forgeState, async (state, prev) => {
+  if (state !== 'lit' || prev !== 'igniting') return
+  await nextTick()
+  expandBench()
+})
 </script>
 
 <template>
@@ -412,21 +642,24 @@ const isCollapsed = (key) => !openSets.value.has(key)
     <div class="craft-header">
       <div class="ch-line"></div>
       <div class="ch-title-wrap">
-        <span class="ch-ornament">🔨</span>
-        <h2 class="ch-title">Crafting Station</h2>
-        <span class="ch-ornament">🔨</span>
+        <span class="ch-ornament">⚒</span>
+        <h2 class="ch-title">The Forge</h2>
+        <span class="ch-ornament">🔥</span>
       </div>
       <div class="ch-line"></div>
     </div>
+    <p class="ch-subtitle">โรงตีเหล็ก</p>
 
     <!-- TABS -->
     <div class="tabs">
       <button class="tab-btn" :class="{ active: activeTab === 'weapon' }" @click="activeTab = 'weapon'">
-        <span class="tab-icon">⚔</span>
+        <img v-if="weaponTabIcon" :src="weaponTabIcon" class="tab-icon-img" alt="" />
+        <span v-else class="tab-icon">⚔</span>
         <span>Weapons</span>
       </button>
       <button class="tab-btn" :class="{ active: activeTab === 'armor' }" @click="activeTab = 'armor'">
-        <span class="tab-icon">🛡</span>
+        <img v-if="armorTabIcon" :src="armorTabIcon" class="tab-icon-img" alt="" />
+        <span v-else class="tab-icon">🛡</span>
         <span>Armor</span>
       </button>
     </div>
@@ -449,24 +682,112 @@ const isCollapsed = (key) => !openSets.value.has(key)
       <span class="wl-status-count">{{ whitelist.length }} / 5</span>
     </div>
 
+    <!-- ================= ชั้นวางแม่พิมพ์ — เลือกหมวดก่อน ================= -->
+    <div
+      class="forge-rack"
+      :class="{
+        igniting: forgeState === 'igniting',
+        closing: forgeState === 'closing',
+        quenching: forgeState === 'quenching',
+      }"
+    >
+      <!-- เบ้าถ่านคุที่ก้นเตา + สะเก็ดไฟลอยขึ้น -->
+      <div class="forge-coals"></div>
+      <span
+        v-for="(em, i) in EMBERS"
+        :key="'em' + i"
+        class="forge-ember"
+        :style="emberStyle(em)"
+      ></span>
+
+      <div class="rack-head">
+        <span class="rack-label">{{ activeTab === 'weapon' ? 'สายอาวุธ' : 'ชุดเกราะ' }}</span>
+        <span class="rack-hint">แตะเพื่อเปิดรายการด้านล่าง</span>
+      </div>
+      <div class="rack-slots">
+        <button
+          v-for="t in craftTypes"
+          :key="t.key"
+          class="rack-slot"
+          :class="{ active: selectedTypeKey === t.key, 'has-craftable': t.craftable > 0 }"
+          @click="selectType(t.key)"
+        >
+          <span v-if="t.pinned" class="rack-pin">📌</span>
+          <span v-if="t.craftable > 0" class="rack-badge" title="ตีได้ตอนนี้">🔨{{ t.craftable }}</span>
+          <img :src="getImg(t.thumbnail)" class="rack-icon" />
+          <span class="rack-name">{{ t.name }}</span>
+          <span class="rack-owned">{{ t.owned }}/{{ t.total }}</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ยังไม่เลือกหมวด — เตายังไม่ติดไฟ -->
+    <!-- ================= จุดเตา — เล่นครั้งเดียวตอนเปิดเตา ================= -->
+    <div v-if="forgeState === 'igniting'" class="forge-igniting">
+      <div class="ig-hearth">
+        <span v-for="n in 5" :key="'f' + n" class="ig-flame" :style="`--i:${n}`"></span>
+        <span
+          v-for="(sp, i) in IGNITE_SPARKS"
+          :key="'s' + i"
+          class="ig-spark"
+          :style="sparkStyle(sp)"
+        ></span>
+      </div>
+      <p class="ig-text">กำลังจุดเตา</p>
+      <p class="ig-sub">{{ selectedType?.name }}</p>
+    </div>
+
+    <!-- ================= ดับเตา ================= -->
+    <div v-else-if="forgeState === 'quenching'" class="forge-igniting forge-quenching">
+      <div class="ig-hearth">
+        <span v-for="n in 5" :key="'f' + n" class="ig-flame" :style="`--i:${n}`"></span>
+        <span v-for="n in 5" :key="'m' + n" class="ig-smoke" :style="`--i:${n}`"></span>
+      </div>
+      <p class="ig-text">ดับเตา</p>
+      <p class="ig-sub">เก็บงานเรียบร้อย</p>
+    </div>
+
+    <!-- ================= โต๊ะช่าง — รายการของหมวดที่เลือก ================= -->
+    <div
+      v-else-if="selectedType"
+      ref="benchEl"
+      class="forge-bench"
+      :class="{ 'is-closing': forgeState === 'closing' }"
+      :key="selectedTypeKey"
+    >
+      <!-- เบ้าถ่าน + สะเก็ดไฟชุดเดียวกับชั้นวาง — ของที่ตีอยู่ในแสงไฟ -->
+      <div class="forge-coals"></div>
+      <span
+        v-for="(em, i) in EMBERS"
+        :key="'be' + i"
+        class="forge-ember"
+        :style="emberStyle(em)"
+      ></span>
+
+      <div class="bench-head">
+        <img :src="getImg(selectedType.thumbnail)" class="bench-icon" />
+        <div class="bench-info">
+          <span class="bench-kicker">{{ activeTab === 'weapon' ? 'Weapon Line' : 'Armor Set' }}</span>
+          <h3 class="bench-name">{{ selectedType.name }}</h3>
+          <span class="bench-meta">
+            มีแล้ว {{ selectedType.owned }}/{{ selectedType.total }}
+            <template v-if="selectedType.craftable > 0"> · ตีได้ {{ selectedType.craftable }}</template>
+          </span>
+        </div>
+        <button class="bench-close" @click="closeForge" title="ดับเตา">✕</button>
+      </div>
+
     <!-- ================= WEAPON ================= -->
     <div v-if="activeTab === 'weapon'" class="weapon-tree">
-      <div v-for="(tree, tIndex) in weaponTree" :key="tIndex" class="tree-line">
-        <!-- 🔥 LEFT: TREE INFO (clickable to collapse) -->
-        <div class="tree-info set-toggle" @click="toggleSet('w-' + tIndex)">
-          <img :src="getImg(tree.typeThumbnail)" />
-          <p>{{ tree.typeName }}</p>
-          <span class="set-toggle-arrow">{{ isCollapsed('w-' + tIndex) ? '▶' : '▼' }}</span>
-        </div>
-
-        <!-- Collapsed indicator -->
-        <div v-if="isCollapsed('w-' + tIndex)" class="tree-collapsed-hint">
-          Weapon Set ถูกซ่อนอยู่กดที่ Icon เพื่อแสดง
-        </div>
-
-        <!-- 🔥 RIGHT: WEAPON TIERS -->
-        <div class="tree-nodes" v-show="!isCollapsed('w-' + tIndex)">
-          <div v-for="(node, i) in tree.nodes" :key="i" class="node-wrapper">
+      <div class="tree-line">
+        <!-- 🔥 WEAPON TIERS -->
+        <div class="tree-nodes">
+          <div
+            v-for="(node, i) in selectedType.tree.nodes"
+            :key="i"
+            class="node-wrapper"
+            :style="{ '--i': i }"
+          >
             <!-- NODE -->
             <div
               class="node-card"
@@ -545,7 +866,7 @@ const isCollapsed = (key) => !openSets.value.has(key)
             </div>
 
             <!-- 🔥 LINE -->
-            <div v-if="i < tree.nodes.length - 1" class="line"></div>
+            <div v-if="i < selectedType.tree.nodes.length - 1" class="line"></div>
           </div>
         </div>
       </div>
@@ -553,52 +874,50 @@ const isCollapsed = (key) => !openSets.value.has(key)
 
     <!-- ================= ARMOR ================= -->
     <div v-if="activeTab === 'armor'" class="weapon-tree">
-      <div v-for="armorSet in armorList" :key="armorSet.equip_set_id" class="tree-line armor-tree-line">
-        <!-- LEFT: SET INFO (clickable to collapse) -->
-        <div class="tree-info set-toggle" @click="toggleSet('a-' + armorSet.equip_set_id)">
-          <img :src="getImg(armorSet.thumbnail)" />
-          <p>{{ armorSet.set_name }}</p>
-          <span class="set-toggle-arrow">{{ isCollapsed('a-' + armorSet.equip_set_id) ? '▶' : '▼' }}</span>
-        </div>
-
-        <!-- CENTER: SET BONUS -->
-        <div class="set-bonus-col" v-if="!isCollapsed('a-' + armorSet.equip_set_id)">
+      <div class="tree-line">
+        <!-- SET BONUS -->
+        <div class="set-bonus-col">
           <div
-            v-if="armorSet.set_ability_bonus !== 0 && getAbility(armorSet.set_ability_bonus)"
+            v-if="selectedType.set.set_ability_bonus !== 0 && getAbility(selectedType.set.set_ability_bonus)"
             class="set-bonus-bar"
-            :class="{ unlocked: hasFullSet(armorSet.equip_set_id) }"
+            :class="{ unlocked: hasFullSet(selectedType.set.equip_set_id) }"
           >
-            <span class="set-bonus-label">Set Bonus</span>
-            <span class="set-bonus-name">{{ getAbility(armorSet.set_ability_bonus).ability_name }}</span>
-            <span class="set-bonus-desc">{{ getAbility(armorSet.set_ability_bonus).ability }}</span>
+            <div class="set-bonus-head">
+              <span class="set-bonus-label">Set Bonus</span>
+              <span class="set-bonus-state">
+                {{ hasFullSet(selectedType.set.equip_set_id) ? '✦ ครบชุดแล้ว' : '🔒 ยังไม่ครบชุด' }}
+              </span>
+            </div>
+            <span class="set-bonus-name">{{ getAbility(selectedType.set.set_ability_bonus).ability_name }}</span>
+            <span class="set-bonus-desc">{{ getAbility(selectedType.set.set_ability_bonus).ability }}</span>
           </div>
         </div>
 
-        <!-- Collapsed indicator -->
-        <div v-if="isCollapsed('a-' + armorSet.equip_set_id)" class="tree-collapsed-hint armor-collapsed-hint" @click="toggleSet('a-' + armorSet.equip_set_id)">
-          ▶ Armor Set ถูกซ่อนอยู่กดที่ Icon เพื่อแสดง
-        </div>
-
-        <!-- RIGHT: ARMOR PIECES -->
-        <div class="tree-nodes" v-show="!isCollapsed('a-' + armorSet.equip_set_id)">
-          <div v-for="equip in armorSet.equips" :key="equip.equip_id" class="node-wrapper">
+        <!-- ARMOR PIECES -->
+        <div class="tree-nodes">
+          <div
+            v-for="(equip, i) in selectedType.set.equips"
+            :key="equip.equip_id"
+            class="node-wrapper"
+            :style="{ '--i': i }"
+          >
             <div
               class="node-card"
               :class="{
-                equipped: hasArmor(armorSet.equip_set_id, equip.equip_id, equip.armor_part_id),
-                locked: !hasArmor(armorSet.equip_set_id, equip.equip_id, equip.armor_part_id),
-                craftable: canCraftArmor(armorSet.equip_set_id, equip.equip_id),
+                equipped: hasArmor(selectedType.set.equip_set_id, equip.equip_id, equip.armor_part_id),
+                locked: !hasArmor(selectedType.set.equip_set_id, equip.equip_id, equip.armor_part_id),
+                craftable: canCraftArmor(selectedType.set.equip_set_id, equip.equip_id),
               }"
-              @click="openModal('armor', null, armorSet, equip)"
+              @click="openModal('armor', null, selectedType.set, equip)"
             >
               <div
-                v-if="isWhitelisted(whitelistKey('armor', armorSet.equip_set_id, equip.equip_id))"
+                v-if="isWhitelisted(whitelistKey('armor', selectedType.set.equip_set_id, equip.equip_id))"
                 class="wl-pin-indicator"
               >📌</div>
 
               <img
                 class="rarity-icon"
-                :src="getArmorRarityIcon(armorSet.rarity, equip.armor_part_id)"
+                :src="getArmorRarityIcon(selectedType.set.rarity, equip.armor_part_id)"
               />
               <p class="weapon-name">{{ equip.equip }}</p>
 
@@ -607,12 +926,12 @@ const isCollapsed = (key) => !openSets.value.has(key)
                 <div
                   class="crafting-box"
                   v-if="
-                    getArmorCrafting(armorSet.equip_set_id, equip.equip_id).length &&
-                    !hasArmor(armorSet.equip_set_id, equip.equip_id, equip.armor_part_id)
+                    getArmorCrafting(selectedType.set.equip_set_id, equip.equip_id).length &&
+                    !hasArmor(selectedType.set.equip_set_id, equip.equip_id, equip.armor_part_id)
                   "
                 >
                   <div
-                    v-for="(mat, mIndex) in getArmorCrafting(armorSet.equip_set_id, equip.equip_id)"
+                    v-for="(mat, mIndex) in getArmorCrafting(selectedType.set.equip_set_id, equip.equip_id)"
                     :key="mIndex"
                     class="material"
                   >
@@ -657,6 +976,14 @@ const isCollapsed = (key) => !openSets.value.has(key)
         </div>
 
       </div>
+    </div>
+    </div>
+
+    <!-- ================= เตายังไม่ติดไฟ ================= -->
+    <div v-else class="forge-empty">
+      <span class="forge-empty-icon">⚒</span>
+      <p class="forge-empty-title">เตายังไม่ติดไฟ</p>
+      <p class="forge-empty-sub">เลือกหมวดจากชั้นวางด้านบนเพื่อเริ่มตี</p>
     </div>
 
     <!-- ================= ITEM MODAL ================= -->
@@ -749,13 +1076,77 @@ const isCollapsed = (key) => !openSets.value.has(key)
 /* ══════════════════════════════════════════
    BASE
 ══════════════════════════════════════════ */
+/* โทนโรงตีเหล็ก: เหล็กเย็น + แสงเตาอุ่นจากด้านล่าง */
 .crafting-page {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 16px;
   color: #f0ddb0;
   font-family: 'Georgia', 'Times New Roman', serif;
 }
+
+/* ── พื้นผิวใช้ซ้ำทั้งหน้า ──
+   ผิวเรียบเป๊ะคือสิ่งที่ทำให้ดูเป็นของสมัยใหม่
+   grain = เม็ดหยาบบนโลหะ · grit = หยาบกว่า ใช้กับหิน · scratch = รอยขูดจากการใช้งาน
+   .im-overlay ถูก teleport ไป body — อยู่นอก .crafting-page เลยต้องประกาศซ้ำที่นี่ */
+.crafting-page,
+.im-overlay {
+  /* feTurbulence คายสัญญาณรบกวนเป็นสี RGB — ต้อง saturate 0 ไม่งั้นได้เม็ดสีรุ้ง
+     ใช้คนละสเกลระหว่างพื้นหลังกับเนื้อหา ไม่งั้นทุกอย่างกลืนเป็นผืนเดียว
+     grit  = หยาบ ชัด → ผนัง/พื้น (ถอยหลัง)
+     grain = ละเอียด จาง → แผ่นเหล็ก/การ์ด (ลอยขึ้นหน้า) */
+  --grit: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23r)' opacity='0.13'/%3E%3C/svg%3E");
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='110' height='110'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.6' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='110' height='110' filter='url(%23g)' opacity='0.07'/%3E%3C/svg%3E");
+  --scratch:
+    repeating-linear-gradient(19deg, transparent 0 17px, rgba(255,238,210,0.02) 17px 18px, transparent 18px 43px),
+    repeating-linear-gradient(-71deg, transparent 0 29px, rgba(0,0,0,0.04) 29px 30px, transparent 30px 67px);
+
+  /* ── ผนัง/พื้นไม้รมควัน ──
+     เสี้ยนไม้เป็นลายมีทิศทาง ต่างจากเม็ดโลหะบนการ์ด — แยก figure/ground ให้เอง
+     ระยะของเสี้ยนสามชั้นไม่ลงตัวกัน (6/11/19px) จะได้ไม่เห็นลายซ้ำ */
+  --wood-grain:
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.2) 0 1px, transparent 1px 6px),
+    repeating-linear-gradient(0deg, rgba(255,216,164,0.04) 0 1px, transparent 1px 11px),
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.13) 0 2px, transparent 2px 19px);
+  /* รอยต่อแผ่นไม้ — เส้นมืดแล้วมีขอบรับแสงบาง ๆ ถัดขึ้นไป */
+  --wood-planks:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.55) 0 2px,
+      rgba(232,198,152,0.055) 2px 3px,
+      transparent 3px 94px
+    );
+  /* เขม่าควัน: ล่างสุดเข้มจัด ไล่จางขึ้นไปแล้วหมดแถว ๆ 60%
+     เหนือจากนั้นเป็นเนื้อไม้สะอาด — ไฟอยู่ข้างล่าง เขม่าจึงไม่ควรขึ้นไปถึงยอด */
+  --soot: linear-gradient(
+    to top,
+    rgba(6,4,2,0.97) 0%,
+    rgba(8,5,3,0.9) 9%,
+    rgba(10,6,3,0.7) 22%,
+    rgba(12,7,4,0.42) 37%,
+    rgba(14,8,4,0.16) 50%,
+    rgba(16,9,5,0.05) 57%,
+    transparent 62%
+  );
+}
+
+/* แสงเตาอบขึ้นมาจากหลังชั้นวาง */
+.crafting-page::before {
+  content: '';
+  position: absolute;
+  inset: -20px -20px auto;
+  height: 340px;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(
+    ellipse 70% 100% at 50% 30%,
+    rgba(160, 78, 20, 0.1) 0%,
+    rgba(110, 46, 12, 0.05) 45%,
+    transparent 72%
+  );
+}
+.crafting-page > * { position: relative; z-index: 1; }
 
 /* ══════════════════════════════════════════
    HEADER
@@ -783,16 +1174,32 @@ const isCollapsed = (key) => !openSets.value.has(key)
   white-space: nowrap;
 }
 
+/* ชื่อร้านเหมือนเหล็กเผาไฟ */
 .ch-title {
   margin: 0;
   font-size: 18px;
-  color: #ffd27a;
+  color: #ffca6e;
   letter-spacing: 4px;
   text-transform: uppercase;
-  text-shadow: 0 0 12px rgba(255, 200, 80, 0.4);
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.9),
+    0 0 12px rgba(190, 100, 30, 0.45),
+    0 0 26px rgba(150, 62, 16, 0.25);
 }
 
-.ch-ornament { font-size: 14px; color: #7c5a2b; }
+.ch-ornament {
+  font-size: 15px;
+  color: #a8802e;
+  filter: drop-shadow(0 0 5px rgba(180, 92, 28, 0.4));
+}
+
+.ch-subtitle {
+  margin: -10px 0 0;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 4px;
+  color: #7c5a2b;
+}
 
 /* ══════════════════════════════════════════
    TABS
@@ -802,6 +1209,7 @@ const isCollapsed = (key) => !openSets.value.has(key)
   gap: 8px;
 }
 
+/* แผ่นเหล็กดำตีมือ ตอกหมุดทองเหลือง — เลือกแล้วคือเหล็กที่เพิ่งออกจากเตา */
 .tab-btn {
   flex: 1;
   display: flex;
@@ -809,10 +1217,17 @@ const isCollapsed = (key) => !openSets.value.has(key)
   justify-content: center;
   gap: 8px;
   padding: 10px 16px;
-  border-radius: 8px;
-  border: 1px solid rgba(124, 90, 43, 0.5);
-  background: rgba(16, 12, 6, 0.8);
-  color: #7c5a2b;
+  border-radius: 3px 2px 3px 2px;
+  border: 1px solid #0f0b08;
+  background:
+    var(--grain),
+    var(--scratch),
+    radial-gradient(ellipse 50px 20px at 14% 88%, rgba(118, 54, 18, 0.26), transparent 74%),
+    radial-gradient(circle at 9px 50%, rgba(198,164,110,0.3) 0 1.6px, transparent 2.2px),
+    radial-gradient(circle at calc(100% - 9px) 50%, rgba(198,164,110,0.3) 0 1.6px, transparent 2.2px),
+    linear-gradient(170deg, #3a322a 0%, #2a231c 45%, #1b1712 100%);
+  box-shadow: inset 0 1px 0 rgba(226,200,150,0.1), inset 0 -3px 8px rgba(0,0,0,0.55), 0 2px 5px rgba(0,0,0,0.5);
+  color: #9b8a6d;
   font-family: 'Georgia', serif;
   font-size: 13px;
   letter-spacing: 1px;
@@ -822,19 +1237,583 @@ const isCollapsed = (key) => !openSets.value.has(key)
 }
 
 .tab-btn:hover {
-  color: #a88040;
-  border-color: #7c5a2b;
+  color: #d3c1a0;
+  background:
+    var(--grain),
+    var(--scratch),
+    radial-gradient(circle at 9px 50%, rgba(214,180,124,0.36) 0 1.6px, transparent 2.2px),
+    radial-gradient(circle at calc(100% - 9px) 50%, rgba(214,180,124,0.36) 0 1.6px, transparent 2.2px),
+    linear-gradient(170deg, #473c31 0%, #342c23 45%, #221c16 100%);
 }
 
+/* เหล็กเผาไฟ — ถ่านอำพันหม่น ไม่ใช่ส้มสด */
 .tab-btn.active {
-  color: #ffd27a;
-  border-color: #c89b3c;
-  background: linear-gradient(to bottom, rgba(60, 40, 15, 0.8), rgba(20, 14, 6, 0.9));
-  box-shadow: 0 0 10px rgba(200, 155, 60, 0.2);
-  border-bottom: 2px solid #c89b3c;
+  color: #24120a;
+  border-color: #5e2f0d;
+  background:
+    var(--grain),
+    var(--scratch),
+    radial-gradient(circle at 9px 50%, rgba(255,222,170,0.4) 0 1.6px, transparent 2.2px),
+    radial-gradient(circle at calc(100% - 9px) 50%, rgba(255,222,170,0.4) 0 1.6px, transparent 2.2px),
+    linear-gradient(to bottom, #c4913f 0%, #a36520 45%, #6e3a10 100%);
+  text-shadow: 0 1px 0 rgba(255, 220, 165, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 224, 170, 0.35),
+    inset 0 -4px 10px rgba(60, 22, 4, 0.5),
+    0 0 12px rgba(170, 85, 20, 0.3),
+    0 2px 6px rgba(0, 0, 0, 0.55);
 }
 
 .tab-icon { font-size: 14px; }
+
+/* ไอคอนของจริงจากเกม — แขวนบนแผ่นเหล็ก */
+.tab-icon-img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
+  transition: filter 0.2s;
+}
+.tab-btn:hover .tab-icon-img { filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.85)) brightness(1.1); }
+/* แท็บที่เลือกเป็นเหล็กเผาไฟ — ไอคอนต้องมีเงาเข้มขึ้นถึงจะไม่จมพื้นสว่าง */
+.tab-btn.active .tab-icon-img {
+  filter: drop-shadow(0 1px 3px rgba(40, 16, 4, 0.85)) drop-shadow(0 0 6px rgba(60, 24, 6, 0.5));
+}
+
+/* ══════════════════════════════════════════
+   ชั้นวางหมวด (FORGE RACK) — กระดานไม้ตอกหมุด
+══════════════════════════════════════════ */
+/* ผนังเตาหลอม: หินทนไฟรมควัน กรอบเหล็ก ถ่านคุที่ก้น */
+.forge-rack {
+  position: relative;
+  overflow: hidden;
+  padding: 14px 12px 34px;
+  border-radius: 3px;
+  border: 4px solid #0f0b08;
+  background:
+    /* เม็ดหยาบบนผิวไม้ */
+    var(--grit),
+    /* ไอร้อนอาบขึ้นมาจากเบ้าถ่าน */
+    radial-gradient(ellipse 78% 40% at 50% 104%, rgba(255, 126, 32, 0.26) 0%, transparent 70%),
+    /* เขม่าไล่จากล่างขึ้นบน */
+    var(--soot),
+    /* คราบเขม่าเกาะเป็นหย่อมไม่เป็นระเบียบ */
+    radial-gradient(ellipse 110px 60px at 22% 44%, rgba(0,0,0,0.42), transparent 72%),
+    radial-gradient(ellipse 70px 90px at 86% 26%, rgba(0,0,0,0.34), transparent 74%),
+    radial-gradient(ellipse 150px 40px at 58% 12%, rgba(0,0,0,0.26), transparent 76%),
+    /* รอยต่อแผ่นไม้ + เสี้ยนไม้ */
+    var(--wood-planks),
+    var(--wood-grain),
+    /* เนื้อไม้ */
+    linear-gradient(172deg, #6d4b2b 0%, #5b3e22 45%, #46301b 100%);
+  box-shadow:
+    inset 0 0 80px rgba(0,0,0,0.55),
+    inset 0 2px 0 rgba(232,198,152,0.07),
+    0 4px 16px rgba(0,0,0,0.6);
+}
+
+/* เบ้าถ่านคุตลอดแนวก้นเตา */
+/* ถ่านคุเป็นก้อน ๆ ไม่เท่ากัน — ถ้าเรียงเป็นแถบเท่ากันจะกลายเป็น progress bar ทันที */
+.forge-coals {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -4px;
+  height: 26px;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 26px 9px at 6% 100%, rgba(214, 118, 32, 0.75), transparent 70%),
+    radial-gradient(ellipse 15px 6px at 14% 100%, rgba(150, 58, 14, 0.6), transparent 72%),
+    radial-gradient(ellipse 34px 11px at 27% 100%, rgba(226, 138, 44, 0.8), transparent 68%),
+    radial-gradient(ellipse 18px 7px at 39% 100%, rgba(140, 52, 12, 0.55), transparent 72%),
+    radial-gradient(ellipse 30px 10px at 51% 100%, rgba(206, 110, 28, 0.72), transparent 70%),
+    radial-gradient(ellipse 20px 8px at 63% 100%, rgba(232, 146, 50, 0.78), transparent 68%),
+    radial-gradient(ellipse 16px 6px at 73% 100%, rgba(138, 50, 12, 0.55), transparent 72%),
+    radial-gradient(ellipse 32px 10px at 85% 100%, rgba(210, 114, 30, 0.72), transparent 70%),
+    radial-gradient(ellipse 19px 7px at 95% 100%, rgba(160, 64, 16, 0.6), transparent 72%),
+    linear-gradient(to top, rgba(150, 60, 14, 0.4), transparent 85%);
+  filter: blur(3px);
+  animation: coals-breathe 5.5s ease-in-out infinite;
+}
+@keyframes coals-breathe {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 0.92; }
+}
+
+/* สะเก็ดไฟลอยขึ้น — ค่าทั้งหมดมาจากตาราง EMBERS ในสคริปต์ */
+.forge-ember {
+  position: absolute;
+  bottom: -6px;
+  left: var(--x, 50%);
+  width: var(--sz, 3px);
+  height: var(--sz, 3px);
+  border-radius: 50%;
+  background: #e0a055;
+  box-shadow: 0 0 5px 1px rgba(200, 105, 30, 0.7);
+  opacity: 0;
+  pointer-events: none;
+  animation: ember-rise var(--dur, 5.5s) ease-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+/* ลอยขึ้นแล้วเอนไปข้างเดียว แต่ระหว่างทางส่ายกลับนิดหน่อยเหมือนโดนลมร้อน */
+@keyframes ember-rise {
+  0%   { opacity: 0;    transform: translate(0, 0) scale(0.55); }
+  10%  { opacity: 0.95; }
+  38%  { transform: translate(calc(var(--drift, 12px) * 0.75), calc(var(--rise, -190px) * 0.34)) scale(0.9); }
+  64%  { opacity: 0.5;  transform: translate(calc(var(--drift, 12px) * 0.25), calc(var(--rise, -190px) * 0.64)) scale(1); }
+  100% { opacity: 0;    transform: translate(var(--drift, 12px), var(--rise, -190px)) scale(1.05); }
+}
+/* เตาสองชั้นใช้ตารางเดียวกัน — เลื่อนเฟสของอันล่างไม่ให้ลอยพร้อมกันเป๊ะ */
+.forge-bench .forge-ember { animation-delay: calc(var(--delay, 0s) + 1.7s); }
+
+.rack-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-bottom: 12px;
+  padding: 0 2px;
+  text-align: center;
+}
+.rack-label {
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #e8c9a0;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.85), 0 0 10px rgba(230, 110, 25, 0.35);
+}
+.rack-hint {
+  font-size: 10px;
+  color: #b3a084;
+  font-style: italic;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+}
+
+/* flex + wrap แทน grid — แถวสุดท้ายที่ไม่เต็มจะอยู่กลางกระดาน ไม่ชิดซ้าย */
+.rack-slots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* ช่องเสียบในกระดาน — จมลงไปในเนื้อไม้ */
+.rack-slot {
+  position: relative;
+  width: 96px;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 6px 8px;
+  border-radius: 3px 2px 3px 2px;
+  border: 1px solid rgba(0,0,0,0.55);
+  /* ช่องเสียบสว่างกว่าผนัง เพื่อให้อ่านออกว่าเป็นของคนละชิ้น */
+  background:
+    var(--grain),
+    linear-gradient(170deg, #46392e, #2e2620);
+  box-shadow: inset 0 1px 0 rgba(240,220,180,0.1), inset 0 -6px 12px rgba(0,0,0,0.45), 0 3px 8px rgba(0,0,0,0.6);
+  font-family: 'Georgia', serif;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.rack-slot:hover {
+  border-color: rgba(180,116,44,0.5);
+  background:
+    var(--grain),
+    linear-gradient(170deg, #55442f, #362b22);
+}
+/* มีของที่ตีได้ในหมวดนี้ — เหล็กเริ่มร้อน */
+.rack-slot.has-craftable {
+  border-color: rgba(170, 100, 36, 0.45);
+  box-shadow:
+    inset 0 3px 8px rgba(0,0,0,0.55),
+    inset 0 -10px 18px rgba(165, 76, 18, 0.2);
+}
+/* หมวดที่เลือก — ดึงเหล็กออกจากเตา สว่างที่สุด */
+.rack-slot.active {
+  border: 1px solid #6b3810;
+  background:
+    var(--grain),
+    linear-gradient(to bottom, #7d5426, #4a2c12);
+  box-shadow:
+    inset 0 1px 0 rgba(255,222,170,0.3),
+    0 0 16px rgba(175, 84, 20, 0.4),
+    0 4px 10px rgba(0,0,0,0.7);
+}
+
+.rack-icon {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.6));
+}
+.rack-slot.active .rack-icon {
+  filter: drop-shadow(0 0 10px rgba(255,160,60,0.75));
+}
+.rack-name {
+  font-size: 10px;
+  line-height: 1.25;
+  text-align: center;
+  color: #b3a288;
+  /* ชื่อยาว — ตัดสองบรรทัดให้ทุกช่องสูงเท่ากัน */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.rack-slot.active .rack-name { color: #ffe0b0; font-weight: bold; }
+.rack-owned {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: #7d6f57;
+}
+.rack-slot.has-craftable .rack-owned { color: #b8813f; }
+.rack-slot.active .rack-owned { color: #d9a869; }
+
+/* หมุดปักบอกว่ามีของใน Watchlist */
+.rack-pin {
+  position: absolute;
+  top: -6px;
+  left: -4px;
+  font-size: 13px;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.8));
+  pointer-events: none;
+}
+/* เหรียญทองเหลืองบอกจำนวนที่ตีได้ตอนนี้ */
+/* เหล็กร้อนคาคีม — จำนวนที่ตีได้ตอนนี้ */
+.rack-badge {
+  position: absolute;
+  top: -7px;
+  right: -5px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: bold;
+  color: #24120a;
+  background: radial-gradient(circle at 35% 30%, #e8bf82, #b8762a 58%, #7d3d0b);
+  border: 1px solid rgba(60,22,4,0.65);
+  box-shadow: 0 0 7px rgba(175,84,20,0.45), 0 1px 4px rgba(0,0,0,0.6);
+  pointer-events: none;
+  animation: badge-glow 3s ease-in-out infinite;
+}
+@keyframes badge-glow {
+  0%, 100% { box-shadow: 0 0 6px rgba(175,84,20,0.35), 0 1px 4px rgba(0,0,0,0.6); }
+  50%      { box-shadow: 0 0 12px rgba(205,105,30,0.6), 0 1px 4px rgba(0,0,0,0.6); }
+}
+
+/* ══════════════════════════════════════════
+   ยังไม่เลือกหมวด
+══════════════════════════════════════════ */
+/* เตาเย็น — เทาเหล็ก ไม่มีไฟ */
+.forge-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 36px 20px;
+  border-radius: 2px;
+  border: 1px dashed rgba(140, 118, 84, 0.32);
+  background: linear-gradient(170deg, rgba(38, 31, 25, 0.6), rgba(18, 14, 11, 0.55));
+  box-shadow: inset 0 3px 12px rgba(0, 0, 0, 0.55);
+  text-align: center;
+}
+.forge-empty-icon {
+  font-size: 36px;
+  opacity: 0.5;
+  filter: grayscale(70%) sepia(25%);
+}
+.forge-empty-title { margin: 0; font-size: 13px; letter-spacing: 2px; color: #9b8a6d; }
+.forge-empty-sub { margin: 0; font-size: 11px; color: #7d6f57; font-style: italic; }
+
+/* ══════════════════════════════════════════
+   จุดเตา — คั่นระหว่างเลือกหมวดกับเปิดงาน
+══════════════════════════════════════════ */
+.forge-igniting {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  min-height: 190px;
+  padding: 18px 20px 26px;
+  border-radius: 3px 2px 4px 2px;
+  border: 2px solid #0d0a07;
+  background:
+    var(--grit),
+    var(--soot),
+    var(--wood-planks),
+    var(--wood-grain),
+    linear-gradient(172deg, #46301b, #3a2716 55%, #2a1c10);
+  box-shadow: inset 0 0 70px rgba(0,0,0,0.6), 0 3px 10px rgba(0,0,0,0.5);
+  animation: ig-room-light 0.9s ease-out both;
+}
+/* ทั้งเตาสว่างขึ้นตามไฟที่ติด */
+@keyframes ig-room-light {
+  0%   { box-shadow: inset 0 0 70px rgba(0,0,0,0.85), 0 3px 10px rgba(0,0,0,0.5); }
+  45%  { box-shadow: inset 0 -40px 90px rgba(190, 88, 20, 0.5), inset 0 0 70px rgba(0,0,0,0.5), 0 3px 10px rgba(0,0,0,0.5); }
+  100% { box-shadow: inset 0 -30px 70px rgba(170, 78, 16, 0.3), inset 0 0 70px rgba(0,0,0,0.55), 0 3px 10px rgba(0,0,0,0.5); }
+}
+
+/* เบ้าไฟกลางจอ */
+.ig-hearth {
+  position: relative;
+  width: 100%;
+  height: 84px;
+  margin-bottom: 6px;
+}
+.ig-hearth::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  transform: translateX(-50%);
+  width: 260px;
+  height: 90px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 100%, rgba(220, 110, 26, 0.5), transparent 68%);
+  filter: blur(8px);
+  animation: ig-glow-grow 0.9s ease-out both;
+}
+@keyframes ig-glow-grow {
+  0%   { opacity: 0; transform: translateX(-50%) scale(0.3); }
+  40%  { opacity: 1; transform: translateX(-50%) scale(1.05); }
+  100% { opacity: 0.85; transform: translateX(-50%) scale(1); }
+}
+
+/* เปลวไฟห้าลิ้น ติดไล่กัน */
+.ig-flame {
+  position: absolute;
+  bottom: 0;
+  left: calc(50% + (var(--i) - 3) * 30px);
+  width: 30px;
+  height: 56px;
+  margin-left: -15px;
+  border-radius: 50% 50% 46% 46% / 68% 68% 32% 32%;
+  background: linear-gradient(to top, #ffdb9c 0%, #e8912e 32%, #bb4a0d 66%, transparent 100%);
+  filter: blur(3px);
+  transform-origin: 50% 100%;
+  opacity: 0;
+  animation: ig-flame-up 0.9s ease-out both;
+  animation-delay: calc((var(--i) - 1) * 0.07s);
+}
+@keyframes ig-flame-up {
+  0%   { opacity: 0;    transform: scaleY(0.12) scaleX(0.6); }
+  28%  { opacity: 1;    transform: scaleY(1.2)  scaleX(1); }
+  52%  { opacity: 0.92; transform: scaleY(0.85) scaleX(1.08); }
+  76%  { opacity: 0.85; transform: scaleY(1.12) scaleX(0.94); }
+  100% { opacity: 0.7;  transform: scaleY(1)    scaleX(1); }
+}
+
+/* สะเก็ดไฟกระเด็นตอนสูบลม */
+.ig-spark {
+  position: absolute;
+  bottom: 8px;
+  left: calc(50% + var(--x, 0px));
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #ffcf8a;
+  box-shadow: 0 0 6px 1px rgba(230, 130, 40, 0.85);
+  opacity: 0;
+  animation: ig-spark-fly 0.9s ease-out both;
+  animation-delay: var(--delay, 0s);
+}
+@keyframes ig-spark-fly {
+  0%   { opacity: 0; transform: translate(0, 0) scale(0.5); }
+  18%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--drift, 0px), var(--rise, -74px)) scale(1); }
+}
+
+.ig-text {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  color: #f5cf94;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 14px rgba(210, 108, 28, 0.6);
+}
+.ig-sub {
+  margin: 0;
+  font-size: 11px;
+  color: #b3a084;
+  font-style: italic;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+
+/* ── ดับเตา ── */
+.forge-quenching { animation: ig-room-dark 0.7s ease-in both; }
+@keyframes ig-room-dark {
+  0%   { box-shadow: inset 0 -30px 70px rgba(170, 78, 16, 0.3), inset 0 0 70px rgba(0,0,0,0.55), 0 3px 10px rgba(0,0,0,0.5); }
+  55%  { box-shadow: inset 0 -16px 46px rgba(120, 52, 10, 0.16), inset 0 0 70px rgba(0,0,0,0.72), 0 3px 10px rgba(0,0,0,0.5); }
+  100% { box-shadow: inset 0 0 80px rgba(0,0,0,0.9), 0 3px 10px rgba(0,0,0,0.5); }
+}
+/* เปลวไฟยุบลงแล้วดับ */
+.forge-quenching .ig-flame {
+  animation: ig-flame-down 0.7s ease-in both;
+  animation-delay: calc((5 - var(--i)) * 0.05s);
+}
+@keyframes ig-flame-down {
+  0%   { opacity: 0.7; transform: scaleY(1) scaleX(1); }
+  40%  { opacity: 0.5; transform: scaleY(0.55) scaleX(0.9); }
+  100% { opacity: 0;   transform: scaleY(0.08) scaleX(0.6); }
+}
+.forge-quenching .ig-hearth::after { animation: ig-glow-shrink 0.7s ease-in both; }
+@keyframes ig-glow-shrink {
+  0%   { opacity: 0.85; transform: translateX(-50%) scale(1); }
+  100% { opacity: 0;    transform: translateX(-50%) scale(0.35); }
+}
+/* ควันลอยขึ้นแทนสะเก็ดไฟ */
+.ig-smoke {
+  position: absolute;
+  bottom: 14px;
+  left: calc(50% + (var(--i) - 3) * 30px);
+  width: 22px;
+  height: 22px;
+  margin-left: -11px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(150, 142, 132, 0.5), transparent 70%);
+  filter: blur(5px);
+  opacity: 0;
+  animation: ig-smoke-rise 0.7s ease-out both;
+  animation-delay: calc((var(--i) - 1) * 0.07s);
+}
+@keyframes ig-smoke-rise {
+  0%   { opacity: 0;    transform: translate(0, 0) scale(0.5); }
+  30%  { opacity: 0.55; }
+  100% { opacity: 0;    transform: translate(calc((var(--i) - 3) * 9px), -66px) scale(2.1); }
+}
+.forge-quenching .ig-text {
+  color: #b3a084;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+}
+
+/* ชั้นวางด้านบนก็วูบตามตอนสูบลม */
+.forge-rack.igniting .forge-coals {
+  animation: coals-flare 0.9s ease-out;
+}
+@keyframes coals-flare {
+  0%   { opacity: 0.6;  filter: blur(3px) brightness(1); }
+  22%  { opacity: 1;    filter: blur(2px) brightness(1.9); }
+  60%  { opacity: 0.95; filter: blur(3px) brightness(1.35); }
+  100% { opacity: 0.75; filter: blur(3px) brightness(1); }
+}
+.forge-rack.igniting .forge-ember { animation-duration: 1.7s; }
+
+/* ถ่านเริ่มหรี่ตั้งแต่ตอนเก็บงาน แล้วดับสนิทตอน quench */
+.forge-rack.closing .forge-coals {
+  animation: coals-ease 0.42s ease-in both;
+}
+@keyframes coals-ease {
+  0%   { opacity: 0.92; filter: blur(3px) brightness(1); }
+  100% { opacity: 0.85; filter: blur(3px) brightness(0.85); }
+}
+
+/* ถ่านหรี่ลงตอนดับเตา */
+.forge-rack.quenching .forge-coals {
+  animation: coals-dim 0.7s ease-in both;
+}
+@keyframes coals-dim {
+  0%   { opacity: 0.85; filter: blur(3px) brightness(1); }
+  100% { opacity: 0.32; filter: blur(4px) brightness(0.55); }
+}
+.forge-rack.quenching .forge-ember { animation: none; opacity: 0; }
+
+/* ══════════════════════════════════════════
+   โต๊ะช่าง (FORGE BENCH)
+══════════════════════════════════════════ */
+/* แท่นหินหน้าเตา — เขม่าจับ ขอบเหล็ก */
+/* พื้นโรงตี — มืดและด้าน ทำหน้าที่ถอยหลังให้การ์ดลอยขึ้นมา */
+.forge-bench {
+  border-radius: 3px 2px 4px 2px;
+  border: 2px solid #0d0a07;
+  position: relative;
+  padding-bottom: 30px;
+  background:
+    var(--grit),
+    /* aura ไฟจากเบ้าถ่านด้านล่าง — วางก่อน soot จะได้ส่องทะลุเขม่าขึ้นมา */
+    radial-gradient(ellipse 86% 46% at 50% 104%, rgba(232, 112, 28, 0.28) 0%, transparent 72%),
+    radial-gradient(ellipse 55% 30% at 50% 100%, rgba(255, 150, 50, 0.16) 0%, transparent 70%),
+    /* เขม่าไล่ขึ้นเหมือนผนัง แต่ไม้เข้มกว่าเพื่อให้การ์ดลอยขึ้นมา */
+    var(--soot),
+    radial-gradient(ellipse 120px 70px at 8% 62%, rgba(0,0,0,0.38), transparent 74%),
+    radial-gradient(ellipse 100px 50px at 92% 30%, rgba(0,0,0,0.3), transparent 76%),
+    radial-gradient(ellipse 90% 34% at 50% -6%, rgba(170, 76, 16, 0.12), transparent 70%),
+    var(--wood-planks),
+    var(--wood-grain),
+    linear-gradient(172deg, #46301b, #3a2716 55%, #2a1c10);
+  box-shadow: inset 0 1px 0 rgba(232,198,152,0.06), inset 0 0 70px rgba(0,0,0,0.55), 0 3px 10px rgba(0,0,0,0.5);
+  overflow: hidden;
+  /* เล่นทุกครั้งที่สลับสาย (มี :key) — เบาพอให้เป็นแค่ feedback ไม่ใช่ไฟลุก */
+  animation: bench-reveal 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+@keyframes bench-reveal {
+  0%   { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: none; }
+}
+/* ถ่านกับสะเก็ดไฟอยู่หลังเนื้อหา — เป็น aura ไม่ใช่สิ่งกีดขวาง
+   (element ที่ position: absolute จะทับ static content ถ้าไม่กำหนด z-index) */
+.forge-bench > .forge-coals,
+.forge-bench > .forge-ember { z-index: 0; }
+.forge-bench > .bench-head,
+.forge-bench > .weapon-tree { position: relative; z-index: 1; }
+
+/* แถบเหล็กรัดหัวโต๊ะ ตอกหมุดสองข้าง */
+.bench-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background:
+    radial-gradient(circle at 10px 50%, rgba(198,164,110,0.32) 0 1.8px, transparent 2.4px),
+    radial-gradient(circle at calc(100% - 10px) 50%, rgba(198,164,110,0.32) 0 1.8px, transparent 2.4px),
+    linear-gradient(to bottom, #3d342b 0%, #2c251e 50%, #1e1813 100%);
+  border-bottom: 2px solid #0f0b08;
+  box-shadow: inset 0 1px 0 rgba(226,200,150,0.12), 0 2px 6px rgba(0,0,0,0.45);
+}
+.bench-icon {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.6));
+}
+.bench-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.bench-kicker {
+  font-size: 8px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #9b8a6d;
+}
+.bench-name {
+  margin: 0;
+  font-size: 15px;
+  color: #f0e2c6;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.85);
+  line-height: 1.3;
+}
+.bench-meta { font-size: 10px; color: #c1ae8c; letter-spacing: 0.5px; }
+.bench-close {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 2px;
+  border: 1px solid #0f0b08;
+  background: linear-gradient(170deg, #3a322a, #221c16);
+  box-shadow: inset 0 1px 0 rgba(226,200,150,0.12);
+  color: #c1ae8c;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.bench-close:hover { background: linear-gradient(170deg, #4a3f33, #2b241c); color: #f0e2c6; }
 
 /* ══════════════════════════════════════════
    TREE
@@ -845,74 +1824,10 @@ const isCollapsed = (key) => !openSets.value.has(key)
   gap: 14px;
 }
 
-/* TREE ROW */
+/* แถวรายการในโต๊ะช่าง */
 .tree-line {
-  display: grid;
-  grid-template-columns: 180px 1fr;
-  align-items: start;
+  display: block;
   padding: 12px;
-  border-radius: 12px;
-  background: linear-gradient(160deg, rgba(22, 16, 8, 0.9), rgba(12, 9, 5, 0.95));
-  border: 1px solid rgba(124, 90, 43, 0.6);
-  overflow: hidden;
-}
-
-/* ARMOR TREE: 3 columns */
-.armor-tree-line {
-  grid-template-columns: 160px 160px 1fr !important;
-}
-
-/* LEFT INFO */
-.tree-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  border-right: 1px solid rgba(200, 155, 60, 0.15);
-  padding: 4px 12px 4px 0;
-}
-.set-toggle {
-  cursor: pointer;
-  user-select: none;
-  transition: opacity 0.15s;
-}
-.set-toggle:hover { opacity: 0.8; }
-.set-toggle-arrow {
-  font-size: 10px;
-  color: rgba(200, 155, 60, 0.6);
-}
-.tree-collapsed-hint {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  align-self: center;
-  font-size: 11px;
-  color: rgba(200, 155, 60, 0.4);
-  letter-spacing: 2px;
-  border: 1px dashed rgba(200, 155, 60, 0.15);
-  border-radius: 8px;
-  padding: 8px;
-  min-height: 40px;
-}
-.armor-collapsed-hint {
-  grid-column: 2 / -1;
-}
-
-.tree-info img {
-  width: 80px;
-  height: 80px;
-  object-fit: contain;
-  filter: drop-shadow(0 0 6px rgba(255, 200, 100, 0.3));
-}
-
-.tree-info p {
-  font-size: 11px;
-  font-weight: bold;
-  color: #c89b3c;
-  text-align: center;
-  letter-spacing: 0.5px;
-  margin: 0;
 }
 
 /* SET BONUS COLUMN */
@@ -920,52 +1835,75 @@ const isCollapsed = (key) => !openSets.value.has(key)
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px 10px;
-  border-right: 1px solid rgba(200, 155, 60, 0.15);
+  padding: 0 0 4px;
 }
 
-/* SET BONUS BAR */
+/* SET BONUS BAR — ป้ายทองเหลืองสลักไว้
+   เดิมใช้ opacity: 0.45 บอกสถานะ "ยังไม่ครบชุด" ซึ่งหรี่ทั้งกล่องจนอ่านไม่ออก
+   ตอนนี้บอกสถานะด้วยป้ายกับสีขอบแทน ตัวหนังสือคมเต็มทั้งสองสถานะ */
 .set-bonus-bar {
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: rgba(20, 14, 6, 0.8);
-  border: 1px solid rgba(124, 90, 43, 0.35);
+  padding: 11px 13px;
+  border-radius: 2px;
+  background: linear-gradient(170deg, #241d17, #16110d);
+  border: 1px solid rgba(226, 200, 150, 0.2);
+  border-left: 3px solid rgba(226, 200, 150, 0.28);
+  box-shadow: inset 0 1px 0 rgba(240, 220, 180, 0.06), 0 3px 10px rgba(0, 0, 0, 0.55);
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  opacity: 0.4;
+  gap: 5px;
   width: 100%;
   transition: 0.3s;
 }
 
 .set-bonus-bar.unlocked {
-  border-color: #c89b3c;
-  background: rgba(60, 40, 10, 0.4);
-  box-shadow: 0 0 10px rgba(200, 155, 60, 0.25);
-  opacity: 1;
+  border-color: #6b4f1c;
+  border-left-color: #c89b3c;
+  background: linear-gradient(170deg, #3d3524, #211a11);
+  box-shadow:
+    inset 0 1px 0 rgba(255,220,160,0.18),
+    0 0 16px rgba(160, 110, 40, 0.25),
+    0 3px 10px rgba(0,0,0,0.55);
+}
+
+.set-bonus-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .set-bonus-label {
-  font-size: 8px;
+  font-size: 9px;
   font-weight: bold;
-  color: #7c5a2b;
+  color: #b08c4e;
   text-transform: uppercase;
   letter-spacing: 2px;
 }
 
-.set-bonus-bar.unlocked .set-bonus-label { color: #c89b3c; }
+.set-bonus-bar.unlocked .set-bonus-label { color: #ffd27a; }
+
+.set-bonus-state {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: #96866a;
+  white-space: nowrap;
+}
+.set-bonus-bar.unlocked .set-bonus-state { color: #8fe0aa; }
 
 .set-bonus-name {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: bold;
-  color: #f0ddb0;
+  color: #ded0b0;
 }
+.set-bonus-bar.unlocked .set-bonus-name { color: #ffe7bb; }
 
 .set-bonus-desc {
-  font-size: 10px;
-  color: #a88040;
-  line-height: 1.5;
+  font-size: 11px;
+  color: #b3a184;
+  line-height: 1.65;
 }
+.set-bonus-bar.unlocked .set-bonus-desc { color: #d2bd97; }
 
 /* NODE AREA */
 .tree-nodes {
@@ -974,43 +1912,84 @@ const isCollapsed = (key) => !openSets.value.has(key)
   justify-content: center;
   flex-wrap: wrap;
   gap: 8px;
-  padding-left: 12px;
-  padding-top: 18px;
+  padding-top: 14px;
   overflow: visible;
 }
 
-/* NODE WRAPPER */
+/* NODE WRAPPER — วางลงโต๊ะทีละชิ้นตามลำดับขั้นการตี */
 .node-wrapper {
   display: flex;
   align-items: flex-start;
   overflow: visible;
+  animation: node-place 0.42s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 0.09s + 0.1s);
+}
+@keyframes node-place {
+  0%   { opacity: 0; transform: translateY(16px) scale(0.95); }
+  100% { opacity: 1; transform: none; }
+}
+/* เก็บงานออกจากโต๊ะทีละชิ้นตอนดับเตา */
+.forge-bench.is-closing .node-wrapper {
+  animation: node-lift 0.3s ease-in both;
+  animation-delay: calc(var(--i, 0) * 0.05s);
+}
+@keyframes node-lift {
+  0%   { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(-12px) scale(0.93); }
+}
+.forge-bench.is-closing .bench-head { animation: bench-head-out 0.34s ease-in both; }
+@keyframes bench-head-out {
+  0%   { opacity: 1; }
+  100% { opacity: 0.15; }
 }
 
-/* NODE CARD */
+/* NODE CARD — แผ่นเหล็กตีขึ้นรูป ตอกหมุดสี่มุม */
 .node-card {
   width: 200px;
-  padding: 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(124, 90, 43, 0.6);
-  background: linear-gradient(160deg, rgba(28, 20, 10, 0.9), rgba(14, 10, 5, 0.95));
+  padding: 12px 10px;
+  /* มุมไม่เท่ากัน — ของตีมือไม่มีทางเนี้ยบเท่ากันทั้งสี่มุม */
+  border-radius: 3px 2px 4px 2px;
+  border: 2px solid #0f0b08;
+  background:
+    var(--grain),
+    /* คราบสนิมที่มุม */
+    radial-gradient(ellipse 40px 26px at 8% 92%, rgba(132, 64, 22, 0.26), transparent 74%),
+    radial-gradient(ellipse 30px 34px at 96% 14%, rgba(114, 54, 18, 0.2), transparent 76%),
+    radial-gradient(circle at 9px 9px, rgba(226,196,142,0.3) 0 1.8px, transparent 2.4px),
+    radial-gradient(circle at calc(100% - 9px) 9px, rgba(226,196,142,0.3) 0 1.8px, transparent 2.4px),
+    radial-gradient(circle at 9px calc(100% - 9px), rgba(226,196,142,0.3) 0 1.8px, transparent 2.4px),
+    radial-gradient(circle at calc(100% - 9px) calc(100% - 9px), rgba(226,196,142,0.3) 0 1.8px, transparent 2.4px),
+    /* รอยค้อนบนผิวเหล็ก */
+    radial-gradient(ellipse 60% 30% at 30% 20%, rgba(240,220,180,0.06), transparent 70%),
+    radial-gradient(ellipse 50% 25% at 72% 62%, rgba(0,0,0,0.2), transparent 70%),
+    linear-gradient(168deg, #565043 0%, #423b31 42%, #2c2822 100%);
+  /* ยกขึ้นจากพื้นด้วยเงาจริง ไม่ใช่แค่ขอบ */
+  box-shadow:
+    inset 0 1px 0 rgba(240,220,180,0.14),
+    inset 0 -8px 16px rgba(0,0,0,0.4),
+    0 5px 14px rgba(0,0,0,0.7);
   text-align: center;
   cursor: pointer;
   transition: 0.18s;
 }
 
 .node-card:hover {
-  border-color: #a88040;
-  box-shadow: 0 0 12px rgba(200, 155, 60, 0.3);
-  transform: translateY(-2px);
+  border-color: #2d251c;
+  box-shadow:
+    inset 0 1px 0 rgba(240,220,180,0.2),
+    inset 0 -8px 16px rgba(0,0,0,0.32),
+    0 10px 22px rgba(0,0,0,0.75);
+  transform: translateY(-3px);
 }
 
-/* EQUIPPED */
+/* EQUIPPED — ตีเสร็จแล้ว ชุบทองเหลืองไว้ */
 .node-card.equipped {
-  border: 2px solid #c89b3c;
+  border-color: #6b4f1c;
   box-shadow:
-    0 0 16px rgba(200, 155, 60, 0.5),
-    inset 0 0 10px rgba(200, 155, 60, 0.08);
-  background: linear-gradient(160deg, rgba(50, 35, 12, 0.9), rgba(25, 18, 6, 0.95));
+    inset 0 1px 0 rgba(255,230,180,0.28),
+    inset 0 -6px 14px rgba(0,0,0,0.4),
+    0 0 14px rgba(200, 155, 60, 0.32),
+    0 2px 8px rgba(0,0,0,0.5);
 }
 
 /* LOCKED */
@@ -1024,10 +2003,36 @@ const isCollapsed = (key) => !openSets.value.has(key)
   box-shadow: none;
 }
 
-/* CRAFTABLE */
+/* CRAFTABLE — เหล็กร้อนคาเตา พร้อมลงค้อน */
 .node-card.craftable {
-  border: 2px solid #00e5b8;
-  box-shadow: 0 0 10px rgba(0, 229, 184, 0.4);
+  border-color: #5e2f0d;
+  background:
+    var(--grain),
+    radial-gradient(ellipse 40px 26px at 8% 92%, rgba(150, 68, 20, 0.28), transparent 74%),
+    radial-gradient(ellipse 30px 34px at 96% 14%, rgba(122, 56, 16, 0.22), transparent 76%),
+    radial-gradient(circle at 9px 9px, rgba(255,224,180,0.34) 0 1.8px, transparent 2.4px),
+    radial-gradient(circle at calc(100% - 9px) 9px, rgba(255,224,180,0.34) 0 1.8px, transparent 2.4px),
+    radial-gradient(circle at 9px calc(100% - 9px), rgba(255,224,180,0.34) 0 1.8px, transparent 2.4px),
+    radial-gradient(circle at calc(100% - 9px) calc(100% - 9px), rgba(255,224,180,0.34) 0 1.8px, transparent 2.4px),
+    radial-gradient(ellipse 90% 70% at 50% 118%, rgba(185, 84, 18, 0.42) 0%, transparent 70%),
+    linear-gradient(168deg, #52402f 0%, #3f2f21 42%, #2b2018 100%);
+  animation: forge-heat 3.2s ease-in-out infinite;
+}
+@keyframes forge-heat {
+  0%, 100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255,224,180,0.2),
+      inset 0 -10px 20px rgba(155, 62, 10, 0.28),
+      0 0 9px rgba(170, 80, 18, 0.28),
+      0 5px 14px rgba(0,0,0,0.7);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgba(255,224,180,0.28),
+      inset 0 -10px 22px rgba(185, 78, 12, 0.42),
+      0 0 16px rgba(200, 96, 24, 0.42),
+      0 5px 14px rgba(0,0,0,0.7);
+  }
 }
 
 /* RARITY ICON */
@@ -1045,11 +2050,11 @@ const isCollapsed = (key) => !openSets.value.has(key)
   line-height: 1.3;
 }
 
-/* CONNECTING LINE */
+/* CONNECTING LINE — เส้นเหล็กเชื่อมขั้นการตี */
 .line {
   width: 40px;
   height: 2px;
-  background: linear-gradient(to right, #c89b3c, rgba(124, 90, 43, 0.4));
+  background: linear-gradient(to right, #8a7a5f, rgba(90, 78, 58, 0.4));
   margin: 0 4px;
   flex-shrink: 0;
   align-self: center;
@@ -1181,16 +2186,26 @@ const isCollapsed = (key) => !openSets.value.has(key)
 /* ══════════════════════════════════════════
    CRAFTING BOX
 ══════════════════════════════════════════ */
+/* ใบสูตร — กระดาษเปื้อนเขม่า ขอบเหลืองจากความร้อน */
 .crafting-box {
   margin-top: 6px;
   padding: 8px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  border-radius: 8px;
-  border: 1px solid rgba(124, 90, 43, 0.3);
-  background: rgba(8, 6, 3, 0.7);
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.8);
+  gap: 4px;
+  border-radius: 2px 3px 1px 3px;
+  border: 1px solid #ab9564;
+  color: #3a2c18;
+  background:
+    var(--grain),
+    /* คราบนิ้วมือเปื้อนเขม่า */
+    radial-gradient(ellipse 34px 20px at 88% 12%, rgba(90, 66, 32, 0.26), transparent 72%),
+    radial-gradient(ellipse 26px 30px at 6% 72%, rgba(76, 54, 26, 0.2), transparent 74%),
+    /* ขอบไหม้จากไอเตา */
+    radial-gradient(ellipse 120% 40% at 50% 108%, rgba(126, 78, 30, 0.3), transparent 70%),
+    linear-gradient(172deg, #e9dcbc, #d6c7a2);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5), inset 0 0 18px rgba(130, 100, 55, 0.2);
+  text-align: left;
 }
 
 /* MATERIAL ROW */
@@ -1199,8 +2214,8 @@ const isCollapsed = (key) => !openSets.value.has(key)
   align-items: center;
   gap: 8px;
   padding: 3px 6px;
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.02);
+  border-radius: 2px;
+  background: rgba(150, 120, 70, 0.12);
 }
 
 .material img {
@@ -1220,18 +2235,21 @@ const isCollapsed = (key) => !openSets.value.has(key)
 
 .mat-name {
   font-size: 10px;
-  color: #c89b3c;
+  color: #4a3a22;
 }
 
 .mat-count {
   font-size: 10px;
   font-weight: bold;
-  color: #7c5a2b;
+  color: #7a6238;
   flex-shrink: 0;
 }
 
-.mat-count.not-enough { color: #e05050; }
-.mat-count.enough { color: #5ab85a; }
+.mat-count.not-enough { color: #a3301f; }
+.mat-count.enough { color: #1f6b45; }
+
+/* label ของกล่อง ➕ / 🗑️ ก็อยู่บนกระดาษเหมือนกัน */
+.crafting-box label { color: #7a6238; font-size: 11px; }
 
 /* ══════════════════════════════════════════
    PIECE ABILITY
@@ -1239,9 +2257,11 @@ const isCollapsed = (key) => !openSets.value.has(key)
 .ability-tag {
   margin-top: 7px;
   padding: 6px 8px;
-  border-radius: 6px;
-  background: rgba(80, 50, 150, 0.15);
-  border: 1px solid rgba(150, 100, 240, 0.3);
+  border-radius: 3px;
+  background: linear-gradient(170deg, #2c1b38, #211530);
+  border: 1px solid rgba(160, 80, 220, 0.35);
+  border-left: 3px solid #a855f7;
+  box-shadow: inset 0 1px 0 rgba(220, 180, 255, 0.08);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1287,28 +2307,6 @@ const isCollapsed = (key) => !openSets.value.has(key)
    RESPONSIVE — iPad (≤768px)
 ══════════════════════════════════════════ */
 @media (max-width: 1080px) {
-  .tree-line {
-    grid-template-columns: 1fr !important;
-    gap: 10px;
-  }
-
-  .tree-info {
-    flex-direction: row;
-    border-right: none;
-    border-bottom: 1px solid rgba(200, 155, 60, 0.15);
-    padding: 0 0 10px;
-    justify-content: flex-start;
-  }
-
-  .tree-info img { width: 60px; height: 60px; }
-  .tree-info p { text-align: left; font-size: 13px; }
-
-  .set-bonus-col {
-    border-right: none;
-    border-bottom: 1px solid rgba(200, 155, 60, 0.15);
-    padding: 0 0 10px;
-  }
-
   /* Vertical tree layout for weapon and armor */
   .tree-nodes {
     padding-left: 0;
@@ -1344,11 +2342,17 @@ const isCollapsed = (key) => !openSets.value.has(key)
 
   .tab-btn { font-size: 12px; padding: 8px 10px; gap: 5px; }
   .tab-icon { font-size: 12px; }
+  .tab-icon-img { width: 22px; height: 22px; }
 
-  .tree-line { padding: 10px; border-radius: 10px; }
-  .tree-info img { width: 50px; height: 50px; }
+  .tree-line { padding: 10px; }
 
   .node-card { width: min(240px, 100%); }
+
+  .rack-slots { gap: 6px; }
+  .rack-slot { width: 82px; }
+  .rack-icon { width: 38px; height: 38px; }
+  .forge-rack { padding: 12px 8px 14px; border-width: 3px; }
+  .bench-name { font-size: 14px; }
 }
 
 /* ══════════════════════════════════════════
@@ -1384,16 +2388,25 @@ const isCollapsed = (key) => !openSets.value.has(key)
   padding: 16px;
 }
 
+/* กล่องงานบนทั่ง — เหล็กตอกหมุด อาบแสงเตาจากล่าง */
 .im-card {
-  background: linear-gradient(160deg, rgba(22, 16, 8, 0.98), rgba(10, 8, 4, 0.99));
-  border: 1px solid rgba(200, 155, 60, 0.45);
-  border-radius: 14px;
+  border-radius: 3px 2px 4px 2px;
+  border: 3px solid #0f0b08;
+  background:
+    var(--grain),
+    var(--scratch),
+    radial-gradient(ellipse 60px 40px at 8% 88%, rgba(118, 54, 18, 0.26), transparent 74%),
+    radial-gradient(ellipse 46px 50px at 94% 22%, rgba(100, 46, 16, 0.2), transparent 76%),
+    radial-gradient(circle at 12px 12px, rgba(198,164,110,0.26) 0 2px, transparent 2.6px),
+    radial-gradient(circle at calc(100% - 12px) 12px, rgba(198,164,110,0.26) 0 2px, transparent 2.6px),
+    radial-gradient(ellipse 90% 45% at 50% 108%, rgba(165, 76, 16, 0.28) 0%, transparent 72%),
+    linear-gradient(168deg, #372f27 0%, #29221b 45%, #1a1511 100%);
   width: 340px;
   max-width: 100%;
   box-shadow:
-    0 8px 40px rgba(0, 0, 0, 0.9),
-    0 0 30px rgba(200, 155, 60, 0.1),
-    inset 0 0 20px rgba(200, 155, 60, 0.03);
+    inset 0 1px 0 rgba(226,200,150,0.12),
+    0 0 26px rgba(160, 76, 18, 0.14),
+    0 10px 40px rgba(0, 0, 0, 0.9);
   overflow: hidden;
 }
 
@@ -1556,18 +2569,25 @@ const isCollapsed = (key) => !openSets.value.has(key)
 }
 
 .im-btn-craft {
-  border-color: rgba(80, 80, 80, 0.4);
-  background: rgba(40, 40, 40, 0.3);
-  color: #666;
+  border-color: rgba(90, 75, 55, 0.4);
+  background: rgba(30, 24, 16, 0.5);
+  color: #6b5c45;
 }
+/* พร้อมตี — เหล็กเผาไฟ เต้นตามจังหวะสูบลม */
 .im-btn-craft.im-craft-ready {
-  border-color: rgba(0, 229, 184, 0.6);
-  background: rgba(0, 229, 184, 0.08);
-  color: #00e5b8;
-  box-shadow: 0 0 10px rgba(0, 229, 184, 0.2);
+  border-color: #5e2f0d;
+  background: linear-gradient(to bottom, #c4913f 0%, #a36520 45%, #6e3a10 100%);
+  color: #24120a;
+  font-weight: bold;
+  text-shadow: 0 1px 0 rgba(255, 220, 165, 0.3);
+  animation: craft-ready-glow 3s ease-in-out infinite;
+}
+@keyframes craft-ready-glow {
+  0%, 100% { box-shadow: inset 0 1px 0 rgba(255,224,170,0.35), 0 0 9px rgba(170,85,20,0.3); }
+  50%      { box-shadow: inset 0 1px 0 rgba(255,224,170,0.45), 0 0 18px rgba(200,100,26,0.5); }
 }
 .im-btn-craft.im-craft-ready:hover {
-  background: rgba(0, 229, 184, 0.15);
+  background: linear-gradient(to bottom, #d8a44c 0%, #b87527 45%, #82460f 100%);
 }
 .im-btn-craft:disabled { cursor: not-allowed; }
 
@@ -1781,14 +2801,21 @@ const isCollapsed = (key) => !openSets.value.has(key)
 }
 
 /* Status bar */
+/* ใบสั่งงานหนีบไว้บนแผ่นเหล็ก */
 .wl-status-bar {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  background: rgba(200, 155, 60, 0.06);
-  border: 1px solid rgba(200, 155, 60, 0.2);
-  border-radius: 8px;
+  border-radius: 2px;
+  border: 1px solid #0f0b08;
+  border-left: 3px solid #a36520;
+  background:
+    var(--grain),
+    var(--scratch),
+    radial-gradient(circle at 10px 50%, rgba(198,164,110,0.3) 0 1.8px, transparent 2.4px),
+    linear-gradient(170deg, #3a322a, #2a231c 50%, #1e1813);
+  box-shadow: inset 0 1px 0 rgba(226,200,150,0.11), 0 2px 6px rgba(0,0,0,0.45);
   flex-wrap: wrap;
 }
 
@@ -1818,13 +2845,15 @@ const isCollapsed = (key) => !openSets.value.has(key)
 }
 
 .wl-chip-weapon {
-  background: rgba(60, 100, 200, 0.15);
-  border: 1px solid rgba(60, 100, 200, 0.3);
+  background: linear-gradient(170deg, #1e2738, #151b26);
+  border: 1px solid rgba(90, 140, 220, 0.45);
+  border-radius: 3px;
 }
 
 .wl-chip-armor {
-  background: rgba(200, 60, 60, 0.15);
-  border: 1px solid rgba(200, 60, 60, 0.3);
+  background: linear-gradient(170deg, #38201c, #261512);
+  border: 1px solid rgba(200, 90, 70, 0.45);
+  border-radius: 3px;
 }
 
 .wl-chip-img {
@@ -1844,7 +2873,7 @@ const isCollapsed = (key) => !openSets.value.has(key)
 .wl-chip-remove {
   background: none;
   border: none;
-  color: #7c5a2b;
+  color: #a88040;
   cursor: pointer;
   font-size: 10px;
   padding: 0 2px;
@@ -1856,7 +2885,48 @@ const isCollapsed = (key) => !openSets.value.has(key)
 
 .wl-status-count {
   font-size: 11px;
-  color: #7c5a2b;
+  color: #a88040;
   white-space: nowrap;
+}
+
+/* ── ตัวหนังสือใน modal: พื้นเปลี่ยนเป็นเหล็กแล้ว โทนทองเดิมจึงหม่น ──
+   วางท้ายไฟล์เพื่อให้ชนะกฎเดิมที่อยู่ด้านบน */
+.im-header { border-bottom-color: rgba(226, 200, 150, 0.12); }
+.im-name { color: #f0e2c6; }
+.im-type-badge { color: #9b8a6d; }
+.im-close { color: #7d6f57; }
+.im-close:hover { color: #f0e2c6; }
+.im-section-label { color: #9b8a6d; }
+.im-mat-name { color: #c9b895; }
+.im-mat-img { background: rgba(0, 0, 0, 0.35); }
+.im-btn-hint { color: #7d6f57; }
+.im-materials { border-bottom-color: rgba(226, 200, 150, 0.1); }
+.im-btn-wl {
+  border-color: rgba(226, 200, 150, 0.22);
+  background: linear-gradient(170deg, #3a322a, #221c16);
+  color: #c1ae8c;
+}
+.im-btn-wl:hover:not(:disabled) {
+  border-color: rgba(226, 200, 150, 0.4);
+  background: linear-gradient(170deg, #4a3f33, #2b241c);
+  color: #f0e2c6;
+}
+
+/* ไฟเตากับสะเก็ดไฟเป็นแค่บรรยากาศ — ปิดให้คนที่ขอลดการเคลื่อนไหว */
+@media (prefers-reduced-motion: reduce) {
+  .forge-ember,
+  .ig-spark,
+  .ig-smoke { display: none; }
+  .node-card.craftable,
+  .im-btn-craft.im-craft-ready,
+  .rack-badge,
+  .forge-coals,
+  .forge-bench,
+  .forge-igniting,
+  .node-wrapper,
+  .ig-flame,
+  .ig-hearth::after { animation: none; }
+  /* JS ข้ามช่วงจุดเตาให้อยู่แล้ว นี่กันไว้เผื่อ state ค้าง */
+  .ig-flame, .ig-hearth::after { opacity: 1; }
 }
 </style>

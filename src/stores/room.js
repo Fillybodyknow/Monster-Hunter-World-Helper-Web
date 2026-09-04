@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { isFirebaseConnected } from '@/services/firebase'
-import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, pushDialogDice, clearDialogDice, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds, pushShuffleSignal, pushActivationCount, pushOutcomeSignal, pushManualOutcome, pushRewardDiceModifiers, pushQuestMode, pushHqVote, clearHqVotes, pushHqCurrent, pushHqDoneList, pushHqReady, clearHqState, updateHunterProfile, publishLobby, updateLobby, removeLobby, listenLobbies, setRoomPassword, getRoomPassword } from '@/services/roomService'
+import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, pushDialogDice, clearDialogDice, pushDiceResult, clearDiceResults, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds, pushShuffleSignal, pushActivationCount, pushOutcomeSignal, pushManualOutcome, pushRewardDiceModifiers, pushQuestMode, pushHqVote, clearHqVotes, pushHqCurrent, pushHqDoneList, pushHqReady, clearHqState, updateHunterProfile, publishLobby, updateLobby, removeLobby, listenLobbies, setRoomPassword, getRoomPassword } from '@/services/roomService'
 
 export const useRoomStore = defineStore('room', () => {
   const roomCode = ref(null)
@@ -25,15 +25,6 @@ export const useRoomStore = defineStore('room', () => {
       counts[id] = (counts[id] || 0) + 1
     })
     return counts
-  })
-  const votersByAction = computed(() => {
-    const map = {}
-    Object.entries(dialogVotes.value).forEach(([hunterId, actionId]) => {
-      if (!map[actionId]) map[actionId] = []
-      const h = hunters.value.find((h) => String(h.hunter_id) === String(hunterId))
-      if (h) map[actionId].push(h.hunter_name)
-    })
-    return map
   })
   const myVote = computed(() => dialogVotes.value[myHunterId.value] ?? null)
   const syncedDialogId = computed(() => roomData.value?.currentDialog ?? null)
@@ -69,6 +60,7 @@ export const useRoomStore = defineStore('room', () => {
   const hostConnected = computed(() => roomData.value?.hostConnected !== false)
   const myDialogCounts = computed(() => roomData.value?.dialogCounts?.[myHunterId.value] ?? null)
   const dialogDice = computed(() => roomData.value?.dialogDice ?? {})
+  const diceResults = computed(() => roomData.value?.diceResults ?? {})
 
   // ── Lobby Board ──────────────────────────────────────────
   const lobbies = ref({})
@@ -193,8 +185,8 @@ export const useRoomStore = defineStore('room', () => {
     return code
   }
 
-  const join = async (code, hunter) => {
-    const roomSnap = await joinRoom(code, hunter)
+  const join = async (code, hunter, validate) => {
+    const roomSnap = await joinRoom(code, hunter, validate)
     roomCode.value = code
     myHunterId.value = hunter.hunter_id
     _listen(code)
@@ -214,6 +206,8 @@ export const useRoomStore = defineStore('room', () => {
     // rejoin ใช้ record เดิม — เขียน day/อาวุธล่าสุดทับ ไม่งั้นการ์ดจะโชว์ข้อมูลเก่า
     updateHunterProfile(code, hunter).catch(() => {})
     joinSignal.value++
+    // สภาพห้อง ณ ตอนเข้า — ผู้เรียกใช้ดู questInfo ได้เลยโดยไม่ต้องรอ listener
+    return roomSnap
   }
 
   const kick = async (hunterId) => {
@@ -480,6 +474,16 @@ export const useRoomStore = defineStore('room', () => {
     return clearDialogDice(roomCode.value)
   }
 
+  const setMyDiceResult = (key, result) => {
+    if (!roomCode.value || !myHunterId.value) return
+    return pushDiceResult(roomCode.value, key, myHunterId.value, result)
+  }
+
+  const clearDiceResultsAll = () => {
+    if (!roomCode.value) return
+    return clearDiceResults(roomCode.value)
+  }
+
   const clearDialogCounts = () => {
     if (!roomCode.value) return
     return clearAllDialogCounts(roomCode.value)
@@ -544,7 +548,7 @@ export const useRoomStore = defineStore('room', () => {
     roomCode, roomData, isHost, myHunterId,
     hunters, hunterCount, inRoom, gameState,
     allReady, questStartAt, questInfo, myHunter, amReady,
-    dialogVotes, votesByAction, votersByAction, myVote, syncedDialogId,
+    dialogVotes, votesByAction, myVote, syncedDialogId,
     proceedVotes, allProceeded, myProceedVoted,
     syncedPendingActionId,
     huntState, behaviorDeckState, hostConnected, partyDice, partyRewards, tradePool, myDialogCounts, dialogDice, lobbies, lobbyList, lobbyPosted,
@@ -560,7 +564,7 @@ export const useRoomStore = defineStore('room', () => {
     joinSignal, savedRoomCode, clearSavedRoom,
     reregisterHostConnected,
     syncHuntState, voteOutcome, unvoteOutcome, clearOutcome,
-    triggerShuffle: () => roomCode.value ? pushShuffleSignal(roomCode.value) : undefined,
+    triggerShuffle: (kind) => roomCode.value ? pushShuffleSignal(roomCode.value, kind) : undefined,
     shuffleSignal,
     activationCount,
     syncActivationCount: (count) => roomCode.value ? pushActivationCount(roomCode.value, count) : undefined,
@@ -579,6 +583,7 @@ export const useRoomStore = defineStore('room', () => {
     pushMyRewards, clearAllPartyRewards,
     addToTradePool, removeFromTradePool, clearTrade,
     setMyDialogCounts, clearDialogCounts, setDialogDice, clearDialogDiceAll,
+    diceResults, setMyDiceResult, clearDiceResultsAll,
     startLobbyBrowse, stopLobbyBrowse, postLobby, syncLobbyMembers, closeLobby, verifyLobbyPassword, syncMyProfile,
     voteAction, clearActionVote, kick, reset,
     hqVotes, hqState, hqVoteResult, hqVoteTied, allHqReady,

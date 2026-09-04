@@ -91,7 +91,9 @@ export const createRoom = async (hunter) => {
 }
 
 // ── Join Room ────────────────────────────────────────────
-export const joinRoom = async (code, hunter) => {
+// validate(room) → คืนข้อความถ้าห้ามเข้า / null ถ้าผ่าน — เช็คก่อนเขียนตัวเองลงห้อง
+// ใช้เฉพาะคนใหม่ คนที่อยู่ในตี้อยู่แล้ว (rejoin) ข้ามเสมอ ไม่งั้นหลุดแล้วกลับเข้าไม่ได้
+export const joinRoom = async (code, hunter, validate) => {
   await authReady()
   const snap = await get(ref(db, `rooms/${code}`))
   if (!snap.exists()) throw new Error('ไม่พบ Room นี้')
@@ -108,6 +110,9 @@ export const joinRoom = async (code, hunter) => {
       .filter(h => h.hunter_id !== hunter.hunter_id)
       .map(h => h.hunter_class_id)
     if (takenClasses.includes(hunter.hunter_class_id)) throw new Error('Class นี้มีผู้เล่นอื่นใช้อยู่แล้วในตี้')
+
+    const blocked = validate?.(room)
+    if (blocked) throw new Error(blocked)
   }
 
   await update(ref(db, `rooms/${code}/hunters/${hunter.hunter_id}`), {
@@ -261,8 +266,8 @@ export const pushActivationCount = (code, count) =>
   set(ref(db, `rooms/${code}/activationCount`), count)
 
 // ── Shuffle Signal ────────────────────────────────────────
-export const pushShuffleSignal = (code) =>
-  set(ref(db, `rooms/${code}/shuffleSignal`), Date.now())
+export const pushShuffleSignal = (code, kind = 'behavior') =>
+  set(ref(db, `rooms/${code}/shuffleSignal`), { at: Date.now(), kind })
 
 // ── Time Card Deck Sync ───────────────────────────────────
 export const pushTimeCards = (code, deckState) =>
@@ -310,6 +315,13 @@ export const pushDialogDice = (code, key, value) =>
 
 export const clearDialogDice = (code) =>
   remove(ref(db, `rooms/${code}/dialogDice`))
+
+// ── ผลทอยรายคน (แบบ "ทุกคนทอยของตัวเอง") — ใช้โชว์ว่าใครได้อะไร ──
+export const pushDiceResult = (code, key, hunterId, result) =>
+  set(ref(db, `rooms/${code}/diceResults/${key}/${hunterId}`), result)
+
+export const clearDiceResults = (code) =>
+  remove(ref(db, `rooms/${code}/diceResults`))
 
 export const pushActionVote = (code, hunterId, action) =>
   set(ref(db, `rooms/${code}/actionVotes/${hunterId}`), action)

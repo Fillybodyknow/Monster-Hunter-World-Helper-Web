@@ -452,6 +452,24 @@ const setEquip = async (item) => {
 /* ══════════════════════════════════════════
    BASE
 ══════════════════════════════════════════ */
+.state-page,
+.swap-overlay {
+  /* พื้นผิวชุดเดียวกับหน้าอื่นในแอป */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='110' height='110'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.6' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='110' height='110' filter='url(%23g)' opacity='0.07'/%3E%3C/svg%3E");
+  --leather:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #2b1f13, #221809 55%, #281d10);
+  --wood-grain:
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0 1px, transparent 1px 6px),
+    repeating-linear-gradient(0deg, rgba(255,216,164,0.035) 0 1px, transparent 1px 11px);
+}
+
 .state-page {
   display: flex;
   flex-direction: column;
@@ -463,18 +481,26 @@ const setEquip = async (item) => {
 /* ══════════════════════════════════════════
    DOSSIER HEADER
 ══════════════════════════════════════════ */
+/* ป้ายทองเหลืองสลักชื่อ ตอกหมุดสองข้าง */
 .dossier-header {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 16px;
-  padding: 12px 0 4px;
+  padding: 12px 18px;
+  border-radius: 2px;
+  border: 1px solid #0f0b08;
+  background:
+    var(--grain),
+    radial-gradient(circle at 12px 50%, rgba(226,196,142,0.3) 0 1.8px, transparent 2.4px),
+    radial-gradient(circle at calc(100% - 12px) 50%, rgba(226,196,142,0.3) 0 1.8px, transparent 2.4px),
+    linear-gradient(170deg, #3d342b 0%, #2c251e 50%, #1e1813 100%);
+  box-shadow: inset 0 1px 0 rgba(240,220,180,0.13), 0 3px 10px rgba(0,0,0,0.55);
 }
 
 .dh-ornament {
-  color: #7c5a2b;
+  color: #a8802e;
   font-size: 14px;
-  opacity: 0.7;
 }
 
 .dh-title-block {
@@ -510,32 +536,37 @@ const setEquip = async (item) => {
 /* ══════════════════════════════════════════
    PANEL
 ══════════════════════════════════════════ */
+/* แผงหนังหุ้ม สันทองเหลืองด้านซ้าย */
 .panel {
   padding: 14px;
-  border-radius: 12px;
-  background: linear-gradient(160deg, rgba(28, 20, 10, 0.9), rgba(16, 12, 6, 0.95));
-  border: 1px solid #7c5a2b;
+  border-radius: 4px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  border-left: 3px solid #7c5a2b;
+  background: var(--grain), var(--leather);
   box-shadow:
-    0 0 10px rgba(0,0,0,0.7),
-    inset 0 0 12px rgba(255, 200, 100, 0.05);
+    inset 0 1px 0 rgba(255, 220, 160, 0.07),
+    0 3px 10px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
   gap: 12px;
+  overflow: hidden;
 }
 
-/* PANEL HEADER */
+/* PANEL HEADER — แถบทองเหลืองเต็มความกว้าง เจาะออกนอก padding ของแผง */
 .panel-header {
-  border-bottom: 1px solid rgba(200, 155, 60, 0.25);
-  padding-bottom: 8px;
-  margin-bottom: 2px;
+  margin: -14px -14px 2px;
+  padding: 9px 14px;
+  background: linear-gradient(to bottom, rgba(200, 155, 60, 0.2), rgba(110, 80, 25, 0.26));
+  border-bottom: 1px solid rgba(60, 42, 10, 0.5);
 }
 
 .ph-label {
   font-size: 10px;
+  font-weight: bold;
   letter-spacing: 3px;
   text-transform: uppercase;
-  color: #c89b3c;
-  text-shadow: 0 0 8px rgba(200, 155, 60, 0.3);
+  color: #f0d9a0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
 }
 
 /* SECTION HEADER */
@@ -543,8 +574,8 @@ const setEquip = async (item) => {
   font-size: 10px;
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: #7c5a2b;
-  border-bottom: 1px solid rgba(124, 90, 43, 0.25);
+  color: #a88040;
+  border-bottom: 1px solid rgba(124, 90, 43, 0.3);
   padding-bottom: 4px;
   margin-top: 2px;
 }
@@ -559,13 +590,16 @@ const setEquip = async (item) => {
   gap: 14px;
 }
 
+/* ตราประจำตัวในวงแหวนทองเหลือง */
 .hunter-portrait {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px;
+  padding: 10px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(60, 40, 15, 0.5) 0%, transparent 70%);
+  border: 2px solid rgba(200, 155, 60, 0.4);
+  background: radial-gradient(circle at 50% 40%, rgba(90, 60, 20, 0.55) 0%, rgba(0, 0, 0, 0.45) 72%);
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.7), 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .class-img {
@@ -587,10 +621,11 @@ const setEquip = async (item) => {
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px;
-  border-radius: 6px;
-  background: rgba(10, 8, 4, 0.5);
-  border: 1px solid rgba(124, 90, 43, 0.3);
+  padding: 7px 9px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(0, 0, 0, 0.45);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5), inset 0 -1px 0 rgba(232, 198, 152, 0.06);
 }
 
 .ptag-l {
@@ -607,9 +642,14 @@ const setEquip = async (item) => {
 }
 
 .day-badge {
-  color: #ffd27a;
+  color: #2a1d06;
   font-weight: bold;
-  text-shadow: 0 0 6px rgba(255, 200, 80, 0.4);
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, #f0d9a0, #c9a227 60%, #8a6a18);
+  border: 1px solid rgba(60, 42, 10, 0.55);
+  text-shadow: 0 1px 0 rgba(255, 230, 180, 0.4);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
 }
 
 /* ══════════════════════════════════════════
@@ -621,33 +661,43 @@ const setEquip = async (item) => {
   gap: 8px;
 }
 
+/* แผ่นป้ายไม้แขวนของแต่ละช่อง */
 .equip-card {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 5px;
   padding: 10px 8px;
-  border-radius: 10px;
-  background: rgba(10, 8, 4, 0.6);
-  border: 1px solid rgba(124, 90, 43, 0.4);
+  border-radius: 3px 2px 3px 2px;
+  border: 2px solid #221a10;
+  background:
+    var(--grain),
+    var(--wood-grain),
+    linear-gradient(172deg, #513720 0%, #3f2a16 55%, #2e1f11 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(232, 198, 152, 0.08),
+    inset 0 -6px 14px rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.45);
   position: relative;
+  cursor: pointer;
   transition: 0.2s;
 }
 
-.equip-card {
-  cursor: pointer;
-}
-
 .equip-card:hover {
-  border-color: #c89b3c;
-  box-shadow: inset 0 0 10px rgba(255, 200, 100, 0.1);
+  border-color: #3d2c19;
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(232, 198, 152, 0.14),
+    inset 0 -6px 14px rgba(0, 0, 0, 0.32),
+    0 6px 16px rgba(0, 0, 0, 0.55);
 }
 
 .equip-slot-badge {
   font-size: 8px;
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: #7c5a2b;
+  color: #c9ac7e;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
 .equip-imgs {
@@ -674,9 +724,10 @@ const setEquip = async (item) => {
 .equip-name {
   margin: 0;
   font-size: 10px;
-  color: #c89b3c;
+  color: #f0dcb4;
   text-align: center;
   line-height: 1.3;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
 }
 
 .equip-details {
@@ -759,9 +810,9 @@ const setEquip = async (item) => {
 .equip-ability-chip {
   font-size: 9px;
   color: #ffd27a;
-  background: rgba(60, 40, 0, 0.6);
-  border: 1px solid rgba(200, 155, 60, 0.35);
-  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(200, 155, 60, 0.4);
+  border-radius: 2px;
   padding: 2px 5px;
   white-space: nowrap;
   overflow: hidden;
@@ -777,32 +828,35 @@ const setEquip = async (item) => {
   gap: 6px;
 }
 
+/* บันทึกกระดาษเสียบไว้ในแฟ้ม */
 .ability-card {
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(10, 8, 4, 0.6);
-  border: 1px solid rgba(124, 90, 43, 0.35);
-  border-left: 2px solid #c89b3c;
+  padding: 9px 11px;
+  border-radius: 2px 3px 1px 3px;
+  color: #3a2c18;
+  background: linear-gradient(172deg, #ece1c4, #ddd0ae);
+  border: 1px solid #ab9564;
+  border-left: 3px solid #9c4a15;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), inset 0 0 16px rgba(130, 100, 55, 0.16);
 }
 
 .ability-name {
   margin: 0;
   font-size: 12px;
-  color: #ffd27a;
+  color: #2f2312;
   font-weight: bold;
 }
 
 .ability-desc {
   margin: 3px 0 0;
   font-size: 11px;
-  color: #a88040;
-  line-height: 1.4;
+  color: #4a3a22;
+  line-height: 1.5;
 }
 
 .no-ability {
   text-align: center;
   font-size: 12px;
-  color: #5a3d1f;
+  color: #7d6f57;
   font-style: italic;
 }
 
@@ -945,9 +999,10 @@ const setEquip = async (item) => {
   flex-direction: column;
   gap: 3px;
   padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(10, 8, 4, 0.5);
-  border: 1px solid rgba(124, 90, 43, 0.3);
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(0, 0, 0, 0.45);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
   text-align: center;
 }
 
@@ -955,7 +1010,7 @@ const setEquip = async (item) => {
   font-size: 8px;
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: #7c5a2b;
+  color: #a88040;
 }
 
 .dc-val {
@@ -963,8 +1018,8 @@ const setEquip = async (item) => {
   color: #f0ddb0;
 }
 
-.remove-chip { border-left: 2px solid #8b1a1a; }
-.add-chip { border-left: 2px solid #1a6b1a; }
+.remove-chip { border-left: 3px solid #8c2f22; }
+.add-chip { border-left: 3px solid #2f7d4f; }
 
 /* ══════════════════════════════════════════
    RESPONSIVE — iPad (≤768px)
@@ -1058,17 +1113,7 @@ const setEquip = async (item) => {
 }
 
 /* PANEL */
-.panel {
-  padding: 15px;
-  border-radius: 12px;
-
-  background: rgba(20, 15, 10, 0.85);
-  border: 2px solid #7c5a2b;
-
-  box-shadow:
-    0 0 10px rgba(0, 0, 0, 0.8),
-    inset 0 0 10px rgba(255, 200, 100, 0.1);
-}
+/* (กฎ .panel ที่เคยซ้ำตรงนี้ถูกยุบไปรวมกับตัวหลักด้านบนแล้ว) */
 
 /* LEFT */
 .class-img {
@@ -1429,9 +1474,12 @@ const setEquip = async (item) => {
 }
 
 .swap-parchment {
-  background: linear-gradient(160deg, rgba(22, 16, 8, 0.98), rgba(10, 8, 4, 0.99));
-  border: 1px solid rgba(200, 155, 60, 0.4);
-  border-radius: 14px;
+  background:
+    var(--grain),
+    var(--wood-grain),
+    linear-gradient(172deg, #4a3320 0%, #3a2716 55%, #2a1c10 100%);
+  border: 3px solid #221a10;
+  border-radius: 3px 2px 4px 2px;
   width: 420px;
   max-width: 100%;
   max-height: 80vh;
@@ -1445,8 +1493,10 @@ const setEquip = async (item) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
-  border-bottom: 1px solid rgba(200, 155, 60, 0.15);
+  padding: 12px 16px;
+  background: linear-gradient(to bottom, rgba(200, 155, 60, 0.2), rgba(110, 80, 25, 0.26));
+  border-bottom: 2px solid rgba(0, 0, 0, 0.5);
+  box-shadow: 0 1px 0 rgba(232, 198, 152, 0.07);
   flex-shrink: 0;
 }
 
@@ -1456,7 +1506,7 @@ const setEquip = async (item) => {
   gap: 10px;
 }
 
-.swap-ornament { font-size: 10px; color: #7c5a2b; }
+.swap-ornament { font-size: 10px; color: #6b4f1c; }
 
 .swap-title {
   margin: 0;
@@ -1467,13 +1517,15 @@ const setEquip = async (item) => {
 }
 
 .btn-swap-close {
-  background: none;
-  border: none;
-  color: #5a3d1f;
-  font-size: 16px;
+  border-radius: 2px;
+  border: 1px solid rgba(60, 42, 10, 0.5);
+  background: rgba(0, 0, 0, 0.25);
+  color: #f0d9a0;
+  font-size: 14px;
+  font-family: inherit;
   cursor: pointer;
-  padding: 2px 6px;
-  transition: color 0.15s;
+  padding: 4px 9px;
+  transition: 0.15s;
 }
 .btn-swap-close:hover { color: #cc4444; }
 
@@ -1503,17 +1555,22 @@ const setEquip = async (item) => {
   align-items: center;
   gap: 6px;
   padding: 10px 6px;
-  border-radius: 8px;
-  border: 1px solid rgba(124, 90, 43, 0.3);
-  background: rgba(20, 14, 6, 0.8);
+  border-radius: 3px 2px 3px 2px;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  background:
+    var(--grain),
+    linear-gradient(168deg, rgba(0, 0, 0, 0.46), rgba(0, 0, 0, 0.26));
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.6), inset 0 -1px 0 rgba(232, 198, 152, 0.07);
   cursor: pointer;
   transition: all 0.15s;
   text-align: center;
 }
 .swap-modal-card:hover {
-  border-color: #c89b3c;
-  background: rgba(40, 28, 12, 0.9);
-  box-shadow: 0 0 8px rgba(200, 155, 60, 0.2);
+  border-color: rgba(200, 155, 60, 0.55);
+  background:
+    var(--grain),
+    linear-gradient(168deg, rgba(200, 155, 60, 0.14), rgba(0, 0, 0, 0.26));
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 3px 10px rgba(0, 0, 0, 0.5);
 }
 
 .smc-img-wrap {
@@ -1546,8 +1603,9 @@ const setEquip = async (item) => {
 .smc-label {
   margin: 0;
   font-size: 11px;
-  color: #d4b87a;
+  color: #c9b895;
   line-height: 1.3;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
 .smc-details {
