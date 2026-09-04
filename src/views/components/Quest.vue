@@ -20,8 +20,19 @@ import { useRoomStore } from '@/stores/room'
 import CoopLobbyModal from './CoopLobbyModal.vue'
 import HQPhase from './HQPhase.vue'
 import { openCraftLookup } from '@/composables/useCraftLookup'
+import { useSfx } from '@/composables/useSfx'
 
 const room = useRoomStore()
+const sfx = useSfx()
+const SFX_UI = 'assets/sounds/ui'
+// ไฟล์คำรามดังกว่าเสียงอื่นมาก ต้องหรี่ลงไม่ให้กลบเพลง theme ที่เริ่มพร้อมกัน
+// ปรับที่นี่ที่เดียว — 1 = ดังเท่าเสียงอื่น
+// อย่าลดต่ำกว่า ~0.3: ฐาน soundVolume คือ 0.1 อยู่แล้ว ลดมากไปจะเงียบจนไม่ได้ยิน
+const MONSTER_ROAR_GAIN = 0.4
+// หน่วงให้ไปลงพร้อม impact flash สีขาวของ modal (CSS: bi-impact-anim 0.25s 0.45s)
+// ถ้าดังทันทีตอน modal เพิ่งเด้งจะสะดุ้ง เพราะเสียงมาก่อนภาพ
+const MONSTER_ROAR_DELAY_MS = 450
+let _roarTimer = null
 const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 
 // เหรียญ icon class แทนชื่อ hunter — ใช้ในข้อความ "รอ ... " ที่มีหลายจุด
@@ -355,6 +366,30 @@ watch(currentDialogId, (id) => {
   showTrail.value = trailPending.value
   trailPending.value = false
 })
+
+// เสียงฝีเท้าให้ตรงกับรอยเท้าที่ทยอยโผล่ — ดูสูตร --t ใน .trail-step (0.16s + (i-1) * 0.52s)
+// แก้ CSS เมื่อไหร่ต้องแก้ตรงนี้ด้วย
+const TRAIL_STEP_MS = [160, 680, 1200]
+let _trailTimers = []
+const _clearTrailTimers = () => {
+  _trailTimers.forEach(clearTimeout)
+  _trailTimers = []
+}
+
+// ผูกกับ currentDialogId ด้วย ไม่ใช่แค่ showTrail — template ใช้ :key="'steps-' + currentDialogId"
+// ทำให้ animation เล่นใหม่ทุกครั้งที่เปลี่ยนบท ถ้า watch แค่ showTrail บทที่ได้ Token ติดกัน
+// ค่าจะเป็น true → true ไม่ถือว่าเปลี่ยน เสียงจะหายไปทั้งที่ภาพเล่นอยู่
+watch(() => (showTrail.value ? currentDialogId.value : null), (id) => {
+  _clearTrailTimers()
+  if (id == null) return
+  // ไฟล์ยาวกว่าระยะห่างระหว่างก้าว (0.52s) — key เดียวกันให้ก้าวใหม่ตัดก้าวเก่า
+  // จะได้ยินเป็นจังหวะ 3 ก้าวชัด ๆ แทนที่จะเป็นเสียงครืดทับกัน
+  _trailTimers = TRAIL_STEP_MS.map((t) =>
+    setTimeout(() => sfx.playRandom(`${SFX_UI}/footstep`, 3, { key: 'footstep' }), t),
+  )
+})
+
+onUnmounted(_clearTrailTimers)
 
 // ─── HQ Vote ─────────────────────────────────────────────
 const myHqVote = ref(null)  // 'hq' | 'quest' | null
@@ -693,6 +728,24 @@ const startTokenReveal = (onDone) => {
 const battleIntroPhase = ref('enter') // 'enter' | 'show' | 'leave'
 const battleIntroKey = ref(0)
 
+// ── ถ่านคุขอบล่างหน้า Hunting ──
+// ค่าคงที่ทั้งชุด ไม่สุ่ม เพราะสุ่มใหม่ทุก render จะทำให้สะเก็ดไฟกระตุกตอน Vue อัปเดต
+const HUNT_EMBERS = [
+  { x: 8,  delay: 0.0, dur: 6.2, drift: 16, rise: 168, size: 3 },
+  { x: 34, delay: 2.3, dur: 7.1, drift: -13, rise: 196, size: 2 },
+  { x: 52, delay: 4.1, dur: 5.8, drift: 9,  rise: 152, size: 3 },
+  { x: 71, delay: 1.2, dur: 6.7, drift: -19, rise: 184, size: 2 },
+  { x: 91, delay: 3.4, dur: 6.0, drift: 12, rise: 174, size: 2 },
+]
+const huntEmberStyle = (em) => ({
+  '--x': `${em.x}%`,
+  '--sz': `${em.size}px`,
+  '--dur': `${em.dur}s`,
+  '--delay': `${em.delay}s`,
+  '--drift': `${em.drift}px`,
+  '--rise': `${-em.rise}px`,
+})
+
 // ── Dialog BGM — เล่นวนระหว่างอยู่ใน phase 'dialog' ──
 const dialogBgm = ref(null)
 
@@ -712,10 +765,21 @@ const stopDialogBgm = () => {
 }
 
 // ── Monster Theme — เล่นวนตาม monster ที่เจอ ระหว่างอยู่ใน phase 'huntingPanel' ──
-// มี theme เฉพาะบางตัว (ยังไม่ครบทุกมอนสเตอร์) — ตัวที่ไม่มีไฟล์จะไม่มีเพลงเล่น ไม่ fallback เป็นเพลงอื่น
-const MONSTER_THEME_FILES = {
-  1: 'great_jagras.mp3', // Great Jagras
-}
+// กฎ: 2 ตัวแรกของทุกกล่องใช้เพลงเริ่มต้นร่วมกัน ที่เหลือใช้เพลงประจำกล่องนั้น
+// เขียนเป็นกฎแทนที่จะ map ทีละตัว — เพิ่มกล่องใหม่แค่ต่อ 1 บรรทัดใน MONSTER_BOXES
+// ลำดับ monsterIds ต้องเรียงตามลำดับในกล่อง เพราะ 2 ตัวแรกถูกตัดสินจากตำแหน่งในอาร์เรย์
+const BEGIN_THEME = 'begin_monster_battle_theme.mp3'
+const BEGIN_MONSTER_COUNT = 2
+const MONSTER_BOXES = [
+  { theme: 'ancient_forest_battle_theme.mp3', monsterIds: [1, 2, 3, 4, 5] },
+  { theme: 'wildspire_waste_battle_theme.mp3', monsterIds: [6, 7, 8, 9, 10] },
+]
+
+const MONSTER_THEME_FILES = Object.fromEntries(
+  MONSTER_BOXES.flatMap(({ theme, monsterIds }) =>
+    monsterIds.map((id, i) => [id, i < BEGIN_MONSTER_COUNT ? BEGIN_THEME : theme]),
+  ),
+)
 
 const monsterThemeAudio = ref(null)
 
@@ -832,6 +896,11 @@ const _stopAllAudio = () => {
   stopDialogBgm()
   stopMonsterTheme()
   stopOutcomeSound()
+  // component นี้ถูก keep-alive ไว้ สลับแท็บแล้ว onUnmounted ไม่ทำงาน
+  // ต้องเก็บ timer ฝีเท้า/คำราม และ SFX ที่ค้างเองไม่งั้นเสียงจะดังตอนอยู่หน้าอื่น
+  _clearTrailTimers()
+  clearTimeout(_roarTimer)
+  sfx.stopAll()
 }
 onDeactivated(_stopAllAudio)
 onActivated(() => {
@@ -841,6 +910,8 @@ onActivated(() => {
 onUnmounted(_stopAllAudio)
 
 const doAction = (action) => {
+  // เลือก/เปลี่ยนใจได้เรื่อย ๆ ยังไม่ผูกมัด — เสียงเบากว่าตอนยืนยัน
+  sfx.play(`${SFX_UI}/action_select.mp3`, { key: 'action' })
   if (room.inRoom) {
     room.voteForAction(action.action_id)
   } else {
@@ -864,6 +935,11 @@ const _executeDialog = (dialogId) => {
     // ดับก่อนเสมอแม้มอนสเตอร์ตัวนั้นจะยังไม่มีไฟล์ theme ไม่งั้นเพลง gathering จะค้างเล่นต่อไปทั้งการล่า
     stopDialogBgm()
     playMonsterTheme() // เริ่มเพลง theme พร้อม modal "เจอ Monster" เลย
+    // คำรามรอให้ภาพกระแทกก่อน (impact flash ที่ 450ms) ไม่ดังสวนหน้าตอน modal เพิ่งเด้ง
+    clearTimeout(_roarTimer)
+    _roarTimer = setTimeout(() => {
+      sfx.playRandom(`${SFX_UI}/monster_roar`, 4, { gain: MONSTER_ROAR_GAIN, key: 'roar' })
+    }, MONSTER_ROAR_DELAY_MS)
     setTimeout(() => { battleIntroPhase.value = 'show' }, 30)
     setTimeout(() => { battleIntroPhase.value = 'leave' }, 2200)
     setTimeout(() => {
@@ -941,6 +1017,8 @@ const _proceedWithAction = (action) => {
 const confirmAction = () => {
   const action = pendingAction.value
   if (!action) return
+  // ตัดสินใจแล้ว เกิดผลจริง — key เดียวกับตอนเลือกเพื่อตัดหางเสียงเลือกทิ้ง
+  sfx.playRandom(`${SFX_UI}/action_confirm`, 3, { key: 'action' })
   if (room.inRoom) {
     room.voteProceed()
   } else {
@@ -976,6 +1054,27 @@ watch(() => room.syncedPendingActionId, (actionId) => {
     pendingAction.value = action
   }
 })
+
+// Co-op: เสียงตอน "เพื่อน" โหวต — โหวตของตัวเองไม่ต้องดัง (ได้ action_select ไปแล้วตอนกด)
+// เทียบกับ snapshot รอบก่อนแทนที่จะดูแค่จำนวน เพราะ dialogVotes ไหลมาทั้งก้อนจาก Firebase:
+//   - ตอน join/reconnect โหวตเดิมมาพร้อมกันหมด ถ้าไม่กันจะรัวเป็นชุด
+//   - ตอน clearVotes() key หายหมด ต้องไม่นับเป็นการโหวต
+// null = ยังไม่มี baseline (เพิ่งเข้าห้อง) — ต่างจาก {} ที่แปลว่า "โหวตถูกล้างแล้ว รอโหวตรอบใหม่"
+// ความต่างนี้สำคัญ: ถ้าใช้ {} แทน null โหวตแรกของทุกบทสนทนาจะเงียบ
+let _prevVotes = null
+watch(() => room.roomCode, () => { _prevVotes = null })
+
+watch(() => room.dialogVotes, (votes) => {
+  const cur = votes ?? {}
+  if (room.inRoom && _prevVotes !== null) {
+    const changed = Object.entries(cur).some(
+      ([id, actionId]) => String(id) !== String(room.myHunterId) && _prevVotes[id] !== actionId,
+    )
+    // ไม่ใส่ key ให้ซ้อนกันได้ — โหวตพร้อมกันหลายคนแล้วได้ยินหลายเสียงคือข้อมูลที่มีประโยชน์
+    if (changed) sfx.playRandom(`${SFX_UI}/vote_cast`, 3)
+  }
+  _prevVotes = { ...cur }
+}, { deep: true })
 
 // Co-op: wait until ALL hunters voted → find winner or detect tie
 watch(() => room.dialogVotes, (votes) => {
@@ -1655,6 +1754,9 @@ const _playShuffleAnim = (kind = 'behavior') => {
 
   requestAnimationFrame(() => {
     showShuffleAnim.value = true
+    // จุดรวมของทั้งคนสับเองและ guest ที่รับ signal — วางที่นี่ที่เดียวได้ยินครบทุกคน
+    // key กันเสียงซ้อนกรณีสับกอง Behaviour แล้วสับ Time Card ต่อทันที
+    sfx.playRandom(`${SFX_UI}/card_shuffle`, 3, { key: 'shuffle' })
     clearTimeout(_shuffleTimer)
     _shuffleTimer = setTimeout(() => { showShuffleAnim.value = false }, 2000)
   })
@@ -2024,6 +2126,7 @@ const revealTrackToken = (id) => {
   trackTokens.value = trackTokens.value.map((t) =>
     t.id === id ? { ...t, revealed: true } : t,
   )
+  sfx.play(`${SFX_UI}/token_reveal.mp3`, { key: 'token' })
   _pushTokenState()
 }
 
@@ -2666,6 +2769,8 @@ const _processTcRevealQueue = () => {
   tcRevealCurrent.value = tcRevealQueue.value[0]
   tcRevealQueue.value = tcRevealQueue.value.slice(1)
   showTcReveal.value = true
+  // เปิดทีละใบจนหมดคิว — key ให้ใบใหม่ตัดใบเก่า ไม่ให้เสียงซ้อนตอนเปิดรัว
+  sfx.playRandom(`${SFX_UI}/draw_card`, 3, { key: 'draw' })
 }
 
 const dismissTcReveal = () => {
@@ -3345,6 +3450,8 @@ const _pushDialogCounts = () => {
 const addDialogResource = (resource_type_id, item_id) => {
   const key = `${resource_type_id}-${item_id}`
   dialogResourceCounts.value = { ...dialogResourceCounts.value, [key]: (dialogResourceCounts.value[key] ?? 0) + 1 }
+  // ปุ่ม +/− กดรัวได้ไม่จำกัด — key เดียวกันทั้งคู่ ให้ดังทีละเสียงเสมอ
+  sfx.playRandom(`${SFX_UI}/item_pickup`, 3, { key: 'item' })
   _pushDialogCounts()
 }
 
@@ -3353,6 +3460,7 @@ const removeDialogResource = (resource_type_id, item_id) => {
   const cur = dialogResourceCounts.value[key] ?? 0
   if (cur <= 0) return
   dialogResourceCounts.value = { ...dialogResourceCounts.value, [key]: cur - 1 }
+  sfx.playRandom(`${SFX_UI}/item_remove`, 3, { key: 'item' })
   _pushDialogCounts()
 }
 
@@ -3619,6 +3727,10 @@ const _resolveDice = (value) => {
   const row = d.effect.type === 'diceRoll' ? _diceRowFor(d.effect.table, value) : null
   dialogDice.value = { ...d, value, rolling: false, row }
 
+  // จุดรวมของทั้งคนทอยเองและ guest ที่รับผลจาก host — เสียงเต๋าลงเลยดังพร้อมกันทุกคน
+  // key เดียวกับเสียงกลิ้ง = ตัดเสียงกลิ้งทิ้งอัตโนมัติ ไม่ต้องจับเวลาเอง
+  sfx.play(`${SFX_UI}/dice_land.mp3`, { key: 'dice' })
+
   if (d.effect.type === 'diceMonsterDamage') {
     // มอนสเตอร์ยังไม่โผล่ในช่วง dialog — เก็บไว้หักตอนเข้า hunting
     pendingMonsterDiceDamage.value = (pendingMonsterDiceDamage.value ?? 0) + value
@@ -3681,6 +3793,8 @@ const rollDialogDice = () => {
   const d = dialogDice.value
   if (!d || !diceCanRoll.value) return
   dialogDice.value = { ...d, rolling: true }
+  // ดังเฉพาะคนที่เห็นเต๋าหมุนจริง — guest โหมด 'ทอยครั้งเดียว' ข้ามมาที่ผลเลย ไม่ต้องมีเสียงกลิ้ง
+  sfx.play(`${SFX_UI}/dice_roll.mp3`, { key: 'dice' })
   const final = Math.ceil(Math.random() * 6)
 
   let ticks = 0
@@ -7289,6 +7403,15 @@ const openPackDrawer = () => {
         class="float-turn-bar"
         :class="{ 'float-turn-bar-collapsed': floatBarCollapsed }"
       >
+        <!-- ถ่านคุคร่อมขอบบนของแถบ + สะเก็ดไฟลอยขึ้น (แนวเดียวกับเตาเผาหน้า Crafting) -->
+        <div class="float-coals"></div>
+        <span
+          v-for="(em, i) in HUNT_EMBERS"
+          :key="'fem' + i"
+          class="float-ember"
+          :style="huntEmberStyle(em)"
+        ></span>
+
         <div v-if="floatBarCollapsed" class="float-status-label">{{ floatToggleLabel }}</div>
 
         <!-- Content (hidden when collapsed) -->
@@ -11428,6 +11551,61 @@ const openPackDrawer = () => {
   padding-bottom: calc(8px + env(safe-area-inset-bottom));
   transition: transform 0.25s ease;
 }
+/* ── ถ่านคุคร่อมขอบบนของแถบ (ดัดแปลงจาก .forge-coals หน้า Crafting) ──
+   แถบเป็น fixed z-index 700 อยู่แล้ว ไฟเลยเกาะไปกับแถบตอนพับลงด้วยโดยอัตโนมัติ */
+.float-coals {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 40px;
+  /* คร่อมเส้นขอบบน โดยให้ส่วนใหญ่อยู่เหนือเส้น เพราะไฟลุกขึ้นข้างบน */
+  transform: translateY(-62%);
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 30px 18px at 9% 50%, rgba(214, 118, 32, 0.62), transparent 70%),
+    radial-gradient(ellipse 18px 14px at 22% 50%, rgba(150, 58, 14, 0.5), transparent 72%),
+    radial-gradient(ellipse 36px 22px at 38% 50%, rgba(226, 138, 44, 0.66), transparent 68%),
+    radial-gradient(ellipse 20px 16px at 55% 50%, rgba(206, 110, 28, 0.55), transparent 70%),
+    radial-gradient(ellipse 32px 20px at 72% 50%, rgba(232, 146, 50, 0.62), transparent 68%),
+    radial-gradient(ellipse 22px 15px at 88% 50%, rgba(160, 64, 16, 0.5), transparent 72%);
+  filter: blur(4px);
+  animation: float-coals-breathe 5.5s ease-in-out infinite;
+}
+@keyframes float-coals-breathe {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 0.85; }
+}
+
+/* สะเก็ดไฟเริ่มจากขอบบนของแถบแล้วลอยขึ้นไปเหนือแถบ */
+.float-ember {
+  position: absolute;
+  bottom: 100%;
+  left: var(--x, 50%);
+  width: var(--sz, 3px);
+  height: var(--sz, 3px);
+  border-radius: 50%;
+  background: #e0a055;
+  box-shadow: 0 0 5px 1px rgba(200, 105, 30, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  animation: float-ember-rise var(--dur, 6s) ease-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+@keyframes float-ember-rise {
+  0%   { opacity: 0;   transform: translate(0, 0) scale(0.55); }
+  10%  { opacity: 0.75; }
+  38%  { transform: translate(calc(var(--drift, 12px) * 0.75), calc(var(--rise, -180px) * 0.34)) scale(0.9); }
+  64%  { opacity: 0.35; transform: translate(calc(var(--drift, 12px) * 0.25), calc(var(--rise, -180px) * 0.64)) scale(1); }
+  100% { opacity: 0;   transform: translate(var(--drift, 12px), var(--rise, -180px)) scale(1.05); }
+}
+
+/* คนที่ขอลดการเคลื่อนไหว — คงแสงเรืองไว้ แต่หยุดสะเก็ดไฟที่วิ่งตลอดเวลา */
+@media (prefers-reduced-motion: reduce) {
+  .float-coals { animation: none; opacity: 0.7; }
+  .float-ember { display: none; }
+}
+
 .float-status-label {
   position: absolute;
   top: -36px; right: 16px;

@@ -4,8 +4,10 @@ import { useRoomStore } from '@/stores/room'
 import CraftLookupModal from './components/CraftLookupModal.vue'
 import { isFirebaseConnected } from '@/services/firebase'
 import { hunter } from '@/stores/hunter'
+import { useSfx } from '@/composables/useSfx'
 
 const room = useRoomStore()
+const sfx = useSfx()
 
 // ── Notification system ───────────────────────────────────
 let _notifId = 0
@@ -102,19 +104,25 @@ import State from './components/State.vue'
 import Inventory from './components/Inventory.vue'
 import Crafting from './components/Crafting.vue'
 import Setting from './components/Setting.vue'
-import Help from './components/Help.vue'
 const menus = [
   { menu: 'Quest',     label: 'Quest',     thumbnail: 'assets/img/menu_topbar_icon/quest.png' },
   { menu: 'State',     label: 'State',     thumbnail: 'assets/img/menu_topbar_icon/hunter.png' },
   { menu: 'Inventory', label: 'Inventory', thumbnail: 'assets/img/menu_topbar_icon/inv.png' },
   { menu: 'Crafting',  label: 'Crafting',  thumbnail: 'assets/img/menu_topbar_icon/craft.png' },
   { menu: 'Setting',   label: 'Setting',   thumbnail: 'assets/img/menu_topbar_icon/setting.png' },
-  { menu: 'Help',      label: 'คู่มือ',    text: '?' },
 ]
 
-const componentMap = { Quest, State, Inventory, Crafting, Setting, Help }
+const componentMap = { Quest, State, Inventory, Crafting, Setting }
 const currentComponent = computed(() => componentMap[activeMenu.value])
 const activeMenu = ref('Quest')
+
+// เสียงเปลี่ยนเมนู — ผูกกับ watch ไม่ใช่ @click เพื่อให้ดังเฉพาะตอนเมนูเปลี่ยนจริง
+// กดแท็บเดิมซ้ำจะไม่มีเสียง และครอบคลุมกรณีที่โค้ดอื่นเปลี่ยนแท็บให้ด้วย
+// ไม่ลด gain เพราะ soundVolume ฐานอยู่ที่ 0.1 อยู่แล้ว คูณลดอีกจะเบาจนไม่ได้ยิน
+// key กันหางเสียงซ้อนกันตอนกดรัว
+watch(activeMenu, () => {
+  sfx.playRandom('assets/sounds/ui/menu_change', 4, { key: 'menu' })
+})
 
 const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 </script>
