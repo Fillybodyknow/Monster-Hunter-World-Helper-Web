@@ -4,6 +4,8 @@ import { useRoomStore } from '@/stores/room'
 import hunterClassData from '@/assets/files/class_hunter.json'
 
 const emit = defineEmits(['start', 'leave'])
+// { counts, text } — สิทธิ์ลง Quest ของผู้เล่นคนนี้ ไม่ใช่ของทั้งห้อง
+defineProps({ attemptNote: { type: Object, default: null } })
 
 const room = useRoomStore()
 const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
@@ -160,6 +162,11 @@ const starColor = computed(() => {
           <div v-if="room.questInfo.exhausted_attempt" class="cl-warn">
             ⚠ จะบังคับเข้า HQ (2 กิจกรรม)
           </div>
+          <div
+            v-if="attemptNote"
+            class="cl-attempt"
+            :class="{ 'cl-attempt-off': !attemptNote.counts }"
+          >{{ attemptNote.text }}</div>
         </div>
       </div>
 
@@ -643,6 +650,14 @@ const starColor = computed(() => {
   font-size: 10px;
   color: #ff9955;
 }
+/* สิทธิ์ Attempt ของผู้เล่นคนนี้ — คนละอันกับธงบังคับ HQ ของห้อง */
+.cl-attempt {
+  font-size: 10px;
+  color: #ffd27a;
+}
+.cl-attempt-off { color: #7fd99a; }
+.cl-notice .cl-attempt { color: #7a5a12; }
+.cl-notice .cl-attempt-off { color: #1f6b45; }
 
 /* ── Section head ── */
 .cl-section-head {

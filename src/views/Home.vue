@@ -265,20 +265,36 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
   flex-direction: column;
   gap: 0;
   font-family: 'Georgia', 'Times New Roman', serif;
+
+  /* พื้นผิวชุดเดียวกับหน้าอื่นในแอป */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='110' height='110'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.6' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='110' height='110' filter='url(%23g)' opacity='0.07'/%3E%3C/svg%3E");
 }
 
 /* ══════════════════════════════════════════
    TOPBAR
 ══════════════════════════════════════════ */
+/* เข็มขัดหนังตอกหมุดทองเหลืองหัวท้าย */
 .topbar {
   display: flex;
   align-items: stretch;
   gap: 2px;
   padding: 6px 8px;
-  border-radius: 12px 12px 0 0;
-  background: linear-gradient(to bottom, #1a1208, #0f0c06);
-  border: 2px solid #7c5a2b;
-  border-bottom: 1px solid #5a3d1f;
+  border-radius: 3px 3px 0 0;
+  background:
+    var(--grain),
+    radial-gradient(circle at 11px 50%, rgba(226,196,142,0.26) 0 1.8px, transparent 2.4px),
+    radial-gradient(circle at calc(100% - 11px) 50%, rgba(226,196,142,0.26) 0 1.8px, transparent 2.4px),
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(to bottom, #33291f, #1e1712);
+  border: 2px solid #0f0b08;
+  border-bottom: 2px solid #0f0b08;
+  box-shadow: inset 0 1px 0 rgba(240, 220, 180, 0.1), 0 2px 8px rgba(0, 0, 0, 0.5);
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -295,16 +311,47 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
   align-items: center;
   gap: 4px;
   padding: 8px 6px 6px;
-  border-radius: 8px;
+  border-radius: 2px;
+  border: 1px solid transparent;
   cursor: pointer;
-  color: #7c5a2b;
+  color: #9b8a6d;
   transition: all 0.2s;
   white-space: nowrap;
 }
 
 .nav-item:hover {
-  color: #c89b3c;
-  background: rgba(255, 200, 100, 0.06);
+  color: #d3c1a0;
+  background: rgba(240, 220, 180, 0.06);
+}
+
+/* เส้นคั่นระหว่างเมนู: ร่องมืดบวกขอบรับแสง ให้ดูเป็นรอยบนหนัง ไม่ใช่เส้นวาดทับ
+   วางไว้ในช่องว่าง 2px ระหว่างปุ่ม จางหัวท้ายไม่ให้ชนขอบเข็มขัด */
+.nav-item + .nav-item::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: 20%;
+  bottom: 20%;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(0, 0, 0, 0.5) 22%,
+    rgba(0, 0, 0, 0.5) 78%,
+    transparent
+  );
+  box-shadow: 1px 0 0 rgba(240, 220, 180, 0.07);
+  pointer-events: none;
+}
+/* ปุ่มที่ถูกเลือกมีขอบทองเหลืองของตัวเองแล้ว — ซ่อนเส้นคั่นสองข้างไม่ให้ตีกัน */
+.nav-item.active::before,
+.nav-item.active + .nav-item::before { display: none; }
+
+/* เมนูที่เลือก = แผ่นทองเหลืองตอกติดเข็มขัด */
+.nav-item.active {
+  border-color: #6b4f1c;
+  background: linear-gradient(to bottom, rgba(200, 155, 60, 0.26), rgba(120, 88, 26, 0.18));
+  box-shadow: inset 0 1px 0 rgba(255, 230, 180, 0.3), 0 1px 4px rgba(0, 0, 0, 0.45);
 }
 
 
@@ -322,12 +369,13 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 2px;
   transition: 0.2s;
 }
 
 .nav-item.active .nav-icon-wrap {
-  background: rgba(255, 200, 100, 0.08);
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: 2px;
 }
 
 .nav-icon {
@@ -358,10 +406,11 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
   padding: 4px 10px;
   margin-left: auto;
   flex-shrink: 0;
-  background: rgba(200,155,60,0.12);
-  border: 1px solid rgba(200,155,60,0.35);
-  border-radius: 8px;
-  color: #ffd27a;
+  background: linear-gradient(to bottom, rgba(200,155,60,0.26), rgba(120,88,26,0.18));
+  border: 1px solid #6b4f1c;
+  border-radius: 2px;
+  box-shadow: inset 0 1px 0 rgba(255, 230, 180, 0.3);
+  color: #ffe7bb;
   font-size: 13px;
   font-weight: bold;
   cursor: pointer;
@@ -369,12 +418,14 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 }
 .topbar-party-btn:hover { background: rgba(200,155,60,0.22); }
 .topbar-party-count {
-  background: #7cfc00;
-  color: #000;
+  background: radial-gradient(circle at 35% 30%, #8fd9a8, #3f8f5f 60%, #24603c);
+  border: 1px solid rgba(20, 50, 32, 0.6);
+  color: #0d2417;
   font-size: 10px;
   font-weight: bold;
-  border-radius: 10px;
-  padding: 1px 5px;
+  border-radius: 999px;
+  padding: 1px 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
 .nav-item.active .nav-icon {
@@ -394,20 +445,20 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 }
 
 .nav-item.active .nav-label {
-  color: #ffd27a;
-  text-shadow: 0 0 8px rgba(255, 200, 80, 0.5);
+  color: #ffe7bb;
+  font-weight: bold;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
 /* UNDERLINE indicator */
 .nav-underline {
   position: absolute;
-  bottom: 0;
-  left: 20%;
-  right: 20%;
+  bottom: -1px;
+  left: 12%;
+  right: 12%;
   height: 2px;
-  border-radius: 2px;
-  background: linear-gradient(to right, transparent, #c89b3c, transparent);
-  box-shadow: 0 0 6px rgba(200, 155, 60, 0.8);
+  background: linear-gradient(to right, transparent, #f0d9a0, transparent);
+  box-shadow: 0 0 6px rgba(200, 155, 60, 0.6);
 }
 
 /* ══════════════════════════════════════════
@@ -418,9 +469,10 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  background: linear-gradient(to bottom, #0f0c06, #17120c);
-  border-left: 2px solid #7c5a2b;
-  border-right: 2px solid #7c5a2b;
+  background: linear-gradient(to bottom, #17120d, #0f0b08);
+  border-left: 2px solid #0f0b08;
+  border-right: 2px solid #0f0b08;
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.55);
 }
 
 .stb-line {
@@ -449,7 +501,7 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 
 .stb-ornament {
   font-size: 7px;
-  color: #7c5a2b;
+  color: #a8802e;
 }
 
 /* ══════════════════════════════════════════
@@ -481,8 +533,10 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
   .topbar {
     padding: 4px 6px;
     gap: 1px;
-    border-radius: 10px 10px 0 0;
+    border-radius: 3px 3px 0 0;
   }
+
+  .nav-item + .nav-item::before { left: -1px; }
 
   .nav-item {
     min-width: 52px;
@@ -565,21 +619,25 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
   padding: 16px;
 }
 .party-panel {
-  background: linear-gradient(160deg, #1c1508, #13100a);
-  border: 2px solid #7c5a2b;
-  border-radius: 14px;
+  background:
+    var(--grain),
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0 1px, transparent 1px 6px),
+    linear-gradient(172deg, #4a3320, #3a2716 55%, #2a1c10);
+  border: 3px solid #221a10;
+  border-radius: 3px 2px 4px 2px;
   width: min(340px, 100%);
   overflow: hidden;
-  box-shadow: 0 0 40px rgba(0,0,0,0.8);
+  box-shadow: inset 0 1px 0 rgba(232,198,152,0.07), 0 10px 40px rgba(0,0,0,0.85);
   margin-bottom: 70px;
 }
 .party-panel-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 16px;
-  background: rgba(200,155,60,0.06);
-  border-bottom: 1px solid rgba(124,90,43,0.4);
+  padding: 11px 16px;
+  background: linear-gradient(to bottom, rgba(200,155,60,0.2), rgba(110,80,25,0.26));
+  border-bottom: 2px solid rgba(0,0,0,0.5);
+  box-shadow: 0 1px 0 rgba(232,198,152,0.07);
 }
 .party-panel-title { font-size: 14px; font-weight: bold; color: #ffd27a; flex: 1; }
 .party-panel-code {
@@ -610,9 +668,10 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
   align-items: center;
   justify-content: space-between;
   padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(200,155,60,0.05);
-  border: 1px solid rgba(124,90,43,0.3);
+  border-radius: 2px;
+  background: rgba(0,0,0,0.34);
+  border: 1px solid rgba(0,0,0,0.45);
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.5), inset 0 -1px 0 rgba(232,198,152,0.06);
   transition: opacity 0.3s;
 }
 .party-member.offline { opacity: 0.6; }
@@ -623,7 +682,7 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
   border-radius: 50%;
   flex-shrink: 0;
 }
-.dot-online  { background: #7cfc00; box-shadow: 0 0 6px #7cfc00; }
+.dot-online  { background: #5fb87e; box-shadow: 0 0 6px rgba(70, 160, 105, 0.8); }
 .dot-offline { background: #ff6b6b; animation: blink 1.2s ease-in-out infinite; }
 @keyframes blink {
   0%,100% { opacity: 1; }
@@ -659,7 +718,7 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 .party-btn-disband, .party-btn-leave {
   width: 100%;
   padding: 10px;
-  border-radius: 8px;
+  border-radius: 2px;
   font-size: 13px;
   font-family: inherit;
   cursor: pointer;
@@ -694,10 +753,19 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
   align-items: center;
   gap: 12px;
   padding: 32px 40px;
-  background: linear-gradient(160deg, #1c1508, #13100a);
-  border: 2px solid rgba(200,155,60,0.5);
-  border-radius: 16px;
-  box-shadow: 0 0 40px rgba(0,0,0,0.8);
+  background:
+    var(--grain),
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #2b1f13, #1c1409 55%, #241a0e);
+  border: 3px solid #221a10;
+  border-radius: 3px 2px 4px 2px;
+  box-shadow: inset 0 1px 0 rgba(232,198,152,0.07), 0 10px 40px rgba(0,0,0,0.85);
 }
 .disconnect-spinner {
   width: 40px;
@@ -724,10 +792,11 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 .disconnect-leave-btn {
   margin-top: 8px;
   padding: 8px 24px;
-  background: rgba(180,60,40,0.15);
-  border: 1px solid rgba(200,80,60,0.5);
-  border-radius: 8px;
-  color: #ff8070;
+  background: linear-gradient(to bottom, #7a2a1e 0%, #4d1a13 50%, #2c0f0a 100%);
+  border: 1px solid #5e1c14;
+  border-radius: 2px;
+  box-shadow: inset 0 1px 0 rgba(255,180,160,0.22);
+  color: #ffb3a3;
   font-size: 13px;
   letter-spacing: 1px;
   cursor: pointer;
@@ -746,7 +815,7 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 }
 .notif-item {
   padding: 10px 16px;
-  border-radius: 8px;
+  border-radius: 2px;
   font-size: 13px;
   font-weight: bold;
   letter-spacing: 0.5px;
