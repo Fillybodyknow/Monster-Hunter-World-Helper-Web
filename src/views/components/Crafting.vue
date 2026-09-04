@@ -15,6 +15,11 @@ import {
   addToWhitelist,
   removeFromWhitelist,
 } from '@/stores/craftingWhitelist'
+import { useSfx } from '@/composables/useSfx'
+
+const sfx = useSfx()
+const SFX_DIR = 'assets/sounds/crafting'
+const SFX_TAKES = 4 // แต่ละหมวดมี 1.mp3 - 4.mp3 ให้สุ่ม
 
 const activeTab = ref('weapon')
 
@@ -78,15 +83,36 @@ const closeModal = () => { showItemModal.value = false }
 
 const isCrafting = ref(false)
 
+// จังหวะที่ค้อนกระแทกใน @keyframes blacksmithStrike (22% / 48% / 74% ของ animation 1.6s)
+// ถ้าไปแก้ keyframe ต้องแก้ตรงนี้ให้ตรงกันด้วย ไม่งั้นเสียงจะหลุดจากภาพ
+const CRAFT_ANIM_MS = 1600
+const HAMMER_HIT_MS = [352, 768, 1184]
+let _hammerTimers = []
+
+const _clearHammerTimers = () => {
+  _hammerTimers.forEach(clearTimeout)
+  _hammerTimers = []
+}
+
 const modalCraft = () => {
   if (!modalCanCraft.value || modalHasItem.value || isCrafting.value) return
   isCrafting.value = true
   if (modalType.value === 'weapon') craftWeapon(modalNode.value)
   else craftArmor(modalArmorSet.value, modalEquip.value)
+
+  // ยิงเสียงค้อนให้ตรงกับจังหวะที่ค้อนกระทบในภาพ สุ่ม take คนละอันกันฟังดูซ้ำ
+  _clearHammerTimers()
+  _hammerTimers = HAMMER_HIT_MS.map((t) =>
+    setTimeout(() => sfx.playRandom(`${SFX_DIR}/hammer_strike`, SFX_TAKES), t),
+  )
+
   setTimeout(() => {
     isCrafting.value = false
     closeModal()
-  }, 1600)
+    // ไฟล์เสียงยาว 2s แต่ animation จบที่ 1.6s — ตัดหางทิ้งไม่ให้ดังค้างหลังปิด modal
+    _clearHammerTimers()
+    sfx.stopAll()
+  }, CRAFT_ANIM_MS)
 }
 
 const modalToggleWhitelist = () => {
@@ -511,11 +537,13 @@ const _forgeOffNow = () => {
 
 const _startQuench = () => {
   forgeState.value = 'quenching'
+  sfx.playRandom(`${SFX_DIR}/quenching`, SFX_TAKES)
   _forgeTimer = setTimeout(_forgeOffNow, QUENCH_MS)
 }
 
 const _startIgnite = () => {
   forgeState.value = 'igniting'
+  sfx.playRandom(`${SFX_DIR}/igniting`, SFX_TAKES)
   _forgeTimer = setTimeout(() => { forgeState.value = 'lit' }, IGNITE_MS)
 }
 
@@ -568,7 +596,11 @@ const selectType = (key) => {
   _startIgnite()
 }
 
-onUnmounted(_clearForgeTimer)
+onUnmounted(() => {
+  _clearForgeTimer()
+  // กัน timer ค้างยิงเสียงหลัง component ถูกถอดไปแล้ว (useSfx หยุดเฉพาะเสียงที่เล่นอยู่)
+  _clearHammerTimers()
+})
 
 // สลับแท็บ = เปลี่ยนของทั้งชุด ดับทันทีไม่ต้องเล่น animation
 watch(activeTab, _forgeOffNow)
