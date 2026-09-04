@@ -1,5 +1,5 @@
 <script setup>
-import { h as vh, ref, computed, watch, nextTick, onMounted, onActivated, onUnmounted, inject } from 'vue'
+import { h as vh, ref, computed, watch, nextTick, onMounted, onActivated, onDeactivated, onUnmounted, inject } from 'vue'
 
 defineOptions({ name: 'Quest' })
 import ancientData from '@/assets/files/ancient-quest-book.json'
@@ -693,15 +693,94 @@ const startTokenReveal = (onDone) => {
 const battleIntroPhase = ref('enter') // 'enter' | 'show' | 'leave'
 const battleIntroKey = ref(0)
 
+// ── Dialog BGM — เล่นวนระหว่างอยู่ใน phase 'dialog' ──
+const dialogBgm = ref(null)
+
+const playDialogBgm = () => {
+  if (dialogBgm.value || !soundEnabled.value) return
+  const audio = new Audio(`${import.meta.env.BASE_URL}assets/sounds/gethering_phase/during_gethering_phase.mp3`)
+  audio.loop = true
+  audio.volume = soundVolume.value
+  audio.play().catch(() => {})
+  dialogBgm.value = audio
+}
+
+const stopDialogBgm = () => {
+  if (!dialogBgm.value) return
+  dialogBgm.value.pause()
+  dialogBgm.value = null
+}
+
+// ── Monster Theme — เล่นวนตาม monster ที่เจอ ระหว่างอยู่ใน phase 'huntingPanel' ──
+// มี theme เฉพาะบางตัว (ยังไม่ครบทุกมอนสเตอร์) — ตัวที่ไม่มีไฟล์จะไม่มีเพลงเล่น ไม่ fallback เป็นเพลงอื่น
+const MONSTER_THEME_FILES = {
+  1: 'great_jagras.mp3', // Great Jagras
+}
+
+const monsterThemeAudio = ref(null)
+
+const playMonsterTheme = () => {
+  if (monsterThemeAudio.value || !soundEnabled.value) return
+  const file = MONSTER_THEME_FILES[selectedMonster.value?.monster_id]
+  if (!file) return
+  const audio = new Audio(`${import.meta.env.BASE_URL}assets/sounds/hunting_phase/monster_theme/${file}`)
+  audio.loop = true
+  audio.volume = soundVolume.value
+  audio.play().catch(() => {})
+  monsterThemeAudio.value = audio
+}
+
+const stopMonsterTheme = () => {
+  if (!monsterThemeAudio.value) return
+  monsterThemeAudio.value.pause()
+  monsterThemeAudio.value = null
+}
+
+// เปลี่ยนมอนสเตอร์ระหว่างอยู่ huntingPanel อยู่แล้ว (เช่น สลับเควสต์) — สลับ theme ให้ตรงตัวใหม่
+watch(() => selectedMonster.value?.monster_id, () => {
+  if (phase.value !== 'huntingPanel') return
+  stopMonsterTheme()
+  playMonsterTheme()
+})
+
 const outcomeAudio = ref(null)
+// ระหว่าง fade อยู่ ต้องปล่อยให้ fade คุม volume เอง ห้าม watcher เข้าไปดันกลับขึ้น
+let _outcomeFadeTimer = null
+
+// quest_complete มีหลายไฟล์ให้สุ่มเล่น กันฟังซ้ำจำเจ — quest_failed มีไฟล์เดียว
+const QUEST_COMPLETE_SOUNDS = ['quest_complete1.mp3', 'quest_complete2.mp3']
+
+// เลือกไฟล์ quest_complete — ในตี้ต้องได้ตัวเดียวกันทุกคน จะ Math.random() ตรงๆ ไม่ได้เพราะแต่ละเครื่อง
+// สุ่มเองอิสระ เลย hash จาก roomCode + questStartAt (ค่าที่ sync เหมือนกันทุกเครื่องอยู่แล้วผ่าน Firebase)
+// แทน ได้ index เดียวกันแน่นอนโดยไม่ต้องเพิ่ม field ใหม่ไป sync เอง — เล่นคนเดียวค่อย random จริงตามเดิม
+const _pickQuestCompleteSound = () => {
+  if (room.inRoom && room.questStartAt) {
+    const seed = `${room.roomCode}-${room.questStartAt}`
+    let hash = 0
+    for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0
+    return QUEST_COMPLETE_SOUNDS[hash % QUEST_COMPLETE_SOUNDS.length]
+  }
+  return QUEST_COMPLETE_SOUNDS[Math.floor(Math.random() * QUEST_COMPLETE_SOUNDS.length)]
+}
+
+const stopOutcomeSound = () => {
+  clearInterval(_outcomeFadeTimer)
+  _outcomeFadeTimer = null
+  if (!outcomeAudio.value) return
+  outcomeAudio.value.pause()
+  outcomeAudio.value = null
+}
 
 const playOutcomeSound = (type) => {
-  if (outcomeAudio.value) {
-    outcomeAudio.value.pause()
-    outcomeAudio.value = null
-  }
+  stopOutcomeSound()
+  // จบเควสต์แล้ว — ดับ BGM ทุกตัวทันที ไม่ให้เล่นซ้อนใต้เสียง complete/fail
+  stopMonsterTheme()
+  stopDialogBgm()
   if (!soundEnabled.value) return
-  const audio = new Audio(`${import.meta.env.BASE_URL}assets/sounds/hunting_phase/${type === 'complete' ? 'quest_complete' : 'quest_failed'}.mp3`)
+  const src = type === 'complete'
+    ? `hunting_phase/quest_complete/${_pickQuestCompleteSound()}`
+    : 'hunting_phase/quest_failed.mp3'
+  const audio = new Audio(`${import.meta.env.BASE_URL}assets/sounds/${src}`)
   audio.volume = soundVolume.value
   audio.play().catch(() => {})
   outcomeAudio.value = audio
@@ -711,16 +790,55 @@ const fadeOutOutcomeSound = () => {
   const audio = outcomeAudio.value
   if (!audio) return
   const step = audio.volume / 20
-  const fade = setInterval(() => {
+  clearInterval(_outcomeFadeTimer)
+  _outcomeFadeTimer = setInterval(() => {
     if (audio.volume > step) {
       audio.volume = Math.max(0, audio.volume - step)
     } else {
-      audio.pause()
-      outcomeAudio.value = null
-      clearInterval(fade)
+      stopOutcomeSound()
     }
   }, 200)
 }
+
+// ── กฎกลางของเสียงทั้งหมด — เสียงทุกตัวในหน้านี้ต้องคล้อยตาม Setting ทันที ──
+// รวมไว้ที่เดียวแทนที่จะกระจายไปตามแต่ละเสียง กันลืมตอนเพิ่มเสียงใหม่ในอนาคต
+watch(phase, (p) => {
+  if (p === 'dialog') playDialogBgm()
+  else stopDialogBgm()
+
+  if (p === 'huntingPanel') playMonsterTheme()
+  else stopMonsterTheme()
+})
+
+watch(soundEnabled, (enabled) => {
+  if (!enabled) {
+    stopDialogBgm()
+    stopMonsterTheme()
+    stopOutcomeSound() // เสียงจบเควสต์ยาว ~8 วิ ต้องดับได้กลางคันด้วย
+    return
+  }
+  if (phase.value === 'dialog') playDialogBgm()
+  if (phase.value === 'huntingPanel') playMonsterTheme()
+})
+
+watch(soundVolume, (v) => {
+  if (dialogBgm.value) dialogBgm.value.volume = v
+  if (monsterThemeAudio.value) monsterThemeAudio.value.volume = v
+  if (outcomeAudio.value && !_outcomeFadeTimer) outcomeAudio.value.volume = v
+})
+
+// สลับแท็บออกจาก Quest (component ถูก keep-alive ไว้) — หยุดเพลงไว้ก่อน แล้วเล่นต่อตอนกลับมาถ้ายังอยู่ phase เดิม
+const _stopAllAudio = () => {
+  stopDialogBgm()
+  stopMonsterTheme()
+  stopOutcomeSound()
+}
+onDeactivated(_stopAllAudio)
+onActivated(() => {
+  if (phase.value === 'dialog') playDialogBgm()
+  if (phase.value === 'huntingPanel') playMonsterTheme()
+})
+onUnmounted(_stopAllAudio)
 
 const doAction = (action) => {
   if (room.inRoom) {
@@ -742,6 +860,10 @@ const _executeDialog = (dialogId) => {
     battleIntroKey.value++
     showBattleIntro.value = true
     battleIntroPhase.value = 'enter'
+    // เข้าสู่การล่าแล้ว — ดับเพลง dialog ทันที (ไม่รอ phase ขยับเป็น huntingPanel ซึ่งช้ากว่านี้หลายวินาที)
+    // ดับก่อนเสมอแม้มอนสเตอร์ตัวนั้นจะยังไม่มีไฟล์ theme ไม่งั้นเพลง gathering จะค้างเล่นต่อไปทั้งการล่า
+    stopDialogBgm()
+    playMonsterTheme() // เริ่มเพลง theme พร้อม modal "เจอ Monster" เลย
     setTimeout(() => { battleIntroPhase.value = 'show' }, 30)
     setTimeout(() => { battleIntroPhase.value = 'leave' }, 2200)
     setTimeout(() => {
