@@ -68,11 +68,20 @@ const getCraftableWith = (resource_type_id, item_id) => {
       )
       const weapon = weaponList?.items.find((i) => i.item_id === weaponCraft.item_id)
       if (weapon) {
+        // ไอคอนอาวุธจริงตาม rarity ไม่ใช่ไอคอนสายอาวุธ — ให้เห็นว่าคราฟแล้วได้ของหน้าตายังไง
+        // ใช้ find(type_id) แทน index เพราะลำดับใน equiment_rarity.json ไม่ได้การันตีอะไรไว้
+        const weaponRarity = rarityData
+          .find((t) => t.type_id === 2)
+          ?.rarity_list?.find((r) => r.equipment_rarity === weapon.rarity)
+        const weaponThumbnail = weaponRarity?.list?.find(
+          (w) => w.id === classEntry.hunter_class_id,
+        )?.thumbnail
         results.push({
           type: 'weapon',
           name: weapon.item,
           set: weaponList.weapon_type,
-          thumbnail: weaponList.thumbnail,
+          // ไม่มีไอคอน rarity ของคลาสนั้น ค่อยถอยไปใช้ไอคอนสายอาวุธแบบเดิม
+          thumbnail: weaponThumbnail ?? weaponList.thumbnail,
           damage_cards: weapon.damage_cards,
           materials: weaponCraft.crafting_table,
           hunter_class_id: classEntry.hunter_class_id,

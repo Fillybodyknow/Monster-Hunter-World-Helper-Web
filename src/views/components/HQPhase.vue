@@ -5,6 +5,7 @@ import { useRoomStore } from '@/stores/room'
 import resourceData from '@/assets/files/resource.json'
 import monsterInfoData from '@/assets/files/monster_info.json'
 import elementalData from '@/assets/files/elemental.json'
+import { openCraftLookup } from '@/composables/useCraftLookup'
 
 const props = defineProps({ maxActions: { type: Number, default: 3 } })
 const emit = defineEmits(['allReady'])
@@ -494,6 +495,7 @@ const poogiePatted = ref(false)
               <div class="rc-row-item">
                 <img :src="getImg(row.thumbnail)" class="rc-item-img" />
                 <span class="rc-item-name">{{ row.item }}</span>
+                <button class="hq-craft-btn" @click.stop="openCraftLookup(row.resource_type_id, row.item_id, row.item)" title="ดูสูตรคราฟ">🔨</button>
               </div>
             </div>
           </div>
@@ -504,6 +506,7 @@ const poogiePatted = ref(false)
                 <img :src="getImg(r.thumbnail)" class="rc-item-img" />
                 <span class="rc-item-name">{{ r.item }}</span>
                 <span class="rc-staged-qty">×{{ r.quantity }}</span>
+                <button class="hq-craft-btn" @click.stop="openCraftLookup(r.resource_type_id, r.item_id, r.item)" title="ดูสูตรคราฟ">🔨</button>
               </div>
             </div>
           </div>
@@ -603,6 +606,7 @@ const poogiePatted = ref(false)
                 <img :src="getImg(item.thumbnail)" class="hq-trade-img" />
                 <span class="trade-give-name">{{ item.item }}</span>
                 <span class="trade-give-owned">มี {{ item.quantity }}</span>
+                <button class="hq-craft-btn" @click.stop="openCraftLookup(item.resource_type_id, item.item_id, item.item)" title="ดูสูตรคราฟ">🔨</button>
                 <div class="trade-give-ctrl">
                   <button class="tgc-btn" @click="adjustLodgeHire(item, -1)">−</button>
                   <span class="tgc-qty">{{ lodgeHireSelection[`${item.resource_type_id}-${item.item_id}`] ?? 0 }}</span>
@@ -636,6 +640,7 @@ const poogiePatted = ref(false)
                 <img :src="getImg(item.thumbnail)" class="hq-trade-img" />
                 <span class="trade-give-name">{{ item.item }}</span>
                 <span class="trade-give-owned">มี {{ item.quantity }}</span>
+                <button class="hq-craft-btn" @click.stop="openCraftLookup(item.resource_type_id, item.item_id, item.item)" title="ดูสูตรคราฟ">🔨</button>
                 <div class="trade-give-ctrl">
                   <button class="tgc-btn" @click="adjustGive(item, -1)">−</button>
                   <span class="tgc-qty">{{ tradeGiveSelection[`${item.resource_type_id}-${item.item_id}`] ?? 0 }}</span>
@@ -653,6 +658,7 @@ const poogiePatted = ref(false)
                 @click="tradeChosenItem = item">
                 <img :src="getImg(item.thumbnail)" class="hq-trade-img" />
                 <span class="hq-trade-name">{{ item.item }}</span>
+                <button class="hq-craft-btn" @click.stop="openCraftLookup(item.resource_type_id, item.item_id, item.item)" title="ดูสูตรคราฟ">🔨</button>
               </div>
               <div v-if="filteredReceiveItems.length === 0" class="trade-no-results">ไม่พบ item</div>
             </div>
@@ -1075,4 +1081,20 @@ const poogiePatted = ref(false)
   .hq-trade-grid { grid-template-columns: 1fr; }
   .trade-give-list { grid-template-columns: 1fr; }
 }
+/* ปุ่มดูสูตรคราฟบนการ์ดไอเทม — ใช้ร่วมกันทุกจุดในหน้านี้
+   ทุกจุดที่ปุ่มไปเกาะอยู่บนแถว/การ์ดที่คลิกได้อยู่แล้ว จึงต้องคู่กับ @click.stop เสมอ */
+.hq-craft-btn {
+  background: rgba(150, 110, 35, 0.14);
+  border: 1px solid rgba(150, 110, 35, 0.45);
+  border-radius: 2px;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 3px 6px;
+  min-width: 32px;
+  min-height: 32px;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.hq-craft-btn:hover { background: rgba(150, 110, 35, 0.3); }
 </style>

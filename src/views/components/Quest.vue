@@ -20,7 +20,7 @@ import { useRoomStore } from '@/stores/room'
 import CoopLobbyModal from './CoopLobbyModal.vue'
 import HQPhase from './HQPhase.vue'
 import { openCraftLookup } from '@/composables/useCraftLookup'
-import { useSfx } from '@/composables/useSfx'
+import { useSfx, preloadSfx } from '@/composables/useSfx'
 
 const room = useRoomStore()
 const sfx = useSfx()
@@ -799,6 +799,18 @@ const stopMonsterTheme = () => {
   monsterThemeAudio.value.pause()
   monsterThemeAudio.value = null
 }
+
+// เลือกมอนสเตอร์แล้ว = รู้แล้วว่าจะใช้เพลงไหน — โหลดดักไว้เลย
+// ไฟล์เพลง 2-6MB ถ้ารอโหลดตอน modal "เจอ Monster" เด้ง เพลงจะมาช้ากว่าภาพหลายวินาที
+// เพลง gathering ก็โหลดคู่กันไป เพราะได้ใช้ก่อนเข้าล่าอยู่แล้ว
+watch(() => selectedMonster.value?.monster_id, (id) => {
+  if (id == null) return
+  const theme = MONSTER_THEME_FILES[id]
+  preloadSfx([
+    ...(theme ? [`assets/sounds/hunting_phase/monster_theme/${theme}`] : []),
+    'assets/sounds/gethering_phase/during_gethering_phase.mp3',
+  ])
+}, { immediate: true })
 
 // เปลี่ยนมอนสเตอร์ระหว่างอยู่ huntingPanel อยู่แล้ว (เช่น สลับเควสต์) — สลับ theme ให้ตรงตัวใหม่
 watch(() => selectedMonster.value?.monster_id, () => {
@@ -6575,9 +6587,8 @@ const openPackDrawer = () => {
           </div>
 
           <div v-if="room.tradePool.length" class="trade-grid">
+            <div v-for="item in room.tradePool" :key="item.key" class="trade-slot-wrap">
             <button
-              v-for="item in room.tradePool"
-              :key="item.key"
               class="trade-slot trade-slot-pool"
               :class="{ 'trade-slot-mine': item.fromHunterId === room.myHunterId }"
               :title="`${getResourceItem(item.resource_type_id, item.item_id)?.item} ×${item.quantity} — ${item.fromHunterName}`"
@@ -6592,6 +6603,12 @@ const openPackDrawer = () => {
               <span class="trade-slot-owner">{{ item.fromHunterId === room.myHunterId ? 'ของคุณ' : item.fromHunterName }}</span>
               <span class="trade-slot-action">{{ item.fromHunterId === room.myHunterId ? '↩ คืน' : '↑ รับ' }}</span>
             </button>
+            <button
+              class="trade-craft-btn"
+              @click.stop="openCraftLookup(item.resource_type_id, item.item_id, getResourceItem(item.resource_type_id, item.item_id)?.item)"
+              title="ดูสูตรคราฟ"
+            >🔨</button>
+            </div>
           </div>
           <p v-else class="trade-empty">โต๊ะยังว่าง — วาง Item จากเป้ลงมาได้เลย</p>
         </div>
@@ -6611,9 +6628,8 @@ const openPackDrawer = () => {
           </div>
 
           <div v-if="filteredInventory.length" class="trade-grid trade-grid-scroll">
+            <div v-for="r in filteredInventory" :key="`${r.resource_type_id}-${r.item_id}`" class="trade-slot-wrap">
             <button
-              v-for="r in filteredInventory"
-              :key="`${r.resource_type_id}-${r.item_id}`"
               class="trade-slot trade-slot-inv"
               :title="`${getResourceItem(r.resource_type_id, r.item_id)?.item} ×${r.quantity}`"
               @click="openTradePicker(r)"
@@ -6625,6 +6641,12 @@ const openPackDrawer = () => {
               />
               <span class="trade-slot-name">{{ getResourceItem(r.resource_type_id, r.item_id)?.item }}</span>
             </button>
+            <button
+              class="trade-craft-btn"
+              @click.stop="openCraftLookup(r.resource_type_id, r.item_id, getResourceItem(r.resource_type_id, r.item_id)?.item)"
+              title="ดูสูตรคราฟ"
+            >🔨</button>
+            </div>
           </div>
           <p v-else class="trade-empty">
             {{ tradeSearch ? 'ไม่พบ Item ที่ค้นหา' : 'ในเป้ไม่มี Item เหลือแล้ว' }}
@@ -17746,6 +17768,47 @@ const openPackDrawer = () => {
 .trade-search-input::placeholder { color: rgba(124,90,43,0.5); }
 
 /* ── ช่องไอเทมแบบคลังของ ── */
+/* ห่อ slot ไว้เพื่อวางปุ่มดูสูตรคราฟเป็น 'พี่น้อง' ของ slot
+   ซ้อน <button> ใน <button> ไม่ได้ — เป็น HTML ที่ไม่ถูกต้องและทำให้ DOM เพี้ยน */
+.trade-slot-wrap {
+  position: relative;
+  display: flex;
+}
+.trade-slot-wrap > .trade-slot { flex: 1; }
+.trade-craft-btn {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  z-index: 1;
+  background: rgba(20, 14, 8, 0.85);
+  border: 1px solid rgba(150, 110, 35, 0.5);
+  border-radius: 2px;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+  min-width: 30px;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.trade-craft-btn:hover { background: rgba(150, 110, 35, 0.45); }
+/* จอสัมผัส: ขยาย "พื้นที่กด" ให้ถึง 44px ตามมาตรฐาน โดยไม่ขยายขนาดที่มองเห็น
+   การ์ดกว้างแค่ 96px ถ้าขยายตัวปุ่มจริงจะกินพื้นที่การ์ดมากเกินไป
+   ยึดมุมบนซ้ายให้พื้นที่ขยายเข้าด้านในการ์ด ไม่ล้นไปทับการ์ดข้าง ๆ ที่ห่างกันแค่ 8px
+   กดพลาดโซนนี้จะได้ "เปิดดูสูตร" ซึ่งไม่มีผลอะไร ดีกว่าไปโดนย้ายของจริง */
+@media (pointer: coarse) {
+  .trade-craft-btn::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    width: 44px;
+    height: 44px;
+  }
+}
 .trade-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
