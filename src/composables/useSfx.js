@@ -3,52 +3,77 @@ import { soundEnabled, soundVolume } from '@/stores/settings'
 
 const url = (src) => `${import.meta.env.BASE_URL}${src}`
 
-// ── คลัง Audio ที่ใช้ซ้ำ (แชร์กันทุก component) ──
-// เดิมสร้าง new Audio() ใหม่ทุกครั้งที่เล่น ทำให้เบราว์เซอร์ต้องไปหาไฟล์ + ถอดรหัส MP3 ใหม่ทุกครั้ง
-// บนเครื่อง dev แทบไม่รู้สึก แต่ผ่านเน็ตจริง (GitHub Pages) หน่วงชัดเจนโดยเฉพาะครั้งแรกของแต่ละเสียง
-const _pools = new Map() // src -> Audio[]
-const POOL_SIZE = 3      // เผื่อเสียงเดียวกันดังซ้อนกัน เช่น ค้อน 3 ที / เพื่อนโหวตพร้อมกัน
+// ── SFX ใช้ Web Audio ไม่ใช่ HTMLAudioElement ──
+// iOS Safari บล็อก HTMLAudioElement ที่ไม่ได้ถูกสั่งเล่นจาก user gesture โดยตรง
+// SFX ของแอปครึ่งหนึ่งยิงมาจาก watcher / setTimeout / rAF (เสียงเมนู, ฝีเท้า, เต๋าลง,
+// คำราม, สับการ์ด, เพื่อนโหวต) ซึ่งหลุดจาก gesture ทั้งหมด → บน iPad เงียบสนิท
+// Web Audio ปลดล็อกครั้งเดียวตอนแตะจอครั้งแรก จากนั้นเล่นได้อิสระไม่ว่าเรียกมาจากไหน
+//
+// เพลงยังใช้ HTMLAudio ต่อไป (ใน Quest.vue) เพราะมันสตรีมทีละส่วน
+// ถ้าเอาเข้ามาถอดรหัสเก็บใน RAM แบบนี้จะกินหลายร้อย MB
+let _ctx = null
+const _buffers = new Map() // src -> AudioBuffer (ถอดรหัสแล้ว พร้อมเล่นทันที)
+const _loading = new Map() // src -> Promise กันโหลดซ้ำซ้อนตอนเรียกพร้อมกัน
 
-const _makeAudio = (src) => {
-  const audio = new Audio(url(src))
-  audio.preload = 'auto'
-  return audio
+const _getCtx = () => {
+  if (_ctx) return _ctx
+  const AC = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)
+  if (!AC) return null
+  _ctx = new AC()
+  return _ctx
 }
 
-// คืนตัวที่ว่างอยู่ ถ้าไม่มีก็สร้างเพิ่มจนเต็ม pool แล้วค่อยแย่งตัวที่เก่าสุดมาใช้
-const _acquire = (src) => {
-  let pool = _pools.get(src)
-  if (!pool) { pool = []; _pools.set(src, pool) }
+// context เกิดมาในสถานะ suspended บนมือถือ ต้องปลุกด้วย gesture ก่อนถึงจะมีเสียงออก
+const _unlock = () => {
+  const ctx = _getCtx()
+  if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {})
+}
 
-  const free = pool.find((a) => a.paused || a.ended)
-  if (free) return free
-
-  if (pool.length < POOL_SIZE) {
-    const audio = _makeAudio(src)
-    pool.push(audio)
-    return audio
+if (typeof window !== 'undefined') {
+  for (const ev of ['pointerdown', 'touchstart', 'keydown']) {
+    window.addEventListener(ev, _unlock, { passive: true })
   }
-  const oldest = pool.shift()
-  pool.push(oldest)
-  return oldest
+  // iOS พัก context เองตอนสลับแอป/ล็อกจอ กลับมาต้องปลุกใหม่ ไม่งั้นเงียบยาว
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') _unlock()
+  })
 }
 
-// โหลดไฟล์ไว้ล่วงหน้า ไม่ให้ครั้งแรกที่ใช้ต้องรอดาวน์โหลด
+const _load = (src) => {
+  if (_buffers.has(src)) return Promise.resolve(_buffers.get(src))
+  if (_loading.has(src)) return _loading.get(src)
+  const ctx = _getCtx()
+  if (!ctx) return Promise.resolve(null)
+
+  const task = fetch(url(src))
+    .then((r) => r.arrayBuffer())
+    .then((buf) => ctx.decodeAudioData(buf))
+    .then((decoded) => {
+      _buffers.set(src, decoded)
+      _loading.delete(src)
+      return decoded
+    })
+    .catch(() => {
+      // โหลด/ถอดรหัสไม่สำเร็จ — ปล่อยเงียบดีกว่าทำหน้าแตก แล้วปล่อยให้ลองใหม่ครั้งหน้า
+      _loading.delete(src)
+      return null
+    })
+
+  _loading.set(src, task)
+  return task
+}
+
+// โหลด + ถอดรหัสไว้ล่วงหน้า ครั้งแรกที่ใช้จะได้เล่นทันทีไม่ต้องรอ
 export const preloadSfx = (srcs) => {
-  for (const src of [].concat(srcs)) {
-    if (_pools.has(src)) continue
-    const audio = _makeAudio(src)
-    _pools.set(src, [audio])
-    try { audio.load() } catch { /* เบราว์เซอร์บางตัวหวงตอนยังไม่มี user gesture — ปล่อยผ่าน */ }
-  }
+  for (const src of [].concat(srcs)) _load(src)
 }
 
 // โฟลเดอร์ที่เก็บหลาย take (1.mp3 .. n.mp3)
 export const sfxTakes = (dir, count) =>
   Array.from({ length: count }, (_, i) => `${dir}/${i + 1}.mp3`)
 
-// รายการ SFX ทั้งหมดที่แอปใช้ — ต้องตรงกับที่เรียกจริงในโค้ด (มีสคริปต์ตรวจใน repo)
-// ไม่รวมเพลง เพราะไฟล์ใหญ่ ควร preload ตามจังหวะที่จะได้ใช้แทนที่จะโหลดหมดตั้งแต่เปิดแอป
+// รายการ SFX ทั้งหมดที่แอปใช้ — ต้องตรงกับที่เรียกจริงในโค้ด (มีสคริปต์ตรวจตอน build)
+// ไม่รวมเพลง เพราะไฟล์ยาว ถอดรหัสเก็บใน RAM ไม่ไหว
 const UI = 'assets/sounds/ui'
 const CRAFT = 'assets/sounds/crafting'
 export const ALL_SFX = [
@@ -77,22 +102,20 @@ export const preloadAllSfx = () => {
   else setTimeout(run, 2000)
 }
 
-// เสียง one-shot (ไม่ loop) ที่คล้อยตาม Setting เสียงเสมอ — ปิดเสียงกลางคันต้องเงียบทันที
+// เสียง one-shot ที่คล้อยตาม Setting เสียงเสมอ — ปิดเสียงกลางคันต้องเงียบทันที
 // เลื่อน volume กลางคันต้องขยับตาม และต้องไม่มีเสียงค้างเล่นหลังออกจากหน้า
-//
-// แยกจาก BGM ใน Quest.vue เพราะคนละพฤติกรรมกัน (นั่น loop + ผูกกับ phase, อันนี้เล่นจบแล้วจบเลย)
 export const useSfx = () => {
-  const playing = new Map() // Audio -> gain (ระดับสัมพัทธ์ของเสียงนั้น เทียบกับ soundVolume)
-  const exclusive = new Map() // key -> Audio ที่ดังอยู่ของกลุ่มนั้น
+  const active = new Set()    // { source, gainNode, gain }
+  const exclusive = new Map() // key -> entry ที่ดังอยู่ของกลุ่มนั้น
 
-  const _stop = (audio) => {
-    audio.pause()
-    playing.delete(audio)
+  const _stop = (entry) => {
+    try { entry.source.stop() } catch { /* ยังไม่ได้เริ่มหรือหยุดไปแล้ว */ }
+    active.delete(entry)
   }
 
   const stopAll = () => {
-    playing.forEach((_gain, audio) => audio.pause())
-    playing.clear()
+    for (const entry of [...active]) _stop(entry)
+    active.clear()
     exclusive.clear()
   }
 
@@ -100,23 +123,35 @@ export const useSfx = () => {
   // key   จับกลุ่มเสียงที่ห้ามดังซ้อนกันเอง เล่นตัวใหม่ = ตัดตัวเก่าทิ้งทันที
   //       จำเป็นกับเสียง UI ที่กดรัวได้ (เมนู) แต่ห้ามใช้กับเสียงค้อนที่ตั้งใจให้ดังซ้อน 3 ที
   const play = (src, { gain = 1, key = null } = {}) => {
-    if (!soundEnabled.value) return null
-    if (key && exclusive.has(key)) _stop(exclusive.get(key))
+    if (!soundEnabled.value) return
+    const ctx = _getCtx()
+    if (!ctx) return
+    _unlock()
 
-    const audio = _acquire(src)
-    audio.volume = Math.min(1, soundVolume.value * gain)
-    // ใช้ซ้ำจากตัวที่เคยเล่นจบแล้ว ต้องกรอกลับเองไม่งั้นจะเล่นต่อจากจุดเดิม
-    try { audio.currentTime = 0 } catch { /* ยังโหลดไม่เสร็จ กรอไม่ได้ — ไม่เป็นไร */ }
-    audio.play().catch(() => {})
+    const start = (buffer) => {
+      // กว่าจะโหลดเสร็จผู้ใช้อาจปิดเสียงไปแล้ว
+      if (!buffer || !soundEnabled.value) return
+      if (key && exclusive.has(key)) _stop(exclusive.get(key))
 
-    playing.set(audio, gain)
-    if (key) exclusive.set(key, audio)
-    // assign ไม่ใช่ addEventListener — Audio ถูกใช้ซ้ำ ถ้า add ทุกครั้ง listener จะพอกขึ้นเรื่อย ๆ
-    audio.onended = () => {
-      playing.delete(audio)
-      if (key && exclusive.get(key) === audio) exclusive.delete(key)
+      const source = ctx.createBufferSource()
+      source.buffer = buffer
+      const gainNode = ctx.createGain()
+      gainNode.gain.value = Math.min(1, soundVolume.value * gain)
+      source.connect(gainNode).connect(ctx.destination)
+
+      const entry = { source, gainNode, gain }
+      source.onended = () => {
+        active.delete(entry)
+        if (key && exclusive.get(key) === entry) exclusive.delete(key)
+      }
+      active.add(entry)
+      if (key) exclusive.set(key, entry)
+      source.start()
     }
-    return audio
+
+    const cached = _buffers.get(src)
+    if (cached) start(cached)     // ปกติจะเข้าทางนี้เพราะ preload ไว้แล้ว
+    else _load(src).then(start)   // ตัวที่ยังไม่ได้ preload — ครั้งแรกจะช้าหน่อย
   }
 
   // สุ่มเลือก 1 ไฟล์จาก <dir>/1.mp3 .. <dir>/<count>.mp3 — เสียงเดิมซ้ำ ๆ ฟังแล้วเป็นหุ่นยนต์
@@ -126,7 +161,7 @@ export const useSfx = () => {
   watch(soundEnabled, (enabled) => { if (!enabled) stopAll() })
 
   watch(soundVolume, (v) => {
-    playing.forEach((gain, audio) => { audio.volume = Math.min(1, v * gain) })
+    active.forEach((e) => { e.gainNode.gain.value = Math.min(1, v * e.gain) })
   })
 
   onUnmounted(stopAll)
