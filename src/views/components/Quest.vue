@@ -20,7 +20,7 @@ import { useRoomStore } from '@/stores/room'
 import CoopLobbyModal from './CoopLobbyModal.vue'
 import HQPhase from './HQPhase.vue'
 import { openCraftLookup } from '@/composables/useCraftLookup'
-import { useSfx, preloadSfx } from '@/composables/useSfx'
+import { useSfx, preloadSfx, routeThroughContext, unlockAudio } from '@/composables/useSfx'
 
 const room = useRoomStore()
 const sfx = useSfx()
@@ -752,6 +752,9 @@ const dialogBgm = ref(null)
 const playDialogBgm = () => {
   if (dialogBgm.value || !soundEnabled.value) return
   const audio = new Audio(`${import.meta.env.BASE_URL}assets/sounds/gethering_phase/during_gethering_phase.mp3`)
+  // เพลงต้องไหลผ่าน AudioContext เดียวกับ SFX ไม่งั้นบน iOS จะแย่ง audio session กันจนเงียบ
+  routeThroughContext(audio)
+  unlockAudio()
   audio.loop = true
   audio.volume = soundVolume.value
   audio.play().catch(() => {})
@@ -788,6 +791,9 @@ const playMonsterTheme = () => {
   const file = MONSTER_THEME_FILES[selectedMonster.value?.monster_id]
   if (!file) return
   const audio = new Audio(`${import.meta.env.BASE_URL}assets/sounds/hunting_phase/monster_theme/${file}`)
+  // เพลงต้องไหลผ่าน AudioContext เดียวกับ SFX ไม่งั้นบน iOS จะแย่ง audio session กันจนเงียบ
+  routeThroughContext(audio)
+  unlockAudio()
   audio.loop = true
   audio.volume = soundVolume.value
   audio.play().catch(() => {})
@@ -857,6 +863,9 @@ const playOutcomeSound = (type) => {
     ? `hunting_phase/quest_complete/${_pickQuestCompleteSound()}`
     : 'hunting_phase/quest_failed.mp3'
   const audio = new Audio(`${import.meta.env.BASE_URL}assets/sounds/${src}`)
+  // เพลงต้องไหลผ่าน AudioContext เดียวกับ SFX ไม่งั้นบน iOS จะแย่ง audio session กันจนเงียบ
+  routeThroughContext(audio)
+  unlockAudio()
   audio.volume = soundVolume.value
   audio.play().catch(() => {})
   outcomeAudio.value = audio
