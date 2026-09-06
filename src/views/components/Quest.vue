@@ -20,7 +20,7 @@ import { useRoomStore } from '@/stores/room'
 import CoopLobbyModal from './CoopLobbyModal.vue'
 import HQPhase from './HQPhase.vue'
 import { openCraftLookup } from '@/composables/useCraftLookup'
-import { useSfx, preloadSfx, routeThroughContext, unlockAudio } from '@/composables/useSfx'
+import { useSfx, preloadSfx, preloadMedia } from '@/composables/useSfx'
 
 const room = useRoomStore()
 const sfx = useSfx()
@@ -752,12 +752,10 @@ const dialogBgm = ref(null)
 const playDialogBgm = () => {
   if (dialogBgm.value || !soundEnabled.value) return
   const audio = new Audio(`${import.meta.env.BASE_URL}assets/sounds/gethering_phase/during_gethering_phase.mp3`)
-  // เพลงต้องไหลผ่าน AudioContext เดียวกับ SFX ไม่งั้นบน iOS จะแย่ง audio session กันจนเงียบ
-  routeThroughContext(audio)
-  unlockAudio()
   audio.loop = true
   audio.volume = soundVolume.value
-  audio.play().catch(() => {})
+  // เดิม catch เปล่า ๆ ทำให้ตอนเบราว์เซอร์ปฏิเสธ (เช่น iOS บล็อก autoplay) เงียบทั้งเสียงและ error
+  audio.play().catch((e) => addNotif?.(`🔇 เล่นเพลงไม่ได้: ${e?.name ?? e}`, 'warn'))
   dialogBgm.value = audio
 }
 
@@ -791,12 +789,10 @@ const playMonsterTheme = () => {
   const file = MONSTER_THEME_FILES[selectedMonster.value?.monster_id]
   if (!file) return
   const audio = new Audio(`${import.meta.env.BASE_URL}assets/sounds/hunting_phase/monster_theme/${file}`)
-  // เพลงต้องไหลผ่าน AudioContext เดียวกับ SFX ไม่งั้นบน iOS จะแย่ง audio session กันจนเงียบ
-  routeThroughContext(audio)
-  unlockAudio()
   audio.loop = true
   audio.volume = soundVolume.value
-  audio.play().catch(() => {})
+  // เดิม catch เปล่า ๆ ทำให้ตอนเบราว์เซอร์ปฏิเสธ (เช่น iOS บล็อก autoplay) เงียบทั้งเสียงและ error
+  audio.play().catch((e) => addNotif?.(`🔇 เล่นเพลงไม่ได้: ${e?.name ?? e}`, 'warn'))
   monsterThemeAudio.value = audio
 }
 
@@ -812,7 +808,9 @@ const stopMonsterTheme = () => {
 watch(() => selectedMonster.value?.monster_id, (id) => {
   if (id == null) return
   const theme = MONSTER_THEME_FILES[id]
-  preloadSfx([
+  // ต้องเป็น preloadMedia ไม่ใช่ preloadSfx — preloadSfx ถอดรหัสเก็บใน RAM
+  // เพลง 4-5 นาทีถอดรหัสแล้วกินร้อย MB จนระบบเสียงบน iPad พังทั้งระบบ
+  preloadMedia([
     ...(theme ? [`assets/sounds/hunting_phase/monster_theme/${theme}`] : []),
     'assets/sounds/gethering_phase/during_gethering_phase.mp3',
   ])
@@ -863,11 +861,9 @@ const playOutcomeSound = (type) => {
     ? `hunting_phase/quest_complete/${_pickQuestCompleteSound()}`
     : 'hunting_phase/quest_failed.mp3'
   const audio = new Audio(`${import.meta.env.BASE_URL}assets/sounds/${src}`)
-  // เพลงต้องไหลผ่าน AudioContext เดียวกับ SFX ไม่งั้นบน iOS จะแย่ง audio session กันจนเงียบ
-  routeThroughContext(audio)
-  unlockAudio()
   audio.volume = soundVolume.value
-  audio.play().catch(() => {})
+  // เดิม catch เปล่า ๆ ทำให้ตอนเบราว์เซอร์ปฏิเสธ (เช่น iOS บล็อก autoplay) เงียบทั้งเสียงและ error
+  audio.play().catch((e) => addNotif?.(`🔇 เล่นเพลงไม่ได้: ${e?.name ?? e}`, 'warn'))
   outcomeAudio.value = audio
 }
 
