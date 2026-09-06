@@ -2,8 +2,15 @@
 import { craftLookupItem, craftLookupResults, closeCraftLookup } from '@/composables/useCraftLookup'
 import resourceData from '@/assets/files/resource.json'
 import hunterClassData from '@/assets/files/class_hunter.json'
+import { hunter } from '@/stores/hunter'
 
 const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
+
+// จำนวนที่มีในเป้ — ใช้เทียบกับจำนวนที่สูตรต้องการ
+const getInventoryCount = (typeId, itemId) =>
+  hunter.value?.inventory?.find(
+    (i) => i.resource_type_id === typeId && i.item_id === itemId,
+  )?.quantity ?? 0
 
 const getResourceItem = (type_id, item_id) => {
   const type = resourceData.find((t) => t.resource_type_id === type_id)
@@ -78,7 +85,10 @@ const getHunterClass = (id) => hunterClassData.find((c) => c.hunter_class_id ===
                       class="cl-mat-img"
                     />
                     <span class="cl-mat-name">{{ getResourceItem(mat.material[0], mat.material[1])?.item }}</span>
-                    <span class="cl-mat-qty">×{{ mat.amount }}</span>
+                    <span
+                      class="cl-mat-qty"
+                      :class="getInventoryCount(mat.material[0], mat.material[1]) >= mat.amount ? 'cl-mat-ok' : 'cl-mat-short'"
+                    >{{ getInventoryCount(mat.material[0], mat.material[1]) }} / {{ mat.amount }}</span>
                   </div>
                 </div>
               </div>
@@ -242,7 +252,10 @@ const getHunterClass = (id) => hunterClassData.find((c) => c.hunter_class_id ===
 }
 .cl-mat-img { width: 16px; height: 16px; object-fit: contain; }
 .cl-mat-name { font-size: 10px; color: #d4c090; }
-.cl-mat-qty { font-size: 10px; color: #a88040; }
+.cl-mat-qty { font-size: 10px; font-weight: bold; }
+/* สีเดียวกับ .mat-ok / .mat-short หน้า Crafting เพื่อให้อ่านความหมายได้เหมือนกันทั้งแอป */
+.cl-mat-ok { color: #3cb83c; }
+.cl-mat-short { color: #cc4444; }
 
 .cl-empty {
   text-align: center;

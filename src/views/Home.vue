@@ -4,10 +4,14 @@ import { useRoomStore } from '@/stores/room'
 import CraftLookupModal from './components/CraftLookupModal.vue'
 import { isFirebaseConnected } from '@/services/firebase'
 import { hunter } from '@/stores/hunter'
-import { useSfx } from '@/composables/useSfx'
+import { useSfx, preloadAllSfx } from '@/composables/useSfx'
 
 const room = useRoomStore()
 const sfx = useSfx()
+
+// โหลด SFX ไว้ล่วงหน้าตอนแอปว่าง — ไม่งั้นเสียงแต่ละตัวจะหน่วงในครั้งแรกที่ใช้
+// เพราะต้องรอดาวน์โหลดจาก server ตอนกดพอดี (เห็นชัดตอน deploy จริง ไม่เห็นตอน dev)
+preloadAllSfx()
 
 // ── Notification system ───────────────────────────────────
 let _notifId = 0
