@@ -39,23 +39,6 @@ if (typeof window !== 'undefined') {
   })
 }
 
-// iOS มี audio session เดียว ถ้าปล่อยให้ Web Audio (SFX) กับ HTMLAudio (เพลง) แย่งกันคุม
-// ฝั่งเพลงจะถูกปฏิเสธเงียบ ๆ — play() reject แล้ว .catch() ก็กลืนไป เลยไม่มีเสียงและไม่มี error
-// ต่อ element เข้า graph เดียวกันแล้วเหลือทางเดียว ปัญหาหมดไป
-// ยังสตรีมเหมือนเดิม ไม่ได้ถอดรหัสทั้งไฟล์ลง RAM แบบ decodeAudioData
-const _routed = new WeakSet()
-export const routeThroughContext = (el) => {
-  const ctx = _getCtx()
-  if (!ctx || !el || _routed.has(el)) return
-  try {
-    ctx.createMediaElementSource(el).connect(ctx.destination)
-    _routed.add(el)
-  } catch { /* ต่อซ้ำหรือเบราว์เซอร์ไม่รองรับ — ปล่อยให้เล่นแบบเดิมไป */ }
-}
-
-// ให้ฝั่งเพลงเรียกปลุก context ได้ด้วย ไม่งั้นต่อเข้า graph แล้วแต่ context ยังหลับอยู่ = เงียบ
-export const unlockAudio = _unlock
-
 const _load = (src) => {
   if (_buffers.has(src)) return Promise.resolve(_buffers.get(src))
   if (_loading.has(src)) return _loading.get(src)
@@ -81,8 +64,29 @@ const _load = (src) => {
 }
 
 // โหลด + ถอดรหัสไว้ล่วงหน้า ครั้งแรกที่ใช้จะได้เล่นทันทีไม่ต้องรอ
+// _load ใช้กับ SFX สั้น ๆ เท่านั้น — ถอดรหัสเก็บทั้งไฟล์ใน RAM
+// เพลงยาว 4-5 นาทีถ้าหลุดมาทางนี้จะกิน RAM ระดับร้อย MB จนระบบเสียงบน iPad พัง
+// (เคยเกิดมาแล้วจริง — Quest.vue เรียก preloadSfx กับไฟล์เพลงตอนที่ยังเป็น HTMLAudio)
+const _isSfxPath = (src) =>
+  src.startsWith('assets/sounds/ui/') || src.startsWith('assets/sounds/crafting/')
+
+// อุ่น HTTP cache ให้ไฟล์ยาว ๆ โดยไม่ถอดรหัส — ใช้กับเพลงที่ยังเล่นผ่าน HTMLAudio
+export const preloadMedia = (srcs) => {
+  for (const src of [].concat(srcs)) {
+    const el = new Audio(url(src))
+    el.preload = 'auto'
+    try { el.load() } catch { /* iOS อาจไม่ยอมโหลดก่อนมี gesture — ไม่เป็นไร */ }
+  }
+}
+
 export const preloadSfx = (srcs) => {
-  for (const src of [].concat(srcs)) _load(src)
+  for (const src of [].concat(srcs)) {
+    if (!_isSfxPath(src)) {
+      console.warn('[useSfx] ข้าม', src, '— preloadSfx ใช้ได้เฉพาะ SFX ใช้ preloadMedia สำหรับเพลง')
+      continue
+    }
+    _load(src)
+  }
 }
 
 // โฟลเดอร์ที่เก็บหลาย take (1.mp3 .. n.mp3)
