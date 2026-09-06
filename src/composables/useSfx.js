@@ -39,6 +39,23 @@ if (typeof window !== 'undefined') {
   })
 }
 
+// iOS มี audio session เดียว ถ้าปล่อยให้ Web Audio (SFX) กับ HTMLAudio (เพลง) แย่งกันคุม
+// ฝั่งเพลงจะถูกปฏิเสธเงียบ ๆ — play() reject แล้ว .catch() ก็กลืนไป เลยไม่มีเสียงและไม่มี error
+// ต่อ element เข้า graph เดียวกันแล้วเหลือทางเดียว ปัญหาหมดไป
+// ยังสตรีมเหมือนเดิม ไม่ได้ถอดรหัสทั้งไฟล์ลง RAM แบบ decodeAudioData
+const _routed = new WeakSet()
+export const routeThroughContext = (el) => {
+  const ctx = _getCtx()
+  if (!ctx || !el || _routed.has(el)) return
+  try {
+    ctx.createMediaElementSource(el).connect(ctx.destination)
+    _routed.add(el)
+  } catch { /* ต่อซ้ำหรือเบราว์เซอร์ไม่รองรับ — ปล่อยให้เล่นแบบเดิมไป */ }
+}
+
+// ให้ฝั่งเพลงเรียกปลุก context ได้ด้วย ไม่งั้นต่อเข้า graph แล้วแต่ context ยังหลับอยู่ = เงียบ
+export const unlockAudio = _unlock
+
 const _load = (src) => {
   if (_buffers.has(src)) return Promise.resolve(_buffers.get(src))
   if (_loading.has(src)) return _loading.get(src)
