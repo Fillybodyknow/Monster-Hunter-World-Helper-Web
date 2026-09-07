@@ -2772,6 +2772,42 @@ const myTurnEnded = computed(() => {
   return !!(room.tcTurnEnds?.[room.myHunterId])
 })
 
+// ── Hunter Token ──────────────────────────────────────────
+const hunterTokenChoices = computed(() =>
+  Array.from({ length: room.hunterCount }, (_, i) => i + 5),
+)
+
+const takenHunterTokens = computed(() =>
+  Object.entries(room.hunterTokens ?? {})
+    .filter(([id]) => id !== String(room.myHunterId))
+    .map(([, n]) => n),
+)
+
+const needHunterTokenPick = computed(
+  () =>
+    room.inRoom &&
+    phase.value === 'huntingPanel' &&
+    !showTcReveal.value &&
+    !room.myHunterToken,
+)
+
+const pickHunterToken = (n) => {
+  if (takenHunterTokens.value.includes(n)) return
+  room.setMyHunterToken?.(n)
+}
+
+const _shiftHunterTokens = () => {
+  const ids = room.hunters.map((h) => String(h.hunter_id))
+  if (ids.length < 2) return
+  const cur = room.hunterTokens ?? {}
+  const next = {}
+  ids.forEach((id, i) => {
+    const token = cur[id]
+    if (token != null) next[ids[(i + 1) % ids.length]] = token
+  })
+  room.setAllHunterTokens?.(next)
+}
+
 const _queueReveal = (hunterName, card, hunterClassId) => {
   tcRevealQueue.value = [...tcRevealQueue.value, { hunterName, card, hunterClassId }]
   _processTcRevealQueue()
@@ -2839,6 +2875,9 @@ const _drawTcCard = (hunterName, hunterId = null) => {
   }
   if (card.card_name === 'Turf War') {
     adjustHpWithFlash(-5)
+  }
+  if (card.card_name === 'Threat Shift') {
+    _shiftHunterTokens()
   }
   if (card.card_name === 'Time Waster') {
     const discardCount = Math.min(4, timeCardDeck.value.length)
@@ -2940,6 +2979,7 @@ const activationLimit = computed(() => {
   if (activationOverride.value !== null) return activationOverride.value
   return currentBehaviorCard.value?.activations ?? 0
 })
+const attackCardLimit = computed(() => currentBehaviorCard.value?.attack_cards ?? 0)
 const monsterTurnReady = computed(() =>
   activationLimit.value === 0 || activationRoundsCompleted.value >= activationLimit.value
 )
@@ -3127,7 +3167,10 @@ const initHuntingData = () => {
   if (_elemAnimTimer) clearTimeout(_elemAnimTimer)
   activationRoundsCompleted.value = 0
   activationOverride.value = null
-  if (room.inRoom && room.isHost) room.syncActivationCount?.(0)
+  if (room.inRoom && room.isHost) {
+    room.syncActivationCount?.(0)
+    room.clearHunterTokensAll?.()
+  }
 }
 
 // ── Damage Indicator ─────────────────────────────────────
@@ -5693,6 +5736,9 @@ const openPackDrawer = () => {
             </span>
             <span v-else class="act-ready-text">✓ Monster Turn พร้อมแล้ว!</span>
           </p>
+          <p v-if="attackCardLimit" class="act-attack">
+            🗡 เล่น Attack Card ได้ <strong>{{ attackCardLimit }}</strong> ใบต่อรอบ
+          </p>
         </div>
 
         <!-- Add Hunter Turn button (Host only) -->
@@ -7497,6 +7543,9 @@ const openPackDrawer = () => {
                 เหลืออีก <strong>{{ activationLimit - activationRoundsCompleted }}</strong> ครั้ง
               </template>
               <template v-else>✓ ครบแล้ว — กด Monster Turn</template>
+              <span v-if="attackCardLimit" class="float-atk-badge" title="Attack Card ที่เล่นได้ต่อรอบ">
+                🗡 {{ attackCardLimit }}
+              </span>
             </span>
           </div>
           <!-- End turn button -->
@@ -7542,6 +7591,9 @@ const openPackDrawer = () => {
                 :src="getImg(getHunterClass(h.hunter_class_id).thumbnail)"
                 class="party-icon-img"
               />
+              <span v-if="room.hunterTokens?.[h.hunter_id]" class="party-token">
+                {{ room.hunterTokens[h.hunter_id] }}
+              </span>
               <span class="party-status-dot">
                 {{ room.tcTurnEnds?.[h.hunter_id]?.card ? '✓' : room.tcTurnEnds?.[h.hunter_id]?.pending ? '…' : '' }}
               </span>
@@ -7742,6 +7794,46 @@ const openPackDrawer = () => {
             </div>
             <p v-if="specialCardOverlayCard" class="sc-card-name">{{ specialCardOverlayCard.behavior_name }}</p>
             <p class="sc-hint">แตะเพื่อเริ่มการต่อสู้</p>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ HUNTER TOKEN PICK ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="needHunterTokenPick" class="ht-overlay">
+          <div class="ht-modal">
+            <p class="ht-title">เลือก Hunter Token</p>
+            <p class="ht-sub">ระบุว่าใครเป็นเป้าหมายของมอนสเตอร์</p>
+
+            <div class="ht-choices">
+              <button
+                v-for="n in hunterTokenChoices"
+                :key="n"
+                class="ht-token"
+                :class="{ 'ht-taken': takenHunterTokens.includes(n) }"
+                :disabled="takenHunterTokens.includes(n)"
+                @click="pickHunterToken(n)"
+              >
+                <span class="ht-num">{{ n }}</span>
+                <span v-if="takenHunterTokens.includes(n)" class="ht-taken-by">
+                  {{ room.hunters.find(h => room.hunterTokens?.[h.hunter_id] === n)?.hunter_name }}
+                </span>
+              </button>
+            </div>
+
+            <div class="ht-waiting">
+              <span
+                v-for="h in room.hunters"
+                :key="h.hunter_id"
+                class="ht-chip"
+                :class="{ 'ht-chip-done': !!room.hunterTokens?.[h.hunter_id] }"
+              >
+                {{ h.hunter_name }}
+                <span>{{ room.hunterTokens?.[h.hunter_id] ? ' ✓' : ' …' }}</span>
+              </span>
+            </div>
           </div>
         </div>
       </Transition>
@@ -11101,6 +11193,12 @@ const openPackDrawer = () => {
   box-shadow: 0 0 8px rgba(201,162,39,0.6);
 }
 .act-status { font-size: 12px; margin: 0; }
+.act-attack {
+  font-size: 11px;
+  color: rgba(201,162,39,0.55);
+  margin: 2px 0 0;
+}
+.act-attack strong { color: #ffd27a; }
 .act-waiting { color: rgba(201,162,39,0.65); }
 .act-ready-text {
   color: #6fcf97;
@@ -11373,6 +11471,18 @@ const openPackDrawer = () => {
   color: rgba(201,162,39,0.7);
 }
 .float-act-label strong { color: #ffd27a; }
+.float-atk-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffd27a;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(200,155,60,0.12);
+  border: 1px solid rgba(200,155,60,0.35);
+  white-space: nowrap;
+}
 .ct-act-hint {
   font-size: 12px;
   color: rgba(201,162,39,0.55);
@@ -11715,6 +11825,24 @@ const openPackDrawer = () => {
   width: 16px;
   height: 16px;
   object-fit: contain;
+}
+.party-token {
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 2px;
+  border-radius: 4px;
+  background: #2a1e10;
+  border: 1px solid #c89b3c;
+  color: #ffd27a;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .party-status-dot {
   position: absolute;
@@ -15880,6 +16008,109 @@ const openPackDrawer = () => {
 /* ══════════════════════════════════════════
    TOKEN REVEAL OVERLAY
 ══════════════════════════════════════════ */
+.ht-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1240;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(5,4,2,0.9);
+  backdrop-filter: blur(6px);
+}
+.ht-modal {
+  width: min(92vw, 360px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 22px 20px;
+  border-radius: 14px;
+  background: linear-gradient(to bottom, #1a1408, #0d0a05);
+  border: 1px solid rgba(200,155,60,0.45);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+}
+.ht-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: bold;
+  color: #ffd27a;
+  letter-spacing: 2px;
+}
+.ht-sub {
+  margin: 0 0 6px;
+  font-size: 11px;
+  color: #7c5a2b;
+  text-align: center;
+}
+.ht-choices {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.ht-token {
+  width: 62px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 12px 4px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(200,155,60,0.5);
+  background: rgba(200,155,60,0.12);
+  font-family: inherit;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.ht-token:hover:not(:disabled) {
+  background: rgba(200,155,60,0.28);
+  transform: translateY(-2px);
+}
+.ht-num {
+  font-size: 24px;
+  font-weight: bold;
+  color: #ffd27a;
+  line-height: 1;
+}
+.ht-taken {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+.ht-taken-by {
+  font-size: 8px;
+  color: #a88040;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ht-waiting {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  justify-content: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(124,90,43,0.3);
+  width: 100%;
+}
+.ht-chip {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(124,90,43,0.15);
+  border: 1px solid rgba(124,90,43,0.4);
+  color: #a88040;
+}
+.ht-chip-done {
+  background: rgba(80,180,110,0.16);
+  border-color: rgba(90,210,130,0.5);
+  color: #8fe0aa;
+}
+
 .tr-overlay {
   position: fixed;
   inset: 0;

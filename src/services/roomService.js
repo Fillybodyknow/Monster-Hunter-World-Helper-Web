@@ -309,6 +309,16 @@ export const pushDialogCounts = (code, hunterId, counts) =>
 export const clearAllDialogCounts = (code) =>
   remove(ref(db, `rooms/${code}/dialogCounts`))
 
+// ── Hunter Token ──────────────────────────────────────────
+export const pushHunterToken = (code, hunterId, token) =>
+  set(ref(db, `rooms/${code}/hunterTokens/${hunterId}`), token)
+
+export const pushAllHunterTokens = (code, tokens) =>
+  set(ref(db, `rooms/${code}/hunterTokens`), tokens)
+
+export const clearHunterTokens = (code) =>
+  remove(ref(db, `rooms/${code}/hunterTokens`))
+
 // ── Dialog Dice (ผลทอยแบบ "ทอยครั้งเดียว" ใช้ร่วมกันทั้งกลุ่ม) ──
 export const pushDialogDice = (code, key, value) =>
   set(ref(db, `rooms/${code}/dialogDice/${key}`), value)
