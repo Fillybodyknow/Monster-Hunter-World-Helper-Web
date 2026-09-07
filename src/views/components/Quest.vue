@@ -1900,6 +1900,7 @@ const resetToBookPhase = () => {
   misreadActive.value = false
   tcDiscardFlash.value = null
   tcStatusFlash.value = null
+  _clearThreatShift()
   nitrotoadStep.value = null
   nitrotoadRoll.value = null
   nitrotoadDrawerId.value = null
@@ -2844,6 +2845,67 @@ const _shiftHunterTokens = () => {
   room.setAllHunterTokens?.(next)
 }
 
+// ── Threat Shift Animation ────────────────────────────────
+// เดิมการ์ดใบนี้สลับ Token เงียบ ๆ ไม่มีใครทันเห็นว่าเลขของตัวเองเปลี่ยนไปเป็นของใคร
+// ค่าที่ Host sync มาคือ "หลังสลับ" แล้ว จึงย้อนกลับหนึ่งช่องเอาเองเพื่อวาดภาพก่อนสลับ
+// ทุกเครื่องคำนวณเหมือนกันจากค่าเดียวกัน ไม่ต้อง sync state เพิ่ม
+const THREAT_SHIFT_HOLD_MS = 900    // โชว์เลขเดิมให้ทันอ่านก่อนเริ่มขยับ
+const THREAT_SHIFT_SLIDE_MS = 750   // ต้องตรงกับ transition ของ .ts-fly
+const THREAT_SHIFT_SETTLE_MS = 900  // ค้างเลขใหม่ไว้ให้เห็นว่าตกไปอยู่กับใคร
+const THREAT_SHIFT_TOTAL_MS = THREAT_SHIFT_HOLD_MS + THREAT_SHIFT_SLIDE_MS + THREAT_SHIFT_SETTLE_MS
+
+const threatShift = ref(null) // { hunters, before: {id: n}, moving }
+let _threatShiftTimers = []
+
+const _clearThreatShift = () => {
+  _threatShiftTimers.forEach(clearTimeout)
+  _threatShiftTimers = []
+  threatShift.value = null
+}
+
+const _showThreatShift = () => {
+  const hunters = room.hunters ?? []
+  if (hunters.length < 2) return false
+  const cur = room.hunterTokens ?? {}
+  const ids = hunters.map((h) => String(h.hunter_id))
+  // กลับด้านของ _shiftHunterTokens: ค่าที่ตอนนี้อยู่กับคนถัดไป คือค่าที่เมื่อกี้อยู่กับคนนี้
+  const before = {}
+  ids.forEach((id, i) => {
+    const v = cur[ids[(i + 1) % ids.length]]
+    if (v != null) before[id] = v
+  })
+  if (!Object.keys(before).length) return false
+
+  _clearThreatShift()
+  threatShift.value = { hunters: [...hunters], before, moving: false }
+  _threatShiftTimers.push(
+    setTimeout(() => {
+      if (!threatShift.value) return
+      threatShift.value = { ...threatShift.value, moving: true }
+      sfx.play(`${SFX_UI}/token_reveal.mp3`, { key: 'token' })
+    }, THREAT_SHIFT_HOLD_MS),
+  )
+  _threatShiftTimers.push(setTimeout(_clearThreatShift, THREAT_SHIFT_TOTAL_MS))
+  return true
+}
+
+// เลขที่ลอยอยู่เหนือแถว — คนสุดท้ายวิ่งออกขอบขวาแล้วมีอีกใบโผล่จากขอบซ้ายแทน
+// เพื่อสื่อว่าวนกลับไปคนแรก แทนที่จะกระโดดข้ามหัวทุกคน
+const threatShiftFlights = computed(() => {
+  const ts = threatShift.value
+  if (!ts) return []
+  const ids = ts.hunters.map((h) => String(h.hunter_id))
+  const out = []
+  ids.forEach((id, i) => {
+    const value = ts.before[id]
+    if (value == null) return
+    const isLast = i === ids.length - 1
+    out.push({ key: `f${i}`, value, from: i, to: i + 1, cls: isLast ? 'ts-fly-out' : '' })
+    if (isLast) out.push({ key: 'wrap', value, from: -1, to: 0, cls: 'ts-fly-in' })
+  })
+  return out
+})
+
 const _queueReveal = (hunterName, card, hunterClassId) => {
   tcRevealQueue.value = [...tcRevealQueue.value, { hunterName, card, hunterClassId }]
   _processTcRevealQueue()
@@ -2863,9 +2925,12 @@ const _processTcRevealQueue = () => {
 }
 
 const dismissTcReveal = () => {
+  const card = tcRevealCurrent.value?.card
   showTcReveal.value = false
   tcRevealCurrent.value = null
-  setTimeout(_processTcRevealQueue, 300)
+  // ต่อคิวใบถัดไปให้ช้าลงระหว่างเล่นแอนิเมชัน ไม่งั้นการ์ดใบใหม่จะเด้งทับ
+  const shifting = card?.card_name === 'Threat Shift' && _showThreatShift()
+  setTimeout(_processTcRevealQueue, shifting ? THREAT_SHIFT_TOTAL_MS + 200 : 300)
 }
 
 const _drawTcCard = (hunterName, hunterId = null) => {
@@ -5103,7 +5168,10 @@ const openPackDrawer = () => {
       <!-- Track Token Panel -->
       <div v-if="questMode !== 'minimal'" class="tt-panel">
         <div class="tt-header">
-          <span class="tt-label">🔍 Track Token</span>
+          <span class="tt-label">
+            <img :src="getImg('assets/img/UI/symbol/track_token_symbol.png')" class="ui-symbol ui-symbol-sm" alt="" />
+            Track Token
+          </span>
           <span class="tt-pool">Pool: {{ trackTokenPool.length }}</span>
           <div class="tt-actions">
             <button v-if="!room.inRoom || room.isHost" class="tt-btn tt-btn-add" @click="addTrackToken" title="รับ Token">+ รับ</button>
@@ -5122,7 +5190,7 @@ const openPackDrawer = () => {
               <span v-if="token.revealed" class="tt-value" :class="token.value > 0 ? 'val-pos' : token.value < 0 ? 'val-neg' : 'val-zero'">
                 {{ token.value > 0 ? '+' : '' }}{{ token.value }}
               </span>
-              <span v-else class="tt-hidden">?</span>
+              <img v-else :src="getImg('assets/img/UI/symbol/track_token_symbol.png')" class="token-back-img" alt="" />
             </div>
           </div>
         </div>
@@ -5132,13 +5200,16 @@ const openPackDrawer = () => {
           <Transition name="slain-fade">
             <div v-if="selectedToken" class="tt-modal-overlay" @click.self="selectedToken = null">
               <div class="tt-modal">
-                <p class="tt-modal-title">Track Token</p>
+                <p class="tt-modal-title">
+                  <img :src="getImg('assets/img/UI/symbol/track_token_symbol.png')" class="ui-symbol ui-symbol-sm" alt="" />
+                  Track Token
+                </p>
                 <div class="tt-modal-token">
                   <span v-if="selectedToken.revealed" class="tt-value tt-modal-val"
                     :class="selectedToken.value > 0 ? 'val-pos' : selectedToken.value < 0 ? 'val-neg' : 'val-zero'">
                     {{ selectedToken.value > 0 ? '+' : '' }}{{ selectedToken.value }}
                   </span>
-                  <span v-else class="tt-hidden tt-modal-val">?</span>
+                  <img v-else :src="getImg('assets/img/UI/symbol/track_token_symbol.png')" class="token-back-img" alt="" />
                 </div>
                 <div class="tt-modal-btns">
                   <button
@@ -5770,12 +5841,17 @@ const openPackDrawer = () => {
           </div>
           <p class="act-status">
             <span v-if="!monsterTurnReady" class="act-waiting">
+              <img :src="getImg('assets/img/UI/symbol/hunter_turn_symbol.png')" class="ui-symbol" alt="" />
               Hunter เล่นได้อีก <strong>{{ activationLimit - activationRoundsCompleted }}</strong> รอบ
             </span>
             <span v-else class="act-ready-text">✓ Monster Turn พร้อมแล้ว!</span>
-          </p>
-          <p v-if="attackCardLimit" class="act-attack">
-            🗡 เล่น Attack Card ได้ <strong>{{ attackCardLimit }}</strong> ใบต่อรอบ
+            <template v-if="attackCardLimit">
+              <span class="inline-sep" aria-hidden="true"></span>
+              <span class="act-attack">
+                <img :src="getImg('assets/img/UI/symbol/hunter_attack_card_symbol.png')" class="ui-symbol" alt="" />
+                เล่น Attack Card ได้ <strong>{{ attackCardLimit }}</strong> ใบต่อรอบ
+              </span>
+            </template>
           </p>
         </div>
 
@@ -7402,6 +7478,38 @@ const openPackDrawer = () => {
       </Transition>
     </teleport>
 
+    <!-- ═══════════ THREAT SHIFT OVERLAY ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="threatShift" class="ts-overlay">
+          <p class="ts-title">Threat Shift</p>
+          <p class="ts-sub">Hunter Token เลื่อนไปคนถัดไป</p>
+          <div class="ts-row" :class="{ 'ts-moving': threatShift.moving }">
+            <div v-for="h in threatShift.hunters" :key="h.hunter_id" class="ts-slot">
+              <div class="ts-icon-wrap" :class="{ 'ts-icon-me': h.hunter_id === room.myHunterId }">
+                <img
+                  v-if="getHunterClass(h.hunter_class_id)?.thumbnail"
+                  :src="getImg(getHunterClass(h.hunter_class_id).thumbnail)"
+                  class="ts-icon-img"
+                />
+              </div>
+              <span class="ts-name">{{ h.hunter_name }}</span>
+            </div>
+            <!-- เลขวิ่งอยู่ layer แยก จะได้ขยับข้ามช่องได้โดยไม่ดันเลย์เอาต์ของแถว -->
+            <div class="ts-fly-layer">
+              <span
+                v-for="f in threatShiftFlights"
+                :key="f.key"
+                class="ts-fly"
+                :class="f.cls"
+                :style="{ '--from': f.from, '--to': f.to }"
+              >{{ f.value }}</span>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
     <!-- ═══════════ PART BREAK TOKEN FLASH OVERLAY ═══════════ -->
     <teleport to="body">
       <Transition name="tc-hp-flash">
@@ -7578,11 +7686,14 @@ const openPackDrawer = () => {
             </div>
             <span class="float-act-label">
               <template v-if="!monsterTurnReady">
+                <img :src="getImg('assets/img/UI/symbol/hunter_turn_symbol.png')" class="ui-symbol ui-symbol-sm" alt="" />
                 เหลืออีก <strong>{{ activationLimit - activationRoundsCompleted }}</strong> ครั้ง
               </template>
               <template v-else>✓ ครบแล้ว — กด Monster Turn</template>
+              <span v-if="attackCardLimit" class="inline-sep" aria-hidden="true"></span>
               <span v-if="attackCardLimit" class="float-atk-badge" title="Attack Card ที่เล่นได้ต่อรอบ">
-                🗡 {{ attackCardLimit }}
+                <img :src="getImg('assets/img/UI/symbol/hunter_attack_card_symbol.png')" class="float-atk-img" alt="" />
+                <span class="float-atk-num">{{ attackCardLimit }}</span>
               </span>
             </span>
           </div>
@@ -7893,7 +8004,10 @@ const openPackDrawer = () => {
     <teleport to="body">
       <transition name="slain-fade">
         <div v-if="showTokenReveal" class="tr-overlay" @click="if (tokenRevealDone) { showTokenReveal = false; phase = 'hunting' }">
-          <p class="tr-title">🔍 Track Token</p>
+          <p class="tr-title">
+            <img :src="getImg('assets/img/UI/symbol/track_token_symbol.png')" class="ui-symbol" alt="" />
+            Track Token
+          </p>
           <div class="tr-tokens">
             <div
               v-for="token in tokenRevealVisual"
@@ -7902,7 +8016,9 @@ const openPackDrawer = () => {
               :class="{ flipped: token.showValue }"
             >
               <div class="tr-token-inner">
-                <div class="tr-token-back">?</div>
+                <div class="tr-token-back">
+                  <img :src="getImg('assets/img/UI/symbol/track_token_symbol.png')" class="token-back-img" alt="" />
+                </div>
                 <div
                   class="tr-token-front"
                   :class="token.value == null ? 'tr-token-pending' : token.value > 0 ? 'val-pos' : token.value < 0 ? 'val-neg' : 'val-zero'"
@@ -10944,6 +11060,100 @@ const openPackDrawer = () => {
 }
 
 /* ── Discard Flash Overlay ── */
+/* ── Threat Shift ── */
+.ts-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9985;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(0,0,0,0.72);
+  pointer-events: none;
+}
+.ts-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #ff9b57;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  text-shadow: 0 0 12px rgba(255,120,40,0.45);
+  margin: 0;
+}
+.ts-sub {
+  font-size: 11px;
+  color: rgba(201,162,39,0.7);
+  margin: 0 0 14px;
+}
+.ts-row {
+  /* ช่องกว้างเท่ากันทุกคน เลขที่วิ่งจึงเลื่อนได้ทีละ 1 ช่องพอดี */
+  --ts-slot: 74px;
+  position: relative;
+  display: flex;
+}
+.ts-slot {
+  width: var(--ts-slot);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.ts-icon-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(20,14,6,0.9);
+  border: 2px solid rgba(200,155,60,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ts-icon-me {
+  border-color: #c89b3c;
+  box-shadow: 0 0 10px rgba(200,155,60,0.4);
+}
+.ts-icon-img { width: 30px; height: 30px; object-fit: contain; }
+.ts-name {
+  font-size: 9px;
+  color: rgba(201,162,39,0.6);
+  max-width: var(--ts-slot);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ts-fly-layer { position: absolute; inset: 0; }
+/* จุดเริ่มคือกึ่งกลางช่อง --from แล้วเลื่อนไปตามระยะห่างของช่อง ไม่ต้องวัด DOM */
+.ts-fly {
+  position: absolute;
+  top: 24px;
+  left: calc((var(--from) + 0.5) * var(--ts-slot));
+  transform: translate(-50%, -50%);
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: 6px;
+  background: #2a1e10;
+  border: 1px solid #c89b3c;
+  color: #ffd27a;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+  box-shadow: 0 0 10px rgba(200,155,60,0.5);
+  transition: transform 0.75s cubic-bezier(0.5, 0, 0.2, 1), opacity 0.75s ease;
+}
+.ts-moving .ts-fly {
+  transform: translate(calc(-50% + (var(--to) - var(--from)) * var(--ts-slot)), -50%);
+}
+/* ใบของคนสุดท้ายวิ่งพ้นขอบขวาแล้วจาง ส่วนใบ ts-fly-in โผล่จากขอบซ้ายมาแทน */
+.ts-fly-out { opacity: 1; }
+.ts-moving .ts-fly-out { opacity: 0; }
+.ts-fly-in { opacity: 0; }
+.ts-moving .ts-fly-in { opacity: 1; }
+
 .tc-discard-flash-overlay {
   position: fixed;
   inset: 0;
@@ -11242,11 +11452,35 @@ const openPackDrawer = () => {
   border-color: #c9a227;
   box-shadow: 0 0 8px rgba(201,162,39,0.6);
 }
-.act-status { font-size: 12px; margin: 0; }
+.act-status {
+  font-size: 12px;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+}
+/* สัญลักษณ์จากคู่มือเกม ใช้แทน emoji เพื่อให้ตรงกับหน้าการ์ดจริง
+   ใช้หน่วย em ให้ขนาดวิ่งตามข้อความรอบตัวเอง ไม่ต้องตั้งขนาดแยกทีละจุด */
+/* ขนาดคงที่ ไม่ผูกกับ font-size ของข้อความรอบตัว
+   ข้อความพวกนี้เล็ก 10-11px ถ้าคิดขนาดจากมัน ไอคอนจะเหลือ ~14px
+   ซึ่งย่อจากต้นฉบับ 152px ลงมา 10 เท่า ลายเส้นบาง ๆ จะเละจนดูไม่ออก
+   ไม่แตะสี — ไฟล์ต้นฉบับเป็นโทนทอง/เบจตรงกับธีมอยู่แล้ว */
+.ui-symbol {
+  height: 28px;
+  width: auto;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+/* แถบลอยมีที่จำกัด ใช้ขนาดย่อมลงแต่ยังพออ่านออก */
+.ui-symbol-sm {
+  height: 22px;
+  margin-right: 3px;
+}
+
 .act-attack {
   font-size: 11px;
   color: rgba(201,162,39,0.55);
-  margin: 2px 0 0;
 }
 .act-attack strong { color: #ffd27a; }
 .act-waiting { color: rgba(201,162,39,0.65); }
@@ -11521,17 +11755,48 @@ const openPackDrawer = () => {
   color: rgba(201,162,39,0.7);
 }
 .float-act-label strong { color: #ffd27a; }
-.float-atk-badge {
+/* ตัวเลขทับบน symbol — ถอดกรอบ pill เดิมออกเพราะซ้อนกันแล้วจะกลายเป็นกล่องซ้อนกล่อง
+   วิธีวางตัวเลขทับไอคอนตามแบบเดียวกับ .element-value ในหน้า Crafting */
+.inline-sep {
   display: inline-block;
-  margin-left: 6px;
-  font-size: 10px;
-  font-weight: 700;
-  color: #ffd27a;
-  padding: 1px 8px;
+  width: 1px;
+  height: 16px;
+  margin: 0 8px;
+  vertical-align: middle;
+  background: linear-gradient(to bottom, transparent, rgba(201, 162, 39, 0.45), transparent);
+}
+.float-atk-badge {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+  vertical-align: middle;
+}
+/* ขนาดเดียวกับ .ui-symbol-sm ของไอคอนเทิร์น เพื่อให้สองอันบนแถบลอยดูเป็นชุดเดียวกัน */
+.float-atk-img {
+  height: 22px;
+  width: auto;
+  display: block;
+}
+/* ตัวเลขต้องมีพื้นทึบของตัวเอง — เงาดำกับ text-stroke เอาไม่อยู่
+   เพราะลายไพ่ข้างหลังมีรายละเอียดเยอะและโทนกลาง ตัวเลขเลยจมหายไปกับลาย
+   ย้ายมามุมล่างขวาแบบ badge นับจำนวน แทนที่จะทับกลางภาพซึ่งบังลายจนดูไม่ออกว่าเป็น symbol อะไร */
+.float-atk-num {
+  position: absolute;
+  right: -5px;
+  bottom: -4px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  box-sizing: border-box;
   border-radius: 999px;
-  background: rgba(200,155,60,0.12);
-  border: 1px solid rgba(200,155,60,0.35);
-  white-space: nowrap;
+  background: #12100a;
+  border: 1px solid rgba(200, 155, 60, 0.7);
+  color: #ffd27a;
+  font-size: 11px;
+  font-weight: bold;
+  line-height: 13px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
 }
 .ct-act-hint {
   font-size: 12px;
@@ -12257,6 +12522,8 @@ const openPackDrawer = () => {
   gap: 8px;
 }
 .tt-label {
+  display: flex;
+  align-items: center;
   font-size: 12px;
   color: #a88040;
   letter-spacing: 1px;
@@ -12322,7 +12589,15 @@ const openPackDrawer = () => {
   background: radial-gradient(circle at 36% 28%, #6b5326, #3a2a10 72%);
   box-shadow: inset 0 1px 2px rgba(255,220,160,0.25), 0 1px 3px rgba(0,0,0,0.5);
 }
-.tt-hidden { font-size: 18px; color: rgba(200,155,60,0.4); font-weight: bold; }
+/* หลังเบี้ยที่ยังไม่เปิด — ไฟล์ symbol เป็นแผ่นสี่เหลี่ยมทึบ ครอปเป็นวงกลม
+   แล้วได้หน้าตาเหมือนเบี้ยกระดาษจริงในกล่อง ดีกว่าเครื่องหมายคำถามเดิม */
+.token-back-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
 .tt-value { font-size: 16px; font-weight: bold; }
 .val-pos { color: #7cfc00; }
 .val-zero { color: #ffd27a; }
@@ -12358,6 +12633,8 @@ const openPackDrawer = () => {
   box-shadow: 0 10px 34px rgba(0,0,0,0.75), inset 0 0 26px rgba(150,120,70,0.14);
 }
 .tt-modal-title {
+  display: flex;
+  align-items: center;
   font-size: 12px;
   letter-spacing: 3px;
   color: #6b542e;
@@ -12380,7 +12657,6 @@ const openPackDrawer = () => {
 .tt-modal .val-pos  { color: #1f6b45; }
 .tt-modal .val-zero { color: #7a5a12; }
 .tt-modal .val-neg  { color: #a3301f; }
-.tt-modal .tt-hidden { color: rgba(90,70,40,0.55); }
 .tt-modal-btns {
   display: flex;
   flex-direction: column;
@@ -16212,6 +16488,9 @@ const openPackDrawer = () => {
   cursor: default;
 }
 .tr-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 14px;
   letter-spacing: 5px;
   color: #c89b3c;
