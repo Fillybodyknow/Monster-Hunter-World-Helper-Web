@@ -4064,6 +4064,31 @@ watch(rewardDiceModifier, () => {
   rollAllDice()
 })
 
+// ── ตาราง Reward อ้างอิงระหว่างทอยเต๋า ────────────────────
+// ตอนทอยยังไม่เห็นตาราง เลยไม่รู้ว่าเลขที่ได้แลกเป็นอะไรได้บ้าง ต้องกด "ใช้ผลนี้" ไปก่อนถึงจะเห็น
+// ซึ่งย้อนกลับมาทอยใหม่ไม่ได้แล้ว
+const showRollRewardTable = ref(true)
+
+// รางวัลรับได้ด้วยผลรวมของเต๋า "ชุดย่อยไหนก็ได้" (ดู selectedSum ในหน้า assign)
+// เต๋าเยอะสุดไม่กี่ลูก ไล่ทุกชุดย่อยตรง ๆ จึงถูกกว่าและอ่านง่ายกว่าเขียน DP
+const rewardReachableSums = computed(() => {
+  const sums = new Set()
+  rolledDice.value
+    .filter((d) => !d.spent)
+    .forEach((d) => {
+      ;[...sums].forEach((s) => sums.add(s + d.value))
+      sums.add(d.value)
+    })
+  return sums
+})
+
+const rewardReachableCount = computed(
+  () =>
+    (monsterHuntingData.value?.reward_table ?? []).filter((r) =>
+      rewardReachableSums.value.has(r.rolled_number),
+    ).length,
+)
+
 const rerollDie = (id) => {
   if (room.inRoom) return // ไม่อนุญาต reroll ใน co-op
   if (rollingDiceIds.value.has(id)) return
@@ -6550,6 +6575,49 @@ const openPackDrawer = () => {
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Reward table reference -->
+        <div v-if="monsterHuntingData.reward_table?.length" class="rw-peek">
+          <button class="rw-peek-head" @click="showRollRewardTable = !showRollRewardTable">
+            <span class="rw-peek-caret" :class="{ open: showRollRewardTable }">▶</span>
+            <span class="rw-peek-title">ตาราง Reward</span>
+            <span v-if="!isAnyRolling && rewardReachableSums.size" class="rw-peek-count">
+              ทำได้ {{ rewardReachableCount }}/{{ monsterHuntingData.reward_table.length }}
+            </span>
+          </button>
+          <div v-if="showRollRewardTable" class="rw-peek-grid" :class="{ 'rw-peek-rolling': isAnyRolling }">
+            <!-- ทั้งช่องเป็นปุ่มดูสูตรคราฟ — ช่องกว้างแค่ ~76px ถ้ายัดปุ่มแยกเข้าไปจะกดพลาดบนมือถือ -->
+            <button
+              v-for="row in monsterHuntingData.reward_table"
+              :key="row.rolled_number"
+              class="rw-peek-cell"
+              :class="{ 'rw-peek-hit': !isAnyRolling && rewardReachableSums.has(row.rolled_number) }"
+              :disabled="!getResourceItem(row.reward.resource_type_id, row.reward.item_id)"
+              :title="`${getResourceItem(row.reward.resource_type_id, row.reward.item_id)?.item ?? '?'} — ดูสูตรคราฟ`"
+              @click="openCraftLookup(row.reward.resource_type_id, row.reward.item_id, getResourceItem(row.reward.resource_type_id, row.reward.item_id)?.item)"
+            >
+              <span class="rw-peek-craft">🔨</span>
+              <span class="rw-peek-num">{{ row.rolled_number }}</span>
+              <img
+                v-if="getResourceItem(row.reward.resource_type_id, row.reward.item_id)"
+                :src="getImg(getResourceItem(row.reward.resource_type_id, row.reward.item_id).thumbnail)"
+                class="rw-peek-img"
+              />
+              <span class="rw-peek-name">{{
+                getResourceItem(row.reward.resource_type_id, row.reward.item_id)?.item ?? '?'
+              }}</span>
+              <span
+                v-if="row.part_break_reward?.part_id"
+                class="rw-peek-bonus"
+                :class="{ 'bonus-active': isPartBreakRewardActive(row.part_break_reward) }"
+                :title="`+${row.part_break_reward.gain_additional} ถ้า ${getPartMeta(row.part_break_reward.part_id)?.part ?? ''} แตก`"
+              >{{ isPartBreakRewardActive(row.part_break_reward) ? '🔓' : '🔒' }}</span>
+            </button>
+          </div>
+          <p v-if="showRollRewardTable" class="rw-peek-hint">
+            ไฮไลต์ = รวมเต๋าของคุณให้ได้เลขนั้นได้ · 🔓 = ได้ของเพิ่มจาก Part Break · แตะช่องเพื่อดูสูตรคราฟ
+          </p>
         </div>
 
         <!-- Reroll request status (co-op) -->
@@ -18867,6 +18935,128 @@ const openPackDrawer = () => {
 }
 
 /* ── บัญชีรางวัล: กระดาษตีเส้น ขอบไม้ ── */
+/* ── ตาราง Reward แบบย่อ ระหว่างทอยเต๋า ── */
+/* ใช้พื้นกระดาษชุดเดียวกับ .rw-table หน้า assign เพื่อให้จำได้ว่าเป็นตารางเดียวกัน */
+.rw-peek {
+  border-radius: 3px;
+  overflow: hidden;
+  border: 2px solid #5a4222;
+  background:
+    radial-gradient(circle at 10% 4%, rgba(140,110,60,0.13), transparent 40%),
+    linear-gradient(168deg, #efe4c8 0%, #e6d9b8 45%, #dccba6 100%);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.5), inset 0 0 26px rgba(150,120,70,0.14);
+}
+.rw-peek-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: none;
+  border-bottom: 1px solid rgba(120,95,55,0.35);
+  background: rgba(120,95,50,0.12);
+  color: #5a4222;
+  font-family: inherit;
+  cursor: pointer;
+}
+.rw-peek-caret {
+  font-size: 9px;
+  transition: transform 0.2s;
+}
+.rw-peek-caret.open { transform: rotate(90deg); }
+.rw-peek-title {
+  flex: 1;
+  text-align: left;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+.rw-peek-count {
+  font-size: 10px;
+  color: #8c2f22;
+  font-weight: bold;
+}
+.rw-peek-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 1px;
+  background: rgba(120,95,55,0.3);
+  border-bottom: 1px solid rgba(120,95,55,0.3);
+}
+.rw-peek-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 4px 6px;
+  background: rgba(239,228,200,0.92);
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+  /* แถวที่รวมเต๋าไม่ถึงยังต้องอ่านออก แค่ถอยไปข้างหลัง ไม่ใช่ซ่อน */
+  opacity: 0.42;
+  transition: opacity 0.2s, background 0.2s;
+}
+.rw-peek-cell:disabled { cursor: default; }
+.rw-peek-cell:not(:disabled):hover { background: rgba(200,155,60,0.45); }
+.rw-peek-cell:not(:disabled):active { background: rgba(200,155,60,0.55); }
+/* บอกว่ากดได้ โดยไม่กินที่ในช่องแคบ ๆ — มุมล่างซ้าย ตรงข้ามกับกุญแจ Part Break */
+.rw-peek-craft {
+  position: absolute;
+  bottom: 3px;
+  left: 4px;
+  font-size: 9px;
+  opacity: 0.4;
+}
+.rw-peek-cell:disabled .rw-peek-craft { display: none; }
+.rw-peek-hit .rw-peek-craft { opacity: 0.75; }
+.rw-peek-hit {
+  opacity: 1;
+  background: rgba(200,155,60,0.3);
+  box-shadow: inset 0 2px 0 #8c2f22;
+}
+/* ระหว่างเต๋ายังหมุน เลขยังไม่นิ่ง ไฮไลต์ตอนนั้นจะกะพริบมั่ว */
+.rw-peek-rolling .rw-peek-cell { opacity: 0.72; }
+.rw-peek-num {
+  font-size: 13px;
+  font-weight: bold;
+  color: #7a6238;
+  line-height: 1;
+}
+.rw-peek-hit .rw-peek-num { color: #8c2f22; }
+.rw-peek-img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+.rw-peek-name {
+  font-size: 8px;
+  line-height: 1.2;
+  color: #5a4222;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rw-peek-bonus {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  font-size: 9px;
+  opacity: 0.5;
+}
+.rw-peek-bonus.bonus-active { opacity: 1; }
+.rw-peek-hint {
+  margin: 0;
+  padding: 6px 12px;
+  font-size: 9px;
+  color: #6b542e;
+  text-align: center;
+}
+
 .rw-table {
   display: flex;
   flex-direction: column;
