@@ -32,16 +32,20 @@ const hunterEquip = ref({
 })
 
 const openHunter = async (h) => {
-  const helm = h.equipments.armors.helm.find((i) => i.is_equip)
-  const mail = h.equipments.armors.mail.find((i) => i.is_equip)
-  const greaves = h.equipments.armors.greaves.find((i) => i.is_equip)
-  const weapon = h.equipments.weapons.find((i) => i.is_equip)
+  // ของที่สวมอยู่อาจหายไปจากข้อมูลเก่าที่พัง — ห้าม throw ตรงนี้เด็ดขาด
+  // เพราะจะหลุดออกก่อนถึงบรรทัดเปิด modal กลายเป็นกดการ์ดแล้วเงียบ เข้าตัวละครไม่ได้เลย
+  // ถอยไปใช้ชิ้นแรกที่มีแทน ให้ยังเปิดดูและเข้าเล่นได้
+  const pick = (list) => list?.find((i) => i.is_equip) ?? list?.[0] ?? null
+  const helm = pick(h.equipments?.armors?.helm)
+  const mail = pick(h.equipments?.armors?.mail)
+  const greaves = pick(h.equipments?.armors?.greaves)
+  const weapon = pick(h.equipments?.weapons)
 
   const [helmdetail, maildetail, greavedetail, weapondetail] = await Promise.all([
-    getArmors(helm.equip_set_id, helm.equip_id),
-    getArmors(mail.equip_set_id, mail.equip_id),
-    getArmors(greaves.equip_set_id, greaves.equip_id),
-    getWeapons(h.hunter_class_id, weapon.weapon_type_id, weapon.item_id),
+    helm ? getArmors(helm.equip_set_id, helm.equip_id) : null,
+    mail ? getArmors(mail.equip_set_id, mail.equip_id) : null,
+    greaves ? getArmors(greaves.equip_set_id, greaves.equip_id) : null,
+    weapon ? getWeapons(h.hunter_class_id, weapon.weapon_type_id, weapon.item_id) : null,
   ])
 
   hunterEquip.value = {
@@ -186,11 +190,14 @@ const handleCreate = () => {
     palico_name: palicoName.value,
 
     equipments: {
-      weapons: [HunterClass.starter_set.weapon],
+      // ต้องสำเนา ไม่ใช่อ้างถึง object ใน class_hunter.json ตรง ๆ
+      // เพราะตอนสลับอาวุธโค้ดเขียนทับ is_equip ในตัว object เลย ถ้าใช้ร่วมกันจะไปแก้ต้นฉบับใน JSON
+      // ผลคือตัวละครที่สร้างหลังจากนั้นได้ของเริ่มต้นแบบไม่สวมมาตั้งแต่เกิด แล้วเปิดไม่ได้ทันที
+      weapons: [{ ...HunterClass.starter_set.weapon }],
       armors: {
-        helm: [HunterClass.starter_set.armors.helm],
-        mail: [HunterClass.starter_set.armors.mail],
-        greaves: [HunterClass.starter_set.armors.greaves],
+        helm: [{ ...HunterClass.starter_set.armors.helm }],
+        mail: [{ ...HunterClass.starter_set.armors.mail }],
+        greaves: [{ ...HunterClass.starter_set.armors.greaves }],
       },
     },
 
