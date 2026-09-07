@@ -162,6 +162,9 @@ const craftWeapon = (node) => {
   })
 
   // ===== ลบ REQUIRED WEAPON =====
+  // ถ้าตัวที่ถูกลบคือตัวที่สวมอยู่ ต้องส่งสถานะให้ตัวใหม่ด้วย
+  // ไม่งั้นจะไม่เหลืออาวุธที่สวมเลย ซึ่งทำให้เปิดตัวละครไม่ได้ถาวร (openHunter จะ throw)
+  let wasEquipped = false
   if (recipe.required_weapon?.length) {
     const [reqType, reqItem] = recipe.required_weapon
 
@@ -171,6 +174,7 @@ const craftWeapon = (node) => {
       )
 
       if (index !== -1) {
+        wasEquipped = !!hunter.value.equipments.weapons[index].is_equip
         hunter.value.equipments.weapons.splice(index, 1)
       }
     }
@@ -180,8 +184,13 @@ const craftWeapon = (node) => {
   hunter.value.equipments.weapons.push({
     weapon_type_id: node.weapon_type_id,
     item_id: node.item_id,
-    is_equip: false,
+    is_equip: wasEquipped,
   })
+
+  // กันเหนียว: ถ้ายังไม่เหลือตัวที่สวมเลย ให้ตัวที่เพิ่งคราฟสวมไปก่อน
+  if (!hunter.value.equipments.weapons.some((w) => w.is_equip)) {
+    hunter.value.equipments.weapons[hunter.value.equipments.weapons.length - 1].is_equip = true
+  }
 
   // 🔥 SAVE จริงลง localStorage
   saveHunter(hunter.value)
