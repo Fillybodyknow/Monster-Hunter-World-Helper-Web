@@ -83,11 +83,16 @@ const handleDelete = () => {
 }
 
 const enterWorld = () => {
+  if (!selectedHunter.value) return
   showDetailModal.value = false
   showDeleteModal.value = false
   showModal.value = false
-  router.push('/home')
+  // ต้องเซ็ต hunterId ก่อน push เสมอ — router guard อ่านค่านี้ระหว่าง navigate
+  // ถ้า push ก่อน guard จะเห็นค่าว่างแล้วเด้งกลับหน้าเลือกตัวละครแบบเงียบ ๆ ไม่มี error ให้เห็น
+  // อาการจะโผล่เฉพาะตอน hunterId ไม่มีอยู่ (เพิ่งกด Logout / เครื่องใหม่ / เบราว์เซอร์ล้าง storage)
+  // ซึ่งเป็นเหตุผลที่ปกติไม่เจอ — กดครั้งที่สองมันติดเพราะครั้งแรกเซ็ตค่าทิ้งไว้ให้แล้ว
   localStorage.setItem('hunterId', selectedHunter.value.hunter_id)
+  router.push('/home')
 }
 
 const loadHunters = () => {
