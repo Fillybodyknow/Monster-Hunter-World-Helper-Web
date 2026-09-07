@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { showQuestEffects, soundEnabled, soundVolume } from '@/stores/settings'
 import classHunterData from '@/assets/files/class_hunter.json'
 import { hunter } from '@/stores/hunter'
+import DiagnosticPanel from './DiagnosticPanel.vue'
 
 const router = useRouter()
 
@@ -183,6 +184,8 @@ const doExport = (hunter) => {
     </button>
 
     <!-- VERSION FOOTER -->
+    <DiagnosticPanel />
+
     <div class="setting-footer">
       <span class="footer-ornament">— ✦ —</span>
       <p class="footer-ver">MHW Board Game Companion · ช่วงทดสอบ</p>
@@ -788,6 +791,8 @@ const doExport = (hunter) => {
   .ss-body.coming-soon { flex-direction: column; align-items: flex-start; gap: 6px; }
   .notice-text { font-size: 12px; }
 }
+
+
 </style>
 
 <style>
