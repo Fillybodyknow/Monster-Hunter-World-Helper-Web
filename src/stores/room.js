@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { isFirebaseConnected } from '@/services/firebase'
-import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, pushHunterToken, pushAllHunterTokens, clearHunterTokens, pushDialogDice, clearDialogDice, pushDiceResult, clearDiceResults, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds, pushShuffleSignal, pushActivationCount, pushOutcomeSignal, pushManualOutcome, pushRewardDiceModifiers, pushQuestMode, pushHqVote, clearHqVotes, pushHqCurrent, pushHqDoneList, pushHqReady, clearHqState, updateHunterProfile, publishLobby, updateLobby, removeLobby, listenLobbies, setRoomPassword, getRoomPassword } from '@/services/roomService'
+import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, pushHunterToken, pushAllHunterTokens, clearHunterTokens, pushHunterTokenConfirm, clearHunterTokenConfirms, pushDialogDice, clearDialogDice, pushDiceResult, clearDiceResults, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds, pushShuffleSignal, pushActivationCount, pushOutcomeSignal, pushManualOutcome, pushRewardDiceModifiers, pushQuestMode, pushHqVote, clearHqVotes, pushHqCurrent, pushHqDoneList, pushHqReady, clearHqState, updateHunterProfile, publishLobby, updateLobby, removeLobby, listenLobbies, setRoomPassword, getRoomPassword } from '@/services/roomService'
 
 export const useRoomStore = defineStore('room', () => {
   const roomCode = ref(null)
@@ -61,6 +61,20 @@ export const useRoomStore = defineStore('room', () => {
   const myDialogCounts = computed(() => roomData.value?.dialogCounts?.[myHunterId.value] ?? null)
   const hunterTokens = computed(() => roomData.value?.hunterTokens ?? {})
   const myHunterToken = computed(() => hunterTokens.value[myHunterId.value] ?? null)
+  const hunterTokenConfirms = computed(() => roomData.value?.hunterTokenConfirms ?? {})
+  const myHunterTokenConfirmed = computed(() => !!hunterTokenConfirms.value[myHunterId.value])
+  // ทุกคนต้องทั้งเลือกและกดยืนยันครบ ถึงจะถือว่าจบรอบ
+  const allHunterTokensConfirmed = computed(() =>
+    hunters.value.length > 0 &&
+    hunters.value.every(
+      (h) => hunterTokens.value[h.hunter_id] && hunterTokenConfirms.value[h.hunter_id],
+    ),
+  )
+  // เลือกเลขซ้ำกัน — ตรวจหลังยืนยันครบเท่านั้น ระหว่างเลือกยังซ้ำกันได้
+  const hunterTokensHaveDuplicate = computed(() => {
+    const picks = hunters.value.map((h) => hunterTokens.value[h.hunter_id]).filter(Boolean)
+    return new Set(picks).size !== picks.length
+  })
   const dialogDice = computed(() => roomData.value?.dialogDice ?? {})
   const diceResults = computed(() => roomData.value?.diceResults ?? {})
 
@@ -501,6 +515,16 @@ export const useRoomStore = defineStore('room', () => {
     return clearHunterTokens(roomCode.value)
   }
 
+  const setMyHunterTokenConfirm = (confirmed) => {
+    if (!roomCode.value || !myHunterId.value) return
+    return pushHunterTokenConfirm(roomCode.value, myHunterId.value, confirmed)
+  }
+
+  const clearHunterTokenConfirmsAll = () => {
+    if (!roomCode.value) return
+    return clearHunterTokenConfirms(roomCode.value)
+  }
+
   const clearDialogCounts = () => {
     if (!roomCode.value) return
     return clearAllDialogCounts(roomCode.value)
@@ -568,7 +592,7 @@ export const useRoomStore = defineStore('room', () => {
     dialogVotes, votesByAction, myVote, syncedDialogId,
     proceedVotes, allProceeded, myProceedVoted,
     syncedPendingActionId,
-    huntState, behaviorDeckState, hostConnected, partyDice, partyRewards, tradePool, myDialogCounts, dialogDice, hunterTokens, myHunterToken, lobbies, lobbyList, lobbyPosted,
+    huntState, behaviorDeckState, hostConnected, partyDice, partyRewards, tradePool, myDialogCounts, dialogDice, hunterTokens, myHunterToken, hunterTokenConfirms, myHunterTokenConfirmed, allHunterTokensConfirmed, hunterTokensHaveDuplicate, lobbies, lobbyList, lobbyPosted,
     trackTokenState, timeCardState, tcTurnEnds, questModeState,
     syncQuestMode: (mode) => roomCode.value ? pushQuestMode(roomCode.value, mode) : undefined,
     rerollRequest, myRerollApproval, rerollAllApproved,
@@ -599,7 +623,7 @@ export const useRoomStore = defineStore('room', () => {
     pushMyDice, clearAllPartyDice,
     pushMyRewards, clearAllPartyRewards,
     addToTradePool, removeFromTradePool, clearTrade,
-    setMyDialogCounts, clearDialogCounts, setMyHunterToken, setAllHunterTokens, clearHunterTokensAll, setDialogDice, clearDialogDiceAll,
+    setMyDialogCounts, clearDialogCounts, setMyHunterToken, setAllHunterTokens, clearHunterTokensAll, setMyHunterTokenConfirm, clearHunterTokenConfirmsAll, setDialogDice, clearDialogDiceAll,
     diceResults, setMyDiceResult, clearDiceResultsAll,
     startLobbyBrowse, stopLobbyBrowse, postLobby, syncLobbyMembers, closeLobby, verifyLobbyPassword, syncMyProfile,
     voteAction, clearActionVote, kick, reset,

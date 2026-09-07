@@ -319,6 +319,13 @@ export const pushAllHunterTokens = (code, tokens) =>
 export const clearHunterTokens = (code) =>
   remove(ref(db, `rooms/${code}/hunterTokens`))
 
+// ยืนยันการเลือก — แยก node จาก hunterTokens เพราะเลือกแล้วยังเปลี่ยนใจได้จนกว่าจะกดยืนยัน
+export const pushHunterTokenConfirm = (code, hunterId, confirmed) =>
+  set(ref(db, `rooms/${code}/hunterTokenConfirms/${hunterId}`), confirmed || null)
+
+export const clearHunterTokenConfirms = (code) =>
+  remove(ref(db, `rooms/${code}/hunterTokenConfirms`))
+
 // ── Dialog Dice (ผลทอยแบบ "ทอยครั้งเดียว" ใช้ร่วมกันทั้งกลุ่ม) ──
 export const pushDialogDice = (code, key, value) =>
   set(ref(db, `rooms/${code}/dialogDice/${key}`), value)

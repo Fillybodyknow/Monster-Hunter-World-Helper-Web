@@ -2777,24 +2777,60 @@ const hunterTokenChoices = computed(() =>
   Array.from({ length: room.hunterCount }, (_, i) => i + 5),
 )
 
-const takenHunterTokens = computed(() =>
-  Object.entries(room.hunterTokens ?? {})
-    .filter(([id]) => id !== String(room.myHunterId))
-    .map(([, n]) => n),
-)
+// ใครเลือกเลขไหนไว้บ้าง (ยังไม่ยืนยัน) — ใช้โชว์ icon class ใต้ปุ่ม
+// เลือกซ้ำกันได้ ไม่บล็อก เพราะกติกาคือให้ไปเจอตอนยืนยันครบแล้วค่อยรีเซ็ตทั้งวง
+const hunterTokenPickers = (n) =>
+  room.hunters.filter((h) => room.hunterTokens?.[h.hunter_id] === n)
 
+// picker อยู่ z-index 1240 ซึ่งสูงกว่าทุก modal — ถ้าเด้งขึ้นมาตอนที่ยังมีลำดับอื่นเล่นอยู่
+// มันจะบังของที่อยู่ข้างล่างจนผู้เล่นไม่เห็นเลย จึงต้องรอให้ลำดับพวกนั้นจบก่อนเสมอ
+//
+// เคสจริงที่เจอ: Guest โหมด Full ไม่มี branch ของตัวเองใน startTokenReveal เลยร่วงไป
+// huntingPanel ทันที picker จึงเด้งก่อนที่ deck จาก Host จะมาถึง พอการ์ดโจมตีพิเศษ
+// (z-index 488) ถูกสั่งโชว์ ก็อยู่ใต้ picker จนหายไปเองใน 4 วินาที
+//
+// เช็ค behaviorDeckState ด้วยเพื่อกัน picker แวบขึ้นมาในช่วงที่รอ deck จาก Host —
+// Host สร้าง deck เองจึงข้ามเงื่อนไขนี้ไป
 const needHunterTokenPick = computed(
   () =>
     room.inRoom &&
     phase.value === 'huntingPanel' &&
+    (room.isHost || !!room.behaviorDeckState) &&
     !showTcReveal.value &&
-    !room.myHunterToken,
+    !showBattleIntro.value &&
+    !showSpecialCardOverlay.value &&
+    !showSpecialCardSelect.value &&
+    !awaitingHostDeckBuild.value &&
+    // ปิดเมื่อทุกคนยืนยันครบเท่านั้น ไม่ใช่พอตัวเองเลือกเสร็จ — ต้องเห็นว่าเพื่อนเลือกอะไรด้วย
+    !room.allHunterTokensConfirmed,
 )
 
 const pickHunterToken = (n) => {
-  if (takenHunterTokens.value.includes(n)) return
+  // ยืนยันไปแล้วต้องกดยกเลิกก่อนถึงจะเปลี่ยนได้ กันเปลี่ยนไปมาระหว่างที่คนอื่นรออยู่
+  if (room.myHunterTokenConfirmed) return
   room.setMyHunterToken?.(n)
 }
+
+const confirmHunterToken = () => {
+  if (!room.myHunterToken) return
+  room.setMyHunterTokenConfirm?.(true)
+}
+
+const unconfirmHunterToken = () => room.setMyHunterTokenConfirm?.(false)
+
+// ยืนยันครบทุกคนแล้วค่อยตรวจเลขซ้ำ — แจ้งเตือนทุกเครื่อง แต่ให้ Host เป็นคนล้างคนเดียว
+// ถ้าปล่อยให้ทุกคนล้างพร้อมกันจะเขียนทับกันมั่วและอาจล้างค่าที่เพิ่งเลือกใหม่ทิ้ง
+watch(
+  () => room.allHunterTokensConfirmed,
+  (done) => {
+    if (!done || !room.hunterTokensHaveDuplicate) return
+    addNotif('⚠ มีคนเลือก Hunter Token ซ้ำกัน — เลือกใหม่ทั้งหมด', 'warn')
+    if (room.isHost) {
+      room.clearHunterTokensAll?.()
+      room.clearHunterTokenConfirmsAll?.()
+    }
+  },
+)
 
 const _shiftHunterTokens = () => {
   const ids = room.hunters.map((h) => String(h.hunter_id))
@@ -3170,6 +3206,8 @@ const initHuntingData = () => {
   if (room.inRoom && room.isHost) {
     room.syncActivationCount?.(0)
     room.clearHunterTokensAll?.()
+    // ต้องล้างคู่กันเสมอ ไม่งั้นล่าครั้งใหม่จะนับว่ายืนยันไว้แล้วทั้งที่ยังไม่มีใครเลือก
+    room.clearHunterTokenConfirmsAll?.()
   }
 }
 
@@ -7812,27 +7850,39 @@ const openPackDrawer = () => {
                 v-for="n in hunterTokenChoices"
                 :key="n"
                 class="ht-token"
-                :class="{ 'ht-taken': takenHunterTokens.includes(n) }"
-                :disabled="takenHunterTokens.includes(n)"
+                :class="{
+                  'ht-mine': room.myHunterToken === n,
+                  'ht-dup': hunterTokenPickers(n).length > 1,
+                }"
+                :disabled="room.myHunterTokenConfirmed"
                 @click="pickHunterToken(n)"
               >
                 <span class="ht-num">{{ n }}</span>
-                <span v-if="takenHunterTokens.includes(n)" class="ht-taken-by">
-                  {{ room.hunters.find(h => room.hunterTokens?.[h.hunter_id] === n)?.hunter_name }}
+                <!-- โชว์ทุกคนที่เลือกเลขนี้ เลือกซ้ำได้จึงมีได้มากกว่าหนึ่ง -->
+                <span v-if="hunterTokenPickers(n).length" class="ht-token-who">
+                  <ClassMedal
+                    v-for="h in hunterTokenPickers(n)"
+                    :key="h.hunter_id"
+                    :hunterId="h.hunter_id"
+                    :class="{ 'ht-medal-confirmed': !!room.hunterTokenConfirms?.[h.hunter_id] }"
+                  />
                 </span>
               </button>
             </div>
 
-            <div class="ht-waiting">
-              <span
-                v-for="h in room.hunters"
-                :key="h.hunter_id"
-                class="ht-chip"
-                :class="{ 'ht-chip-done': !!room.hunterTokens?.[h.hunter_id] }"
+            <div class="ht-actions">
+              <button
+                v-if="!room.myHunterTokenConfirmed"
+                class="ht-confirm"
+                :disabled="!room.myHunterToken"
+                @click="confirmHunterToken"
               >
-                {{ h.hunter_name }}
-                <span>{{ room.hunterTokens?.[h.hunter_id] ? ' ✓' : ' …' }}</span>
-              </span>
+                {{ room.myHunterToken ? `✓ ยืนยันเลข ${room.myHunterToken}` : 'เลือกเลขก่อน' }}
+              </button>
+              <button v-else class="ht-unconfirm" @click="unconfirmHunterToken">
+                ↩ ยกเลิกการยืนยัน
+              </button>
+              <p class="ht-wait-hint">รอให้ทุกคนยืนยันครบก่อนจึงจะเริ่มได้</p>
             </div>
           </div>
         </div>
@@ -16074,43 +16124,81 @@ const openPackDrawer = () => {
   color: #ffd27a;
   line-height: 1;
 }
-.ht-taken {
-  opacity: 0.45;
+/* เลขที่เราเลือกไว้ (ยังไม่ยืนยัน) */
+.ht-mine {
+  border-color: #c89b3c;
+  background: rgba(200,155,60,0.3);
+  box-shadow: 0 0 8px rgba(200,155,60,0.35);
+}
+/* มีคนเลือกเลขเดียวกันเกินหนึ่ง — เตือนตั้งแต่ตอนเลือก ไม่ต้องรอถึงตอนยืนยันครบ */
+.ht-dup {
+  border-color: #cc4444;
+  background: rgba(200,60,60,0.16);
+}
+.ht-token:disabled {
+  opacity: 0.55;
   cursor: not-allowed;
-  border-style: dashed;
 }
-.ht-taken-by {
-  font-size: 8px;
-  color: #a88040;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ht-waiting {
+/* icon class ของคนที่เลือกเลขนี้ — ซ้อนได้หลายคนเพราะเลือกซ้ำกันได้ */
+.ht-token-who {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
   justify-content: center;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(124,90,43,0.3);
-  width: 100%;
+  gap: 2px;
+  min-height: 18px;
 }
-.ht-chip {
-  font-size: 10px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: rgba(124,90,43,0.15);
-  border: 1px solid rgba(124,90,43,0.4);
-  color: #a88040;
-}
-.ht-chip-done {
-  background: rgba(80,180,110,0.16);
-  border-color: rgba(90,210,130,0.5);
-  color: #8fe0aa;
+/* ยืนยันแล้ว — เรืองขอบเขียวรอบ icon แทนแถบสถานะที่ถอดออกไป
+   ใช้ box-shadow ล้วนจึงไม่กินพื้นที่ layout เพิ่ม และคงเงา inset เดิมของ .class-medal ไว้
+   สีเดียวกับปุ่มยืนยัน เพื่อให้อ่านความหมายได้โดยไม่ต้องมีคำอธิบาย */
+.ht-medal-confirmed {
+  border-color: rgba(0, 200, 150, 0.85);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 226, 178, 0.1),
+    0 0 0 1px rgba(0, 200, 150, 0.55),
+    0 0 8px rgba(0, 200, 150, 0.6);
 }
 
+.ht-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.ht-confirm,
+.ht-unconfirm {
+  min-height: 44px;
+  padding: 10px 22px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.ht-confirm {
+  border: 1px solid rgba(0,200,150,0.6);
+  background: rgba(0,200,150,0.14);
+  color: #6ee7c0;
+}
+.ht-confirm:hover:not(:disabled) { background: rgba(0,200,150,0.26); }
+.ht-confirm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: rgba(124,90,43,0.4);
+  background: rgba(124,90,43,0.12);
+  color: #7c5a2b;
+}
+.ht-unconfirm {
+  border: 1px solid rgba(124,90,43,0.5);
+  background: rgba(124,90,43,0.14);
+  color: #a88040;
+}
+.ht-unconfirm:hover { background: rgba(124,90,43,0.26); }
+.ht-wait-hint {
+  margin: 0;
+  font-size: 10px;
+  color: #7c5a2b;
+}
 .tr-overlay {
   position: fixed;
   inset: 0;
