@@ -160,7 +160,7 @@ const starColor = computed(() => {
             </span>
           </div>
           <div v-if="room.questInfo.exhausted_attempt" class="cl-warn">
-            ⚠ จะบังคับเข้า HQ (2 กิจกรรม)
+            ⚠ จะบังคับเข้า Downtime (2 กิจกรรม)
           </div>
           <div
             v-if="attemptNote"

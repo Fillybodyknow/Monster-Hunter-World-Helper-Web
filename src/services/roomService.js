@@ -78,6 +78,7 @@ export const createRoom = async (hunter) => {
         hunter_name: hunter.hunter_name,
         hunter_class_id: hunter.hunter_class_id,
         palico_name: hunter.palico_name,
+        palico_id: hunter.palico_id ?? null,
         campaign_day: hunter.campaign_day ?? 1,
         weapon,
         isHost: true,
@@ -120,6 +121,7 @@ export const joinRoom = async (code, hunter, validate) => {
     hunter_name: hunter.hunter_name,
     hunter_class_id: hunter.hunter_class_id,
     palico_name: hunter.palico_name,
+    palico_id: hunter.palico_id ?? null,
     campaign_day: hunter.campaign_day ?? 1,
     weapon: await buildWeaponSummary(hunter),
     isHost: existing?.isHost ?? false,
@@ -284,8 +286,6 @@ export const clearTcTurnEnds = (code) =>
   remove(ref(db, `rooms/${code}/tcTurnEnds`))
 
 // ── Quest Mode ────────────────────────────────────────────
-export const pushQuestMode = (code, mode) =>
-  set(ref(db, `rooms/${code}/questMode`), mode)
 
 // ── Reroll Request ────────────────────────────────────────
 export const pushRerollRequest = (code, hunterId, hunterName) =>
@@ -375,6 +375,30 @@ export const removeTradeItem = (code, key) =>
 
 export const clearTradePool = (code) =>
   remove(ref(db, `rooms/${code}/tradePool`))
+
+// ── Palico ────────────────────────────────────────────────
+// ใครถือใบไหน — เก็บบน record ของ hunter เลย เพราะทุกที่ที่ต้องใช้ (Lodge, ดราฟต์,
+// แถบปาร์ตี้ตอนล่า) วนอ่าน hunters อยู่แล้ว ไม่ต้องไป join กับ node อื่น
+export const pushHunterPalico = (code, hunterId, palicoId) =>
+  set(ref(db, `rooms/${code}/hunters/${hunterId}/palico_id`), palicoId ?? null)
+
+// กองที่ Lodge เปิดให้จ้าง (ตี้ 3-4 คน) — สุ่มตอนเข้า Downtime ทั้งตี้เห็นกองเดียวกัน
+// hired เก็บแยกใน node ลูก เพื่อให้คนจ้างเขียนเฉพาะช่องตัวเอง ไม่ทับกองที่ Host แจกไว้
+export const pushPalicoOffer = (code, offer) =>
+  set(ref(db, `rooms/${code}/palicoOffer`), offer)
+export const pushPalicoHire = (code, hunterId, palicoId) =>
+  set(ref(db, `rooms/${code}/palicoOffer/hired/${hunterId}`), palicoId)
+export const clearPalicoOffer = (code) =>
+  remove(ref(db, `rooms/${code}/palicoOffer`))
+
+// ดราฟต์ก่อนเริ่มเควสต์ (ตี้ 1-2 คน) — Host แจกให้ทุกคนทีเดียวจากกองเดียว
+// ถ้าให้ต่างคนต่างสุ่มเองจะมีทางได้ใบซ้ำกัน
+export const pushPalicoDraft = (code, draft) =>
+  set(ref(db, `rooms/${code}/palicoDraft`), draft)
+export const pushPalicoDraftPick = (code, hunterId, palicoId) =>
+  set(ref(db, `rooms/${code}/palicoDraft/picks/${hunterId}`), palicoId)
+export const clearPalicoDraft = (code) =>
+  remove(ref(db, `rooms/${code}/palicoDraft`))
 
 // ── HQ Vote ───────────────────────────────────────────────
 export const pushHqVote = (code, hunterId, vote) =>
