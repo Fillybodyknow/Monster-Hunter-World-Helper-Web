@@ -5,6 +5,7 @@ import { useRoomStore } from '@/stores/room'
 import resourceData from '@/assets/files/resource.json'
 import monsterInfoData from '@/assets/files/monster_info.json'
 import elementalData from '@/assets/files/elemental.json'
+import hunterClassData from '@/assets/files/class_hunter.json'
 import { openCraftLookup } from '@/composables/useCraftLookup'
 
 const props = defineProps({ maxActions: { type: Number, default: 3 } })
@@ -28,13 +29,16 @@ const allCommonResources = resourceData
   .find(r => r.resource_type_id === 1)?.resources
   .map(r => ({ resource_type_id: 1, item_id: r.item_id, ...r })) ?? []
 
+const getHunterClass = (id) => hunterClassData.find((c) => c.hunter_class_id === id)
+
 // ─── Locations ────────────────────────────────────────────────────────────────
+// tags = ป้ายสั้น ๆ บอกว่า "ได้อะไร" อ่านปราดเดียวรู้ ไม่ต้องอ่านทั้งประโยค
 const LOCATIONS = [
-  { id: 'resource',   name: 'Resource Center',       icon: '🎲', sub: 'ทอย 2 เต๋าเพื่อรับ Resource' },
-  { id: 'provisions', name: 'Provisions Stockpile',  icon: '⚖',  sub: 'แลกเปลี่ยน Resource' },
-  { id: 'chef',       name: 'Meowscular Chef',        icon: '🍖', sub: 'รับ Element Token' },
-  { id: 'lodge',      name: "Hunter's Lodge",         icon: '🐱', sub: 'จัดการ Palico' },
-  { id: 'poogie',     name: 'Pet the Poogie',          icon: '🐷', sub: 'นำโชค... หรือเปล่า?' },
+  { id: 'resource',   name: 'Resource Center',      icon: '🎲', tags: ['🎲 ทอย 2', '📦 Resource'] },
+  { id: 'provisions', name: 'Provisions Stockpile', icon: '⚖',  tags: ['⇄ แลกของ', '🦴 Monster Part'] },
+  { id: 'chef',       name: 'Meowscular Chef',      icon: '🍖', tags: ['🔥 Element Token'] },
+  { id: 'lodge',      name: "Hunter's Lodge",       icon: '🐱', tags: ['🐱 เลือก Palico', '💰 จ้างเพิ่ม'] },
+  { id: 'poogie',     name: 'Pet the Poogie',       icon: '🐷', tags: ['🍀 เสี่ยงโชค'] },
 ]
 
 // ─── Visit state ──────────────────────────────────────────────────────────────
@@ -45,6 +49,20 @@ const myDoneList    = ref([])      // completed location ids
 const myVisitCount = computed(() => myDoneList.value.length)
 const canVisit = (id) => myVisitCount.value < MAX_VISITS.value && !myDoneList.value.includes(id) && !activeLocation.value
 const isMyDone = (id) => myDoneList.value.includes(id)
+
+// แถบเดินทาง — ช่องละ 1 สิทธิ์ เรียงตามลำดับที่เข้าไปจริง ช่องว่างคือที่ที่ยังเหลือ
+// โชว์ค้างไว้ตลอดรวมถึงตอนอยู่ในสถานที่ ผู้เล่นจะได้ตัดสินใจโดยรู้ว่าเหลืออีกกี่สิทธิ์
+const visitSlots = computed(() =>
+  Array.from({ length: MAX_VISITS.value }, (_, i) => {
+    const id = myDoneList.value[i]
+    return id ? (LOCATIONS.find((l) => l.id === id) ?? null) : null
+  }),
+)
+
+// แยกที่ที่ยังเข้าได้ออกจากที่ที่จบไปแล้ว — ที่ที่กดไม่ได้ไม่ควรกินพื้นที่เท่ากัน
+const openLocations = computed(() => LOCATIONS.filter((l) => canVisit(l.id)))
+const closedLocations = computed(() => LOCATIONS.filter((l) => !canVisit(l.id)))
+const lockReason = (id) => (isMyDone(id) ? 'เข้าไปแล้ว' : 'ใช้สิทธิ์ครบแล้ว')
 
 // Reconnect: restore from Firebase
 watch(() => room.hqState[room.myHunterId], (state) => {
@@ -65,6 +83,7 @@ const leaveLocation = () => {
     completeLocation()
     return
   }
+  // Lodge นับสิทธิ์เฉพาะตอนจ้าง Palico สำเร็จ (confirmLodgeHire) — เข้ามาดูเฉย ๆ แล้วออกไม่หัก
   const id = activeLocation.value
   activeLocation.value = null
   if (room.inRoom) room.setHqCurrent(null)
@@ -84,7 +103,7 @@ const completeLocation = () => {
 
 const resetActivityState = (id) => {
   if (id === 'resource') rcReset()
-  if (id === 'provisions') provisionsTraded.value = false
+  if (id === 'provisions') { provisionsTraded.value = false; tradeOpen.value = false }
   if (id === 'chef') { chefChosenElement.value = null; chefDone.value = false }
   if (id === 'poogie') poogiePatted.value = false
 }
@@ -105,11 +124,15 @@ watch([isReady], ([ready]) => {
 })
 
 // Hunter presence helpers (from Firebase)
+// คืนตัว hunter ไม่ใช่ชื่อ — ป้ายในการ์ดใช้ไอคอนคลาส ชื่อยาว ๆ 4 คนล้นการ์ด
+const _hunterById = (hId) => room.hunters.find(h => String(h.hunter_id) === String(hId)) ?? null
+
 const hunterAtLocation = (locId) => {
   if (!room.inRoom) return []
   return Object.entries(room.hqState)
     .filter(([hId, s]) => s?.current === locId && hId !== room.myHunterId)
-    .map(([hId]) => room.hunters.find(h => String(h.hunter_id) === String(hId))?.hunter_name ?? hId)
+    .map(([hId]) => _hunterById(hId))
+    .filter(Boolean)
 }
 const huntersDoneAt = (locId) => {
   if (!room.inRoom) return []
@@ -121,7 +144,8 @@ const huntersDoneAt = (locId) => {
       const arr = Array.isArray(done) ? done : Object.values(done)
       return arr.includes(locId)
     })
-    .map(([hId]) => room.hunters.find(h => String(h.hunter_id) === String(hId))?.hunter_name ?? hId)
+    .map(([hId]) => _hunterById(hId))
+    .filter(Boolean)
 }
 const hunterReadyList = computed(() => {
   if (!room.inRoom) return []
@@ -227,7 +251,7 @@ const rcReset = () => {
 
 // ─── Provisions Stockpile ────────────────────────────────────────────────────
 const provisionsTraded  = ref(false)
-const showTradeModal    = ref(false)
+const tradeOpen         = ref(false)
 const tradeMode         = ref(null)
 const tradeChosenItem   = ref(null)
 const tradeGiveSelection = ref({})
@@ -280,10 +304,13 @@ const filteredGiveItems = computed(() => {
   const base = tradeMode.value === 'common' ? inventoryCommons.value : inventoryAll.value
   return tradeGiveSearch.value ? base.filter(i => i.item.toLowerCase().includes(tradeGiveSearch.value.toLowerCase())) : base
 })
-const openTradeModal = (mode) => {
+const openTrade = (mode) => {
   tradeMode.value = mode; tradeChosenItem.value = null; tradeGiveSelection.value = {}
-  tradeSearch.value = ''; tradeGiveSearch.value = ''; showTradeModal.value = true
+  tradeSearch.value = ''; tradeGiveSearch.value = ''; tradeOpen.value = true
 }
+
+// ถอยกลับไปหน้าเมนูของ Provisions ไม่ใช่ออกจากสถานที่
+const closeTrade = () => { tradeOpen.value = false }
 const adjustGive = (item, delta) => {
   const key = `${item.resource_type_id}-${item.item_id}`
   const current = tradeGiveSelection.value[key] ?? 0
@@ -309,7 +336,7 @@ const confirmTrade = () => {
   else hunter.value.inventory.push({ resource_type_id: received.resource_type_id, item_id: received.item_id, quantity: 1 })
   saveHunter(hunter.value)
   provisionsTraded.value = true
-  showTradeModal.value = false
+  tradeOpen.value = false
   tradeGiveSelection.value = {}
   tradeChosenItem.value = null
 }
@@ -381,57 +408,95 @@ const poogiePatted = ref(false)
       <div class="hqp-line"></div>
     </div>
 
+    <!-- ─── แถบเดินทาง — ค้างไว้ตลอด รวมถึงตอนอยู่ในสถานที่ ─── -->
+    <div class="hqp-steps">
+      <div
+        v-for="(slot, i) in visitSlots" :key="i"
+        class="hqp-step"
+        :class="{ 'step-filled': !!slot }"
+        :title="slot?.name ?? 'ยังว่าง'"
+      >
+        <span class="hqp-step-icon">{{ slot ? slot.icon : '○' }}</span>
+      </div>
+      <span class="hqp-steps-label">
+        {{ myVisitCount >= MAX_VISITS ? 'ใช้สิทธิ์ครบแล้ว' : `เหลือ ${MAX_VISITS - myVisitCount} สิทธิ์` }}
+      </span>
+    </div>
+
     <!-- ─── PARTY PROGRESS BAR ─── -->
     <div v-if="room.inRoom" class="hqp-party-bar">
       <div
         v-for="h in room.hunters" :key="h.hunter_id"
         class="hqp-hunter-pill"
         :class="{ 'pill-ready': room.hqState[h.hunter_id]?.ready }"
+        :title="h.hunter_name"
       >
-        <span class="pill-name">{{ h.hunter_name }}</span>
-        <span class="pill-count">
-          {{ (room.hqState[h.hunter_id]?.done ? Object.values(room.hqState[h.hunter_id].done).length : 0) }}/{{ MAX_VISITS }}
+        <img
+          v-if="getHunterClass(h.hunter_class_id)?.thumbnail"
+          :src="getImg(getHunterClass(h.hunter_class_id).thumbnail)"
+          class="pill-icon"
+        />
+        <span class="pill-dots">
+          <span
+            v-for="n in MAX_VISITS" :key="n"
+            class="pill-dot"
+            :class="{ on: (room.hqState[h.hunter_id]?.done ? Object.values(room.hqState[h.hunter_id].done).length : 0) >= n }"
+          />
         </span>
-        <span v-if="room.hqState[h.hunter_id]?.ready" class="pill-done">✓ พร้อม</span>
+        <span v-if="room.hqState[h.hunter_id]?.ready" class="pill-done">✓</span>
       </div>
     </div>
 
     <!-- ─── LOCATION GRID (no active location) ─── -->
     <template v-if="!activeLocation">
-      <div class="hqp-visit-counter">
-        <span class="hqp-vc-num">{{ myVisitCount }}</span>
-        <span class="hqp-vc-slash">/</span>
-        <span class="hqp-vc-max">{{ MAX_VISITS }}</span>
-        <span class="hqp-vc-label">สถานที่ที่เข้าแล้ว</span>
-      </div>
-
-      <div class="hqp-loc-grid">
+      <div v-if="openLocations.length" class="hqp-loc-grid">
         <div
-          v-for="loc in LOCATIONS" :key="loc.id"
-          class="hqp-loc-card"
-          :class="{
-            'loc-done':      isMyDone(loc.id),
-            'loc-available': canVisit(loc.id),
-            'loc-locked':    !canVisit(loc.id) && !isMyDone(loc.id),
-          }"
+          v-for="loc in openLocations" :key="loc.id"
+          class="hqp-loc-card loc-available"
           @click="enterLocation(loc.id)"
         >
           <span class="hqp-loc-icon">{{ loc.icon }}</span>
           <div class="hqp-loc-info">
             <span class="hqp-loc-name">{{ loc.name }}</span>
-            <span class="hqp-loc-sub">{{ loc.sub }}</span>
+            <span class="hqp-loc-tags">
+              <span v-for="t in loc.tags" :key="t" class="hqp-tag">{{ t }}</span>
+            </span>
           </div>
 
-          <!-- My done stamp -->
-          <span v-if="isMyDone(loc.id)" class="hqp-loc-mycheck">✦</span>
-          <!-- Arrow if available -->
-          <span v-else-if="canVisit(loc.id)" class="hqp-loc-arrow">›</span>
-
-          <!-- Other hunters present / done -->
-          <div class="hqp-loc-hunters">
-            <span v-for="name in hunterAtLocation(loc.id)" :key="name" class="hqp-hunter-here">{{ name }}</span>
-            <span v-for="name in huntersDoneAt(loc.id)" :key="'done-'+name" class="hqp-hunter-done">✓ {{ name }}</span>
+          <!-- นักล่าคนอื่นที่อยู่/เคยอยู่ที่นี่ — ไอคอนคลาสในแถว ไม่ทับลูกศร -->
+          <div v-if="hunterAtLocation(loc.id).length || huntersDoneAt(loc.id).length" class="hqp-loc-hunters">
+            <img
+              v-for="h in hunterAtLocation(loc.id)" :key="h.hunter_id"
+              v-show="getHunterClass(h.hunter_class_id)?.thumbnail"
+              :src="getImg(getHunterClass(h.hunter_class_id)?.thumbnail)"
+              class="hqp-here-icon" :title="`${h.hunter_name} อยู่ที่นี่`"
+            />
+            <img
+              v-for="h in huntersDoneAt(loc.id)" :key="'d-' + h.hunter_id"
+              v-show="getHunterClass(h.hunter_class_id)?.thumbnail"
+              :src="getImg(getHunterClass(h.hunter_class_id)?.thumbnail)"
+              class="hqp-here-icon hqp-here-done" :title="`${h.hunter_name} เข้าไปแล้ว`"
+            />
           </div>
+
+          <span class="hqp-loc-arrow">›</span>
+        </div>
+      </div>
+
+      <div v-if="closedLocations.length" class="hqp-closed">
+        <div class="hqp-closed-head">
+          <span class="hqp-closed-line"></span>
+          <span class="hqp-closed-title">เข้าไม่ได้แล้ว</span>
+          <span class="hqp-closed-line"></span>
+        </div>
+        <div
+          v-for="loc in closedLocations" :key="loc.id"
+          class="hqp-closed-row"
+          :class="{ 'closed-done': isMyDone(loc.id) }"
+        >
+          <span class="hqp-closed-icon">{{ loc.icon }}</span>
+          <span class="hqp-closed-name">{{ loc.name }}</span>
+          <span class="hqp-closed-reason">{{ isMyDone(loc.id) ? '✦ ' : '' }}{{ lockReason(loc.id) }}</span>
         </div>
       </div>
 
@@ -446,14 +511,19 @@ const poogiePatted = ref(false)
             — รอ {{ room.hunters.length - hunterReadyList.length }} คน
           </span>
         </div>
-        <p v-else class="hqp-visits-left">เหลืออีก {{ MAX_VISITS - myVisitCount }} สถานที่</p>
       </div>
     </template>
 
     <!-- ─── ACTIVE LOCATION ─── -->
     <template v-else>
-      <button class="hqp-back-btn" @click="leaveLocation">‹ กลับ</button>
-      <div class="hqp-act-stamp">{{ LOCATIONS.find(l => l.id === activeLocation)?.name?.toUpperCase() }}</div>
+      <button class="hqp-back-btn" @click="tradeOpen ? closeTrade() : leaveLocation()">
+        {{ tradeOpen ? '‹ กลับไปหน้าแลกของ' : '‹ กลับ' }}
+      </button>
+      <div class="hqp-act-stamp">
+        {{ tradeOpen
+          ? (tradeMode === 'common' ? 'TRADE COMMON RESOURCES' : 'TRADE FOR MONSTER PART')
+          : LOCATIONS.find(l => l.id === activeLocation)?.name?.toUpperCase() }}
+      </div>
 
       <!-- Resource Center -->
       <div v-if="activeLocation === 'resource'" class="hqp-activity rc-card">
@@ -512,27 +582,67 @@ const poogiePatted = ref(false)
           </div>
           <div class="rc-confirm-row">
             <p v-if="!rcAllDiceSpent" class="rc-skip-hint">ยังมีเต๋าเหลือ {{ rcDice.filter(d => !d.spent).length }} ลูก</p>
-            <button class="rc-btn-primary" :disabled="rcStagedRewards.length === 0" @click="rcConfirmRewards">✦ รับรางวัลและกลับ</button>
+            <button class="rc-btn-primary" :disabled="rcStagedRewards.length === 0" @click="rcConfirmRewards">✦ รับรางวัลและเสร็จสิ้น</button>
           </div>
         </div>
       </div>
 
-      <!-- Provisions Stockpile -->
-      <div v-else-if="activeLocation === 'provisions'" class="hqp-activity">
+      <!-- Provisions Stockpile — เมนูเลือกดีล -->
+      <div v-else-if="activeLocation === 'provisions' && !tradeOpen" class="hqp-activity">
         <p class="hqa-desc">แลกเปลี่ยน Common Resources เพื่อรับ Resource ที่ต้องการ</p>
         <div class="hqa-trade-row">
-          <div class="hqa-trade-card" :class="{ disabled: totalCommons < 3 }" @click="totalCommons >= 3 && openTradeModal('common')">
+          <div class="hqa-trade-card" :class="{ disabled: totalCommons < 3 }" @click="totalCommons >= 3 && openTrade('common')">
             <div class="htc-cost">3 Common</div><div class="htc-arrow">→</div><div class="htc-gain">1 Common</div>
             <div v-if="totalCommons < 3" class="htc-lock">ไม่พอ ({{ totalCommons }}/3)</div>
           </div>
           <div class="hqa-trade-card" :class="{ disabled: totalInventory < 10 || clearedMonsterIds.length === 0 }"
-            @click="totalInventory >= 10 && clearedMonsterIds.length > 0 && openTradeModal('rare')">
+            @click="totalInventory >= 10 && clearedMonsterIds.length > 0 && openTrade('rare')">
             <div class="htc-cost">10 Resource</div><div class="htc-arrow">→</div><div class="htc-gain">1 Monster Part</div>
             <div v-if="totalInventory < 10" class="htc-lock">ไม่พอ ({{ totalInventory }}/10)</div>
             <div v-else-if="clearedMonsterIds.length === 0" class="htc-lock">ยังไม่ผ่าน Quest</div>
           </div>
         </div>
-        <button class="hqa-btn hqa-btn-claim" @click="completeLocation">✦ เสร็จแล้ว</button>
+      </div>
+
+      <!-- Provisions Stockpile — หน้าแลกของ -->
+      <div v-else-if="activeLocation === 'provisions' && tradeOpen" class="hqp-activity hqp-trade-page">
+        <div class="trade-give-section">
+          <div class="trade-give-header">
+            <span class="trade-give-label">เลือก Resources ที่จะแลก</span>
+            <span class="trade-give-count" :class="{ full: tradeGiveTotal === tradeCost }">{{ tradeGiveTotal }} / {{ tradeCost }}</span>
+          </div>
+          <input v-model="tradeGiveSearch" class="trade-search-input" placeholder="Search item..." />
+          <div class="trade-give-list">
+            <div v-if="filteredGiveItems.length === 0" class="trade-no-give-results">ไม่พบ item</div>
+            <div v-for="item in filteredGiveItems" :key="`${item.resource_type_id}-${item.item_id}`" class="trade-give-row">
+              <img :src="getImg(item.thumbnail)" class="hq-trade-img" />
+              <span class="trade-give-name">{{ item.item }}</span>
+              <span class="trade-give-owned">มี {{ item.quantity }}</span>
+              <button class="hq-craft-btn" @click.stop="openCraftLookup(item.resource_type_id, item.item_id, item.item)" title="ดูสูตรคราฟ">🔨</button>
+              <div class="trade-give-ctrl">
+                <button class="tgc-btn" @click="adjustGive(item, -1)">−</button>
+                <span class="tgc-qty">{{ tradeGiveSelection[`${item.resource_type_id}-${item.item_id}`] ?? 0 }}</span>
+                <button class="tgc-btn" :disabled="tradeGiveTotal >= tradeCost || (tradeGiveSelection[`${item.resource_type_id}-${item.item_id}`] ?? 0) >= item.quantity" @click="adjustGive(item, 1)">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="trade-receive-section">
+          <span class="trade-give-label">เลือก Item ที่ต้องการรับ</span>
+          <input v-model="tradeSearch" class="trade-search-input" placeholder="Search item..." />
+          <div class="hq-trade-grid">
+            <div v-for="item in filteredReceiveItems" :key="`${item.resource_type_id}-${item.item_id}`"
+              class="hq-trade-item" :class="{ chosen: tradeChosenItem?.item_id === item.item_id && tradeChosenItem?.resource_type_id === item.resource_type_id }"
+              @click="tradeChosenItem = item">
+              <img :src="getImg(item.thumbnail)" class="hq-trade-img" />
+              <span class="hq-trade-name">{{ item.item }}</span>
+              <button class="hq-craft-btn" @click.stop="openCraftLookup(item.resource_type_id, item.item_id, item.item)" title="ดูสูตรคราฟ">🔨</button>
+            </div>
+            <div v-if="filteredReceiveItems.length === 0" class="trade-no-results">ไม่พบ item</div>
+          </div>
+        </div>
+
       </div>
 
       <!-- Meowscular Chef -->
@@ -553,7 +663,7 @@ const poogiePatted = ref(false)
         <div v-else class="hqa-flavor-result">
           <img :src="getImg(chefChosenElement.thumbnail)" class="hqa-elem-icon" />
           <p>วาง <strong>{{ chefChosenElement.elemental }} Token</strong> บนอาวุธของคุณ</p>
-          <button class="hqa-btn hqa-btn-claim" @click="completeLocation">✦ เสร็จแล้ว</button>
+          <button class="hqa-btn hqa-btn-claim" @click="completeLocation">✦ เสร็จสิ้น</button>
         </div>
       </div>
 
@@ -561,7 +671,6 @@ const poogiePatted = ref(false)
       <div v-else-if="activeLocation === 'lodge'" class="hqp-activity hqa-flavor">
         <p class="hqa-desc">{{ hunter?.palico_name }} รอคุณอยู่ที่ Lodge — เลือก Palico ที่เหมาะกับ Quest ถัดไป</p>
         <p class="hqa-flavor-tip">🐱 วางการ์ด Palico ที่เลือกไว้ข้าง Quest Card ของคุณ</p>
-        <button class="hqa-btn hqa-btn-claim" @click="completeLocation">✦ เลือกแล้ว</button>
         <div class="lodge-divider"></div>
         <div
           class="hqa-trade-card lodge-hire-card"
@@ -584,10 +693,27 @@ const poogiePatted = ref(false)
         </div>
         <div v-else>
           <p class="hqa-poogie-result">Poogie ส่งเสียงร้องอย่างพึงพอใจ... ✨</p>
-          <button class="hqa-btn hqa-btn-claim" style="margin-top:10px" @click="completeLocation">✦ เสร็จแล้ว</button>
+          <button class="hqa-btn hqa-btn-claim" style="margin-top:10px" @click="completeLocation">✦ เสร็จสิ้น</button>
         </div>
       </div>
     </template>
+
+    <!-- แถบสรุปหน้าแลกของ — ต้อง teleport เพราะ .content-panel ครอบด้วย overflow:hidden
+         ทำให้ position:sticky ไม่ยอมเกาะขอบจอ -->
+    <teleport to="body">
+      <div v-if="activeLocation === 'provisions' && tradeOpen" class="trade-bar">
+        <span class="trade-bar-sum">
+          <span :class="{ 'trade-bar-ok': tradeGiveTotal === tradeCost }">{{ tradeGiveTotal }}/{{ tradeCost }}</span>
+          <span class="trade-bar-arrow">→</span>
+          <template v-if="tradeChosenItem">
+            <img :src="getImg(tradeChosenItem.thumbnail)" class="trade-bar-img" />
+            <span class="trade-bar-name">{{ tradeChosenItem.item }}</span>
+          </template>
+          <span v-else class="trade-bar-empty">ยังไม่เลือกของที่จะรับ</span>
+        </span>
+        <button class="hq-btn-confirm trade-bar-btn" :disabled="!tradeReady" @click="confirmTrade">✓ ยืนยันแลก</button>
+      </div>
+    </teleport>
 
     <!-- Lodge Hire Palico Modal -->
     <teleport to="body">
@@ -623,53 +749,6 @@ const poogiePatted = ref(false)
       </div>
     </teleport>
 
-    <!-- Trade Modal -->
-    <teleport to="body">
-      <div v-if="showTradeModal" class="hq-confirm-overlay" @click.self="showTradeModal = false">
-        <div class="hq-confirm-modal hq-trade-modal">
-          <div class="hq-confirm-stamp">{{ tradeMode === 'common' ? 'TRADE COMMON RESOURCES' : 'TRADE FOR MONSTER PART' }}</div>
-          <div class="trade-give-section">
-            <div class="trade-give-header">
-              <span class="trade-give-label">เลือก Resources ที่จะแลก</span>
-              <span class="trade-give-count" :class="{ full: tradeGiveTotal === tradeCost }">{{ tradeGiveTotal }} / {{ tradeCost }}</span>
-            </div>
-            <input v-model="tradeGiveSearch" class="trade-search-input" placeholder="Search item..." />
-            <div class="trade-give-list">
-              <div v-if="filteredGiveItems.length === 0" class="trade-no-give-results">ไม่พบ item</div>
-              <div v-for="item in filteredGiveItems" :key="`${item.resource_type_id}-${item.item_id}`" class="trade-give-row">
-                <img :src="getImg(item.thumbnail)" class="hq-trade-img" />
-                <span class="trade-give-name">{{ item.item }}</span>
-                <span class="trade-give-owned">มี {{ item.quantity }}</span>
-                <button class="hq-craft-btn" @click.stop="openCraftLookup(item.resource_type_id, item.item_id, item.item)" title="ดูสูตรคราฟ">🔨</button>
-                <div class="trade-give-ctrl">
-                  <button class="tgc-btn" @click="adjustGive(item, -1)">−</button>
-                  <span class="tgc-qty">{{ tradeGiveSelection[`${item.resource_type_id}-${item.item_id}`] ?? 0 }}</span>
-                  <button class="tgc-btn" :disabled="tradeGiveTotal >= tradeCost || (tradeGiveSelection[`${item.resource_type_id}-${item.item_id}`] ?? 0) >= item.quantity" @click="adjustGive(item, 1)">+</button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="trade-receive-section">
-            <span class="trade-give-label">เลือก Item ที่ต้องการรับ</span>
-            <input v-model="tradeSearch" class="trade-search-input" placeholder="Search item..." />
-            <div class="hq-trade-grid">
-              <div v-for="item in filteredReceiveItems" :key="`${item.resource_type_id}-${item.item_id}`"
-                class="hq-trade-item" :class="{ chosen: tradeChosenItem?.item_id === item.item_id && tradeChosenItem?.resource_type_id === item.resource_type_id }"
-                @click="tradeChosenItem = item">
-                <img :src="getImg(item.thumbnail)" class="hq-trade-img" />
-                <span class="hq-trade-name">{{ item.item }}</span>
-                <button class="hq-craft-btn" @click.stop="openCraftLookup(item.resource_type_id, item.item_id, item.item)" title="ดูสูตรคราฟ">🔨</button>
-              </div>
-              <div v-if="filteredReceiveItems.length === 0" class="trade-no-results">ไม่พบ item</div>
-            </div>
-          </div>
-          <div class="hq-confirm-btns">
-            <button class="hq-btn-confirm" :disabled="!tradeReady" @click="confirmTrade">✓ ยืนยันแลก</button>
-            <button class="hq-btn-cancel" @click="showTradeModal = false">← ยกเลิก</button>
-          </div>
-        </div>
-      </div>
-    </teleport>
 
   </div>
 </template>
@@ -686,7 +765,7 @@ const poogiePatted = ref(false)
 /* ── ชุดวัสดุยุคกลาง: หนัง / ไม้ / กระดาษ / ทองเหลือง ── */
 /* หนัง — ใช้กับแผงเครื่องมือทุกอัน */
 .hqp-party-bar,
-.hqp-visit-counter,
+.hqp-steps,
 .hqp-activity,
 .rc-chips-wrap {
   border-radius: 4px;
@@ -710,36 +789,53 @@ const poogiePatted = ref(false)
 .hqp-line:last-child { background: linear-gradient(to left, transparent, #7c5a2b); }
 .hqp-title { font-size: 11px; letter-spacing: 5px; color: #d8c39a; white-space: nowrap; text-transform: uppercase; text-shadow: 0 1px 2px rgba(0,0,0,0.7); }
 
-/* Party bar */
+/* ── แถบเดินทาง — ช่องละสิทธิ์ เติมไอคอนที่ที่เข้าไปแล้วตามลำดับ ── */
+.hqp-steps {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+}
+.hqp-step {
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 3px;
+  border: 1px solid rgba(124,90,43,0.4);
+  background: rgba(0,0,0,0.35);
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+}
+.hqp-step.step-filled {
+  border-color: rgba(200,155,60,0.65);
+  background: linear-gradient(170deg, #3d2c14, #241a0c);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.15), 0 0 8px rgba(200,155,60,0.2);
+}
+.hqp-step-icon { font-size: 16px; line-height: 1; }
+.hqp-step:not(.step-filled) .hqp-step-icon { color: #5a442a; font-size: 12px; }
+.hqp-steps-label { margin-left: auto; font-size: 11px; color: #a88040; letter-spacing: 1px; }
+
+/* Party bar — ไอคอนคลาส + จุดนับ ให้ 4 คนอยู่แถวเดียวได้ */
 .hqp-party-bar {
   display: flex; flex-wrap: wrap; gap: 8px;
-  padding: 10px 12px;
+  padding: 8px 12px;
 }
 .hqp-hunter-pill {
   display: flex; align-items: center; gap: 6px;
-  padding: 5px 10px; border-radius: 3px;
+  padding: 4px 8px; border-radius: 3px;
   border: 1px solid rgba(124, 90, 43, 0.45);
   background: linear-gradient(170deg, #33251b, #1c1409);
-  font-size: 12px; transition: all 0.2s;
+  transition: all 0.2s;
 }
 .hqp-hunter-pill.pill-ready {
   border-color: rgba(0, 200, 100, 0.5);
   background: linear-gradient(170deg, #1e3324, #131f16);
 }
-.pill-name { color: #e0c88a; font-weight: bold; }
-.pill-count { color: #a88040; font-size: 11px; }
-.pill-done { color: #00c896; font-size: 11px; }
-
-/* Visit counter */
-.hqp-visit-counter {
-  display: flex; align-items: baseline; gap: 4px;
-  padding: 8px 14px;
-  border-left: 3px solid #c89b3c;
+.pill-icon { width: 20px; height: 20px; object-fit: contain; }
+.pill-dots { display: flex; gap: 3px; }
+.pill-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: rgba(124,90,43,0.4);
+  box-shadow: inset 0 0 2px rgba(0,0,0,0.6);
 }
-.hqp-vc-num { font-size: 28px; font-weight: bold; color: #ffd27a; line-height: 1; }
-.hqp-vc-slash { font-size: 18px; color: #7c5a2b; }
-.hqp-vc-max { font-size: 18px; color: #a88040; }
-.hqp-vc-label { font-size: 11px; color: #a88040; letter-spacing: 1px; margin-left: 6px; }
+.pill-dot.on { background: #c89b3c; box-shadow: 0 0 4px rgba(200,155,60,0.6); }
+.pill-done { color: #00c896; font-size: 12px; }
 
 /* Location grid */
 .hqp-loc-grid { display: flex; flex-direction: column; gap: 6px; }
@@ -766,44 +862,46 @@ const poogiePatted = ref(false)
   box-shadow: inset 0 0 30px rgba(0,0,0,0.35), inset 0 2px 0 rgba(255,220,160,0.12), 0 5px 14px rgba(0,0,0,0.5);
   transform: translateX(3px);
 }
-.hqp-loc-card.loc-done {
-  border-color: #24331f;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(0,0,0,0.16) 0px,
-      rgba(0,0,0,0.16) 1px,
-      transparent 1px,
-      transparent 7px
-    ),
-    linear-gradient(175deg, #2c3f27 0%, #22301d 58%, #29391f 100%);
-  opacity: 0.75;
-}
-.hqp-loc-card.loc-locked { opacity: 0.4; cursor: not-allowed; }
-
 .hqp-loc-icon { font-size: 20px; width: 28px; text-align: center; flex-shrink: 0; }
-.hqp-loc-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.hqp-loc-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .hqp-loc-name { font-size: 13px; color: #f5e3ba; text-shadow: 0 1px 2px rgba(0,0,0,0.7); }
-.hqp-loc-sub { font-size: 11px; color: #b89a68; font-style: italic; }
-.hqp-loc-mycheck { font-size: 16px; color: #00c896; flex-shrink: 0; }
+.hqp-loc-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.hqp-tag {
+  font-size: 10px; padding: 2px 7px; border-radius: 2px;
+  background: rgba(0,0,0,0.32);
+  border: 1px solid rgba(200,155,60,0.28);
+  color: #d8bf8c; white-space: nowrap;
+}
 .hqp-loc-arrow { font-size: 20px; color: rgba(124, 90, 43, 0.5); flex-shrink: 0; transition: color 0.15s; }
 .hqp-loc-card.loc-available:hover .hqp-loc-arrow { color: #c89b3c; }
 
-/* Hunter presence badges */
-.hqp-loc-hunters {
-  position: absolute; top: 4px; right: 8px;
-  display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end;
+/* นักล่าคนอื่น — ไอคอนคลาสในแถว ไม่ absolute ทับลูกศรเหมือนป้ายชื่อเดิม */
+.hqp-loc-hunters { display: flex; gap: 3px; flex-shrink: 0; }
+.hqp-here-icon {
+  width: 20px; height: 20px; object-fit: contain;
+  border-radius: 3px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(200,155,60,0.45);
 }
-.hqp-hunter-here {
-  font-size: 9px; padding: 2px 6px; border-radius: 10px;
-  background: rgba(200, 155, 60, 0.15); border: 1px solid rgba(200, 155, 60, 0.4);
-  color: #ffd27a; letter-spacing: 0.5px;
+.hqp-here-icon.hqp-here-done { border-color: rgba(0,200,100,0.4); opacity: 0.55; }
+
+/* ── ที่ที่เข้าไม่ได้แล้ว — แถวเตี้ยครึ่งเดียว ไม่แย่งสายตาจากที่ที่ยังกดได้ ── */
+.hqp-closed { display: flex; flex-direction: column; gap: 2px; }
+.hqp-closed-head { display: flex; align-items: center; gap: 8px; margin: 2px 0 4px; }
+.hqp-closed-line { flex: 1; height: 1px; background: rgba(124,90,43,0.28); }
+.hqp-closed-title { font-size: 10px; letter-spacing: 2px; color: #6b563a; white-space: nowrap; }
+.hqp-closed-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 12px; border-radius: 3px;
+  border: 1px solid rgba(124,90,43,0.22);
+  background: rgba(0,0,0,0.22);
+  opacity: 0.6;
 }
-.hqp-hunter-done {
-  font-size: 9px; padding: 2px 6px; border-radius: 10px;
-  background: rgba(0, 200, 100, 0.1); border: 1px solid rgba(0, 200, 100, 0.3);
-  color: #00c896; letter-spacing: 0.5px;
-}
+.hqp-closed-row.closed-done { border-color: rgba(0,200,100,0.22); }
+.hqp-closed-icon { font-size: 14px; width: 20px; text-align: center; flex-shrink: 0; filter: grayscale(0.6); }
+.hqp-closed-name { flex: 1; min-width: 0; font-size: 12px; color: #a28a63; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hqp-closed-reason { font-size: 10px; color: #6b563a; white-space: nowrap; flex-shrink: 0; }
+.hqp-closed-row.closed-done .hqp-closed-reason { color: #4e8a68; }
 
 /* Ready section */
 .hqp-ready-wrap { padding: 4px 0; }
@@ -829,7 +927,6 @@ const poogiePatted = ref(false)
   border-radius: 3px; background: linear-gradient(170deg, #1e2617, #161c10);
 }
 .hqp-ready-waiting { color: #a88040; }
-.hqp-visits-left { text-align: center; font-size: 12px; color: #a88040; font-style: italic; margin: 0; }
 
 /* Back btn & stamp */
 .hqp-back-btn {
@@ -1051,6 +1148,41 @@ const poogiePatted = ref(false)
 .hq-btn-cancel { padding: 13px 16px; border-radius: 3px; border: 1px solid rgba(124,90,43,0.5); background: linear-gradient(170deg, #2b1f13, #1c1409); color: #a88040; font-family: 'Georgia',serif; font-size: 13px; cursor: pointer; transition: 0.2s; min-height: 48px; }
 .hq-btn-cancel:hover { color: #ffd27a; border-color: #c89b3c; }
 .hq-trade-modal { max-width: 680px; width: 94vw; max-height: 88vh; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+
+/* ── หน้าแลกของ (ไม่ใช่ modal แล้ว) ──
+   ไม่มีกรอบ modal บีบแล้ว ปล่อยรายการสูงขึ้นได้ แต่ยังคุม max-height ไว้
+   ไม่งั้นสองส่วนจะยาวจนต้องเลื่อนผ่านส่วนแรกไปหาส่วนที่สอง */
+/* เว้นที่ล่างสุดให้แถบสรุปที่ลอยอยู่ ไม่ให้ทับรายการแถวสุดท้าย */
+.hqp-trade-page { gap: 16px; padding-bottom: 78px; }
+.hqp-trade-page .trade-give-list { max-height: 42vh; }
+.hqp-trade-page .hq-trade-grid { max-height: 42vh; }
+
+/* แถบสรุปลอยล่างจอ — เลื่อนดูรายการอยู่ก็ยังกดยืนยันได้ */
+.trade-bar {
+  position: fixed;
+  left: 8px;
+  right: 8px;
+  bottom: max(8px, env(safe-area-inset-bottom));
+  z-index: 300;
+  max-width: 620px;
+  margin: 0 auto;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(200,155,60,0.45);
+  background: linear-gradient(170deg, #33251b, #16100a);
+  box-shadow: 0 4px 18px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,220,160,0.08);
+  backdrop-filter: blur(4px);
+  font-family: 'Georgia', serif;
+}
+.trade-bar-sum { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #a88040; }
+.trade-bar-sum > span:first-child { font-weight: bold; }
+.trade-bar-ok { color: #00c896; }
+.trade-bar-arrow { color: #5a3d1f; }
+.trade-bar-img { width: 24px; height: 24px; object-fit: contain; flex-shrink: 0; }
+.trade-bar-name { color: #d4b87a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trade-bar-empty { font-style: italic; color: #5a3d1f; }
+.trade-bar-btn { flex-shrink: 0; min-height: 44px; padding: 10px 16px; }
 .trade-give-section, .trade-receive-section { display: flex; flex-direction: column; gap: 8px; }
 .trade-give-header { display: flex; align-items: center; justify-content: space-between; }
 .trade-give-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #a88040; }

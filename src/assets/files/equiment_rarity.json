@@ -9,17 +9,17 @@
                     {
                         "id": 1,
                         "name": "Helm",
-                        "thumbnail": "assets/img/equiments/armors/HelmR1.png"
+                        "thumbnail": "assets/img/equiments/armors/HelmR1.webp"
                     },
                     {
                         "id": 2,
                         "name": "Mail",
-                        "thumbnail": "assets/img/equiments/armors/MailR1.png"
+                        "thumbnail": "assets/img/equiments/armors/MailR1.webp"
                     },
                     {
                         "id": 3,
                         "name": "Greaves",
-                        "thumbnail": "assets/img/equiments/armors/GreavesR1.png"
+                        "thumbnail": "assets/img/equiments/armors/GreavesR1.webp"
                     }
                 ]
             },
@@ -29,17 +29,17 @@
                     {
                         "id": 1,
                         "name": "Helm",
-                        "thumbnail": "assets/img/equiments/armors/HelmR2.png"
+                        "thumbnail": "assets/img/equiments/armors/HelmR2.webp"
                     },
                     {
                         "id": 2,
                         "name": "Mail",
-                        "thumbnail": "assets/img/equiments/armors/MailR2.png"
+                        "thumbnail": "assets/img/equiments/armors/MailR2.webp"
                     },
                     {
                         "id": 3,
                         "name": "Greaves",
-                        "thumbnail": "assets/img/equiments/armors/GreavesR2.png"
+                        "thumbnail": "assets/img/equiments/armors/GreavesR2.webp"
                     }
                 ]
             },
@@ -49,17 +49,17 @@
                     {
                         "id": 1,
                         "name": "Helm",
-                        "thumbnail": "assets/img/equiments/armors/HelmR3.png"
+                        "thumbnail": "assets/img/equiments/armors/HelmR3.webp"
                     },
                     {
                         "id": 2,
                         "name": "Mail",
-                        "thumbnail": "assets/img/equiments/armors/MailR3.png"
+                        "thumbnail": "assets/img/equiments/armors/MailR3.webp"
                     },
                     {
                         "id": 3,
                         "name": "Greaves",
-                        "thumbnail": "assets/img/equiments/armors/GreavesR3.png"
+                        "thumbnail": "assets/img/equiments/armors/GreavesR3.webp"
                     }
                 ]
             },
@@ -69,17 +69,17 @@
                     {
                         "id": 1,
                         "name": "Helm",
-                        "thumbnail": "assets/img/equiments/armors/HelmR4.png"
+                        "thumbnail": "assets/img/equiments/armors/HelmR4.webp"
                     },
                     {
                         "id": 2,
                         "name": "Mail",
-                        "thumbnail": "assets/img/equiments/armors/MailR4.png"
+                        "thumbnail": "assets/img/equiments/armors/MailR4.webp"
                     },
                     {
                         "id": 3,
                         "name": "Greaves",
-                        "thumbnail": "assets/img/equiments/armors/GreavesR4.png"
+                        "thumbnail": "assets/img/equiments/armors/GreavesR4.webp"
                     }
                 ]
             }
@@ -95,72 +95,72 @@
                     {
                         "id": 1,
                         "name": "Greatsword",
-                        "thumbnail": "assets/img/equiments/weapons/greatswordR1.png"
+                        "thumbnail": "assets/img/equiments/weapons/greatswordR1.webp"
                     },
                     {
                         "id": 2,
                         "name": "Bow",
-                        "thumbnail": "assets/img/equiments/weapons/bowR1.png"
+                        "thumbnail": "assets/img/equiments/weapons/bowR1.webp"
                     },
                     {
                         "id": 3,
                         "name": "Dual Blades",
-                        "thumbnail": "assets/img/equiments/weapons/dual-bladeR1.png"
+                        "thumbnail": "assets/img/equiments/weapons/dual-bladeR1.webp"
                     },
                     {
                         "id": 4,
                         "name": "Sword & Shield",
-                        "thumbnail": "assets/img/equiments/weapons/sword-shieldR1.png"
+                        "thumbnail": "assets/img/equiments/weapons/sword-shieldR1.webp"
                     },
                     {
                         "id": 5,
                         "name": "Hammer",
-                        "thumbnail": "assets/img/equiments/weapons/hammerR1.png"
+                        "thumbnail": "assets/img/equiments/weapons/hammerR1.webp"
                     },
                     {
                         "id": 6,
                         "name": "Charge Blade",
-                        "thumbnail": "assets/img/equiments/weapons/charge-bladeR1.png"
+                        "thumbnail": "assets/img/equiments/weapons/charge-bladeR1.webp"
                     },
                     {
                         "id": 7,
                         "name": "Longsword",
-                        "thumbnail": "assets/img/equiments/weapons/longswordR1.png"
+                        "thumbnail": "assets/img/equiments/weapons/longswordR1.webp"
                     },
                     {
                         "id": 8,
                         "name": "Lance",
-                        "thumbnail": "assets/img/equiments/weapons/lanceR1.png"
+                        "thumbnail": "assets/img/equiments/weapons/lanceR1.webp"
                     },
                     {
                         "id": 9,
                         "name": "Hunting Horn",
-                        "thumbnail": "assets/img/equiments/weapons/hunting_hornR1.png"
+                        "thumbnail": "assets/img/equiments/weapons/hunting_hornR1.webp"
                     },
                     {
                         "id": 10,
                         "name": "Gunlance",
-                        "thumbnail": "assets/img/equiments/weapons/gunlanceR1.png"
+                        "thumbnail": "assets/img/equiments/weapons/gunlanceR1.webp"
                     },
                     {
                         "id": 11,
                         "name": "Switch Axe",
-                        "thumbnail": "assets/img/equiments/weapons/switch_axeR1.png"
+                        "thumbnail": "assets/img/equiments/weapons/switch_axeR1.webp"
                     },
                     {
                         "id": 12,
                         "name": "Insect Glaive",
-                        "thumbnail": "assets/img/equiments/weapons/insect_glaiveR1.png"
+                        "thumbnail": "assets/img/equiments/weapons/insect_glaiveR1.webp"
                     },
                     {
                         "id": 13,
                         "name": "Light Bowgun",
-                        "thumbnail": "assets/img/equiments/weapons/light_bowgunR1.png"
+                        "thumbnail": "assets/img/equiments/weapons/light_bowgunR1.webp"
                     },
                     {
                         "id": 14,
                         "name": "Heavy Bowgun",
-                        "thumbnail": "assets/img/equiments/weapons/heavy_bowgunR1.png"
+                        "thumbnail": "assets/img/equiments/weapons/heavy_bowgunR1.webp"
                     }
                 ]
             },
@@ -170,72 +170,72 @@
                     {
                         "id": 1,
                         "name": "Greatsword",
-                        "thumbnail": "assets/img/equiments/weapons/greatswordR2.png"
+                        "thumbnail": "assets/img/equiments/weapons/greatswordR2.webp"
                     },
                     {
                         "id": 2,
                         "name": "Bow",
-                        "thumbnail": "assets/img/equiments/weapons/bowR2.png"
+                        "thumbnail": "assets/img/equiments/weapons/bowR2.webp"
                     },
                     {
                         "id": 3,
                         "name": "Dual Blades",
-                        "thumbnail": "assets/img/equiments/weapons/dual-bladeR2.png"
+                        "thumbnail": "assets/img/equiments/weapons/dual-bladeR2.webp"
                     },
                     {
                         "id": 4,
                         "name": "Sword & Shield",
-                        "thumbnail": "assets/img/equiments/weapons/sword-shieldR2.png"
+                        "thumbnail": "assets/img/equiments/weapons/sword-shieldR2.webp"
                     },
                     {
                         "id": 5,
                         "name": "Hammer",
-                        "thumbnail": "assets/img/equiments/weapons/hammerR2.png"
+                        "thumbnail": "assets/img/equiments/weapons/hammerR2.webp"
                     },
                     {
                         "id": 6,
                         "name": "Charge Blade",
-                        "thumbnail": "assets/img/equiments/weapons/charge-bladeR2.png"
+                        "thumbnail": "assets/img/equiments/weapons/charge-bladeR2.webp"
                     },
                     {
                         "id": 7,
                         "name": "Longsword",
-                        "thumbnail": "assets/img/equiments/weapons/longswordR2.png"
+                        "thumbnail": "assets/img/equiments/weapons/longswordR2.webp"
                     },
                     {
                         "id": 8,
                         "name": "Lance",
-                        "thumbnail": "assets/img/equiments/weapons/lanceR2.png"
+                        "thumbnail": "assets/img/equiments/weapons/lanceR2.webp"
                     },
                     {
                         "id": 9,
                         "name": "Hunting Horn",
-                        "thumbnail": "assets/img/equiments/weapons/hunting_hornR2.png"
+                        "thumbnail": "assets/img/equiments/weapons/hunting_hornR2.webp"
                     },
                     {
                         "id": 10,
                         "name": "Gunlance",
-                        "thumbnail": "assets/img/equiments/weapons/gunlanceR2.png"
+                        "thumbnail": "assets/img/equiments/weapons/gunlanceR2.webp"
                     },
                     {
                         "id": 11,
                         "name": "Switch Axe",
-                        "thumbnail": "assets/img/equiments/weapons/switch_axeR2.png"
+                        "thumbnail": "assets/img/equiments/weapons/switch_axeR2.webp"
                     },
                     {
                         "id": 12,
                         "name": "Insect Glaive",
-                        "thumbnail": "assets/img/equiments/weapons/insect_glaiveR2.png"
+                        "thumbnail": "assets/img/equiments/weapons/insect_glaiveR2.webp"
                     },
                     {
                         "id": 13,
                         "name": "Light Bowgun",
-                        "thumbnail": "assets/img/equiments/weapons/light_bowgunR2.png"
+                        "thumbnail": "assets/img/equiments/weapons/light_bowgunR2.webp"
                     },
                     {
                         "id": 14,
                         "name": "Heavy Bowgun",
-                        "thumbnail": "assets/img/equiments/weapons/heavy_bowgunR2.png"
+                        "thumbnail": "assets/img/equiments/weapons/heavy_bowgunR2.webp"
                     }
                 ]
             },
@@ -245,72 +245,72 @@
                     {
                         "id": 1,
                         "name": "Greatsword",
-                        "thumbnail": "assets/img/equiments/weapons/greatswordR3.png"
+                        "thumbnail": "assets/img/equiments/weapons/greatswordR3.webp"
                     },
                     {
                         "id": 2,
                         "name": "Bow",
-                        "thumbnail": "assets/img/equiments/weapons/bowR3.png"
+                        "thumbnail": "assets/img/equiments/weapons/bowR3.webp"
                     },
                     {
                         "id": 3,
                         "name": "Dual Blades",
-                        "thumbnail": "assets/img/equiments/weapons/dual-bladeR3.png"
+                        "thumbnail": "assets/img/equiments/weapons/dual-bladeR3.webp"
                     },
                     {
                         "id": 4,
                         "name": "Sword & Shield",
-                        "thumbnail": "assets/img/equiments/weapons/sword-shieldR3.png"
+                        "thumbnail": "assets/img/equiments/weapons/sword-shieldR3.webp"
                     },
                     {
                         "id": 5,
                         "name": "Hammer",
-                        "thumbnail": "assets/img/equiments/weapons/hammerR3.png"
+                        "thumbnail": "assets/img/equiments/weapons/hammerR3.webp"
                     },
                     {
                         "id": 6,
                         "name": "Charge Blade",
-                        "thumbnail": "assets/img/equiments/weapons/charge-bladeR3.png"
+                        "thumbnail": "assets/img/equiments/weapons/charge-bladeR3.webp"
                     },
                     {
                         "id": 7,
                         "name": "Longsword",
-                        "thumbnail": "assets/img/equiments/weapons/longswordR3.png"
+                        "thumbnail": "assets/img/equiments/weapons/longswordR3.webp"
                     },
                     {
                         "id": 8,
                         "name": "Lance",
-                        "thumbnail": "assets/img/equiments/weapons/lanceR3.png"
+                        "thumbnail": "assets/img/equiments/weapons/lanceR3.webp"
                     },
                     {
                         "id": 9,
                         "name": "Hunting Horn",
-                        "thumbnail": "assets/img/equiments/weapons/hunting_hornR3.png"
+                        "thumbnail": "assets/img/equiments/weapons/hunting_hornR3.webp"
                     },
                     {
                         "id": 10,
                         "name": "Gunlance",
-                        "thumbnail": "assets/img/equiments/weapons/gunlanceR3.png"
+                        "thumbnail": "assets/img/equiments/weapons/gunlanceR3.webp"
                     },
                     {
                         "id": 11,
                         "name": "Switch Axe",
-                        "thumbnail": "assets/img/equiments/weapons/switch_axeR3.png"
+                        "thumbnail": "assets/img/equiments/weapons/switch_axeR3.webp"
                     },
                     {
                         "id": 12,
                         "name": "Insect Glaive",
-                        "thumbnail": "assets/img/equiments/weapons/insect_glaiveR3.png"
+                        "thumbnail": "assets/img/equiments/weapons/insect_glaiveR3.webp"
                     },
                     {
                         "id": 13,
                         "name": "Light Bowgun",
-                        "thumbnail": "assets/img/equiments/weapons/light_bowgunR3.png"
+                        "thumbnail": "assets/img/equiments/weapons/light_bowgunR3.webp"
                     },
                     {
                         "id": 14,
                         "name": "Heavy Bowgun",
-                        "thumbnail": "assets/img/equiments/weapons/heavy_bowgunR3.png"
+                        "thumbnail": "assets/img/equiments/weapons/heavy_bowgunR3.webp"
                     }
                 ]
             },
@@ -320,72 +320,72 @@
                     {
                         "id": 1,
                         "name": "Greatsword",
-                        "thumbnail": "assets/img/equiments/weapons/greatswordR4.png"
+                        "thumbnail": "assets/img/equiments/weapons/greatswordR4.webp"
                     },
                     {
                         "id": 2,
                         "name": "Bow",
-                        "thumbnail": "assets/img/equiments/weapons/bowR4.png"
+                        "thumbnail": "assets/img/equiments/weapons/bowR4.webp"
                     },
                     {
                         "id": 3,
                         "name": "Dual Blades",
-                        "thumbnail": "assets/img/equiments/weapons/dual-bladeR4.png"
+                        "thumbnail": "assets/img/equiments/weapons/dual-bladeR4.webp"
                     },
                     {
                         "id": 4,
                         "name": "Sword & Shield",
-                        "thumbnail": "assets/img/equiments/weapons/sword-shieldR4.png"
+                        "thumbnail": "assets/img/equiments/weapons/sword-shieldR4.webp"
                     },
                     {
                         "id": 5,
                         "name": "Hammer",
-                        "thumbnail": "assets/img/equiments/weapons/hammerR4.png"
+                        "thumbnail": "assets/img/equiments/weapons/hammerR4.webp"
                     },
                     {
                         "id": 6,
                         "name": "Charge Blade",
-                        "thumbnail": "assets/img/equiments/weapons/charge-bladeR4.png"
+                        "thumbnail": "assets/img/equiments/weapons/charge-bladeR4.webp"
                     },
                     {
                         "id": 7,
                         "name": "Longsword",
-                        "thumbnail": "assets/img/equiments/weapons/longswordR4.png"
+                        "thumbnail": "assets/img/equiments/weapons/longswordR4.webp"
                     },
                     {
                         "id": 8,
                         "name": "Lance",
-                        "thumbnail": "assets/img/equiments/weapons/lanceR4.png"
+                        "thumbnail": "assets/img/equiments/weapons/lanceR4.webp"
                     },
                     {
                         "id": 9,
                         "name": "Hunting Horn",
-                        "thumbnail": "assets/img/equiments/weapons/hunting_hornR4.png"
+                        "thumbnail": "assets/img/equiments/weapons/hunting_hornR4.webp"
                     },
                     {
                         "id": 10,
                         "name": "Gunlance",
-                        "thumbnail": "assets/img/equiments/weapons/gunlanceR4.png"
+                        "thumbnail": "assets/img/equiments/weapons/gunlanceR4.webp"
                     },
                     {
                         "id": 11,
                         "name": "Switch Axe",
-                        "thumbnail": "assets/img/equiments/weapons/switch_axeR4.png"
+                        "thumbnail": "assets/img/equiments/weapons/switch_axeR4.webp"
                     },
                     {
                         "id": 12,
                         "name": "Insect Glaive",
-                        "thumbnail": "assets/img/equiments/weapons/insect_glaiveR4.png"
+                        "thumbnail": "assets/img/equiments/weapons/insect_glaiveR4.webp"
                     },
                     {
                         "id": 13,
                         "name": "Light Bowgun",
-                        "thumbnail": "assets/img/equiments/weapons/light_bowgunR4.png"
+                        "thumbnail": "assets/img/equiments/weapons/light_bowgunR4.webp"
                     },
                     {
                         "id": 14,
                         "name": "Heavy Bowgun",
-                        "thumbnail": "assets/img/equiments/weapons/heavy_bowgunR4.png"
+                        "thumbnail": "assets/img/equiments/weapons/heavy_bowgunR4.webp"
                     }
                 ]
             }

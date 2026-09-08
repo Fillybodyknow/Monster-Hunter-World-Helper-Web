@@ -157,7 +157,20 @@
             "required_dialog": "",
             "title": "วางกับดัก ล่อ Barroth ",
             "consequences": "ได้รับและเปิดเผย Track Token  1 อัน แล้วเลือกว่าจะเก็บหรือทิ้ง",
-            "PathToDialog": 20
+            "PathToDialog": 20,
+            "effects": [
+              {
+                "type": "revealTrackToken",
+                "n": 1
+              },
+              {
+                "type": "gainTrackToken",
+                "n": 1
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           },
           {
             "action_id": 2,
@@ -458,7 +471,23 @@
             "required_dialog": "",
             "title": "บริเวณนี้น่าสนใจ\nไปสำรวจต่อเลย",
             "consequences": "ทิ้ง Time card 2 ใบ นักล่าทุกคนจะได้รับ 1 Barroth Shell หากกลุ่มมี Barroth Ridge อย่างน้อย 1 ชิ้น นักล่าทุกคนจะได้รับ 1 Barroth Ridge ด้วย",
-            "PathToDialog": 12
+            "PathToDialog": 12,
+            "effects": [
+              {
+                "type": "discardTimeCard",
+                "n": 2
+              },
+              {
+                "type": "gainResource",
+                "n": 1,
+                "name": "Barroth Shell",
+                "type_id": 3,
+                "item_id": 37
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           },
           {
             "action_id": 2,
@@ -493,7 +522,13 @@
             "required_dialog": "",
             "title": "3-4",
             "consequences": "เพิ่มยาหนึ่งขวดลงในคลัง",
-            "PathToDialog": 6
+            "PathToDialog": 6,
+            "effects": [
+              {
+                "type": "gainPotion",
+                "n": 1
+              }
+            ]
           },
           {
             "action_id": 3,
@@ -681,7 +716,20 @@
             "required_dialog": "",
             "title": "พวกมันดูมีความสุขในที่ที่พวกมันอยู่ แต่พวกมันอาจจะมีข้อมูลดีๆ...",
             "consequences": "รับและเปิดเผย 4  Track Token แล้วเลือกว่าจะเก็บหรือทิ้งโทเค็นเหล่านั้น",
-            "PathToDialog": 21
+            "PathToDialog": 21,
+            "effects": [
+              {
+                "type": "revealTrackToken",
+                "n": 4
+              },
+              {
+                "type": "gainTrackToken",
+                "n": 4
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           }
         ],
         "effects": [
@@ -1380,7 +1428,13 @@
             "required_dialog": "",
             "title": "ใช้เวลาสำรวจร่องรอยที่ Barroth ทิ้งไว้เพิ่มเติม",
             "consequences": "ทิ้ง 1  Track Token",
-            "PathToDialog": 12
+            "PathToDialog": 12,
+            "effects": [
+              {
+                "type": "discardTrackToken",
+                "n": 1
+              }
+            ]
           }
         ]
       },
@@ -1784,6 +1838,12 @@
             "consequences": "",
             "PathToDialog": 10
           }
+        ],
+        "effects": [
+          {
+            "type": "discardPotionDownTo",
+            "n": 1
+          }
         ]
       },
       {
@@ -1951,7 +2011,16 @@
             "required_dialog": "",
             "title": "เก็บสิ่งที่สามารถเก็บได้",
             "consequences": "ทิ้ง 1 time card นักล่าทุกคนจะได้รับ Quality Bone 1 ชิ้น หรือ Monster Bone large 1 ชิ้น",
-            "PathToDialog": 35
+            "PathToDialog": 35,
+            "effects": [
+              {
+                "type": "discardTimeCard",
+                "n": 1
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           },
           {
             "action_id": 2,
@@ -1973,7 +2042,16 @@
             "required_dialog": "",
             "title": "เก็บสิ่งที่สามารถเก็บได้",
             "consequences": "ทิ้ง 1 time card นักล่าทุกคนจะได้รับ Quality Bone 1 ชิ้น หรือ Monster Bone large 1 ชิ้น",
-            "PathToDialog": 35
+            "PathToDialog": 35,
+            "effects": [
+              {
+                "type": "discardTimeCard",
+                "n": 1
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           },
           {
             "action_id": 2,
@@ -2139,7 +2217,23 @@
             "required_dialog": "",
             "title": "ลงมือขุดกันเถอะ!",
             "consequences": "ทิ้ง 1 time card นักล่าทุกคนจะได้รับ Carbalite ore 1 ชิ้น จากนั้นนักล่าสามารถทิ้ง Time card อีก 2 ใบ เพื่อรับ Machalite ore 1 ชิ้น, Fucium ore 1 ชิ้น และ Dragonite ore 1 ชิ้น",
-            "PathToDialog": 11
+            "PathToDialog": 11,
+            "effects": [
+              {
+                "type": "discardTimeCard",
+                "n": 1
+              },
+              {
+                "type": "gainResource",
+                "n": 1,
+                "name": "Carbalite Ore",
+                "type_id": 1,
+                "item_id": 1
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           },
           {
             "action_id": 2,
@@ -2416,7 +2510,17 @@
             "required_dialog": "",
             "title": "คุณรู้สึกหลงทาง แต่บางทีอาจจะมีอะไรบางอย่างอยู่ใกล้ๆ แค่ไปต่อเถอะ",
             "consequences": "ทิ้ง 1 time card เปิด track token 1 ชิ้น",
-            "PathToDialog": 16
+            "PathToDialog": 16,
+            "effects": [
+              {
+                "type": "discardTimeCard",
+                "n": 1
+              },
+              {
+                "type": "revealTrackToken",
+                "n": 1
+              }
+            ]
           }
         ]
       },
@@ -2649,7 +2753,16 @@
             "required_dialog": "ถ้ามี Time card ที่ถูกทิ้งมากกว่าหรือเท่ากับ 2 ใบ จะไม่สามารถเลือกตัวเลือกนี้ได้",
             "title": "...",
             "consequences": "จั่ว Time card แล้ววางไว้ข้างๆ กอง time card",
-            "PathToDialog": 32
+            "PathToDialog": 32,
+            "effects": [
+              {
+                "type": "drawTimeCardAside",
+                "n": 1
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           },
           {
             "action_id": 3,
@@ -2762,7 +2875,20 @@
             "required_dialog": "",
             "title": "เดินเข้าไปในป่าอย่างระมัดระวัง – ใครจะไปรู้ว่ามีอะไรรออยู่ข้างใน?",
             "consequences": "ทิ้ง 1 time card ได้รับ 2 track tokens. แต่ละนักล่าได้รับ 1 Monster Bone small หรือ 1 Monster Bone large",
-            "PathToDialog": 16
+            "PathToDialog": 16,
+            "effects": [
+              {
+                "type": "discardTimeCard",
+                "n": 1
+              },
+              {
+                "type": "gainTrackToken",
+                "n": 2
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           },
           {
             "action_id": 2,
@@ -2771,6 +2897,10 @@
             "consequences": "ทิ้ง track tokens ทั้งหมด. แต่ละนักล่าได้รับ 1 Pukei-Pukei Quill, 1 Pukei-Pukei Scale, 1 Pukei-Pukei Sac, และ 1 Poison Sac.",
             "PathToDialog": 35,
             "effects": [
+              {
+                "type": "discardTrackToken",
+                "n": "all"
+              },
               {
                 "type": "gainResource",
                 "n": 1,
@@ -2957,6 +3087,22 @@
               }
             ]
           }
+        ],
+        "effects": [
+          {
+            "type": "gainResource",
+            "n": 1,
+            "name": "Carbalite Ore",
+            "type_id": 1,
+            "item_id": 1
+          },
+          {
+            "type": "gainResource",
+            "n": 1,
+            "name": "Fucium Ore",
+            "type_id": 1,
+            "item_id": 4
+          }
         ]
       },
       {
@@ -3024,7 +3170,23 @@
             "required_dialog": "",
             "title": "ลงมือขุดกันเถอะ!",
             "consequences": "ทิ้ง 1 time card นักล่าทุกคนจะได้รับ Carbalite ore 1 ชิ้น จากนั้นนักล่าสามารถทิ้ง Time card อีก 2 ใบ เพื่อรับ Machalite ore 1 ชิ้น, Fucium ore 1 ชิ้น และ Dragonite ore 1 ชิ้น",
-            "PathToDialog": 31
+            "PathToDialog": 31,
+            "effects": [
+              {
+                "type": "discardTimeCard",
+                "n": 1
+              },
+              {
+                "type": "gainResource",
+                "n": 1,
+                "name": "Carbalite Ore",
+                "type_id": 1,
+                "item_id": 1
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           },
           {
             "action_id": 2,
@@ -3300,7 +3462,14 @@
             "required_dialog": "",
             "title": "เดินโซเซไปในหมอกหนา",
             "consequences": "สับการ์ด Aimless Wandering เข้ากับกอง Time card",
-            "PathToDialog": 15
+            "PathToDialog": 15,
+            "effects": [
+              {
+                "type": "shuffleTimeCard",
+                "card": "Aimless Wandering",
+                "time_card_id": 17
+              }
+            ]
           },
           {
             "action_id": 2,
@@ -3497,7 +3666,20 @@
             "required_dialog": "",
             "title": "คุณไม่สามารถไปข้างหน้าได้มากนัก แต่ก้าวที่ช้ากลับทำให้คุณฟื้นฟูร่างกายได้บ้าง",
             "consequences": "ทิ้ง Track Token 1 อัน นักล่าทุกคนฟื้นฟูเลือด 2 หน่วย หากกลุ่ม Track Token น้อยกว่า 3 อัน ให้สับการ์ด Aimless Wandering ลงในกอง Time card",
-            "PathToDialog": 11
+            "PathToDialog": 11,
+            "effects": [
+              {
+                "type": "discardTrackToken",
+                "n": 1
+              },
+              {
+                "type": "heal",
+                "n": 2
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           },
           {
             "action_id": 2,
@@ -3817,6 +3999,19 @@
               }
             ]
           }
+        ],
+        "effects": [
+          {
+            "type": "discardTimeCard",
+            "n": 1
+          },
+          {
+            "type": "discardPotion",
+            "n": 1
+          },
+          {
+            "type": "manualRest"
+          }
         ]
       },
       {
@@ -3906,7 +4101,16 @@
             "required_dialog": "",
             "title": "เตรียมตัวให้พร้อม แล้วเคลื่อนไหวไปยังทิศทางของเสียงอย่างรวดเร็วและระมัดระวัง",
             "consequences": "ทิ้ง 2 time card เปิดเผยและทิ้ง Track Token จำนวนเท่าไรก็ได้ ทิ้ง Time Card ที่วางข้างๆ กอง เท่าไหรก็ได้",
-            "PathToDialog": 12
+            "PathToDialog": 12,
+            "effects": [
+              {
+                "type": "discardTimeCard",
+                "n": 2
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           }
         ]
       },
@@ -4129,7 +4333,16 @@
             "required_dialog": "",
             "title": "ดื่มยาสักขวด น่าจะช่วยได้",
             "consequences": "ทิ้ง 1 Potion หากผู้เล่นไม่สามารถทิ้ง Potion ได้ ให้สับการ์ด Exhaustion ลงในกอง Time card, ทิ้ง Time card 1 ใบ",
-            "PathToDialog": 9
+            "PathToDialog": 9,
+            "effects": [
+              {
+                "type": "discardPotion",
+                "n": 1
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           }
         ]
       },
@@ -4776,7 +4989,17 @@
             "required_dialog": "",
             "title": "Diablos จะไม่ไปไหน ใช้เวลาฟื้นฟูสุขภาพบ้าง",
             "consequences": "นักล่าทุกคนฟื้นฟูเลือด 2 หน่วย ทิ้ง 1 Time card",
-            "PathToDialog": 23
+            "PathToDialog": 23,
+            "effects": [
+              {
+                "type": "discardTimeCard",
+                "n": 1
+              },
+              {
+                "type": "heal",
+                "n": 2
+              }
+            ]
           }
         ]
       },
@@ -6036,6 +6259,11 @@
                 "n": 1
               },
               {
+                "type": "shuffleTimeCard",
+                "card": "Time Management",
+                "time_card_id": 34
+              },
+              {
                 "type": "diceRoll",
                 "scope": "each",
                 "table": [
@@ -6205,7 +6433,22 @@
             "required_dialog": "",
             "title": "เสียงหวีดนั้น... อาจจะเป็น scoutflies รึเปล่า?",
             "consequences": "ทิ้ง Time Card 1 ใบ\nรับ Track Token 1 ชิ้น\nสับ Recovery Card เข้าสู่สำรับ Time Deck",
-            "PathToDialog": 19
+            "PathToDialog": 19,
+            "effects": [
+              {
+                "type": "discardTimeCard",
+                "n": 1
+              },
+              {
+                "type": "gainTrackToken",
+                "n": 1
+              },
+              {
+                "type": "shuffleTimeCard",
+                "card": "Recovery",
+                "time_card_id": 23
+              }
+            ]
           },
           {
             "action_id": 2,

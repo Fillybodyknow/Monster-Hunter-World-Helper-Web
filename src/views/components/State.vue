@@ -227,7 +227,7 @@ const setEquip = async (item) => {
             <div class="equip-details">
               <div v-for="(cnt, key) in hunter.weapon.damage_cards" :key="key" v-show="cnt > 0" class="mini-dmg-wrap">
                 <div class="mini-dmg-frame">
-                  <div class="mini-dmg-card" :style="{ backgroundImage: `url(${getImg('assets/img/take_damage.png')})` }">
+                  <div class="mini-dmg-card" :style="{ backgroundImage: `url(${getImg('assets/img/take_damage.webp')})` }">
                     <span class="mini-dmg-val">{{ key.replace('damage_', '') }}</span>
                   </div>
                   <span class="mini-dmg-count">×{{ cnt }}</span>
@@ -235,7 +235,7 @@ const setEquip = async (item) => {
               </div>
               <div v-if="hunter.weapon.defense > 0"
                 class="mini-armor-card"
-                :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.png')})` }">
+                :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.webp')})` }">
                 <span>{{ hunter.weapon.defense }}</span>
               </div>
             </div>
@@ -252,12 +252,12 @@ const setEquip = async (item) => {
             <div class="equip-details">
               <div v-if="hunter.armors.helm.physical_armor > 0"
                 class="mini-armor-card"
-                :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.png')})` }">
+                :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.webp')})` }">
                 <span>{{ hunter.armors.helm.physical_armor }}</span>
               </div>
               <div v-if="hunter.armors.helm.elemental_armor?.elemental_id > 0"
                 class="mini-armor-card"
-                :style="{ backgroundImage: `url(${getImg(getElementalById(hunter.armors.helm.elemental_armor.elemental_id)?.thumbnail)}), url(${getImg('assets/img/bonus_armor.png')})` }">
+                :style="{ backgroundImage: `url(${getImg(getElementalById(hunter.armors.helm.elemental_armor.elemental_id)?.thumbnail)}), url(${getImg('assets/img/bonus_armor.webp')})` }">
                 <span class="mini-elem-val">{{ hunter.armors.helm.elemental_armor.protection }}</span>
               </div>
               <span v-if="hunter.armors.helm.ability_id > 0" class="equip-ability-chip">{{ getAbilityById(hunter.armors.helm.ability_id)?.ability_name }}</span>
@@ -275,12 +275,12 @@ const setEquip = async (item) => {
             <div class="equip-details">
               <div v-if="hunter.armors.mail.physical_armor > 0"
                 class="mini-armor-card"
-                :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.png')})` }">
+                :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.webp')})` }">
                 <span>{{ hunter.armors.mail.physical_armor }}</span>
               </div>
               <div v-if="hunter.armors.mail.elemental_armor?.elemental_id > 0"
                 class="mini-armor-card"
-                :style="{ backgroundImage: `url(${getImg(getElementalById(hunter.armors.mail.elemental_armor.elemental_id)?.thumbnail)}), url(${getImg('assets/img/bonus_armor.png')})` }">
+                :style="{ backgroundImage: `url(${getImg(getElementalById(hunter.armors.mail.elemental_armor.elemental_id)?.thumbnail)}), url(${getImg('assets/img/bonus_armor.webp')})` }">
                 <span class="mini-elem-val">{{ hunter.armors.mail.elemental_armor.protection }}</span>
               </div>
               <span v-if="hunter.armors.mail.ability_id > 0" class="equip-ability-chip">{{ getAbilityById(hunter.armors.mail.ability_id)?.ability_name }}</span>
@@ -298,12 +298,12 @@ const setEquip = async (item) => {
             <div class="equip-details">
               <div v-if="hunter.armors.greaves.physical_armor > 0"
                 class="mini-armor-card"
-                :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.png')})` }">
+                :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.webp')})` }">
                 <span>{{ hunter.armors.greaves.physical_armor }}</span>
               </div>
               <div v-if="hunter.armors.greaves.elemental_armor?.elemental_id > 0"
                 class="mini-armor-card"
-                :style="{ backgroundImage: `url(${getImg(getElementalById(hunter.armors.greaves.elemental_armor.elemental_id)?.thumbnail)}), url(${getImg('assets/img/bonus_armor.png')})` }">
+                :style="{ backgroundImage: `url(${getImg(getElementalById(hunter.armors.greaves.elemental_armor.elemental_id)?.thumbnail)}), url(${getImg('assets/img/bonus_armor.webp')})` }">
                 <span class="mini-elem-val">{{ hunter.armors.greaves.elemental_armor.protection }}</span>
               </div>
               <span v-if="hunter.armors.greaves.ability_id > 0" class="equip-ability-chip">{{ getAbilityById(hunter.armors.greaves.ability_id)?.ability_name }}</span>
@@ -335,7 +335,7 @@ const setEquip = async (item) => {
           <div v-for="(val, key) in hunter.weapon.damage_cards" :key="key" class="damage-wrapper">
             <div class="damage-frame">
               <div class="damage-card">
-                <img :src="getImg('assets/img/take_damage.png')" />
+                <img :src="getImg('assets/img/take_damage.webp')" />
                 <span class="dmg-value">{{ key.split('_')[1] }}</span>
               </div>
               <p class="dmg-count">x{{ val }}</p>
@@ -347,12 +347,12 @@ const setEquip = async (item) => {
         <div class="panel-section-header">Defense</div>
         <div class="armor-stats-row">
           <div class="armor-card element-card">
-            <img :src="getImg('assets/img/bonus_armor.png')" />
+            <img :src="getImg('assets/img/bonus_armor.webp')" />
             <span>{{ totalArmor }}</span>
           </div>
 
           <div v-for="el in elementArmor" :key="el.elemental_id" class="armor-card element-card">
-            <img :src="getImg('assets/img/bonus_armor.png')" class="armor-base" />
+            <img :src="getImg('assets/img/bonus_armor.webp')" class="armor-base" />
             <img :src="getImg(el.thumbnail)" class="element-icon" />
             <span class="element-value">{{ el.value }}</span>
           </div>
@@ -408,11 +408,11 @@ const setEquip = async (item) => {
               <template v-if="equipType === 'weapon' && it.data">
                 <div class="smc-details">
                   <div v-for="(cnt, key) in it.data.damage_cards" :key="key" v-show="cnt > 0" class="smc-dmg-card"
-                    :style="{ backgroundImage: `url(${getImg('assets/img/take_damage.png')})` }">
+                    :style="{ backgroundImage: `url(${getImg('assets/img/take_damage.webp')})` }">
                     <span>{{ key.replace('damage_', '') }}</span>
                   </div>
                   <div v-if="it.data.defense > 0" class="smc-armor-card"
-                    :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.png')})` }">
+                    :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.webp')})` }">
                     <span>{{ it.data.defense }}</span>
                   </div>
                 </div>
@@ -426,11 +426,11 @@ const setEquip = async (item) => {
               <template v-if="equipType !== 'weapon' && it.data">
                 <div class="smc-details">
                   <div v-if="it.data.physical_armor > 0" class="smc-armor-card"
-                    :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.png')})` }">
+                    :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.webp')})` }">
                     <span>{{ it.data.physical_armor }}</span>
                   </div>
                   <div v-if="it.data.elemental_armor?.elemental_id > 0" class="smc-armor-card"
-                    :style="{ backgroundImage: `url(${getImg(getElementalById(it.data.elemental_armor.elemental_id)?.thumbnail)}), url(${getImg('assets/img/bonus_armor.png')})` }">
+                    :style="{ backgroundImage: `url(${getImg(getElementalById(it.data.elemental_armor.elemental_id)?.thumbnail)}), url(${getImg('assets/img/bonus_armor.webp')})` }">
                     <span>{{ it.data.elemental_armor.protection }}</span>
                   </div>
                 </div>

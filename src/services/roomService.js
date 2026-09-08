@@ -326,6 +326,20 @@ export const pushHunterTokenConfirm = (code, hunterId, confirmed) =>
 export const clearHunterTokenConfirms = (code) =>
   remove(ref(db, `rooms/${code}/hunterTokenConfirms`))
 
+// ความสามารถชุดเกราะแบบ "เควสละครั้ง" — เก็บรวมเป็น node เดียวเผื่อใบอื่นในอนาคต
+// ต้อง sync เพราะทั้งตี้ต้องเห็นตรงกันว่าใครใช้สิทธิ์ไปแล้ว ไม่ใช่แค่เจ้าตัว
+export const pushAbilityUsed = (code, hunterId, abilityId) =>
+  set(ref(db, `rooms/${code}/abilityUsed/${hunterId}/${abilityId}`), true)
+
+export const clearAbilityUsed = (code) => remove(ref(db, `rooms/${code}/abilityUsed`))
+
+// คำขอสลับ Hunter Token — ปลายทางต้องกดยินยอมก่อนถึงจะสลับจริง
+// มีได้ทีละคำขอ ทั้งห้องเห็น node เดียวกัน ไม่ต้องแยกรายคน
+export const pushTokenSwapRequest = (code, req) =>
+  set(ref(db, `rooms/${code}/tokenSwapRequest`), req)
+
+export const clearTokenSwapRequest = (code) => remove(ref(db, `rooms/${code}/tokenSwapRequest`))
+
 // ── Dialog Dice (ผลทอยแบบ "ทอยครั้งเดียว" ใช้ร่วมกันทั้งกลุ่ม) ──
 export const pushDialogDice = (code, key, value) =>
   set(ref(db, `rooms/${code}/dialogDice/${key}`), value)

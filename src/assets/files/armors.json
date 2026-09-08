@@ -4,7 +4,7 @@
                 "equip_set": "Chainmail",
                 "rarity": 1,
                 "set_ability_bonus": 0,
-                "thumbnail": "assets/img/equiments/sets/Ores.png",
+                "thumbnail": "assets/img/equiments/sets/Ores.webp",
                 "equips": [
                     {
                         "equip_id": 1,
@@ -46,7 +46,7 @@
                 "equip_set": "Leather",
                 "rarity": 1,
                 "set_ability_bonus": 0,
-                "thumbnail": "assets/img/equiments/sets/Ores.png",
+                "thumbnail": "assets/img/equiments/sets/Ores.webp",
                 "equips": [
                     {
                         "equip_id": 1,
@@ -88,7 +88,7 @@
                 "equip_set": "Ore",
                 "rarity": 2,
                 "set_ability_bonus": 0,
-                "thumbnail": "assets/img/equiments/sets/Ores.png",
+                "thumbnail": "assets/img/equiments/sets/Ores.webp",
                 "equips": [
                     {
                         "equip_id": 1,
@@ -128,7 +128,7 @@
             {
                 "equip_set_id": 4,
                 "equip_set": "Monster Bone",
-                "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+                "thumbnail": "assets/img/equiments/sets/dragon_bone.webp",
                 "rarity": 2,
                 "set_ability_bonus": 0,
                 "equips": [
@@ -170,7 +170,7 @@
             {
                 "equip_set_id": 5,
                 "equip_set": "Great Jagras",
-                "thumbnail": "assets/img/equiments/sets/Great_Jagras.png",
+                "thumbnail": "assets/img/equiments/sets/Great_Jagras.webp",
                 "rarity": 3,
                 "set_ability_bonus": 0,
                 "equips": [
@@ -212,7 +212,7 @@
             {
                 "equip_set_id": 6,
                 "equip_set": "Tobi-Kadachi",
-                "thumbnail": "assets/img/equiments/sets/Tobi-Kadachi.png",
+                "thumbnail": "assets/img/equiments/sets/Tobi-Kadachi.webp",
                 "rarity": 3,
                 "set_ability_bonus": 0,
                 "equips": [
@@ -254,7 +254,7 @@
             {
                 "equip_set_id": 7,
                 "equip_set": "Anjanath",
-                "thumbnail": "assets/img/equiments/sets/Anjanath.png",
+                "thumbnail": "assets/img/equiments/sets/Anjanath.webp",
                 "rarity": 3,
                 "set_ability_bonus": 0,
                 "equips": [
@@ -296,7 +296,7 @@
             {
                 "equip_set_id": 8,
                 "equip_set": "Rathalos",
-                "thumbnail": "assets/img/equiments/sets/Rathalos.png",
+                "thumbnail": "assets/img/equiments/sets/Rathalos.webp",
                 "rarity": 4,
                 "set_ability_bonus": 10,
                 "equips": [
@@ -338,7 +338,7 @@
             {
                 "equip_set_id": 9,
                 "equip_set": "Azure Rathalos",
-                "thumbnail": "assets/img/equiments/sets/Azure_Rathalos.png",
+                "thumbnail": "assets/img/equiments/sets/Azure_Rathalos.webp",
                 "rarity": 4,
                 "set_ability_bonus": 14,
                 "equips": [
@@ -380,7 +380,7 @@
             {
                 "equip_set_id": 10,
                 "equip_set": "Barroth",
-                "thumbnail": "assets/img/equiments/sets/barroth.png",
+                "thumbnail": "assets/img/equiments/sets/barroth.webp",
                 "rarity": 3,
                 "set_ability_bonus": 0,
                 "equips": [
@@ -422,7 +422,7 @@
             {
                 "equip_set_id": 11,
                 "equip_set": "Pukei-Pukei",
-                "thumbnail": "assets/img/equiments/sets/pukei-pukei.png",
+                "thumbnail": "assets/img/equiments/sets/pukei-pukei.webp",
                 "rarity": 3,
                 "set_ability_bonus": 0,
                 "equips": [
@@ -464,7 +464,7 @@
             {
                 "equip_set_id": 12,
                 "equip_set": "Jyuratodus",
-                "thumbnail": "assets/img/equiments/sets/jyuratodus.png",
+                "thumbnail": "assets/img/equiments/sets/jyuratodus.webp",
                 "rarity": 3,
                 "set_ability_bonus": 0,
                 "equips": [
@@ -506,7 +506,7 @@
             {
                 "equip_set_id": 13,
                 "equip_set": "Diablos",
-                "thumbnail": "assets/img/equiments/sets/diablos.png",
+                "thumbnail": "assets/img/equiments/sets/diablos.webp",
                 "rarity": 4,
                 "set_ability_bonus": 23,
                 "equips": [
@@ -548,7 +548,7 @@
             {
                 "equip_set_id": 14,
                 "equip_set": "Black Diablos",
-                "thumbnail": "assets/img/equiments/sets/Black_Diablos.png",
+                "thumbnail": "assets/img/equiments/sets/Black_Diablos.webp",
                 "rarity": 4,
                 "set_ability_bonus": 24,
                 "equips": [

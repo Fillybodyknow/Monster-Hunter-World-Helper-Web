@@ -13,6 +13,7 @@ import roomNameTemplates from '@/assets/files/room_name_templates.json'
 const getHunterClass = (id) => hunterClassData.find((c) => c.hunter_class_id === id)
 import monsterPartsData from '@/assets/files/monster_parts.json'
 import elementalData from '@/assets/files/elemental.json'
+import armorData from '@/assets/files/armors.json'
 import statusEffectData from '@/assets/files/status_effect.json'
 import resourceData from '@/assets/files/resource.json'
 import { getHunters, saveHunters } from '@/services/hunterStorage'
@@ -21,6 +22,8 @@ import CoopLobbyModal from './CoopLobbyModal.vue'
 import HQPhase from './HQPhase.vue'
 import { openCraftLookup } from '@/composables/useCraftLookup'
 import { useSfx, preloadSfx, preloadMedia } from '@/composables/useSfx'
+import { preloadImages } from '@/services/assetPreload'
+import RuleText from './RuleText.vue'
 
 const room = useRoomStore()
 const sfx = useSfx()
@@ -457,10 +460,16 @@ watch([() => room.syncedPhase, () => room.joinSignal], ([sp]) => {
 })
 
 const _incrementDay = () => {
-  if (hunter.value) {
-    hunter.value.campaign_day = (hunter.value.campaign_day ?? 0) + 1
+  if (!hunter.value) return
+  // ธงจาก Time Management — ใช้ได้ครั้งเดียวแล้วหมดไป ต้องเคลียร์แม้จะไม่ได้บวกวัน
+  if (hunter.value.free_hq_day) {
+    hunter.value.free_hq_day = false
     saveHunter(hunter.value)
+    addNotif?.('🃏 Time Management — เข้า HQ รอบนี้ไม่เสียวัน', 'info')
+    return
   }
+  hunter.value.campaign_day = (hunter.value.campaign_day ?? 0) + 1
+  saveHunter(hunter.value)
 }
 
 // All hunters ready in HQ → adds day for everyone, host also clears state and advances phase
@@ -814,6 +823,17 @@ watch(() => selectedMonster.value?.monster_id, (id) => {
     ...(theme ? [`assets/sounds/hunting_phase/monster_theme/${theme}`] : []),
     'assets/sounds/gethering_phase/during_gethering_phase.mp3',
   ])
+
+  // การ์ด Behavior ของทั้ง 10 ตัวรวมกัน 9MB — หนักเกินจะโหลดตั้งแต่หน้าแรก
+  // แต่พอรู้ว่าเจอตัวไหนแล้วก็เหลือ ~1MB โหลดทันก่อนจั่วใบแรกแน่นอน
+  const mon = selectedMonster.value
+  if (mon) {
+    preloadImages([
+      ...(mon.behavior_deck ?? []).flatMap((c) => [c.front_card_img, c.back_card_img]),
+      ...(mon.behavior_special_card ?? []).flatMap((c) => [c.front_card_img, c.back_card_img]),
+      ...(mon.difficulty ?? []).map((d) => d.map_image),
+    ])
+  }
 }, { immediate: true })
 
 // เปลี่ยนมอนสเตอร์ระหว่างอยู่ huntingPanel อยู่แล้ว (เช่น สลับเควสต์) — สลับ theme ให้ตรงตัวใหม่
@@ -1950,6 +1970,9 @@ const myAttemptCounts = () => {
 
 const onComplete = () => {
   if (myAttemptCounts()) incrementAttempted()
+  // ต้องตั้งก่อน resetToBookPhase ไม่งั้นกองทิ้ง Time Card ถูกล้างไปแล้วตรวจไม่เจอ
+  // ทุกคนในตี้ตั้งธงของตัวเองจากกองทิ้งที่ sync กันอยู่ — "ทั้งกลุ่ม" เลยได้ครบโดยไม่ต้องส่งอะไรเพิ่ม
+  if (detectedTimeManagement.value && hunter.value) hunter.value.free_hq_day = true
   incrementDay()
   if (room.inRoom) room.leave()
   resetToBookPhase()
@@ -2833,6 +2856,145 @@ watch(
   },
 )
 
+// ── Weakness Exploit (Rathalos Mail) ──────────────────────
+// "เควสละครั้ง, สลับโทเค็นนักล่าของตนกับผู้เล่นคนอื่นได้"
+// ทิศทางการหันหน้าของโทเค็นจัดการบนโต๊ะเหมือน Threat Shift — ในแอปสลับแค่ตัวเลข
+const ABILITY_WEAKNESS_EXPLOIT = 11
+
+const myArmorAbilityIds = computed(() => {
+  const slots = hunter.value?.equipments?.armors
+  if (!slots) return []
+  const worn = ['helm', 'mail', 'greaves']
+    .map((k) => (slots[k] ?? []).find((a) => a.is_equip))
+    .filter(Boolean)
+
+  const ids = new Set()
+  for (const w of worn) {
+    const set = armorData.find((s) => s.equip_set_id === w.equip_set_id)
+    const piece = set?.equips.find((e) => e.equip_id === w.equip_id)
+    if (piece?.ability_id) ids.add(piece.ability_id)
+  }
+  // โบนัสเซ็ตได้เมื่อใส่ครบสามชิ้นจากเซ็ตเดียวกัน
+  if (worn.length === 3 && new Set(worn.map((w) => w.equip_set_id)).size === 1) {
+    const bonus = armorData.find((s) => s.equip_set_id === worn[0].equip_set_id)?.set_ability_bonus
+    if (bonus) ids.add(bonus)
+  }
+  return [...ids]
+})
+
+const weaknessExploitUsed = computed(
+  () => !!room.myAbilityUsed?.[ABILITY_WEAKNESS_EXPLOIT],
+)
+
+// ต้องมีคนอื่นให้สลับด้วย — เล่นคนเดียวความสามารถนี้ไม่มีความหมาย
+const weaknessExploitTargets = computed(() =>
+  room.hunters.filter(
+    (h) => h.hunter_id !== room.myHunterId && room.hunterTokens?.[h.hunter_id] != null,
+  ),
+)
+
+// คำขอที่ค้างอยู่ — ทั้งสองฝั่งอ่าน node เดียวกัน
+const swapReq = computed(() => room.tokenSwapRequest)
+const incomingSwap = computed(() =>
+  swapReq.value?.status === 'pending' && swapReq.value.toId === room.myHunterId
+    ? swapReq.value
+    : null,
+)
+const outgoingSwap = computed(() =>
+  swapReq.value?.status === 'pending' && swapReq.value.fromId === room.myHunterId
+    ? swapReq.value
+    : null,
+)
+
+const canUseWeaknessExploit = computed(
+  () =>
+    questMode.value === 'full' &&
+    phase.value === 'huntingPanel' &&
+    room.inRoom &&
+    myArmorAbilityIds.value.includes(ABILITY_WEAKNESS_EXPLOIT) &&
+    !weaknessExploitUsed.value &&
+    room.myHunterToken != null &&
+    weaknessExploitTargets.value.length > 0 &&
+    !swapReq.value,
+)
+
+// แตะที่ tile ของนักล่าอีกคนในแถบตี้ได้เลย — ไม่ต้องมีปุ่มกินที่บนจอมือถือ
+const canSwapWith = (h) =>
+  canUseWeaknessExploit.value &&
+  h.hunter_id !== room.myHunterId &&
+  room.hunterTokens?.[h.hunter_id] != null
+
+// ปุ่มหายไปแล้ว ต้องมีอะไรบอกว่าใช้ได้ ไม่งั้นไม่มีใครรู้ว่าแตะ tile ได้
+watch(canUseWeaknessExploit, (can, was) => {
+  if (!can || was) return
+  addNotif?.('🎯 Weakness Exploit พร้อมใช้ — แตะที่นักล่าในแถบตี้เพื่อขอสลับ Hunter Token', 'info')
+})
+
+// แตะ tile แล้วถามยืนยันก่อน — tile เล็กและอยู่ติดกัน แตะพลาดง่ายบนมือถือ
+const pendingSwapTarget = ref(null)
+
+const askSwapWith = (h) => {
+  pendingSwapTarget.value = { id: h.hunter_id, token: room.hunterTokens[h.hunter_id] }
+}
+
+// ชื่อนักล่ายาวไม่เท่ากันทำให้กล่องเบี้ยว — ใช้ไอคอนคลาสแทน สั้นและดูออกทันที
+const hunterClassImg = (hunterId) =>
+  getHunterClass(room.hunters.find((h) => h.hunter_id === hunterId)?.hunter_class_id)?.thumbnail ?? null
+
+const confirmSwapRequest = () => {
+  const t = pendingSwapTarget.value
+  pendingSwapTarget.value = null
+  if (t) requestWeaknessExploit(t.id)
+}
+
+// ส่งคำขอเฉย ๆ ยังไม่สลับและยังไม่ตัดสิทธิ์ — รอปลายทางกดยินยอมก่อน
+const requestWeaknessExploit = (targetId) => {
+  const mine = room.myHunterToken
+  const theirs = room.hunterTokens?.[targetId]
+  if (mine == null || theirs == null) return
+  room.requestTokenSwap?.({
+    status: 'pending',
+    fromId: room.myHunterId,
+    fromName: room.myHunter?.hunter_name ?? 'Hunter',
+    fromToken: mine,
+    toId: targetId,
+    toName: room.hunters.find((h) => h.hunter_id === targetId)?.hunter_name ?? 'Hunter',
+    toToken: theirs,
+  })
+  sfx.playRandom(`${SFX_UI}/action_confirm`, 3, { key: 'action' })
+}
+
+// ฝั่งที่ยินยอมเป็นคนลงมือทั้งหมดในจังหวะเดียว — สลับ ตัดสิทธิ์ผู้ขอ แล้วปิดคำขอ
+// ถ้าให้ผู้ขอเป็นคนทำหลังเห็นคำตอบ จะมีช่วงที่ค้างถ้าผู้ขอหลุดพอดี
+const acceptTokenSwap = () => {
+  const req = incomingSwap.value
+  if (!req) return
+  room.setAllHunterTokens?.({
+    ...(room.hunterTokens ?? {}),
+    [req.fromId]: req.toToken,
+    [req.toId]: req.fromToken,
+  })
+  room.markAbilityUsed?.(ABILITY_WEAKNESS_EXPLOIT, req.fromId)
+  room.clearTokenSwapRequestAll?.()
+  sfx.playRandom(`${SFX_UI}/action_confirm`, 3, { key: 'action' })
+}
+
+// ปฏิเสธไม่ตัดสิทธิ์ผู้ขอ — ยังไปขอคนอื่นได้ในเควสเดียวกัน
+const declineTokenSwap = () => {
+  const req = incomingSwap.value
+  if (!req) return
+  room.requestTokenSwap?.({ ...req, status: 'declined' })
+}
+
+const cancelTokenSwap = () => room.clearTokenSwapRequestAll?.()
+
+// ผู้ขอเป็นคนเก็บกวาดคำขอที่ถูกปฏิเสธ ปลายทางปิดหน้าต่างไปแล้ว
+watch(swapReq, (req) => {
+  if (req?.status !== 'declined' || req.fromId !== room.myHunterId) return
+  addNotif?.(`✕ ${req.toName} ไม่ยินยอมสลับ Hunter Token`, 'warn')
+  room.clearTokenSwapRequestAll?.()
+})
+
 const _shiftHunterTokens = () => {
   const ids = room.hunters.map((h) => String(h.hunter_id))
   if (ids.length < 2) return
@@ -2906,6 +3068,17 @@ const threatShiftFlights = computed(() => {
   return out
 })
 
+// โดนสลับโทเค็นโดยคนอื่น (Weakness Exploit) จะไม่มีอะไรบอกเลยนอกจากเลขในแถบตี้เปลี่ยนไปเงียบ ๆ
+// Threat Shift มีแอนิเมชันของตัวเองอยู่แล้ว จึงเว้นไว้ไม่ให้เตือนซ้อน
+watch(
+  () => room.myHunterToken,
+  (now, before) => {
+    if (now == null || before == null || now === before) return
+    if (phase.value !== 'huntingPanel' || threatShift.value) return
+    addNotif?.(`🎯 Hunter Token ของคุณถูกสลับเป็นเลข ${now}`, 'info')
+  },
+)
+
 const _queueReveal = (hunterName, card, hunterClassId) => {
   tcRevealQueue.value = [...tcRevealQueue.value, { hunterName, card, hunterClassId }]
   _processTcRevealQueue()
@@ -2938,7 +3111,10 @@ const _drawTcCard = (hunterName, hunterId = null) => {
   if (!timeCardDeck.value.length) return null
   const [card, ...rest] = timeCardDeck.value
   timeCardDeck.value = rest
-  timeCardDiscard.value = [card, ...timeCardDiscard.value]
+  // กองทิ้งมีทั้งใบที่ถูกจั่วจริงและใบที่โดนทิ้งยกกอง (Roar / Time Waster / effect ทิ้ง N ใบ)
+  // ใบที่โดนทิ้งไม่ได้ถูกอ่าน ความสามารถบนการ์ดจึงไม่ทำงาน — ติดธงไว้ให้แยกออกจากกัน
+  // ธงติดไปกับตัวการ์ดเลย จะได้ sync ขึ้น Firebase และรอด reconnect ไปพร้อมกองทิ้งอยู่แล้ว
+  timeCardDiscard.value = [{ ...card, drawn: true }, ...timeCardDiscard.value]
   if (card.card_name === 'Rampage') rampageActive.value = true
   if (card.card_name === 'Misread') misreadActive.value = true
   if (card.card_name === 'Monster Sleeps') {
@@ -3273,6 +3449,10 @@ const initHuntingData = () => {
     room.clearHunterTokensAll?.()
     // ต้องล้างคู่กันเสมอ ไม่งั้นล่าครั้งใหม่จะนับว่ายืนยันไว้แล้วทั้งที่ยังไม่มีใครเลือก
     room.clearHunterTokenConfirmsAll?.()
+    // สิทธิ์ "เควสละครั้ง" คืนให้ทุกคนตอนเริ่มล่าใหม่
+    room.clearAbilityUsedAll?.()
+    // คำขอที่ค้างจากเควสก่อนต้องไม่เด้งขึ้นมากลางเควสใหม่
+    room.clearTokenSwapRequestAll?.()
   }
 }
 
@@ -3470,14 +3650,22 @@ const activeSlayerCardName = computed(
     'Slayer',
 )
 
-// Auto-detect: ตรวจจาก Time Card ที่ถูกจั่ว/ทิ้งไว้ในกองทิ้งระหว่างเควส
+// Auto-detect: ตรวจจาก Time Card ที่ "ถูกจั่ว" ระหว่างเควส (c.drawn)
+// ใบที่โดนทิ้งยกกองไม่ได้ถูกอ่าน ความสามารถไม่ทำงาน — ทั้งสองใบนี้ยังกดสลับเองได้ถ้าตรวจไม่ตรง
 const detectedBetrayal = computed(() =>
-  timeCardDiscard.value.some((c) => c.time_card_id === TC_BETRAYAL_ID),
+  timeCardDiscard.value.some((c) => c.time_card_id === TC_BETRAYAL_ID && c.drawn),
+)
+
+// Time Management: จบเควสสำเร็จแล้ว รอบ HQ ถัดไปไม่เสียวัน
+// ผลข้ามเควสไปอีกช่วงหนึ่ง จึงต้องเก็บเป็นธงบนตัวละคร ไม่ใช่ state ของเควสที่ถูกล้างทิ้ง
+const TC_TIME_MANAGEMENT_ID = 34
+const detectedTimeManagement = computed(() =>
+  timeCardDiscard.value.some((c) => c.time_card_id === TC_TIME_MANAGEMENT_ID && c.drawn),
 )
 const detectedSlayer = computed(
   () =>
     activeSlayerCardId.value != null &&
-    timeCardDiscard.value.some((c) => c.time_card_id === activeSlayerCardId.value),
+    timeCardDiscard.value.some((c) => c.time_card_id === activeSlayerCardId.value && c.drawn),
 )
 
 // Manual override: null/false = ใช้ค่าจาก Auto-detect (หรือปิด), true = บังคับเปิด
@@ -3662,6 +3850,7 @@ const EFFECT_LABEL = {
   revealTrackToken: (e) => `เปิดเผย Track Token ${e.n === 'all' ? 'ทั้งหมด' : `${e.n} อัน`}`,
   gainPotion: (e) => `รับยา ${e.n} ขวด`,
   discardPotion: (e) => `ทิ้งยา ${e.n} ขวด`,
+  discardPotionDownTo: (e) => `ทิ้งยาให้เหลือ ${e.n} ขวด`,
   shuffleTimeCard: (e) => `สับการ์ด ${e.card} เข้ากอง Time Card`,
   gainResource: (e) => `รับ ${e.name} ×${e.n}`,
   damage: (e) => `นักล่าทุกคนเสีย ${e.n} HP`,
@@ -3673,12 +3862,14 @@ const EFFECT_LABEL = {
   diceRoll: (e) => (e.scope === 'each' ? '🎲 ทอยเต๋า (ทุกคนทอยเอง)' : '🎲 ทอยเต๋า (ทอยครั้งเดียว)'),
   diceMonsterDamage: (e) => `🎲 ทอยเต๋า — ลด HP ${e.monster} ตามที่ทอยได้`,
   diceRollManual: () => '🎲 ทอยเต๋า แล้วเลือกตัวเลือกตามเลขที่ได้',
+  manualRest: () => 'ยังมีส่วนที่ต้องทำเอง — อ่านข้อความประกอบ',
 }
 
 // ผลที่ต้องทำบนกระดานเอง — แสดงเป็นหมายเหตุ ไม่ทำอัตโนมัติ
 // diceRollManual = สั่งทอยแต่ผลไปอยู่ที่ปุ่ม choice — ผู้เล่นทอยเองแล้วกดปุ่มที่ตรงกับเลข
 const MANUAL_EFFECTS = new Set([
   'damage', 'heal', 'healFull', 'drawTimeCardAside', 'startHunting', 'checkScoutfly', 'diceRollManual',
+  'manualRest',
 ])
 
 // ของติดตัวนักล่าแต่ละคน — ทุกคนต้อง apply เอง (dialogCounts แยกราย hunter)
@@ -3709,6 +3900,7 @@ const EFFECT_ICON = {
   gainResource: '📦',
   gainPotion: '🧪',
   discardPotion: '🧪',
+  discardPotionDownTo: '🧪',
   gainTrackToken: '🔍',
   discardTrackToken: '🔍',
   revealTrackToken: '🔍',
@@ -3771,6 +3963,12 @@ const _applyOneEffect = (e) => {
     case 'discardPotion':
       if (potionCount.value <= 0) return 'ไม่มียาให้ทิ้ง'
       potionCount.value = Math.max(0, potionCount.value - e.n)
+      _pushHuntState()
+      return null
+
+    case 'discardPotionDownTo':
+      if (potionCount.value <= e.n) return `มียาไม่เกิน ${e.n} ขวดอยู่แล้ว`
+      potionCount.value = e.n
       _pushHuntState()
       return null
 
@@ -4738,7 +4936,7 @@ const openPackDrawer = () => {
 
       <div class="embark-mode-row">
         <button class="btn-embark btn-coop" @click="showCoopModeSelect = true">
-          <img :src="getImg('assets/img/menu_topbar_icon/quest.png')" class="embark-icon" />
+          <img :src="getImg('assets/img/menu_topbar_icon/quest.webp')" class="embark-icon" />
           Post Quest
         </button>
       </div>
@@ -4756,9 +4954,10 @@ const openPackDrawer = () => {
     <div v-if="phase === 'hqVote'" class="phase-hq-vote">
       <div class="hqv-header">
         <div class="hqv-line"></div>
-        <span class="hqv-title">แวะ Head Quarter ก่อนลุยไหม?</span>
+        <span class="hqv-title">⚜ คำร้องก่อนออกเดินทาง ⚜</span>
         <div class="hqv-line"></div>
       </div>
+      <p class="hqv-question">แวะ Head Quarter ก่อนลุยไหม?</p>
 
       <div class="hqv-monster-row">
         <img :src="getImg(selectedMonster?.thumbnail)" class="hqv-monster-img" />
@@ -4768,16 +4967,36 @@ const openPackDrawer = () => {
         </div>
       </div>
 
+      <div v-if="hunter?.free_hq_day" class="hqv-free-day">
+        <img :src="getImg('assets/img/time_cards/red_time_cards/time_management.webp')" class="hqv-free-card" />
+        <div>
+          <p class="hqv-free-title">🃏 Time Management</p>
+          <p class="hqv-free-sub">แวะ HQ รอบนี้ไม่เสียวัน</p>
+        </div>
+      </div>
+
       <div v-if="!myHqVote" class="hqv-choices">
-        <button class="hqv-btn hqv-btn-hq" @click="pendingHqVote = 'hq'">
-          <img :src="getImg('assets/img/menu_topbar_icon/head_querter.png')" class="hqv-btn-icon hqv-hq-icon" />
-          <span class="hqv-btn-label">แวะ HQ ก่อน</span>
-          <span class="hqv-btn-sub">เพิ่มวัน · ทำ 3 กิจกรรม</span>
+        <button class="hqv-banner hqv-banner-hq" @click="pendingHqVote = 'hq'">
+          <span class="hqv-rod"></span>
+          <span class="hqv-cloth">
+            <span class="hqv-crest">
+              <img :src="getImg('assets/img/menu_topbar_icon/head_querter.webp')" class="hqv-crest-img hqv-crest-white" />
+            </span>
+            <span class="hqv-banner-label">แวะ HQ ก่อน</span>
+            <span class="hqv-banner-rule"></span>
+            <span class="hqv-banner-sub">{{ hunter?.free_hq_day ? 'ไม่เสียวัน' : 'เพิ่มวัน' }} · ทำ 3 กิจกรรม</span>
+          </span>
         </button>
-        <button class="hqv-btn hqv-btn-quest" @click="pendingHqVote = 'quest'">
-          <img :src="getImg('assets/img/menu_topbar_icon/quest.png')" class="hqv-btn-icon hqv-quest-icon" />
-          <span class="hqv-btn-label">ลุย Quest เลย</span>
-          <span class="hqv-btn-sub">ข้าม HQ ไปเริ่มล่าเลย</span>
+        <button class="hqv-banner hqv-banner-quest" @click="pendingHqVote = 'quest'">
+          <span class="hqv-rod"></span>
+          <span class="hqv-cloth">
+            <span class="hqv-crest">
+              <img :src="getImg('assets/img/menu_topbar_icon/quest.webp')" class="hqv-crest-img" />
+            </span>
+            <span class="hqv-banner-label">ลุย Quest เลย</span>
+            <span class="hqv-banner-rule"></span>
+            <span class="hqv-banner-sub">ข้าม HQ ไปเริ่มล่าเลย</span>
+          </span>
         </button>
       </div>
 
@@ -4790,12 +5009,12 @@ const openPackDrawer = () => {
               <div class="hqvc-choice" :class="pendingHqVote === 'hq' ? 'hqvc-hq' : 'hqvc-quest'">
                 <img
                   v-if="pendingHqVote === 'hq'"
-                  :src="getImg('assets/img/menu_topbar_icon/head_querter.png')"
+                  :src="getImg('assets/img/menu_topbar_icon/head_querter.webp')"
                   class="hqvc-icon hqvc-icon-white"
                 />
                 <img
                   v-else
-                  :src="getImg('assets/img/menu_topbar_icon/quest.png')"
+                  :src="getImg('assets/img/menu_topbar_icon/quest.webp')"
                   class="hqvc-icon"
                 />
                 <span class="hqvc-label">{{ pendingHqVote === 'hq' ? 'แวะ HQ ก่อน' : 'ลุย Quest เลย' }}</span>
@@ -4810,37 +5029,61 @@ const openPackDrawer = () => {
       </Teleport>
 
       <div v-if="myHqVote" class="hqv-waiting">
-        <p class="hqv-voted-label">คุณโหวต: <strong>{{ myHqVote === 'hq' ? '🏰 แวะ HQ' : '⚔ ลุย Quest' }}</strong></p>
-        <p v-if="room.inRoom" class="hqv-waiting-sub">รอผลโหวตจากทีม...</p>
+        <span class="hqv-wax">{{ myHqVote === 'hq' ? '🏰' : '⚔' }}</span>
+        <p class="hqv-voted-label">
+          ลงเสียงแล้ว: <strong>{{ myHqVote === 'hq' ? 'แวะ HQ' : 'ลุย Quest' }}</strong>
+        </p>
+        <p v-if="room.inRoom" class="hqv-waiting-sub">รอเสียงจากนักล่าที่เหลือ…</p>
       </div>
 
       <!-- Party vote status -->
       <div v-if="room.inRoom" class="hqv-party-votes">
+        <div class="hqv-tally-head">
+          <span class="hqv-tally-line"></span>
+          <span class="hqv-tally-title">⚜ บันทึกการลงเสียง ⚜</span>
+          <span class="hqv-tally-line"></span>
+        </div>
         <div v-for="h in room.hunters" :key="h.hunter_id" class="hqv-vote-row">
+          <img
+            v-if="getHunterClass(h.hunter_class_id)?.thumbnail"
+            :src="getImg(getHunterClass(h.hunter_class_id).thumbnail)"
+            class="hqv-vote-icon"
+          />
           <span class="hqv-hunter-name">{{ h.hunter_name }}</span>
+          <span class="hqv-dotted"></span>
           <span v-if="room.hqVotes[h.hunter_id] === 'hq'" class="hqv-vote-pill hqv-vote-hq">🏰 HQ</span>
           <span v-else-if="room.hqVotes[h.hunter_id] === 'quest'" class="hqv-vote-pill hqv-vote-quest">⚔ Quest</span>
-          <span v-else class="hqv-vote-pill hqv-vote-pending">รอ...</span>
+          <span v-else class="hqv-vote-pill hqv-vote-pending">รอ…</span>
         </div>
       </div>
 
       <!-- Tiebreak -->
       <div v-if="room.inRoom && room.hqVoteTied" class="hqv-tiebreak">
-        <p class="hqv-tie-label">⚖ คะแนนเท่ากัน!</p>
+        <p class="hqv-tie-label">⚖ เสียงเท่ากัน</p>
         <template v-if="room.isHost">
-          <p class="hqv-tie-sub">Host ตัดสินใจเลือก</p>
+          <p class="hqv-tie-sub">คำตัดสินเป็นของ Host</p>
           <div class="hqv-choices">
-            <button class="hqv-btn hqv-btn-hq" @click="breakHqTie('hq')">
-              <img :src="getImg('assets/img/menu_topbar_icon/head_querter.png')" class="hqv-btn-icon hqv-hq-icon" />
-              <span class="hqv-btn-label">แวะ HQ ก่อน</span>
+            <button class="hqv-banner hqv-banner-hq" @click="breakHqTie('hq')">
+              <span class="hqv-rod"></span>
+              <span class="hqv-cloth">
+                <span class="hqv-crest">
+                  <img :src="getImg('assets/img/menu_topbar_icon/head_querter.webp')" class="hqv-crest-img hqv-crest-white" />
+                </span>
+                <span class="hqv-banner-label">แวะ HQ ก่อน</span>
+              </span>
             </button>
-            <button class="hqv-btn hqv-btn-quest" @click="breakHqTie('quest')">
-              <span class="hqv-btn-icon">⚔</span>
-              <span class="hqv-btn-label">ลุย Quest เลย</span>
+            <button class="hqv-banner hqv-banner-quest" @click="breakHqTie('quest')">
+              <span class="hqv-rod"></span>
+              <span class="hqv-cloth">
+                <span class="hqv-crest">
+                  <img :src="getImg('assets/img/menu_topbar_icon/quest.webp')" class="hqv-crest-img" />
+                </span>
+                <span class="hqv-banner-label">ลุย Quest เลย</span>
+              </span>
             </button>
           </div>
         </template>
-        <p v-else class="hqv-tie-sub">รอ Host ตัดสิน...</p>
+        <p v-else class="hqv-tie-sub">รอคำตัดสินจาก Host…</p>
       </div>
     </div>
 
@@ -5143,7 +5386,7 @@ const openPackDrawer = () => {
             @click="togglePotion(i)"
             title="คลิกเพื่อใช้ / เพิ่ม Potion"
           >
-            <img :src="getImg('assets/img/UI/potion_icon.png')" class="dialog-potion-img" />
+            <img :src="getImg('assets/img/UI/potion_icon.webp')" class="dialog-potion-img" />
             <span v-if="i > potionCount" class="dialog-potion-x">✕</span>
           </div>
         </div>
@@ -5194,7 +5437,7 @@ const openPackDrawer = () => {
       <div v-if="questMode !== 'minimal'" class="tt-panel">
         <div class="tt-header">
           <span class="tt-label">
-            <img :src="getImg('assets/img/UI/symbol/track_token_symbol.png')" class="ui-symbol ui-symbol-sm" alt="" />
+            <img :src="getImg('assets/img/UI/symbol/track_token_symbol.webp')" class="ui-symbol ui-symbol-sm" alt="" />
             Track Token
           </span>
           <span class="tt-pool">Pool: {{ trackTokenPool.length }}</span>
@@ -5215,7 +5458,7 @@ const openPackDrawer = () => {
               <span v-if="token.revealed" class="tt-value" :class="token.value > 0 ? 'val-pos' : token.value < 0 ? 'val-neg' : 'val-zero'">
                 {{ token.value > 0 ? '+' : '' }}{{ token.value }}
               </span>
-              <img v-else :src="getImg('assets/img/UI/symbol/track_token_symbol.png')" class="token-back-img" alt="" />
+              <img v-else :src="getImg('assets/img/UI/symbol/track_token_symbol.webp')" class="token-back-img" alt="" />
             </div>
           </div>
         </div>
@@ -5226,7 +5469,7 @@ const openPackDrawer = () => {
             <div v-if="selectedToken" class="tt-modal-overlay" @click.self="selectedToken = null">
               <div class="tt-modal">
                 <p class="tt-modal-title">
-                  <img :src="getImg('assets/img/UI/symbol/track_token_symbol.png')" class="ui-symbol ui-symbol-sm" alt="" />
+                  <img :src="getImg('assets/img/UI/symbol/track_token_symbol.webp')" class="ui-symbol ui-symbol-sm" alt="" />
                   Track Token
                 </p>
                 <div class="tt-modal-token">
@@ -5234,7 +5477,7 @@ const openPackDrawer = () => {
                     :class="selectedToken.value > 0 ? 'val-pos' : selectedToken.value < 0 ? 'val-neg' : 'val-zero'">
                     {{ selectedToken.value > 0 ? '+' : '' }}{{ selectedToken.value }}
                   </span>
-                  <img v-else :src="getImg('assets/img/UI/symbol/track_token_symbol.png')" class="token-back-img" alt="" />
+                  <img v-else :src="getImg('assets/img/UI/symbol/track_token_symbol.webp')" class="token-back-img" alt="" />
                 </div>
                 <div class="tt-modal-btns">
                   <button
@@ -5343,7 +5586,7 @@ const openPackDrawer = () => {
         <span v-for="n in 3" :key="n" class="trail-step" :style="`--i:${n}`">
           <img
             class="ts-print"
-            :src="getImg('assets/img/UI/monster_footprint.png')"
+            :src="getImg('assets/img/UI/monster_footprint.webp')"
             alt=""
           />
         </span>
@@ -5768,7 +6011,7 @@ const openPackDrawer = () => {
                 @click="toggleFaint(i)"
                 title="คลิกเพื่อ Faint / ยกเลิก"
               >
-                <img :src="getImg('assets/img/UI/faint_icon.png')" class="qs-slot-img" />
+                <img :src="getImg('assets/img/UI/faint_icon.webp')" class="qs-slot-img" />
                 <span v-if="i <= faintCount" class="qs-slot-x">✕</span>
               </div>
             </div>
@@ -5785,7 +6028,7 @@ const openPackDrawer = () => {
                 @click="togglePotion(i)"
                 title="คลิกเพื่อใช้ / เพิ่ม Potion"
               >
-                <img :src="getImg('assets/img/UI/potion_icon.png')" class="qs-slot-img" />
+                <img :src="getImg('assets/img/UI/potion_icon.webp')" class="qs-slot-img" />
                 <span v-if="i > potionCount" class="qs-slot-x">✕</span>
               </div>
             </div>
@@ -5866,14 +6109,14 @@ const openPackDrawer = () => {
           </div>
           <p class="act-status">
             <span v-if="!monsterTurnReady" class="act-waiting">
-              <img :src="getImg('assets/img/UI/symbol/hunter_turn_symbol.png')" class="ui-symbol" alt="" />
+              <img :src="getImg('assets/img/UI/symbol/hunter_turn_symbol.webp')" class="ui-symbol" alt="" />
               Hunter เล่นได้อีก <strong>{{ activationLimit - activationRoundsCompleted }}</strong> รอบ
             </span>
             <span v-else class="act-ready-text">✓ Monster Turn พร้อมแล้ว!</span>
             <template v-if="attackCardLimit">
               <span class="inline-sep" aria-hidden="true"></span>
               <span class="act-attack">
-                <img :src="getImg('assets/img/UI/symbol/hunter_attack_card_symbol.png')" class="ui-symbol" alt="" />
+                <img :src="getImg('assets/img/UI/symbol/hunter_attack_card_symbol.webp')" class="ui-symbol" alt="" />
                 เล่น Attack Card ได้ <strong>{{ attackCardLimit }}</strong> ใบต่อรอบ
               </span>
             </template>
@@ -6158,7 +6401,7 @@ const openPackDrawer = () => {
             <span class="hpanel-rule-icon">⚡</span>
             <div>
               <p class="hpanel-rule-title">{{ monsterHuntingData.special_rule.title }}</p>
-              <p class="hpanel-rule-desc">{{ monsterHuntingData.special_rule.description }}</p>
+              <p class="hpanel-rule-desc"><RuleText :text="monsterHuntingData.special_rule.description" /></p>
             </div>
           </div>
         </div>
@@ -6216,7 +6459,7 @@ const openPackDrawer = () => {
                   </div>
                   <div class="part-card-armor-wrap">
                     <div class="armor-element-card" :class="{ 'armor-blastblight': blastblightActive && partData.armor > 0 }">
-                      <img :src="getImg('assets/img/bonus_armor.png')" class="armor-base" />
+                      <img :src="getImg('assets/img/bonus_armor.webp')" class="armor-base" />
                       <span class="element-value">{{ blastblightActive ? Math.max(0, partData.armor - 1) : partData.armor }}</span>
                     </div>
                   </div>
@@ -6329,7 +6572,7 @@ const openPackDrawer = () => {
                     <span class="pbr-label">{{
                       brokenParts[position] ? 'BREAK EFFECT' : 'TIP ON BREAK'
                     }}</span>
-                    <p class="pbr-text">{{ partData.part_break_rule }}</p>
+                    <p class="pbr-text"><RuleText :text="partData.part_break_rule" /></p>
                   </div>
                 </div>
               </div>
@@ -7099,7 +7342,7 @@ const openPackDrawer = () => {
                       </div>
                       <div class="part-card-armor-wrap">
                         <div class="armor-element-card" :class="{ 'armor-blastblight': blastblightActive && partData.armor > 0 }">
-                          <img :src="getImg('assets/img/bonus_armor.png')" class="armor-base" />
+                          <img :src="getImg('assets/img/bonus_armor.webp')" class="armor-base" />
                           <span class="element-value">{{ blastblightActive ? Math.max(0, partData.armor - 1) : partData.armor }}</span>
                         </div>
                       </div>
@@ -7754,13 +7997,13 @@ const openPackDrawer = () => {
             </div>
             <span class="float-act-label">
               <template v-if="!monsterTurnReady">
-                <img :src="getImg('assets/img/UI/symbol/hunter_turn_symbol.png')" class="ui-symbol ui-symbol-sm" alt="" />
+                <img :src="getImg('assets/img/UI/symbol/hunter_turn_symbol.webp')" class="ui-symbol ui-symbol-sm" alt="" />
                 เหลืออีก <strong>{{ activationLimit - activationRoundsCompleted }}</strong> ครั้ง
               </template>
               <template v-else>✓ ครบแล้ว — กด Monster Turn</template>
               <span v-if="attackCardLimit" class="inline-sep" aria-hidden="true"></span>
               <span v-if="attackCardLimit" class="float-atk-badge" title="Attack Card ที่เล่นได้ต่อรอบ">
-                <img :src="getImg('assets/img/UI/symbol/hunter_attack_card_symbol.png')" class="float-atk-img" alt="" />
+                <img :src="getImg('assets/img/UI/symbol/hunter_attack_card_symbol.webp')" class="float-atk-img" alt="" />
                 <span class="float-atk-num">{{ attackCardLimit }}</span>
               </span>
             </span>
@@ -7799,8 +8042,11 @@ const openPackDrawer = () => {
             :class="{
               'party-done':    !!room.tcTurnEnds?.[h.hunter_id]?.card,
               'party-pending': !!room.tcTurnEnds?.[h.hunter_id]?.pending,
-              'party-me':      h.hunter_id === room.myHunterId
+              'party-me':      h.hunter_id === room.myHunterId,
+              'party-swappable': canSwapWith(h)
             }"
+            :title="canSwapWith(h) ? `Weakness Exploit — ขอสลับ Hunter Token กับ ${h.hunter_name}` : null"
+            @click="canSwapWith(h) && askSwapWith(h)"
           >
             <div class="party-icon-wrap">
               <img
@@ -7814,6 +8060,99 @@ const openPackDrawer = () => {
               <span class="party-status-dot">
                 {{ room.tcTurnEnds?.[h.hunter_id]?.card ? '✓' : room.tcTurnEnds?.[h.hunter_id]?.pending ? '…' : '' }}
               </span>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ผู้ขอ — ยืนยันก่อนส่งคำขอ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div
+          v-if="pendingSwapTarget"
+          class="we-overlay"
+          @click.self="pendingSwapTarget = null"
+        >
+          <div class="we-modal">
+            <p class="we-title">🎯 Weakness Exploit</p>
+            <p class="we-sub">
+              ส่งคำขอสลับ Hunter Token ไปหานักล่าคนนี้ไหม?
+              <br />ใช้ได้เควสละครั้ง และจะตัดสิทธิ์ก็ต่อเมื่ออีกฝ่ายยินยอม
+            </p>
+            <div class="we-swap-row">
+              <div class="we-swap-side">
+                <img v-if="hunterClassImg(room.myHunterId)" :src="getImg(hunterClassImg(room.myHunterId))" class="we-swap-icon" />
+                <span class="we-swap-role">คุณ</span>
+                <span class="we-swap-token">{{ room.myHunterToken }}</span>
+              </div>
+              <span class="we-swap-arrow">⇄</span>
+              <div class="we-swap-side">
+                <img v-if="hunterClassImg(pendingSwapTarget.id)" :src="getImg(hunterClassImg(pendingSwapTarget.id))" class="we-swap-icon" />
+                <span class="we-swap-role">เป้าหมาย</span>
+                <span class="we-swap-token">{{ pendingSwapTarget.token }}</span>
+              </div>
+            </div>
+            <div class="we-answer">
+              <button class="we-decline" @click="pendingSwapTarget = null">ยกเลิก</button>
+              <button class="we-accept" @click="confirmSwapRequest">✓ ส่งคำขอ</button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ผู้ขอ — รออีกฝ่ายตอบ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="outgoingSwap" class="we-overlay">
+          <div class="we-modal">
+            <p class="we-title">🎯 รอคำตอบ</p>
+            <p class="we-sub">ส่งคำขอสลับ Hunter Token แล้ว รอให้อีกฝ่ายกดยินยอม</p>
+            <div class="we-swap-row">
+              <div class="we-swap-side">
+                <img v-if="hunterClassImg(outgoingSwap.fromId)" :src="getImg(hunterClassImg(outgoingSwap.fromId))" class="we-swap-icon" />
+                <span class="we-swap-role">คุณ</span>
+                <span class="we-swap-token">{{ outgoingSwap.fromToken }}</span>
+              </div>
+              <span class="we-swap-arrow">⇄</span>
+              <div class="we-swap-side">
+                <img v-if="hunterClassImg(outgoingSwap.toId)" :src="getImg(hunterClassImg(outgoingSwap.toId))" class="we-swap-icon" />
+                <span class="we-swap-role">เป้าหมาย</span>
+                <span class="we-swap-token">{{ outgoingSwap.toToken }}</span>
+              </div>
+            </div>
+            <div class="we-waiting-dots"><span>·</span><span>·</span><span>·</span></div>
+            <button class="we-cancel" @click="cancelTokenSwap">ยกเลิกคำขอ</button>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ปลายทาง — ขอความยินยอม -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="incomingSwap" class="we-overlay">
+          <div class="we-modal">
+            <p class="we-title">🎯 ขอสลับ Hunter Token</p>
+            <p class="we-sub">นักล่าคนนี้ใช้ Weakness Exploit ขอสลับ Hunter Token กับคุณ</p>
+            <div class="we-swap-row">
+              <div class="we-swap-side">
+                <img v-if="hunterClassImg(incomingSwap.toId)" :src="getImg(hunterClassImg(incomingSwap.toId))" class="we-swap-icon" />
+                <span class="we-swap-role">คุณ</span>
+                <span class="we-swap-token">{{ incomingSwap.toToken }}</span>
+              </div>
+              <span class="we-swap-arrow">⇄</span>
+              <div class="we-swap-side">
+                <img v-if="hunterClassImg(incomingSwap.fromId)" :src="getImg(hunterClassImg(incomingSwap.fromId))" class="we-swap-icon" />
+                <span class="we-swap-role">ผู้ขอ</span>
+                <span class="we-swap-token">{{ incomingSwap.fromToken }}</span>
+              </div>
+            </div>
+            <p class="we-note">ทิศทางการหันหน้าของโทเค็นให้จัดบนโต๊ะตามของเดิมของแต่ละคน</p>
+            <div class="we-answer">
+              <button class="we-decline" @click="declineTokenSwap">✕ ไม่ยินยอม</button>
+              <button class="we-accept" @click="acceptTokenSwap">✓ ยินยอม</button>
             </div>
           </div>
         </div>
@@ -7835,7 +8174,7 @@ const openPackDrawer = () => {
             <!-- Part break rules that give extra turns -->
             <div v-if="activationPartRules.length > 0" class="mtc-rules">
               <p class="mtc-rules-label">⚡ Part Break Effects</p>
-              <p v-for="(rule, i) in activationPartRules" :key="i" class="mtc-rule-text">{{ rule }}</p>
+              <p v-for="(rule, i) in activationPartRules" :key="i" class="mtc-rule-text"><RuleText :text="rule" /></p>
             </div>
 
             <!-- Manual activation adjust -->
@@ -8073,7 +8412,7 @@ const openPackDrawer = () => {
       <transition name="slain-fade">
         <div v-if="showTokenReveal" class="tr-overlay" @click="if (tokenRevealDone) { showTokenReveal = false; phase = 'hunting' }">
           <p class="tr-title">
-            <img :src="getImg('assets/img/UI/symbol/track_token_symbol.png')" class="ui-symbol" alt="" />
+            <img :src="getImg('assets/img/UI/symbol/track_token_symbol.webp')" class="ui-symbol" alt="" />
             Track Token
           </p>
           <div class="tr-tokens">
@@ -8085,7 +8424,7 @@ const openPackDrawer = () => {
             >
               <div class="tr-token-inner">
                 <div class="tr-token-back">
-                  <img :src="getImg('assets/img/UI/symbol/track_token_symbol.png')" class="token-back-img" alt="" />
+                  <img :src="getImg('assets/img/UI/symbol/track_token_symbol.webp')" class="token-back-img" alt="" />
                 </div>
                 <div
                   class="tr-token-front"
@@ -10307,57 +10646,212 @@ const openPackDrawer = () => {
 .hqv-header { display: flex; align-items: center; gap: 10px; }
 .hqv-line { flex: 1; height: 1px; background: linear-gradient(to right, transparent, #7c5a2b); }
 .hqv-line:last-child { background: linear-gradient(to left, transparent, #7c5a2b); }
-.hqv-title { font-size: 12px; letter-spacing: 3px; color: #c89b3c; white-space: nowrap; text-transform: uppercase; }
-.hqv-monster-row { display: flex; align-items: center; gap: 14px; padding: 10px 14px; border-radius: 8px; background: rgba(20,14,6,0.8); border: 1px solid rgba(124,90,43,0.3); }
-.hqv-monster-img { width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 0 4px rgba(0,0,0,0.6)); }
-.hqv-target-label { font-size: 9px; letter-spacing: 3px; color: #7c5a2b; text-transform: uppercase; margin: 0; }
-.hqv-monster-name { font-size: 16px; color: #ffd27a; font-weight: bold; margin: 0; }
-.hqv-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.hqv-btn {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  padding: 18px 10px; border-radius: 12px;
-  border: 2px solid; cursor: pointer; transition: all 0.2s;
-  font-family: 'Georgia', serif;
-  background: rgba(10,8,4,0.8);
+.hqv-title { font-size: 11px; letter-spacing: 4px; color: #c89b3c; white-space: nowrap; text-transform: uppercase; }
+.hqv-question {
+  margin: -6px 0 0;
+  text-align: center;
+  font-size: 19px;
+  color: #ffd27a;
+  letter-spacing: 1px;
+  text-shadow: 0 0 18px rgba(255,200,80,0.35), 0 2px 4px rgba(0,0,0,0.85);
 }
-.hqv-btn-hq { border-color: rgba(200,155,60,0.5); }
-.hqv-btn-hq:hover { border-color: #c89b3c; background: rgba(40,28,8,0.9); box-shadow: 0 0 16px rgba(200,155,60,0.2); }
-.hqv-btn-quest { border-color: rgba(200,80,80,0.5); }
-.hqv-btn-quest:hover { border-color: #cc4444; background: rgba(40,14,14,0.9); box-shadow: 0 0 16px rgba(200,60,60,0.2); }
-.hqv-btn-icon { font-size: 26px; }
-.hqv-hq-icon { width: 28px; height: 28px; object-fit: contain; filter: brightness(0) invert(1); }
-.hqv-quest-icon { width: 28px; height: 28px; object-fit: contain; }
+
+/* ป้ายไม้ประกาศเป้าหมาย — ชุดเดียวกับ .target-banner ในหน้าเลือกเควส */
+.hqv-monster-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.16) 0px, rgba(0,0,0,0.16) 1px, transparent 1px, transparent 7px),
+    linear-gradient(175deg, #4a3520 0%, #3a2917 58%, #43301c 100%);
+  border: 3px solid #2e2113;
+  border-left: 4px solid #6b4f1c;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.5), 0 3px 10px rgba(0,0,0,0.5);
+}
+.hqv-monster-img { width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 0 4px rgba(0,0,0,0.6)); }
+.hqv-target-label { font-size: 9px; letter-spacing: 3px; color: #b89a68; text-transform: uppercase; margin: 0; }
+.hqv-monster-name { font-size: 16px; color: #ffd27a; font-weight: bold; margin: 0; }
+
+.hqv-free-day { display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 3px; background: rgba(58,26,20,0.85); border: 1px solid rgba(204,68,68,0.45); box-shadow: inset 0 0 12px rgba(204,68,68,0.12); }
+.hqv-free-card { width: 38px; border-radius: 4px; border: 1px solid rgba(124,90,43,0.5); }
+.hqv-free-title { margin: 0; font-size: 12px; font-weight: bold; color: #ffb0a0; letter-spacing: 1px; }
+.hqv-free-sub { margin: 2px 0 0; font-size: 11px; color: #c8a27a; }
+
+/* ── ตัวเลือกเป็นธงผ้าห้อยจากคานไม้ ──
+   ปลายล่างตัดเป็นหางนกนางแอ่นด้วย clip-path จึงต้องแยก .hqv-cloth ออกจากปุ่ม
+   ไม่งั้นคานไม้ (.hqv-rod) จะโดนตัดไปด้วย */
+.hqv-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.hqv-banner {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: 'Georgia', serif;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6));
+  transition: transform 0.18s ease, filter 0.18s ease;
+}
+.hqv-banner:hover { transform: translateY(-3px); }
+.hqv-banner:active { transform: translateY(0); }
+
+.hqv-rod {
+  display: block;
+  height: 9px;
+  margin: 0 -5px;
+  border-radius: 2px;
+  background:
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.2) 0px, rgba(0,0,0,0.2) 1px, transparent 1px, transparent 6px),
+    linear-gradient(to bottom, #7a5a24, #3a2917);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.2), 0 2px 5px rgba(0,0,0,0.7);
+}
+
+.hqv-cloth {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 16px 8px 34px;
+  clip-path: polygon(0 0, 100% 0, 100% 86%, 50% 100%, 0 86%);
+  background:
+    repeating-linear-gradient(100deg, rgba(0,0,0,0.14) 0px, rgba(0,0,0,0.14) 1px, transparent 1px, transparent 5px),
+    var(--cloth);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.1);
+}
+.hqv-banner-hq    { --cloth: linear-gradient(170deg, #4a3714 0%, #2b2010 60%, #332614 100%); --ink: #ffd27a; --edge: rgba(200,155,60,0.55); }
+.hqv-banner-quest { --cloth: linear-gradient(170deg, #4a1616 0%, #2c0e0e 60%, #351111 100%); --ink: #ff9c9c; --edge: rgba(200,80,80,0.5); }
+.hqv-banner:hover .hqv-cloth { box-shadow: inset 0 1px 0 rgba(255,220,160,0.16), inset 0 0 30px var(--edge); }
+
+/* ตราวงกลมบนหัวธง */
+.hqv-crest {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,0,0,0.55), rgba(0,0,0,0.15));
+  border: 1px solid var(--edge);
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.6);
+}
+.hqv-crest-img { width: 26px; height: 26px; object-fit: contain; }
+.hqv-crest-white { filter: brightness(0) invert(1); }
+
+.hqv-banner-label { font-size: 14px; font-weight: bold; color: var(--ink); letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+.hqv-banner-rule { width: 42px; height: 1px; background: linear-gradient(to right, transparent, var(--edge), transparent); }
+.hqv-banner-sub { font-size: 10px; color: #b09468; font-style: italic; text-align: center; line-height: 1.5; }
+
+@media (max-width: 380px) {
+  .hqv-cloth { padding: 12px 6px 28px; }
+  .hqv-crest { width: 36px; height: 36px; }
+  .hqv-crest-img { width: 21px; height: 21px; }
+  .hqv-banner-label { font-size: 12px; }
+}
 
 /* HQ Vote Confirm Modal */
 .hqvc-overlay { position: fixed; inset: 0; background: rgba(5,4,2,0.75); backdrop-filter: blur(8px) brightness(0.5); display: flex; justify-content: center; align-items: center; z-index: 400; padding: 16px; }
-.hqvc-modal { width: min(320px,100%); padding: 24px 20px; border-radius: 12px; background: linear-gradient(160deg,#1c1508,#13100a); border: 1px solid rgba(124,90,43,0.5); box-shadow: 0 0 40px rgba(0,0,0,0.9); display: flex; flex-direction: column; gap: 16px; align-items: center; font-family: 'Georgia',serif; animation: hqModalIn 0.2s cubic-bezier(0.34,1.56,0.64,1); }
-.hqvc-title { font-size: 12px; letter-spacing: 3px; color: #c89b3c; text-transform: uppercase; margin: 0; }
-.hqvc-choice { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-radius: 10px; border: 2px solid; width: 100%; }
-.hqvc-hq { border-color: rgba(200,155,60,0.6); background: rgba(40,28,8,0.8); }
-.hqvc-quest { border-color: rgba(200,80,80,0.5); background: rgba(40,14,14,0.8); }
+.hqvc-modal {
+  width: min(320px,100%);
+  padding: 22px 20px;
+  border-radius: 3px;
+  border: 1px solid rgba(124,90,43,0.55);
+  border-left: 3px solid #7c5a2b;
+  background:
+    repeating-linear-gradient(100deg, rgba(0,0,0,0.14) 0px, rgba(0,0,0,0.14) 1px, transparent 1px, transparent 5px),
+    linear-gradient(170deg, #2b1f13, #1a1309 60%, #22190e);
+  box-shadow: 0 0 40px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,220,160,0.08);
+  display: flex; flex-direction: column; gap: 16px; align-items: center;
+  font-family: 'Georgia',serif;
+  animation: hqModalIn 0.2s cubic-bezier(0.34,1.56,0.64,1);
+}
+.hqvc-title { font-size: 11px; letter-spacing: 4px; color: #c89b3c; text-transform: uppercase; margin: 0; }
+.hqvc-choice { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-radius: 3px; border: 1px solid; width: 100%; box-shadow: inset 0 0 22px rgba(0,0,0,0.45); }
+.hqvc-hq { border-color: rgba(200,155,60,0.6); background: linear-gradient(170deg, #4a3714, #2b2010); }
+.hqvc-quest { border-color: rgba(200,80,80,0.5); background: linear-gradient(170deg, #4a1616, #2c0e0e); }
 .hqvc-icon { width: 32px; height: 32px; object-fit: contain; }
 .hqvc-icon-white { filter: brightness(0) invert(1); }
 .hqvc-label { font-size: 16px; font-weight: bold; color: #f0ddb0; letter-spacing: 1px; }
 .hqvc-btns { display: flex; gap: 10px; width: 100%; }
-.hqvc-btn-confirm { flex: 1; padding: 12px; border-radius: 8px; border: 2px solid #c89b3c; background: linear-gradient(to bottom,#3a2a10,#1a1308); color: #ffd27a; font-family: 'Georgia',serif; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+.hqvc-btn-confirm { flex: 1; padding: 12px; border-radius: 3px; border: 1px solid #c89b3c; background: linear-gradient(to bottom,#3a2a10,#1a1308); color: #ffd27a; font-family: 'Georgia',serif; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; }
 .hqvc-btn-confirm:hover { box-shadow: 0 0 14px rgba(200,155,60,0.4); }
 .hqvc-btn-cancel { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid rgba(124,90,43,0.3); background: rgba(10,8,4,0.6); color: #7c5a2b; font-family: 'Georgia',serif; font-size: 13px; cursor: pointer; transition: 0.2s; }
 .hqvc-btn-cancel:hover { border-color: rgba(124,90,43,0.6); color: #c89b3c; }
-.hqv-btn-label { font-size: 14px; font-weight: bold; color: #f0ddb0; letter-spacing: 1px; }
-.hqv-btn-sub { font-size: 10px; color: #7c5a2b; font-style: italic; }
-.hqv-waiting { text-align: center; padding: 16px; border-radius: 10px; background: rgba(10,8,4,0.7); border: 1px solid rgba(124,90,43,0.3); }
-.hqv-voted-label { margin: 0 0 4px; font-size: 14px; color: #f0ddb0; }
+/* ── ใบเสียงที่ลงแล้ว — แผงหนังพร้อมตราครั่ง ── */
+.hqv-waiting {
+  position: relative;
+  text-align: center;
+  padding: 18px 16px 16px;
+  border-radius: 3px;
+  border: 1px solid rgba(124,90,43,0.5);
+  border-left: 3px solid #7c5a2b;
+  background:
+    repeating-linear-gradient(100deg, rgba(0,0,0,0.14) 0px, rgba(0,0,0,0.14) 1px, transparent 1px, transparent 5px),
+    linear-gradient(170deg, #2b1f13, #221809 55%, #281d10);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.07), 0 3px 10px rgba(0,0,0,0.5);
+}
+.hqv-wax {
+  position: absolute;
+  top: -12px;
+  right: 14px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #a83232, #5e1414);
+  border: 1px solid rgba(255,150,120,0.35);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.7), inset 0 -2px 4px rgba(0,0,0,0.5);
+}
+.hqv-voted-label { margin: 0 0 4px; font-size: 14px; color: #c0a870; }
 .hqv-voted-label strong { color: #ffd27a; }
 .hqv-waiting-sub { margin: 0; font-size: 12px; color: #7c5a2b; font-style: italic; }
-.hqv-party-votes { display: flex; flex-direction: column; gap: 6px; }
-.hqv-vote-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-radius: 8px; background: rgba(14,10,4,0.7); border: 1px solid rgba(90,61,31,0.3); }
-.hqv-hunter-name { font-size: 13px; color: #e0c88a; font-weight: bold; }
-.hqv-vote-pill { font-size: 11px; padding: 3px 10px; border-radius: 12px; }
+
+/* ── บันทึกการลงเสียง — หน้าสมุดบัญชี ── */
+.hqv-party-votes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(124,90,43,0.45);
+  background:
+    repeating-linear-gradient(100deg, rgba(0,0,0,0.14) 0px, rgba(0,0,0,0.14) 1px, transparent 1px, transparent 5px),
+    linear-gradient(170deg, #241a10, #1c1409);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.06), 0 3px 10px rgba(0,0,0,0.45);
+}
+.hqv-tally-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.hqv-tally-line { flex: 1; height: 1px; background: rgba(124,90,43,0.4); }
+.hqv-tally-title { font-size: 10px; letter-spacing: 2px; color: #a88040; white-space: nowrap; }
+.hqv-vote-row { display: flex; align-items: center; gap: 8px; padding: 6px 2px; }
+.hqv-vote-icon { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; }
+.hqv-hunter-name { font-size: 13px; color: #e0c88a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* เส้นประนำสายตาไปหาผลโหวต แบบรายการในบัญชีเก่า */
+.hqv-dotted { flex: 1; min-width: 10px; border-bottom: 1px dotted rgba(124,90,43,0.45); transform: translateY(-3px); }
+.hqv-vote-pill { font-size: 11px; padding: 3px 10px; border-radius: 3px; white-space: nowrap; flex-shrink: 0; }
 .hqv-vote-hq { background: rgba(200,155,60,0.15); border: 1px solid rgba(200,155,60,0.4); color: #ffd27a; }
 .hqv-vote-quest { background: rgba(200,80,80,0.12); border: 1px solid rgba(200,80,80,0.4); color: #ff9090; }
-.hqv-vote-pending { background: rgba(60,60,60,0.2); border: 1px solid rgba(90,90,90,0.3); color: #5a5a5a; }
-.hqv-tiebreak { text-align: center; padding: 14px 12px; border-radius: 10px; background: rgba(20,12,4,0.85); border: 1px solid rgba(200,155,60,0.4); display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.hqv-tie-label { margin: 0; font-size: 16px; font-weight: bold; color: #ffd27a; letter-spacing: 1px; }
+.hqv-vote-pending { background: rgba(60,60,60,0.2); border: 1px dashed rgba(124,90,43,0.35); color: #6b563a; }
+
+/* ── คำตัดสินเมื่อเสียงเท่ากัน ── */
+.hqv-tiebreak {
+  text-align: center;
+  padding: 14px 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(200,155,60,0.45);
+  background:
+    repeating-linear-gradient(100deg, rgba(0,0,0,0.14) 0px, rgba(0,0,0,0.14) 1px, transparent 1px, transparent 5px),
+    linear-gradient(170deg, #2e2210, #1d1508);
+  box-shadow: inset 0 0 24px rgba(200,155,60,0.08), 0 3px 10px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.hqv-tie-label { margin: 0; font-size: 16px; font-weight: bold; color: #ffd27a; letter-spacing: 2px; }
 .hqv-tie-sub { margin: 0; font-size: 12px; color: #a07840; font-style: italic; }
 .hqv-tiebreak .hqv-choices { width: 100%; }
 
@@ -12169,6 +12663,71 @@ const openPackDrawer = () => {
 .party-strip-tab {
   bottom: 50px;
 }
+/* tile ที่แตะขอสลับโทเค็นได้ — เรืองแสงแดงเพื่อไม่ให้ปนกับสถานะจบเทิร์น (เขียว/เหลือง) */
+/* ไม่มีไอคอนกำกับแล้ว (บังเลขโทเค็นที่มุมบนซ้าย) — วงแสงเป็นตัวบอกอย่างเดียว เลยต้องชัดพอ
+   ใช้ outline ไม่ใช่ border เพราะ border จะดันขนาด tile ทำให้แถวขยับตอนความสามารถพร้อมใช้ */
+.party-swappable {
+  cursor: pointer;
+  border-radius: 10px;
+  outline: 1px solid rgba(255,120,90,0.5);
+  outline-offset: 1px;
+  animation: weGlow 1.8s ease-in-out infinite;
+}
+@keyframes weGlow {
+  0%, 100% { box-shadow: 0 0 6px rgba(204,68,68,0.35); }
+  50%      { box-shadow: 0 0 15px rgba(255,120,90,0.75); }
+}
+
+.we-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(4, 3, 1, 0.82);
+  backdrop-filter: blur(4px);
+}
+.we-modal {
+  width: min(360px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 16px;
+  border-radius: 12px;
+  text-align: center;
+  background: linear-gradient(160deg, rgba(28,18,10,0.98), rgba(12,8,4,0.99));
+  border: 1px solid rgba(204,68,68,0.45);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.85), inset 0 0 20px rgba(204,68,68,0.08);
+}
+.we-title { margin: 0; font-size: 15px; font-weight: bold; color: #ffb0a0; letter-spacing: 1px; }
+.we-sub { margin: 0; font-size: 11px; color: #a88040; line-height: 1.6; }
+
+.we-note { margin: 0; font-size: 10px; color: #7c5a2b; line-height: 1.6; }
+.we-cancel { padding: 8px; border-radius: 8px; font-size: 12px; color: #a88040; cursor: pointer; background: rgba(0,0,0,0.4); border: 1px solid rgba(124,90,43,0.35); }
+
+.we-swap-row { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.4); border: 1px solid rgba(200,155,60,0.25); }
+.we-swap-side { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 70px; }
+.we-swap-icon { width: 34px; height: 34px; object-fit: contain; }
+.we-swap-role { font-size: 10px; color: #a88040; letter-spacing: 1px; }
+.we-swap-token { font-size: 22px; font-weight: bold; color: #ffd27a; }
+.we-swap-arrow { font-size: 18px; color: #cc4444; }
+
+.we-waiting-dots { display: flex; justify-content: center; gap: 6px; font-size: 24px; color: #c89b3c; line-height: 0.6; }
+.we-waiting-dots span { animation: weDot 1.2s ease-in-out infinite; }
+.we-waiting-dots span:nth-child(2) { animation-delay: 0.2s; }
+.we-waiting-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes weDot {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 1; }
+}
+
+.we-answer { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.we-decline, .we-accept { padding: 10px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; }
+.we-decline { color: #c8a27a; background: rgba(0,0,0,0.45); border: 1px solid rgba(124,90,43,0.4); }
+.we-accept { color: #0f0b05; background: linear-gradient(to bottom, #ffd27a, #c89b3c); border: 1px solid #ffd27a; }
+
 .party-member {
   display: flex;
   flex-direction: column;

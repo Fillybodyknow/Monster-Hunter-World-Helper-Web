@@ -50,7 +50,7 @@ const getHunterClass = (id) => hunterClassData.find((c) => c.hunter_class_id ===
                   <template v-for="(val, key) in r.damage_cards" :key="key">
                     <div v-if="val > 0" class="cl-dmg-stat">
                       <div class="cl-icon-wrap">
-                        <img :src="getImg('assets/img/take_damage.png')" />
+                        <img :src="getImg('assets/img/take_damage.webp')" />
                         <span class="cl-tier">{{ key.split('_')[1] }}</span>
                       </div>
                       <p class="cl-dmg-count">x{{ val }}</p>
@@ -61,11 +61,11 @@ const getHunterClass = (id) => hunterClassData.find((c) => c.hunter_class_id ===
                 <!-- Armor stats (same as Crafting page) -->
                 <div v-if="r.type === 'armor'" class="cl-defense-row">
                   <div v-if="r.physical_armor > 0" class="cl-armor-element-card">
-                    <img :src="getImg('assets/img/bonus_armor.png')" class="cl-armor-base" />
+                    <img :src="getImg('assets/img/bonus_armor.webp')" class="cl-armor-base" />
                     <span class="cl-element-value">{{ r.physical_armor }}</span>
                   </div>
                   <div v-if="r.elemental_armor?.elemental_id > 0 && r.elemental_armor?.protection > 0" class="cl-armor-element-card">
-                    <img :src="getImg('assets/img/bonus_armor.png')" class="cl-armor-base" />
+                    <img :src="getImg('assets/img/bonus_armor.webp')" class="cl-armor-base" />
                     <img :src="getImg(r.elemental_thumbnail)" class="cl-element-icon" />
                     <span class="cl-element-value">{{ r.elemental_armor.protection }}</span>
                   </div>

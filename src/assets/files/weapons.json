@@ -5,7 +5,7 @@
       {
         "weapon_type_id": 1,
         "weapon_type": "Ore",
-        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "thumbnail": "assets/img/equiments/sets/Ores.webp",
         "items": [
           {
             "item_id": 1,
@@ -54,7 +54,7 @@
       {
         "weapon_type_id": 2,
         "weapon_type": "Monster Bone",
-        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.webp",
         "items": [
           {
             "item_id": 1,
@@ -103,7 +103,7 @@
       {
         "weapon_type_id": 3,
         "weapon_type": "Great Jagras",
-        "thumbnail": "assets/img/equiments/sets/Great_Jagras.png",
+        "thumbnail": "assets/img/equiments/sets/Great_Jagras.webp",
         "items": [
           {
             "item_id": 1,
@@ -138,7 +138,7 @@
       {
         "weapon_type_id": 4,
         "weapon_type": "Rathalos",
-        "thumbnail": "assets/img/equiments/sets/Rathalos.png",
+        "thumbnail": "assets/img/equiments/sets/Rathalos.webp",
         "items": [
           {
             "item_id": 1,
@@ -173,7 +173,7 @@
       {
         "weapon_type_id": 5,
         "weapon_type": "Barroth",
-        "thumbnail": "assets/img/equiments/sets/barroth.png",
+        "thumbnail": "assets/img/equiments/sets/barroth.webp",
         "items": [
           {
             "item_id": 1,
@@ -208,7 +208,7 @@
       {
         "weapon_type_id": 6,
         "weapon_type": "Pukei-Pukei",
-        "thumbnail": "assets/img/equiments/sets/pukei-pukei.png",
+        "thumbnail": "assets/img/equiments/sets/pukei-pukei.webp",
         "items": [
           {
             "item_id": 1,
@@ -298,7 +298,7 @@
       {
         "weapon_type_id": 1,
         "weapon_type": "Ore",
-        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "thumbnail": "assets/img/equiments/sets/Ores.webp",
         "items": [
           {
             "item_id": 1,
@@ -347,7 +347,7 @@
       {
         "weapon_type_id": 2,
         "weapon_type": "Monster Bone",
-        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.webp",
         "items": [
           {
             "item_id": 1,
@@ -396,7 +396,7 @@
       {
         "weapon_type_id": 3,
         "weapon_type": "Tobi-Kadachi",
-        "thumbnail": "assets/img/equiments/sets/Tobi-Kadachi.png",
+        "thumbnail": "assets/img/equiments/sets/Tobi-Kadachi.webp",
         "items": [
           {
             "item_id": 1,
@@ -431,7 +431,7 @@
       {
         "weapon_type_id": 4,
         "weapon_type": "Anjanath",
-        "thumbnail": "assets/img/equiments/sets/Anjanath.png",
+        "thumbnail": "assets/img/equiments/sets/Anjanath.webp",
         "items": [
           {
             "item_id": 1,
@@ -466,7 +466,7 @@
       {
         "weapon_type_id": 5,
         "weapon_type": "Pukei-Pukei",
-        "thumbnail": "assets/img/equiments/sets/pukei-pukei.png",
+        "thumbnail": "assets/img/equiments/sets/pukei-pukei.webp",
         "items": [
           {
             "item_id": 1,
@@ -501,7 +501,7 @@
       {
         "weapon_type_id": 6,
         "weapon_type": "Diablos",
-        "thumbnail": "assets/img/equiments/sets/diablos.png",
+        "thumbnail": "assets/img/equiments/sets/diablos.webp",
         "items": [
           {
             "item_id": 1,
@@ -591,7 +591,7 @@
       {
         "weapon_type_id": 1,
         "weapon_type": "Ore",
-        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "thumbnail": "assets/img/equiments/sets/Ores.webp",
         "items": [
           {
             "item_id": 1,
@@ -640,7 +640,7 @@
       {
         "weapon_type_id": 2,
         "weapon_type": "Monster Bone",
-        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.webp",
         "items": [
           {
             "item_id": 1,
@@ -689,7 +689,7 @@
       {
         "weapon_type_id": 3,
         "weapon_type": "Tobi-Kadachi",
-        "thumbnail": "assets/img/equiments/sets/Tobi-Kadachi.png",
+        "thumbnail": "assets/img/equiments/sets/Tobi-Kadachi.webp",
         "items": [
           {
             "item_id": 1,
@@ -724,7 +724,7 @@
       {
         "weapon_type_id": 4,
         "weapon_type": "Anjanath",
-        "thumbnail": "assets/img/equiments/sets/Anjanath.png",
+        "thumbnail": "assets/img/equiments/sets/Anjanath.webp",
         "items": [
           {
             "item_id": 1,
@@ -759,7 +759,7 @@
       {
         "weapon_type_id": 5,
         "weapon_type": "Jyuratodus",
-        "thumbnail": "assets/img/equiments/sets/jyuratodus.png",
+        "thumbnail": "assets/img/equiments/sets/jyuratodus.webp",
         "items": [
           {
             "item_id": 1,
@@ -794,7 +794,7 @@
       {
         "weapon_type_id": 6,
         "weapon_type": "Diablos",
-        "thumbnail": "assets/img/equiments/sets/diablos.png",
+        "thumbnail": "assets/img/equiments/sets/diablos.webp",
         "items": [
           {
             "item_id": 1,
@@ -884,7 +884,7 @@
       {
         "weapon_type_id": 1,
         "weapon_type": "Ore",
-        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "thumbnail": "assets/img/equiments/sets/Ores.webp",
         "items": [
           {
             "item_id": 1,
@@ -933,7 +933,7 @@
       {
         "weapon_type_id": 2,
         "weapon_type": "Monster Bone",
-        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.webp",
         "items": [
           {
             "item_id": 1,
@@ -982,7 +982,7 @@
       {
         "weapon_type_id": 3,
         "weapon_type": "Great Jagras",
-        "thumbnail": "assets/img/equiments/sets/Great_Jagras.png",
+        "thumbnail": "assets/img/equiments/sets/Great_Jagras.webp",
         "items": [
           {
             "item_id": 1,
@@ -1017,7 +1017,7 @@
       {
         "weapon_type_id": 4,
         "weapon_type": "Rathalos",
-        "thumbnail": "assets/img/equiments/sets/Rathalos.png",
+        "thumbnail": "assets/img/equiments/sets/Rathalos.webp",
         "items": [
           {
             "item_id": 1,
@@ -1052,7 +1052,7 @@
       {
         "weapon_type_id": 5,
         "weapon_type": "Barroth",
-        "thumbnail": "assets/img/equiments/sets/barroth.png",
+        "thumbnail": "assets/img/equiments/sets/barroth.webp",
         "items": [
           {
             "item_id": 1,
@@ -1087,7 +1087,7 @@
       {
         "weapon_type_id": 6,
         "weapon_type": "Pukei-Pukei",
-        "thumbnail": "assets/img/equiments/sets/pukei-pukei.png",
+        "thumbnail": "assets/img/equiments/sets/pukei-pukei.webp",
         "items": [
           {
             "item_id": 1,
@@ -1177,7 +1177,7 @@
       {
         "weapon_type_id": 1,
         "weapon_type": "Ore",
-        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "thumbnail": "assets/img/equiments/sets/Ores.webp",
         "items": [
           {
             "item_id": 1,
@@ -1226,7 +1226,7 @@
       {
         "weapon_type_id": 2,
         "weapon_type": "Monster Bone",
-        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.webp",
         "items": [
           {
             "item_id": 1,
@@ -1275,7 +1275,7 @@
       {
         "weapon_type_id": 3,
         "weapon_type": "Anjanath",
-        "thumbnail": "assets/img/equiments/sets/Anjanath.png",
+        "thumbnail": "assets/img/equiments/sets/Anjanath.webp",
         "items": [
           {
             "item_id": 1,
@@ -1310,7 +1310,7 @@
       {
         "weapon_type_id": 4,
         "weapon_type": "Barroth",
-        "thumbnail": "assets/img/equiments/sets/barroth.png",
+        "thumbnail": "assets/img/equiments/sets/barroth.webp",
         "items": [
           {
             "item_id": 1,
@@ -1345,7 +1345,7 @@
       {
         "weapon_type_id": 5,
         "weapon_type": "Pukei-Pukei",
-        "thumbnail": "assets/img/equiments/sets/pukei-pukei.png",
+        "thumbnail": "assets/img/equiments/sets/pukei-pukei.webp",
         "items": [
           {
             "item_id": 1,
@@ -1380,7 +1380,7 @@
       {
         "weapon_type_id": 6,
         "weapon_type": "Diablos",
-        "thumbnail": "assets/img/equiments/sets/diablos.png",
+        "thumbnail": "assets/img/equiments/sets/diablos.webp",
         "items": [
           {
             "item_id": 1,
@@ -1470,7 +1470,7 @@
       {
         "weapon_type_id": 1,
         "weapon_type": "Ore",
-        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "thumbnail": "assets/img/equiments/sets/Ores.webp",
         "items": [
           {
             "item_id": 1,
@@ -1519,7 +1519,7 @@
       {
         "weapon_type_id": 2,
         "weapon_type": "Monster Bone",
-        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.webp",
         "items": [
           {
             "item_id": 1,
@@ -1568,7 +1568,7 @@
       {
         "weapon_type_id": 3,
         "weapon_type": "Great Jagras",
-        "thumbnail": "assets/img/equiments/sets/Great_Jagras.png",
+        "thumbnail": "assets/img/equiments/sets/Great_Jagras.webp",
         "items": [
           {
             "item_id": 1,
@@ -1603,7 +1603,7 @@
       {
         "weapon_type_id": 4,
         "weapon_type": "Tobi-Kadachi",
-        "thumbnail": "assets/img/equiments/sets/Tobi-Kadachi.png",
+        "thumbnail": "assets/img/equiments/sets/Tobi-Kadachi.webp",
         "items": [
           {
             "item_id": 1,
@@ -1638,7 +1638,7 @@
       {
         "weapon_type_id": 5,
         "weapon_type": "Jyuratodus",
-        "thumbnail": "assets/img/equiments/sets/jyuratodus.png",
+        "thumbnail": "assets/img/equiments/sets/jyuratodus.webp",
         "items": [
           {
             "item_id": 1,
@@ -1673,7 +1673,7 @@
       {
         "weapon_type_id": 6,
         "weapon_type": "Diablos",
-        "thumbnail": "assets/img/equiments/sets/diablos.png",
+        "thumbnail": "assets/img/equiments/sets/diablos.webp",
         "items": [
           {
             "item_id": 1,
@@ -1763,7 +1763,7 @@
       {
         "weapon_type_id": 1,
         "weapon_type": "Ore",
-        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "thumbnail": "assets/img/equiments/sets/Ores.webp",
         "items": [
           {
             "item_id": 1,
@@ -1812,7 +1812,7 @@
       {
         "weapon_type_id": 2,
         "weapon_type": "Monster Bone",
-        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.webp",
         "items": [
           {
             "item_id": 1,
@@ -1861,7 +1861,7 @@
       {
         "weapon_type_id": 3,
         "weapon_type": "Tobi-Kadachi",
-        "thumbnail": "assets/img/equiments/sets/Tobi-Kadachi.png",
+        "thumbnail": "assets/img/equiments/sets/Tobi-Kadachi.webp",
         "items": [
           {
             "item_id": 1,
@@ -1896,7 +1896,7 @@
       {
         "weapon_type_id": 4,
         "weapon_type": "Anjanath",
-        "thumbnail": "assets/img/equiments/sets/Anjanath.png",
+        "thumbnail": "assets/img/equiments/sets/Anjanath.webp",
         "items": [
           {
             "item_id": 1,
@@ -1931,7 +1931,7 @@
       {
         "weapon_type_id": 5,
         "weapon_type": "Rathalos",
-        "thumbnail": "assets/img/equiments/sets/Rathalos.png",
+        "thumbnail": "assets/img/equiments/sets/Rathalos.webp",
         "items": [
           {
             "item_id": 1,
@@ -1966,7 +1966,7 @@
       {
         "weapon_type_id": 6,
         "weapon_type": "Jyuratodus",
-        "thumbnail": "assets/img/equiments/sets/jyuratodus.png",
+        "thumbnail": "assets/img/equiments/sets/jyuratodus.webp",
         "items": [
           {
             "item_id": 1,
@@ -2056,7 +2056,7 @@
       {
         "weapon_type_id": 1,
         "weapon_type": "Ore",
-        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "thumbnail": "assets/img/equiments/sets/Ores.webp",
         "items": [
           {
             "item_id": 1,
@@ -2105,7 +2105,7 @@
       {
         "weapon_type_id": 2,
         "weapon_type": "Monster Bone",
-        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.webp",
         "items": [
           {
             "item_id": 1,
@@ -2154,7 +2154,7 @@
       {
         "weapon_type_id": 3,
         "weapon_type": "Tobi-Kadachi",
-        "thumbnail": "assets/img/equiments/sets/Tobi-Kadachi.png",
+        "thumbnail": "assets/img/equiments/sets/Tobi-Kadachi.webp",
         "items": [
           {
             "item_id": 1,
@@ -2189,7 +2189,7 @@
       {
         "weapon_type_id": 4,
         "weapon_type": "Rathalos",
-        "thumbnail": "assets/img/equiments/sets/Rathalos.png",
+        "thumbnail": "assets/img/equiments/sets/Rathalos.webp",
         "items": [
           {
             "item_id": 1,
@@ -2224,7 +2224,7 @@
       {
         "weapon_type_id": 5,
         "weapon_type": "Barroth",
-        "thumbnail": "assets/img/equiments/sets/barroth.png",
+        "thumbnail": "assets/img/equiments/sets/barroth.webp",
         "items": [
           {
             "item_id": 1,
@@ -2259,7 +2259,7 @@
       {
         "weapon_type_id": 6,
         "weapon_type": "Jyuratodus",
-        "thumbnail": "assets/img/equiments/sets/jyuratodus.png",
+        "thumbnail": "assets/img/equiments/sets/jyuratodus.webp",
         "items": [
           {
             "item_id": 1,
@@ -2349,7 +2349,7 @@
       {
         "weapon_type_id": 1,
         "weapon_type": "Ore",
-        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "thumbnail": "assets/img/equiments/sets/Ores.webp",
         "items": [
           {
             "item_id": 1,
@@ -2398,7 +2398,7 @@
       {
         "weapon_type_id": 2,
         "weapon_type": "Monster Bone",
-        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.webp",
         "items": [
           {
             "item_id": 1,
@@ -2447,7 +2447,7 @@
       {
         "weapon_type_id": 3,
         "weapon_type": "Tobi-Kadachi",
-        "thumbnail": "assets/img/equiments/sets/Tobi-Kadachi.png",
+        "thumbnail": "assets/img/equiments/sets/Tobi-Kadachi.webp",
         "items": [
           {
             "item_id": 1,
@@ -2482,7 +2482,7 @@
       {
         "weapon_type_id": 4,
         "weapon_type": "Anjanath",
-        "thumbnail": "assets/img/equiments/sets/Anjanath.png",
+        "thumbnail": "assets/img/equiments/sets/Anjanath.webp",
         "items": [
           {
             "item_id": 1,
@@ -2517,7 +2517,7 @@
       {
         "weapon_type_id": 5,
         "weapon_type": "Pukei-Pukei",
-        "thumbnail": "assets/img/equiments/sets/pukei-pukei.png",
+        "thumbnail": "assets/img/equiments/sets/pukei-pukei.webp",
         "items": [
           {
             "item_id": 1,
@@ -2552,7 +2552,7 @@
       {
         "weapon_type_id": 6,
         "weapon_type": "Jyuratodus",
-        "thumbnail": "assets/img/equiments/sets/jyuratodus.png",
+        "thumbnail": "assets/img/equiments/sets/jyuratodus.webp",
         "items": [
           {
             "item_id": 1,
@@ -2642,7 +2642,7 @@
       {
         "weapon_type_id": 1,
         "weapon_type": "Ore",
-        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "thumbnail": "assets/img/equiments/sets/Ores.webp",
         "items": [
           {
             "item_id": 1,
@@ -2691,7 +2691,7 @@
       {
         "weapon_type_id": 2,
         "weapon_type": "Monster Bone",
-        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.webp",
         "items": [
           {
             "item_id": 1,
@@ -2740,7 +2740,7 @@
       {
         "weapon_type_id": 3,
         "weapon_type": "Great Jagras",
-        "thumbnail": "assets/img/equiments/sets/Great_Jagras.png",
+        "thumbnail": "assets/img/equiments/sets/Great_Jagras.webp",
         "items": [
           {
             "item_id": 1,
@@ -2775,7 +2775,7 @@
       {
         "weapon_type_id": 4,
         "weapon_type": "Rathalos",
-        "thumbnail": "assets/img/equiments/sets/Rathalos.png",
+        "thumbnail": "assets/img/equiments/sets/Rathalos.webp",
         "items": [
           {
             "item_id": 1,
@@ -2810,7 +2810,7 @@
       {
         "weapon_type_id": 5,
         "weapon_type": "Barroth",
-        "thumbnail": "assets/img/equiments/sets/barroth.png",
+        "thumbnail": "assets/img/equiments/sets/barroth.webp",
         "items": [
           {
             "item_id": 1,
@@ -2845,7 +2845,7 @@
       {
         "weapon_type_id": 6,
         "weapon_type": "Jyuratodus",
-        "thumbnail": "assets/img/equiments/sets/jyuratodus.png",
+        "thumbnail": "assets/img/equiments/sets/jyuratodus.webp",
         "items": [
           {
             "item_id": 1,
@@ -2935,7 +2935,7 @@
       {
         "weapon_type_id": 1,
         "weapon_type": "Ore",
-        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "thumbnail": "assets/img/equiments/sets/Ores.webp",
         "items": [
           {
             "item_id": 1,
@@ -2984,7 +2984,7 @@
       {
         "weapon_type_id": 2,
         "weapon_type": "Monster Bone",
-        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.webp",
         "items": [
           {
             "item_id": 1,
@@ -3033,7 +3033,7 @@
       {
         "weapon_type_id": 3,
         "weapon_type": "Anjanath",
-        "thumbnail": "assets/img/equiments/sets/Anjanath.png",
+        "thumbnail": "assets/img/equiments/sets/Anjanath.webp",
         "items": [
           {
             "item_id": 1,
@@ -3068,7 +3068,7 @@
       {
         "weapon_type_id": 4,
         "weapon_type": "Rathalos",
-        "thumbnail": "assets/img/equiments/sets/Rathalos.png",
+        "thumbnail": "assets/img/equiments/sets/Rathalos.webp",
         "items": [
           {
             "item_id": 1,
@@ -3103,7 +3103,7 @@
       {
         "weapon_type_id": 5,
         "weapon_type": "Barroth",
-        "thumbnail": "assets/img/equiments/sets/barroth.png",
+        "thumbnail": "assets/img/equiments/sets/barroth.webp",
         "items": [
           {
             "item_id": 1,
@@ -3138,7 +3138,7 @@
       {
         "weapon_type_id": 6,
         "weapon_type": "Diablos",
-        "thumbnail": "assets/img/equiments/sets/diablos.png",
+        "thumbnail": "assets/img/equiments/sets/diablos.webp",
         "items": [
           {
             "item_id": 1,
@@ -3228,7 +3228,7 @@
       {
         "weapon_type_id": 1,
         "weapon_type": "Ore",
-        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "thumbnail": "assets/img/equiments/sets/Ores.webp",
         "items": [
           {
             "item_id": 1,
@@ -3277,7 +3277,7 @@
       {
         "weapon_type_id": 2,
         "weapon_type": "Monster Bone",
-        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.webp",
         "items": [
           {
             "item_id": 1,
@@ -3326,7 +3326,7 @@
       {
         "weapon_type_id": 3,
         "weapon_type": "Anjanath",
-        "thumbnail": "assets/img/equiments/sets/Anjanath.png",
+        "thumbnail": "assets/img/equiments/sets/Anjanath.webp",
         "items": [
           {
             "item_id": 1,
@@ -3361,7 +3361,7 @@
       {
         "weapon_type_id": 4,
         "weapon_type": "Rathalos",
-        "thumbnail": "assets/img/equiments/sets/Rathalos.png",
+        "thumbnail": "assets/img/equiments/sets/Rathalos.webp",
         "items": [
           {
             "item_id": 1,
@@ -3396,7 +3396,7 @@
       {
         "weapon_type_id": 5,
         "weapon_type": "Pukei-Pukei",
-        "thumbnail": "assets/img/equiments/sets/pukei-pukei.png",
+        "thumbnail": "assets/img/equiments/sets/pukei-pukei.webp",
         "items": [
           {
             "item_id": 1,
@@ -3431,7 +3431,7 @@
       {
         "weapon_type_id": 6,
         "weapon_type": "Diablos",
-        "thumbnail": "assets/img/equiments/sets/diablos.png",
+        "thumbnail": "assets/img/equiments/sets/diablos.webp",
         "items": [
           {
             "item_id": 1,
@@ -3521,7 +3521,7 @@
       {
         "weapon_type_id": 1,
         "weapon_type": "Ore",
-        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "thumbnail": "assets/img/equiments/sets/Ores.webp",
         "items": [
           {
             "item_id": 1,
@@ -3570,7 +3570,7 @@
       {
         "weapon_type_id": 2,
         "weapon_type": "Monster Bone",
-        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.webp",
         "items": [
           {
             "item_id": 1,
@@ -3619,7 +3619,7 @@
       {
         "weapon_type_id": 3,
         "weapon_type": "Great Jagras",
-        "thumbnail": "assets/img/equiments/sets/Great_Jagras.png",
+        "thumbnail": "assets/img/equiments/sets/Great_Jagras.webp",
         "items": [
           {
             "item_id": 1,
@@ -3654,7 +3654,7 @@
       {
         "weapon_type_id": 4,
         "weapon_type": "Rathalos",
-        "thumbnail": "assets/img/equiments/sets/Rathalos.png",
+        "thumbnail": "assets/img/equiments/sets/Rathalos.webp",
         "items": [
           {
             "item_id": 1,
@@ -3689,7 +3689,7 @@
       {
         "weapon_type_id": 5,
         "weapon_type": "Barroth",
-        "thumbnail": "assets/img/equiments/sets/barroth.png",
+        "thumbnail": "assets/img/equiments/sets/barroth.webp",
         "items": [
           {
             "item_id": 1,
@@ -3724,7 +3724,7 @@
       {
         "weapon_type_id": 6,
         "weapon_type": "Jyuratodus",
-        "thumbnail": "assets/img/equiments/sets/jyuratodus.png",
+        "thumbnail": "assets/img/equiments/sets/jyuratodus.webp",
         "items": [
           {
             "item_id": 1,
@@ -3814,7 +3814,7 @@
       {
         "weapon_type_id": 1,
         "weapon_type": "Ore",
-        "thumbnail": "assets/img/equiments/sets/Ores.png",
+        "thumbnail": "assets/img/equiments/sets/Ores.webp",
         "items": [
           {
             "item_id": 1,
@@ -3863,7 +3863,7 @@
       {
         "weapon_type_id": 2,
         "weapon_type": "Monster Bone",
-        "thumbnail": "assets/img/equiments/sets/dragon_bone.png",
+        "thumbnail": "assets/img/equiments/sets/dragon_bone.webp",
         "items": [
           {
             "item_id": 1,
@@ -3912,7 +3912,7 @@
       {
         "weapon_type_id": 3,
         "weapon_type": "Great Jagras",
-        "thumbnail": "assets/img/equiments/sets/Great_Jagras.png",
+        "thumbnail": "assets/img/equiments/sets/Great_Jagras.webp",
         "items": [
           {
             "item_id": 1,
@@ -3947,7 +3947,7 @@
       {
         "weapon_type_id": 4,
         "weapon_type": "Tobi-Kadachi",
-        "thumbnail": "assets/img/equiments/sets/Tobi-Kadachi.png",
+        "thumbnail": "assets/img/equiments/sets/Tobi-Kadachi.webp",
         "items": [
           {
             "item_id": 1,
@@ -3982,7 +3982,7 @@
       {
         "weapon_type_id": 5,
         "weapon_type": "Pukei-Pukei",
-        "thumbnail": "assets/img/equiments/sets/pukei-pukei.png",
+        "thumbnail": "assets/img/equiments/sets/pukei-pukei.webp",
         "items": [
           {
             "item_id": 1,
@@ -4017,7 +4017,7 @@
       {
         "weapon_type_id": 6,
         "weapon_type": "Diablos",
-        "thumbnail": "assets/img/equiments/sets/diablos.png",
+        "thumbnail": "assets/img/equiments/sets/diablos.webp",
         "items": [
           {
             "item_id": 1,
