@@ -6,72 +6,72 @@
             {
                 "item_id": 1,
                 "item": "Carbalite Ore",
-                "thumbnail": "assets/img/common/carbalite-ore.png"
+                "thumbnail": "assets/img/common/carbalite-ore.webp"
             },
             {
                 "item_id": 2,
                 "item": "Machalite Ore",
-                "thumbnail": "assets/img/common/machalite-ore.png"
+                "thumbnail": "assets/img/common/machalite-ore.webp"
             },
             {
                 "item_id": 3,
                 "item": "Dragonite Ore",
-                "thumbnail": "assets/img/common/dragonite-ore.png"
+                "thumbnail": "assets/img/common/dragonite-ore.webp"
             },
             {
                 "item_id": 4,
                 "item": "Fucium Ore",
-                "thumbnail": "assets/img/common/fucium-ore.png"
+                "thumbnail": "assets/img/common/fucium-ore.webp"
             },
             {
                 "item_id": 5,
                 "item": "Dragonvein Crystal",
-                "thumbnail": "assets/img/common/dragonvein-crystal.png"
+                "thumbnail": "assets/img/common/dragonvein-crystal.webp"
             },
             {
                 "item_id": 6,
                 "item": "Wingdrake Hide",
-                "thumbnail": "assets/img/common/wingdrake-hide.png"
+                "thumbnail": "assets/img/common/wingdrake-hide.webp"
             },
             {
                 "item_id": 7,
                 "item": "Quality Bone",
-                "thumbnail": "assets/img/common/quality-bone.png"
+                "thumbnail": "assets/img/common/quality-bone.webp"
             },
             {
                 "item_id": 8,
                 "item": "Monster Bone Small",
-                "thumbnail": "assets/img/common/monster-bone.png"
+                "thumbnail": "assets/img/common/monster-bone.webp"
             },
             {
                 "item_id": 9,
                 "item": "Monster Bone Medium",
-                "thumbnail": "assets/img/common/monster-bone.png"
+                "thumbnail": "assets/img/common/monster-bone.webp"
             },
             {
                 "item_id": 10,
                 "item": "Monster Bone Large",
-                "thumbnail": "assets/img/common/monster-bone.png"
+                "thumbnail": "assets/img/common/monster-bone.webp"
             },
             {
                 "item_id": 11,
                 "item": "Boulder Bone",
-                "thumbnail": "assets/img/common/boulder-bone.png"
+                "thumbnail": "assets/img/common/boulder-bone.webp"
             },
             {
                 "item_id": 12,
                 "item": "Monster Keenbone",
-                "thumbnail": "assets/img/common/monster-keenbone.png"
+                "thumbnail": "assets/img/common/monster-keenbone.webp"
             },
             {
                 "item_id": 13,
                 "item": "Monster Hardbone",
-                "thumbnail": "assets/img/common/monster-hardbone.png"
+                "thumbnail": "assets/img/common/monster-hardbone.webp"
             },
             {
                 "item_id": 14,
                 "item": "Ancient bone",
-                "thumbnail": "assets/img/common/ancient-bone.png"
+                "thumbnail": "assets/img/common/ancient-bone.webp"
             }
         ]
     },
@@ -82,107 +82,107 @@
             {
                 "item_id": 1,
                 "item": "Piercing Claw",
-                "thumbnail": "assets/img/other_materials/piercing-claw.png"
+                "thumbnail": "assets/img/other_materials/piercing-claw.webp"
             },
             {
                 "item_id": 2,
                 "item": "Firecell Stone",
-                "thumbnail": "assets/img/other_materials/firecell-stone.png"
+                "thumbnail": "assets/img/other_materials/firecell-stone.webp"
             },
             {
                 "item_id": 3,
                 "item": "Coral Crystal",
-                "thumbnail": "assets/img/other_materials/coral-crystal.png"
+                "thumbnail": "assets/img/other_materials/coral-crystal.webp"
             },
             {
                 "item_id": 4,
                 "item": "Sharp Claw",
-                "thumbnail": "assets/img/other_materials/sharp-claw.png"
+                "thumbnail": "assets/img/other_materials/sharp-claw.webp"
             },
             {
                 "item_id": 5,
                 "item": "Warm Pelt",
-                "thumbnail": "assets/img/other_materials/warm-pelt.png"
+                "thumbnail": "assets/img/other_materials/warm-pelt.webp"
             },
             {
                 "item_id": 6,
                 "item": "Electro Sac",
-                "thumbnail": "assets/img/other_materials/electro-sac.png"
+                "thumbnail": "assets/img/other_materials/electro-sac.webp"
             },
             {
                 "item_id": 7,
                 "item": "Thunder Sac",
-                "thumbnail": "assets/img/other_materials/thunder-sac.png"
+                "thumbnail": "assets/img/other_materials/thunder-sac.webp"
             },
             {
                 "item_id": 8,
                 "item": "Flame Sac",
-                "thumbnail": "assets/img/other_materials/flame-sac.png"
+                "thumbnail": "assets/img/other_materials/flame-sac.webp"
             },
             {
                 "item_id": 9,
                 "item": "Inferno Sac",
-                "thumbnail": "assets/img/other_materials/inferno-sac.png"
+                "thumbnail": "assets/img/other_materials/inferno-sac.webp"
             },
             {
                 "item_id": 10,
                 "item": "Fertile Mud",
-                "thumbnail": "assets/img/other_materials/fertile_mud.png"
+                "thumbnail": "assets/img/other_materials/fertile_mud.webp"
             },
             {
                 "item_id": 11,
                 "item": "Poison Sac",
-                "thumbnail": "assets/img/other_materials/poison_sac.png"
+                "thumbnail": "assets/img/other_materials/poison_sac.webp"
             },
             {
                 "item_id": 12,
                 "item": "Toxin Sac",
-                "thumbnail": "assets/img/other_materials/toxin_sac.png"
+                "thumbnail": "assets/img/other_materials/toxin_sac.webp"
             },
             {
                 "item_id": 13,
                 "item": "Aqua Sac",
-                "thumbnail": "assets/img/other_materials/aqua_sac.png"
+                "thumbnail": "assets/img/other_materials/aqua_sac.webp"
             },
             {
                 "item_id": 14,
                 "item": "Gajau Scale",
-                "thumbnail": "assets/img/other_materials/gajau_scale.png"
+                "thumbnail": "assets/img/other_materials/gajau_scale.webp"
             },
             {
                 "item_id": 15,
                 "item": "Torrent Sac",
-                "thumbnail": "assets/img/other_materials/torrent_sac.png"
+                "thumbnail": "assets/img/other_materials/torrent_sac.webp"
             },
             {
                 "item_id": 16,
                 "item": "Wyvern Gem",
-                "thumbnail": "assets/img/other_materials/wyvern_gem.png"
+                "thumbnail": "assets/img/other_materials/wyvern_gem.webp"
             },
             {
                 "item_id": 17,
                 "item": "Lightcrystal",
-                "thumbnail": "assets/img/other_materials/lightcrystal.png"
+                "thumbnail": "assets/img/other_materials/lightcrystal.webp"
             },
             {
                 "item_id": 18,
                 "item": "Majestic Horn",
-                "thumbnail": "assets/img/other_materials/majestic_horn.png"
+                "thumbnail": "assets/img/other_materials/majestic_horn.webp"
             },
             {
                 "item_id": 19,
                 "item": "Twisted Horn",
-                "thumbnail": "assets/img/other_materials/twisted_horn.png"
+                "thumbnail": "assets/img/other_materials/twisted_horn.webp"
             },
             {
                 "item_id": 20,
                 "item": "Novacrystal",
-                "thumbnail": "assets/img/other_materials/novacrystal.png"
+                "thumbnail": "assets/img/other_materials/novacrystal.webp"
             },
             {
                 "item_id": 21,
                 "item": "Black Spiral Horn",
-                "thumbnail": "assets/img/other_materials/piercing-claw.png"
+                "thumbnail": "assets/img/other_materials/piercing-claw.webp"
             }
         ]
     },
@@ -193,277 +193,277 @@
             {
                 "item_id": 1,
                 "item": "Great Jagras Claw",
-                "thumbnail": "assets/img/monster_parts/great-jagras-claw.png"
+                "thumbnail": "assets/img/monster_parts/great-jagras-claw.webp"
             },
             {
                 "item_id": 2,
                 "item": "Great Jagras Scale",
-                "thumbnail": "assets/img/monster_parts/great-jagras-scale.png"
+                "thumbnail": "assets/img/monster_parts/great-jagras-scale.webp"
             },
             {
                 "item_id": 3,
                 "item": "Great Jagras Mane",
-                "thumbnail": "assets/img/monster_parts/great-jagras-mane.png"
+                "thumbnail": "assets/img/monster_parts/great-jagras-mane.webp"
             },
             {
                 "item_id": 4,
                 "item": "Great Jagras Hide",
-                "thumbnail": "assets/img/monster_parts/great-jagras-hide.png"
+                "thumbnail": "assets/img/monster_parts/great-jagras-hide.webp"
             },
             {
                 "item_id": 5,
                 "item": "Tobi-Kadachi Claw",
-                "thumbnail": "assets/img/monster_parts/tobi-kadachi-claw.png"
+                "thumbnail": "assets/img/monster_parts/tobi-kadachi-claw.webp"
             },
             {
                 "item_id": 6,
                 "item": "Tobi-Kadachi Scale",
-                "thumbnail": "assets/img/monster_parts/tobi-kadachi-scale.png"
+                "thumbnail": "assets/img/monster_parts/tobi-kadachi-scale.webp"
             },
             {
                 "item_id": 7,
                 "item": "Tobi-Kadachi Pelt",
-                "thumbnail": "assets/img/monster_parts/tobi-kadachi-pelt.png"
+                "thumbnail": "assets/img/monster_parts/tobi-kadachi-pelt.webp"
             },
             {
                 "item_id": 8,
                 "item": "Tobi-Kadachi Membrane",
-                "thumbnail": "assets/img/monster_parts/tobi-kadachi-membrane.png"
+                "thumbnail": "assets/img/monster_parts/tobi-kadachi-membrane.webp"
             },
             {
                 "item_id": 9,
                 "item": "Tobi-Kadahi Electrode",
-                "thumbnail": "assets/img/monster_parts/tobi-kadachi-electrode.png"
+                "thumbnail": "assets/img/monster_parts/tobi-kadachi-electrode.webp"
             },
             {
                 "item_id": 10,
                 "item": "Anjanath Pelt",
-                "thumbnail": "assets/img/monster_parts/anjanath-pelt.png"
+                "thumbnail": "assets/img/monster_parts/anjanath-pelt.webp"
             },
             {
                 "item_id": 11,
                 "item": "Anjanath Nosebone",
-                "thumbnail": "assets/img/monster_parts/anjanath-nosebone.png"
+                "thumbnail": "assets/img/monster_parts/anjanath-nosebone.webp"
             },
             {
                 "item_id": 12,
                 "item": "Anjanath Scale",
-                "thumbnail": "assets/img/monster_parts/anjanath-scale.png"
+                "thumbnail": "assets/img/monster_parts/anjanath-scale.webp"
             },
             {
                 "item_id": 13,
                 "item": "Anjanath Fang",
-                "thumbnail": "assets/img/monster_parts/anjanath-fang.png"
+                "thumbnail": "assets/img/monster_parts/anjanath-fang.webp"
             },
             {
                 "item_id": 15,
                 "item": "Anjanath Tail",
-                "thumbnail": "assets/img/monster_parts/anjanath-tail.png"
+                "thumbnail": "assets/img/monster_parts/anjanath-tail.webp"
             },
             {
                 "item_id": 16,
                 "item": "Rathalos Medulla",
-                "thumbnail": "assets/img/monster_parts/rathalos-m.png"
+                "thumbnail": "assets/img/monster_parts/rathalos-m.webp"
             },
             {
                 "item_id": 17,
                 "item": "Rathalos Marrow",
-                "thumbnail": "assets/img/monster_parts/rathalos-m.png"
+                "thumbnail": "assets/img/monster_parts/rathalos-m.webp"
             },
             {
                 "item_id": 18,
                 "item": "Rathalos Wing",
-                "thumbnail": "assets/img/monster_parts/rathalos-w.png"
+                "thumbnail": "assets/img/monster_parts/rathalos-w.webp"
             },
             {
                 "item_id": 19,
                 "item": "Rathalos Webbing",
-                "thumbnail": "assets/img/monster_parts/rathalos-w.png"
+                "thumbnail": "assets/img/monster_parts/rathalos-w.webp"
             },
             {
                 "item_id": 20,
                 "item": "Rathalos Shell",
-                "thumbnail": "assets/img/monster_parts/rathalos-s.png"
+                "thumbnail": "assets/img/monster_parts/rathalos-s.webp"
             },
             {
                 "item_id": 21,
                 "item": "Rathalos Carapace",
-                "thumbnail": "assets/img/monster_parts/rathalos-s.png"
+                "thumbnail": "assets/img/monster_parts/rathalos-s.webp"
             },
             {
                 "item_id": 22,
                 "item": "Rathalos Scale",
-                "thumbnail": "assets/img/monster_parts/rathalos-scale.png"
+                "thumbnail": "assets/img/monster_parts/rathalos-scale.webp"
             },
             {
                 "item_id": 23,
                 "item": "Rathalos Tail",
-                "thumbnail": "assets/img/monster_parts/rathalos-tail.png"
+                "thumbnail": "assets/img/monster_parts/rathalos-tail.webp"
             },
             {
                 "item_id": 24,
                 "item": "Rathalos Wingtalon",
-                "thumbnail": "assets/img/monster_parts/rathalos-wingtalon.png"
+                "thumbnail": "assets/img/monster_parts/rathalos-wingtalon.webp"
             },
             {
                 "item_id": 25,
                 "item": "Rathalos Plate",
-                "thumbnail": "assets/img/monster_parts/rathalos-plate.png"
+                "thumbnail": "assets/img/monster_parts/rathalos-plate.webp"
             },
             {
                 "item_id": 26,
                 "item": "Azure Rathalos Scale",
-                "thumbnail": "assets/img/monster_parts/a-rathalos-scale.png"
+                "thumbnail": "assets/img/monster_parts/a-rathalos-scale.webp"
             },
             {
                 "item_id": 27,
                 "item": "Azure Rathalos Carapace",
-                "thumbnail": "assets/img/monster_parts/a-rathalos-carapace.png"
+                "thumbnail": "assets/img/monster_parts/a-rathalos-carapace.webp"
             },
             {
                 "item_id": 28,
                 "item": "Azure Rathalos Wingtalon",
-                "thumbnail": "assets/img/monster_parts/a-rathalos-wingtalon.png"
+                "thumbnail": "assets/img/monster_parts/a-rathalos-wingtalon.webp"
             },
             {
                 "item_id": 29,
                 "item": "Azure Rathalos Marrow",
-                "thumbnail": "assets/img/monster_parts/a-rathalos-marrow.png"
+                "thumbnail": "assets/img/monster_parts/a-rathalos-marrow.webp"
             },
             {
                 "item_id": 30,
                 "item": "Azure Rathalos Wing",
-                "thumbnail": "assets/img/monster_parts/a-rathalos-wing.png"
+                "thumbnail": "assets/img/monster_parts/a-rathalos-wing.webp"
             },
             {
                 "item_id": 31,
                 "item": "Azure Rathalos Tail",
-                "thumbnail": "assets/img/monster_parts/a-rathalos-tail.png"
+                "thumbnail": "assets/img/monster_parts/a-rathalos-tail.webp"
             },
             {
                 "item_id": 32,
                 "item": "Azure Rathalos Plate",
-                "thumbnail": "assets/img/monster_parts/a-rathalos-plate.png"
+                "thumbnail": "assets/img/monster_parts/a-rathalos-plate.webp"
             },
             {
                 "item_id": 34,
                 "item": "Barroth Carapace",
-                "thumbnail": "assets/img/monster_parts/barroth-carapace.png"
+                "thumbnail": "assets/img/monster_parts/barroth-carapace.webp"
             },
             {
                 "item_id": 35,
                 "item": "Barroth Claw",
-                "thumbnail": "assets/img/monster_parts/barroth-claw.png"
+                "thumbnail": "assets/img/monster_parts/barroth-claw.webp"
             },
             {
                 "item_id": 36,
                 "item": "Barroth Ridge",
-                "thumbnail": "assets/img/monster_parts/barroth-ridge.png"
+                "thumbnail": "assets/img/monster_parts/barroth-ridge.webp"
             },
             {
                 "item_id": 37,
                 "item": "Barroth Shell",
-                "thumbnail": "assets/img/monster_parts/barroth-shell.png"
+                "thumbnail": "assets/img/monster_parts/barroth-shell.webp"
             },
             {
                 "item_id": 38,
                 "item": "Barroth Tail",
-                "thumbnail": "assets/img/monster_parts/barroth-tail.png"
+                "thumbnail": "assets/img/monster_parts/barroth-tail.webp"
             },
             {
                 "item_id": 39,
                 "item": "Pukei-Pukei Carapace",
-                "thumbnail": "assets/img/monster_parts/pukei-pukei_carapace.png"
+                "thumbnail": "assets/img/monster_parts/pukei-pukei_carapace.webp"
             },
             {
                 "item_id": 40,
                 "item": "Pukei-Pukei Quill",
-                "thumbnail": "assets/img/monster_parts/pukei-pukei_quill.png"
+                "thumbnail": "assets/img/monster_parts/pukei-pukei_quill.webp"
             },
             {
                 "item_id": 41,
                 "item": "Pukei-Pukei Scale",
-                "thumbnail": "assets/img/monster_parts/pukei-pukei_scale.png"
+                "thumbnail": "assets/img/monster_parts/pukei-pukei_scale.webp"
             },
             {
                 "item_id": 42,
                 "item": "Pukei-Pukei Tail",
-                "thumbnail": "assets/img/monster_parts/pukei-pukei_tail.png"
+                "thumbnail": "assets/img/monster_parts/pukei-pukei_tail.webp"
             },
             {
                 "item_id": 43,
                 "item": "Pukei-Pukei Wing",
-                "thumbnail": "assets/img/monster_parts/pukei-pukei_wing.png"
+                "thumbnail": "assets/img/monster_parts/pukei-pukei_wing.webp"
             },
             {
                 "item_id": 44,
                 "item": "Pukei-Pukei Sac",
-                "thumbnail": "assets/img/monster_parts/pukei-pukei_sac.png"
+                "thumbnail": "assets/img/monster_parts/pukei-pukei_sac.webp"
             },
             {
                 "item_id": 45,
                 "item": "Jyuratodus Carapace",
-                "thumbnail": "assets/img/monster_parts/jyuratodus_carapace.png"
+                "thumbnail": "assets/img/monster_parts/jyuratodus_carapace.webp"
             },
             {
                 "item_id": 46,
                 "item": "Jyuratodus Fang",
-                "thumbnail": "assets/img/monster_parts/jyuratodus_fang.png"
+                "thumbnail": "assets/img/monster_parts/jyuratodus_fang.webp"
             },
             {
                 "item_id": 47,
                 "item": "Jyuratodus Fin",
-                "thumbnail": "assets/img/monster_parts/jyuratodus_fin.png"
+                "thumbnail": "assets/img/monster_parts/jyuratodus_fin.webp"
             },
             {
                 "item_id": 48,
                 "item": "Jyuratodus Scale",
-                "thumbnail": "assets/img/monster_parts/jyuratodus_scale.png"
+                "thumbnail": "assets/img/monster_parts/jyuratodus_scale.webp"
             },
             {
                 "item_id": 49,
                 "item": "Jyuratodus Shell",
-                "thumbnail": "assets/img/monster_parts/jyuratodus_shell.png"
+                "thumbnail": "assets/img/monster_parts/jyuratodus_shell.webp"
             },
             {
                 "item_id": 50,
                 "item": "Diablos Carapace",
-                "thumbnail": "assets/img/monster_parts/diablos_carapace.png"
+                "thumbnail": "assets/img/monster_parts/diablos_carapace.webp"
             },
             {
                 "item_id": 51,
                 "item": "Diablos Fang",
-                "thumbnail": "assets/img/monster_parts/diablos_fang.png"
+                "thumbnail": "assets/img/monster_parts/diablos_fang.webp"
             },
             {
                 "item_id": 52,
                 "item": "Diablos Medulla",
-                "thumbnail": "assets/img/monster_parts/diablos_medulla.png"
+                "thumbnail": "assets/img/monster_parts/diablos_medulla.webp"
             },
             {
                 "item_id": 53,
                 "item": "Diablos Ridge",
-                "thumbnail": "assets/img/monster_parts/diablos_ridge.png"
+                "thumbnail": "assets/img/monster_parts/diablos_ridge.webp"
             },
             {
                 "item_id": 54,
                 "item": "Diablos Shell",
-                "thumbnail": "assets/img/monster_parts/diablos_shell.png"
+                "thumbnail": "assets/img/monster_parts/diablos_shell.webp"
             },
             {
                 "item_id": 55,
                 "item": "Black Diablos Carapace",
-                "thumbnail": "assets/img/monster_parts/black_diablos_carapace.png"
+                "thumbnail": "assets/img/monster_parts/black_diablos_carapace.webp"
             },
             {
                 "item_id": 56,
                 "item": "Black Diablos Horn",
-                "thumbnail": "assets/img/monster_parts/black_diablos_horn.png"
+                "thumbnail": "assets/img/monster_parts/black_diablos_horn.webp"
             },
             {
                 "item_id": 57,
                 "item": "Black Diablos Ridge",
-                "thumbnail": "assets/img/monster_parts/black_diablos_ridge.png"
+                "thumbnail": "assets/img/monster_parts/black_diablos_ridge.webp"
             }
         ]
     }

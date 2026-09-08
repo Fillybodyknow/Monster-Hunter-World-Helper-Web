@@ -26,7 +26,7 @@
         }
       }
     },
-    "thumbnail": "assets/img/class/greatsword.png"
+    "thumbnail": "assets/img/class/greatsword.webp"
   },
   {
     "hunter_class_id": 2,
@@ -55,7 +55,7 @@
         }
       }
     },
-    "thumbnail": "assets/img/class/bow.png"
+    "thumbnail": "assets/img/class/bow.webp"
   },
   {
     "hunter_class_id": 3,
@@ -84,7 +84,7 @@
         }
       }
     },
-    "thumbnail": "assets/img/class/dual-blades.png"
+    "thumbnail": "assets/img/class/dual-blades.webp"
   },
   {
     "hunter_class_id": 4,
@@ -113,7 +113,7 @@
         }
       }
     },
-    "thumbnail": "assets/img/class/swordANDshield.png"
+    "thumbnail": "assets/img/class/swordANDshield.webp"
   },
   {
     "hunter_class_id": 5,
@@ -200,7 +200,7 @@
         }
       }
     },
-    "thumbnail": "assets/img/class/longsword.png"
+    "thumbnail": "assets/img/class/longsword.webp"
   },
   {
     "hunter_class_id": 8,
@@ -229,7 +229,7 @@
         }
       }
     },
-    "thumbnail": "assets/img/class/lance.png"
+    "thumbnail": "assets/img/class/lance.webp"
   },
   {
     "hunter_class_id": 9,
@@ -258,7 +258,7 @@
         }
       }
     },
-    "thumbnail": "assets/img/class/hunting_horn.png"
+    "thumbnail": "assets/img/class/hunting_horn.webp"
   },
   {
     "hunter_class_id": 10,
@@ -287,7 +287,7 @@
         }
       }
     },
-    "thumbnail": "assets/img/class/gunlance.png"
+    "thumbnail": "assets/img/class/gunlance.webp"
   },
   {
     "hunter_class_id": 11,
@@ -316,7 +316,7 @@
         }
       }
     },
-    "thumbnail": "assets/img/class/switch_axe.png"
+    "thumbnail": "assets/img/class/switch_axe.webp"
   },
   {
     "hunter_class_id": 12,
@@ -345,7 +345,7 @@
         }
       }
     },
-    "thumbnail": "assets/img/class/insect_glaive.png"
+    "thumbnail": "assets/img/class/insect_glaive.webp"
   },
   {
     "hunter_class_id": 13,
@@ -374,7 +374,7 @@
         }
       }
     },
-    "thumbnail": "assets/img/class/light_bowgun.png"
+    "thumbnail": "assets/img/class/light_bowgun.webp"
   },
   {
     "hunter_class_id": 14,
@@ -403,6 +403,6 @@
         }
       }
     },
-    "thumbnail": "assets/img/class/heavy_bowgun.png"
+    "thumbnail": "assets/img/class/heavy_bowgun.webp"
   }
 ]

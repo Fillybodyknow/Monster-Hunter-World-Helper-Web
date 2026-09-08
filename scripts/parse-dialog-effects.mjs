@@ -56,6 +56,35 @@ const num = (s) => (s == null ? null : THAI_NUM[s] ?? parseInt(s, 10))
 // "หาก" ใน "หากทอยได้ 1-2" เป็นแถวตาราง ไม่ใช่เงื่อนไข — ตัดออกก่อนเช็ค
 const BLOCKERS = [/หรือ/, /สามารถ/, /ถ้า|หาก|กรณี/, /ตามจำนวน/]
 
+// ── ข้อความที่ถูก block ส่วนใหญ่ยังมีท่อนหน้าที่ต้องทำแน่นอนเสมอ ──
+// เช่น "ทิ้ง 1 time card และทิ้ง Potion 1 ขวด หากไม่สามารถทิ้ง Potion ได้ ..."
+// เดิมทิ้งทั้งก้อน ผู้เล่นเลยต้องทิ้งการ์ดเองทั้งที่ไม่มีเงื่อนไขอะไรเลย
+//
+// เงื่อนไข: ทุกอย่างตั้งแต่คำนี้ไปขึ้นกับผลของเงื่อนไข — ตัดท้ายทิ้งทั้งหมด
+// (ผลของ "หาก..." มักตามมาอีกประโยค ตัดแค่ประโยคที่มีคำไม่พอ)
+const CONDITION_RE = /หาก(?!\s*ทอยได้)|ถ้า|ในกรณี|กรณี/
+// ทางเลือก: เฉพาะท่อนที่มีคำนี้ที่ทำเองไม่ได้ ท่อนอื่นในประโยคเดียวกันยังทำได้
+const OPTION_RE = /หรือ|สามารถ|ตามจำนวน|ก็ได้/
+// ตัดท่อนที่จุด/ขึ้นบรรทัด/ลูกน้ำ และที่คำขึ้นต้นประโยคใหม่แบบไทย
+const SEGMENT_RE =
+  /[.\n,]|(?=แต่ละนักล่า|นักล่าทุกคน|นักล่าแต่ละคน|ผู้เล่นทุกคน|ผู้เล่น|ทั้งกลุ่ม|จากนั้น|หลังจากนั้น|แล้วเลือก)/
+
+const unconditionalPart = (text) => {
+  const at = text.search(CONDITION_RE)
+  const head = at >= 0 ? text.slice(0, at) : text
+
+  const kept = []
+  for (const seg of head.split(SEGMENT_RE)) {
+    if (!seg?.trim()) continue
+    // เจอท่อนที่เป็นทางเลือกแล้วต้องหยุด ไม่ใช่ข้ามไปท่อนถัดไป
+    // "…สามารถทิ้ง 2 ใบ เพื่อรับ 1 Machalite ore, 1 Fucium ore, และ 1 Dragonite ore"
+    // ท่อนหลังลูกน้ำไม่มีคำว่า "สามารถ" ติดไปด้วย ถ้าข้ามจะแจกของรางวัลที่ยังไม่ได้จ่ายค่าตอบแทน
+    if (OPTION_RE.test(seg)) break
+    kept.push(seg)
+  }
+  return kept.join(' ')
+}
+
 // แถวตารางทอยเต๋า: "1-2 ได้รับ X" / "หากทอยได้ 3-4 ได้ X" / "ทอยได้ 5-6: รับ X"
 const DICE_ROW_RE = /^\s*(?:หาก\s*)?(?:ทอยได้\s*)?([1-6])\s*[-–]\s*([1-6])\s*[:：]?\s*(.+?)\s*$/
 const DICE_HINT_RE = /ทอย(?:ลูก)?เต๋า|ทำการทอย/
@@ -70,23 +99,27 @@ const DICE_MONSTER_DMG_RE = /ลดค่า\s*(?:เลือด|hp)\s*(?:ข�
 const RULES = [
   {
     type: 'discardTimeCard',
-    re: /ทิ้ง\s*(?:การ์ดเวลา|time\s*cards?)\s*(\d+|หนึ่ง|สอง|สาม|สี่|ห้า|หก|เจ็ด|แปด)\s*(?:ใบ)?|ทิ้ง\s*(\d+)\s*time\s*cards?/gi,
+    re: /ทิ้ง\s*(?:การ์ดเวลา|time\s*cards?)\s*(?:เพิ่ม\s*)?(?:อีก\s*)?(\d+|หนึ่ง|สอง|สาม|สี่|ห้า|หก|เจ็ด|แปด)\s*(?:ใบ)?|ทิ้ง\s*(\d+)\s*time\s*cards?/gi,
     n: (m) => num(m[1] ?? m[2]),
   },
   {
+    // ข้อความในหนังสือสลับลำดับกันไปมา — "ทิ้ง Track Token 1 อัน" กับ "ทิ้ง 1 track token"
     type: 'discardTrackToken',
-    re: /ทิ้ง\s*(?:track\s*token|token\s*รอยติดตาม)\s*(ทั้งหมด|\d+)\s*(?:อัน|ชิ้น)?/gi,
-    n: (m) => (m[1] === 'ทั้งหมด' ? 'all' : num(m[1])),
+    re: /ทิ้ง\s*(?:track\s*tokens?|token\s*รอยติดตาม)\s*(ทั้งหมด|\d+)\s*(?:อัน|ชิ้น)?|ทิ้ง\s*(\d+)\s*track\s*tokens?/gi,
+    n: (m) => (m[1] === 'ทั้งหมด' ? 'all' : num(m[1] ?? m[2])),
   },
   {
+    // "เปิด" เฉย ๆ ก็มี ไม่ได้เขียน "เปิดเผย" ทุกที่
     type: 'revealTrackToken',
-    re: /เปิดเผย\s*track\s*tokens?\s*(?:จากกลุ่ม)?\s*(?:ได้\s*)?(?:สูงสุด\s*)?(ทั้งหมด|\d+)\s*(?:อัน|ชิ้น)?/gi,
-    n: (m) => (m[1] === 'ทั้งหมด' ? 'all' : num(m[1])),
+    re: /เปิด(?:เผย)?\s*track\s*tokens?\s*(?:จากกลุ่ม)?\s*(?:ได้\s*)?(?:สูงสุด\s*)?(ทั้งหมด|\d+)\s*(?:อัน|ชิ้น)?|เปิด(?:เผย)?\s*(\d+)\s*track\s*tokens?/gi,
+    n: (m) => (m[1] === 'ทั้งหมด' ? 'all' : num(m[1] ?? m[2])),
   },
   {
     type: 'gainTrackToken',
-    re: /(?:ได้รับ|ได้|รับ)\s*(?:และเปิดเผย\s*)?(?:track\s*tokens?|token\s*รอยติดตาม)\s*(?:เพิ่ม\s*)?(\d+)\s*(?:อัน|ชิ้น)?|(?:ได้รับ|ได้|รับ)(?:และเปิดเผย)?\s*(\d+)\s*track\s*tokens?/gi,
-    n: (m) => num(m[1] ?? m[2]),
+    // แบบที่ 3: "ได้รับ X 1 ชิ้น track token 1 ชิ้น" — คำว่า "ได้รับ" อยู่หน้าไอเทมตัวแรกตัวเดียว
+    // ต้องกัน "ทิ้ง/เปิดเผย track token" ไม่ให้หลุดมาเป็นการรับด้วย
+    re: /(?:ได้รับ|ได้|รับ)\s*(?:และเปิดเผย\s*)?(?:track\s*tokens?|token\s*รอยติดตาม)\s*(?:เพิ่ม\s*)?(\d+)\s*(?:อัน|ชิ้น)?|(?:ได้รับ|ได้|รับ)(?:และเปิดเผย)?\s*(\d+)\s*track\s*tokens?|(?<!ทิ้ง\s{0,3})(?<!เปิด\s{0,3})(?<!เปิดเผย\s{0,3})(?<!และ\s{0,3})track\s*tokens?\s*(\d+)\s*(?:อัน|ชิ้น)/gi,
+    n: (m) => num(m[1] ?? m[2] ?? m[3]),
   },
   {
     type: 'gainPotion',
@@ -94,9 +127,16 @@ const RULES = [
     n: (m) => num(m[1] ?? m[2] ?? m[3] ?? '1'),
   },
   {
+    // "ทิ้ง Potion จนเหลือ 1 ขวด" — คนละความหมายกับทิ้ง 1 ขวด ต้องมาก่อน discardPotion
+    type: 'discardPotionDownTo',
+    re: /ทิ้ง\s*(?:ยา(?:รักษา)?|potions?)\s*(?:ทั้งหมด)?\s*(?:จน)?เหลือ(?:ไว้)?\s*(\d+)\s*ขวด/gi,
+    n: (m) => num(m[1]),
+  },
+  {
+    // แบบที่ 3: "ทิ้ง 1 time card และ 1 potion" — คำว่า "ทิ้ง" อยู่หน้าไอเทมตัวแรกตัวเดียว
     type: 'discardPotion',
-    re: /ทิ้ง\s*(?:ยา(?:รักษา)?|potions?)\s*(\d+)\s*ขวด|ทิ้ง\s*(\d+)\s*potions?/gi,
-    n: (m) => num(m[1] ?? m[2]),
+    re: /ทิ้ง\s*(?:ยา(?:รักษา)?|potions?)\s*(\d+)\s*ขวด|ทิ้ง\s*(\d+)\s*potions?|ทิ้ง\s*\d+\s*time\s*cards?\s*และ\s*(\d+)\s*potions?/gi,
+    n: (m) => num(m[1] ?? m[2] ?? m[3]),
   },
   {
     type: 'damage',
@@ -105,18 +145,20 @@ const RULES = [
   },
   {
     type: 'heal',
-    re: /ฟื้นฟู\s*(?:พลังชีวิต\s*)?(\d+)\s*(?:หน่วย|แต้ม|health|พลังชีวิต)?/gi,
+    re: /ฟื้นฟู\s*(?:พลังชีวิต|เลือด|hp)?\s*(\d+)\s*(?:หน่วย|แต้ม|health|พลังชีวิต)?/gi,
     n: (m) => num(m[1]),
   },
   {
     type: 'shuffleTimeCard',
-    re: /สับ(?:การ์ด|ไพ่)?\s*(.+?)\s*(?:\((?:.*?)\)\s*)?(?:กลับ)?\s*(?:ลงใน|ลงยัง|เข้าใน|เข้าไปยัง|เข้าไปใน|เข้า)\s*(?:กอง|สำรับ)?(?:การ์ด)?\s*(?:time\s*card|time\s*deck|การ์ดเวลา)/gi,
+    // ตัวยาวต้องมาก่อนตัวสั้น ไม่งั้น "เข้า" กินไปก่อนแล้ว "กับกอง" ทำให้ไม่ match
+    re: /สับ(?:การ์ด|ไพ่)?\s*(.+?)\s*(?:\((?:.*?)\)\s*)?(?:กลับ)?\s*(?:ลงใน|ลงยัง|ลงสู่|เข้าไปยัง|เข้าไปใน|เข้าใน|เข้ากับ|เข้าสู่|เข้า)\s*(?:กอง|สำรับ)?(?:การ์ด)?\s*(?:time\s*card|time\s*deck|การ์ดเวลา)/gi,
     card: (m) => m[1].trim(),
   },
   {
+    // ไม่ระบุจำนวน = 1 ใบ, "และ/แล้ว" ใช้สลับกัน, "ข้างๆ" มีทั้งมีและไม่มีไม้ยมก
     type: 'drawTimeCardAside',
-    re: /จั่ว\s*time\s*cards?\s*(\d+)\s*ใบ\s*และ\s*วาง(?:แยก)?ไว้ข้าง(?:กอง)?/gi,
-    n: (m) => num(m[1]),
+    re: /จั่ว\s*(?:การ์ดเวลา|time\s*cards?)\s*(\d+)?\s*(?:ใบ)?\s*(?:และ|แล้ว)?\s*วาง(?:แยก)?ไว้ข้าง\s*ๆ?\s*(?:กอง)?/gi,
+    n: (m) => num(m[1] ?? '1'),
   },
   {
     type: 'healFull',
@@ -134,6 +176,8 @@ const RULES = [
 
 // รันหลัง RULES — หา resource จากข้อความที่ยังไม่ถูกจับ (ชื่อ resource เป็นอังกฤษทั้งหมด)
 const RESOURCE_RULES = [
+  // "1 แร่ Carbalite" = Carbalite Ore เขียนสลับภาษา — ต้องมาก่อนกฎทั่วไป
+  { re: /(\d+)\s*แร่\s*([A-Za-z][A-Za-z'-]*)/gi, n: 1, name: 2, suffix: ' Ore' },
   { re: /(?:ได้รับ|ได้|รับ)\s*(\d+)\s*([A-Za-z][A-Za-z' -]*[A-Za-z])/gi, n: 1, name: 2 },
   { re: /([A-Za-z][A-Za-z' -]*[A-Za-z])\s*(?:คนละ\s*)?(\d+)\s*(?:ชิ้น|อัน|เส้น|ก้อน|ใบ)/gi, n: 2, name: 1 },
   { re: /(?:และ|,)\s*(\d+)\s*([A-Za-z][A-Za-z' -]*[A-Za-z])/gi, n: 1, name: 2 },
@@ -192,7 +236,7 @@ const parseSimple = (text) => {
     rule.re.lastIndex = 0
     let m
     while ((m = rule.re.exec(rest))) {
-      const name = cleanName(m[rule.name])
+      const name = cleanName(m[rule.name]) + (rule.suffix ?? '')
       const n = num(m[rule.n])
       if (!name || name.length < 3 || n == null || Number.isNaN(n)) continue
       if (NOT_RESOURCE.test(name)) continue
@@ -276,6 +320,22 @@ const parse = (text) => {
 
   const blocked = BLOCKERS.some((re) => re.test(scanText))
 
+  // มีเงื่อนไข/ทางเลือก — เก็บเฉพาะท่อนที่ทำแน่นอน ที่เหลือปล่อยให้ผู้เล่นทำเอง
+  // ต้องอ่านท่อนนั้นออกเกิน 85% ด้วย ไม่งั้นแปลว่ายังเข้าใจประโยคไม่ครบ อย่าเดา
+  if (blocked && !diceTable) {
+    const safe = unconditionalPart(scanText)
+    const r = parseSimple(safe)
+    if (r.effects.length && coverageRatio(safe, r.covered) >= 0.85) {
+      // ปิดท้ายด้วยหมายเหตุ ไม่งั้นผู้เล่นเห็นแถบแจ้งเตือนแล้วนึกว่าระบบจัดการครบแล้ว
+      return {
+        effects: [...r.effects, { type: 'manualRest' }],
+        covered: r.covered,
+        blocked: true,
+        partOnly: true,
+      }
+    }
+  }
+
   const { effects, covered } = parseSimple(diceTable ? diceTable.rest : text)
 
   if (diceTable) {
@@ -296,7 +356,7 @@ const parse = (text) => {
 
 // คำเชื่อม/สรรพนามที่ไม่ใช่ effect — ไม่นับตอนวัด coverage
 const FILLER =
-  /นักล่าทุกคน|ผู้ล่าทุกคน|แต่ละนักล่า|นักล่าแต่ละคน|นักล่า|ผู้เล่น|ทุกคน|กลุ่ม|จะได้รับ|ได้รับและ|ได้รับ|ต้องรับ|รับ|เพิ่ม|หลังจาก|หลักจาก|จากนั้น|เมื่อ|ครบ|แล้ว|และ|หรือ|จาก|ลงใน|ลง|ใน|ที่|เป็น|ให้|ไป|มา|ของ|ด้วย|ทั้งหมด|หน่วย|แต้ม|ใบ|อัน|ชิ้น|เส้น|ก้อน|ขวด|เพื่อ|ตาม|นี้|นั้น/g
+  /นักล่าทุกคน|ผู้ล่าทุกคน|แต่ละนักล่า|นักล่าแต่ละคน|นักล่า|ผู้เล่น|ทุกคน|กลุ่ม|คลัง|สต็อก|จะได้รับ|ได้รับและ|ได้รับ|ต้องรับ|รับ|เพิ่ม|หลังจาก|หลักจาก|จากนั้น|เมื่อ|ครบ|แล้ว|และ|หรือ|จาก|ลงใน|ลง|ใน|ที่|เป็น|ให้|ไป|มา|ของ|ด้วย|ทั้งหมด|หน่วย|แต้ม|ใบ|อัน|ชิ้น|เส้น|ก้อน|ขวด|เพื่อ|ตาม|นี้|นั้น/g
 
 // สัดส่วนตัวอักษรที่ rule จับได้ (ไม่นับช่องว่าง/เครื่องหมาย/คำเชื่อม)
 const coverageRatio = (text, covered) => {
@@ -319,10 +379,11 @@ const coverageRatio = (text, covered) => {
   return total ? hit / total : 0
 }
 
-const stats = { dialogs: 0, actions: 0, withText: 0, full: 0, partial: 0, none: 0, blocked: 0 }
+const stats = { dialogs: 0, actions: 0, withText: 0, full: 0, partOnly: 0, partial: 0, none: 0, blocked: 0 }
 const byType = {}
 const unmatched = []
 const partials = []
+const partOnlys = []
 const autos = []
 
 for (const file of BOOKS) {
@@ -344,10 +405,18 @@ for (const file of BOOKS) {
         if (!text?.trim()) continue
         stats.withText++
 
-        const { effects, covered, blocked } = parse(text)
+        const { effects, covered, blocked, partOnly } = parse(text)
         effects.forEach((e) => (byType[e.type] = (byType[e.type] ?? 0) + 1))
 
         const ratio = coverageRatio(text, covered)
+
+        // ท่อนที่ไม่มีเงื่อนไขในข้อความที่ถูก block — ข้ามเกณฑ์ ratio เพราะรู้อยู่แล้วว่าไม่ครบ
+        if (partOnly) {
+          stats.partOnly++
+          partOnlys.push({ id: t.id, text, effects })
+          if (WRITE) t.obj.effects = effects
+          continue
+        }
 
         if (blocked || !effects.length) {
           if (blocked) stats.blocked++
@@ -362,9 +431,11 @@ for (const file of BOOKS) {
           autos.push({ id: t.id, text, effects })
           if (WRITE) t.obj.effects = effects
         } else {
+          // อ่านได้ไม่ครบ แต่ที่อ่านได้ก็ยังถูก — ส่วนที่เหลือมักเป็นคำบรรยายหรือคำสั่งที่ต้องทำเอง
+          // ("เปิดเผยและทิ้ง track token เท่าใดก็ได้") ทำเท่าที่รู้ดีกว่าไม่ทำอะไรเลย
           stats.partial++
           partials.push({ id: t.id, text, effects, ratio })
-          if (WRITE) delete t.obj.effects
+          if (WRITE) t.obj.effects = [...effects, { type: 'manualRest' }]
         }
       }
     }
@@ -378,6 +449,7 @@ const pct = (n) => `${((n / stats.withText) * 100).toFixed(1)}%`
 console.log(`\n─── COVERAGE ───`)
 console.log(`dialogs ${stats.dialogs} | actions ${stats.actions} | with consequences ${stats.withText}\n`)
 console.log(`  auto  (ratio ≥85%)   ${String(stats.full).padStart(3)}  ${pct(stats.full)}`)
+console.log(`  auto บางส่วน (ตัดเงื่อนไข) ${String(stats.partOnly).padStart(3)}  ${pct(stats.partOnly)}`)
 console.log(`  partial (parsed, low) ${String(stats.partial).padStart(3)}  ${pct(stats.partial)}`)
 console.log(`  blocked (หรือ/ถ้า/ทอย) ${String(stats.blocked).padStart(3)}  ${pct(stats.blocked)}`)
 console.log(`  no match             ${String(stats.none).padStart(3)}  ${pct(stats.none)}`)
@@ -410,6 +482,16 @@ if (process.argv.includes('--auto')) {
       .map((e) => `${e.type}${e.n != null ? `:${e.n}` : ''}${e.name ? `(${e.name})` : ''}${e.card ? `(${e.card})` : ''}`)
       .join(' + ')
     console.log(`  ${a.text.replace(/\n/g, ' ⏎ ').slice(0, 95)}\n    → ${s}`)
+  })
+}
+
+if (process.argv.includes('--partonly')) {
+  console.log(`\n─── AUTO บางส่วน — ตัดท่อนที่มีเงื่อนไขออก (${partOnlys.length}) ───`)
+  partOnlys.forEach((p) => {
+    const s2 = p.effects
+      .map((e) => `${e.type}${e.n != null ? `:${e.n}` : ''}${e.name ? `(${e.name})` : ''}${e.card ? `(${e.card})` : ''}`)
+      .join(' + ')
+    console.log(`  ${p.text.replace(/\n/g, ' ⏎ ').slice(0, 110)}\n    → ${s2}`)
   })
 }
 

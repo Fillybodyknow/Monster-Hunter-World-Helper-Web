@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { isFirebaseConnected } from '@/services/firebase'
-import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, pushHunterToken, pushAllHunterTokens, clearHunterTokens, pushHunterTokenConfirm, clearHunterTokenConfirms, pushDialogDice, clearDialogDice, pushDiceResult, clearDiceResults, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds, pushShuffleSignal, pushActivationCount, pushOutcomeSignal, pushManualOutcome, pushRewardDiceModifiers, pushQuestMode, pushHqVote, clearHqVotes, pushHqCurrent, pushHqDoneList, pushHqReady, clearHqState, updateHunterProfile, publishLobby, updateLobby, removeLobby, listenLobbies, setRoomPassword, getRoomPassword } from '@/services/roomService'
+import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, pushHunterToken, pushAllHunterTokens, clearHunterTokens, pushHunterTokenConfirm, clearHunterTokenConfirms, pushAbilityUsed, clearAbilityUsed, pushTokenSwapRequest, clearTokenSwapRequest, pushDialogDice, clearDialogDice, pushDiceResult, clearDiceResults, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds, pushShuffleSignal, pushActivationCount, pushOutcomeSignal, pushManualOutcome, pushRewardDiceModifiers, pushHqVote, clearHqVotes, pushHqCurrent, pushHqDoneList, pushHqReady, clearHqState, pushHunterPalico, pushPalicoOffer, pushPalicoHire, clearPalicoOffer, pushPalicoDraft, pushPalicoDraftPick, clearPalicoDraft, updateHunterProfile, publishLobby, updateLobby, removeLobby, listenLobbies, setRoomPassword, getRoomPassword } from '@/services/roomService'
 
 export const useRoomStore = defineStore('room', () => {
   const roomCode = ref(null)
@@ -43,7 +43,6 @@ export const useRoomStore = defineStore('room', () => {
   const trackTokenState = computed(() => roomData.value?.trackTokens ?? null)
   const timeCardState = computed(() => roomData.value?.timeCards ?? null)
   const tcTurnEnds = computed(() => roomData.value?.tcTurnEnds ?? null)
-  const questModeState = computed(() => roomData.value?.questMode ?? null)
   const shuffleSignal = computed(() => roomData.value?.shuffleSignal ?? null)
   const activationCount = computed(() => roomData.value?.activationCount ?? 0)
 
@@ -62,6 +61,9 @@ export const useRoomStore = defineStore('room', () => {
   const hunterTokens = computed(() => roomData.value?.hunterTokens ?? {})
   const myHunterToken = computed(() => hunterTokens.value[myHunterId.value] ?? null)
   const hunterTokenConfirms = computed(() => roomData.value?.hunterTokenConfirms ?? {})
+  const abilityUsed = computed(() => roomData.value?.abilityUsed ?? {})
+  const myAbilityUsed = computed(() => abilityUsed.value[myHunterId.value] ?? {})
+  const tokenSwapRequest = computed(() => roomData.value?.tokenSwapRequest ?? null)
   const myHunterTokenConfirmed = computed(() => !!hunterTokenConfirms.value[myHunterId.value])
   // ทุกคนต้องทั้งเลือกและกดยืนยันครบ ถึงจะถือว่าจบรอบ
   const allHunterTokensConfirmed = computed(() =>
@@ -141,6 +143,30 @@ export const useRoomStore = defineStore('room', () => {
     hunters.value.length > 0 &&
     hunters.value.every(h => hqState.value[h.hunter_id]?.ready)
   )
+
+  // ── Palico ──────────────────────────────────────────────
+  // Firebase คืน array มาเป็น object เมื่อ index ไม่ต่อเนื่อง — normalize ทุกครั้งที่อ่าน
+  const _idList = (raw) => (raw ? Object.values(raw).filter((v) => v != null) : [])
+
+  const palicoOffer = computed(() => roomData.value?.palicoOffer ?? null)
+  const palicoOfferIds = computed(() => _idList(palicoOffer.value?.ids))
+  const palicoHired = computed(() => palicoOffer.value?.hired ?? {})
+  const palicoHiredIds = computed(() => Object.values(palicoHired.value).filter(Boolean))
+
+  const palicoDraft = computed(() => roomData.value?.palicoDraft ?? null)
+  const myPalicoOffer = computed(() => _idList(palicoDraft.value?.offers?.[myHunterId.value]))
+  const palicoDraftPicks = computed(() => palicoDraft.value?.picks ?? {})
+  const myPalicoDraftPick = computed(() => palicoDraftPicks.value[myHunterId.value] ?? null)
+  const allPalicoDrafted = computed(() =>
+    hunters.value.length > 0 &&
+    hunters.value.every((h) => palicoDraftPicks.value[h.hunter_id] != null)
+  )
+
+  // ใบที่มีคนในตี้ถืออยู่แล้ว — Lodge ของตี้เล็กเลือกได้เฉพาะใบที่ไม่อยู่ในนี้
+  const takenPalicoIds = computed(() =>
+    hunters.value.map((h) => h.palico_id).filter((v) => v != null),
+  )
+  const myPalicoId = computed(() => myHunter.value?.palico_id ?? null)
 
   const _listen = (code) => {
     if (_unsub) _unsub()
@@ -437,13 +463,12 @@ export const useRoomStore = defineStore('room', () => {
     Object.fromEntries(Object.entries(obj ?? {}).filter(([, v]) => v !== undefined))
 
   // Host ประกาศห้องขึ้นบอร์ดหลังตั้งค่า quest เสร็จ
-  const postLobby = async ({ roomName, password, questInfo, questMode }) => {
+  const postLobby = async ({ roomName, password, questInfo }) => {
     if (!roomCode.value || !isHost.value) return
     await setRoomPassword(roomCode.value, password ? _hashPassword(password) : null)
     return publishLobby(roomCode.value, {
       roomName,
       hasPassword: !!password,
-      questMode: questMode ?? 'full',
       hostId: myHunterId.value,
       hostName: hunters.value.find((h) => h.hunter_id === myHunterId.value)?.hunter_name ?? '',
       questInfo: questInfo ? _stripUndefined(questInfo) : null,
@@ -525,6 +550,26 @@ export const useRoomStore = defineStore('room', () => {
     return clearHunterTokenConfirms(roomCode.value)
   }
 
+  const markAbilityUsed = (abilityId, hunterId = myHunterId.value) => {
+    if (!roomCode.value || !hunterId) return
+    return pushAbilityUsed(roomCode.value, hunterId, abilityId)
+  }
+
+  const clearAbilityUsedAll = () => {
+    if (!roomCode.value) return
+    return clearAbilityUsed(roomCode.value)
+  }
+
+  const requestTokenSwap = (req) => {
+    if (!roomCode.value) return
+    return pushTokenSwapRequest(roomCode.value, req)
+  }
+
+  const clearTokenSwapRequestAll = () => {
+    if (!roomCode.value) return
+    return clearTokenSwapRequest(roomCode.value)
+  }
+
   const clearDialogCounts = () => {
     if (!roomCode.value) return
     return clearAllDialogCounts(roomCode.value)
@@ -570,6 +615,43 @@ export const useRoomStore = defineStore('room', () => {
     return clearHqState(roomCode.value)
   }
 
+  const setMyPalico = (palicoId) => {
+    if (!roomCode.value || !myHunterId.value) return
+    return pushHunterPalico(roomCode.value, myHunterId.value, palicoId)
+  }
+  // ล้างของทุกคน — Host เรียกตอนเริ่มเควสต์ใหม่ เผื่อมีคนเน็ตช้าจนยังไม่ทันล้างของตัวเอง
+  // ถ้าปล่อยค้างไว้ ใบนั้นจะยังนับเป็น "มีคนถือ" แล้วไปตัดกองที่สุ่มรอบใหม่
+  const clearAllPalicos = () => {
+    if (!roomCode.value) return
+    return Promise.all(
+      hunters.value.map((h) => pushHunterPalico(roomCode.value, h.hunter_id, null)),
+    )
+  }
+  const setPalicoOffer = (offer) => {
+    if (!roomCode.value) return
+    return pushPalicoOffer(roomCode.value, offer)
+  }
+  const hirePalico = (palicoId) => {
+    if (!roomCode.value || !myHunterId.value) return
+    return pushPalicoHire(roomCode.value, myHunterId.value, palicoId)
+  }
+  const clearPalicoOfferAll = () => {
+    if (!roomCode.value) return
+    return clearPalicoOffer(roomCode.value)
+  }
+  const setPalicoDraft = (draft) => {
+    if (!roomCode.value) return
+    return pushPalicoDraft(roomCode.value, draft)
+  }
+  const pickPalicoDraft = (palicoId) => {
+    if (!roomCode.value || !myHunterId.value) return
+    return pushPalicoDraftPick(roomCode.value, myHunterId.value, palicoId)
+  }
+  const clearPalicoDraftAll = () => {
+    if (!roomCode.value) return
+    return clearPalicoDraft(roomCode.value)
+  }
+
   const reset = () => {
     roomCode.value = null
     roomData.value = null
@@ -592,9 +674,8 @@ export const useRoomStore = defineStore('room', () => {
     dialogVotes, votesByAction, myVote, syncedDialogId,
     proceedVotes, allProceeded, myProceedVoted,
     syncedPendingActionId,
-    huntState, behaviorDeckState, hostConnected, partyDice, partyRewards, tradePool, myDialogCounts, dialogDice, hunterTokens, myHunterToken, hunterTokenConfirms, myHunterTokenConfirmed, allHunterTokensConfirmed, hunterTokensHaveDuplicate, lobbies, lobbyList, lobbyPosted,
-    trackTokenState, timeCardState, tcTurnEnds, questModeState,
-    syncQuestMode: (mode) => roomCode.value ? pushQuestMode(roomCode.value, mode) : undefined,
+    huntState, behaviorDeckState, hostConnected, partyDice, partyRewards, tradePool, myDialogCounts, dialogDice, hunterTokens, myHunterToken, hunterTokenConfirms, myHunterTokenConfirmed, allHunterTokensConfirmed, hunterTokensHaveDuplicate, abilityUsed, myAbilityUsed, tokenSwapRequest, lobbies, lobbyList, lobbyPosted,
+    trackTokenState, timeCardState, tcTurnEnds,
     rerollRequest, myRerollApproval, rerollAllApproved,
     syncedPhase,
     actionVotes, myActionVote, actionVoteCount, isActionComplete,
@@ -623,11 +704,16 @@ export const useRoomStore = defineStore('room', () => {
     pushMyDice, clearAllPartyDice,
     pushMyRewards, clearAllPartyRewards,
     addToTradePool, removeFromTradePool, clearTrade,
-    setMyDialogCounts, clearDialogCounts, setMyHunterToken, setAllHunterTokens, clearHunterTokensAll, setMyHunterTokenConfirm, clearHunterTokenConfirmsAll, setDialogDice, clearDialogDiceAll,
+    setMyDialogCounts, clearDialogCounts, setMyHunterToken, setAllHunterTokens, clearHunterTokensAll, setMyHunterTokenConfirm, clearHunterTokenConfirmsAll, markAbilityUsed, clearAbilityUsedAll, requestTokenSwap, clearTokenSwapRequestAll, setDialogDice, clearDialogDiceAll,
     diceResults, setMyDiceResult, clearDiceResultsAll,
     startLobbyBrowse, stopLobbyBrowse, postLobby, syncLobbyMembers, closeLobby, verifyLobbyPassword, syncMyProfile,
     voteAction, clearActionVote, kick, reset,
     hqVotes, hqState, hqVoteResult, hqVoteTied, allHqReady,
     voteHq, clearHqVotesAll, setHqCurrent, setHqDoneList, setHqReady, clearHqStateAll,
+    palicoOffer, palicoOfferIds, palicoHired, palicoHiredIds,
+    palicoDraft, myPalicoOffer, palicoDraftPicks, myPalicoDraftPick, allPalicoDrafted,
+    takenPalicoIds, myPalicoId,
+    setMyPalico, clearAllPalicos, setPalicoOffer, hirePalico, clearPalicoOfferAll,
+    setPalicoDraft, pickPalicoDraft, clearPalicoDraftAll,
   }
 })

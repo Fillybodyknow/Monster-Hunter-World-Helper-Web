@@ -13,14 +13,18 @@ import roomNameTemplates from '@/assets/files/room_name_templates.json'
 const getHunterClass = (id) => hunterClassData.find((c) => c.hunter_class_id === id)
 import monsterPartsData from '@/assets/files/monster_parts.json'
 import elementalData from '@/assets/files/elemental.json'
+import armorData from '@/assets/files/armors.json'
 import statusEffectData from '@/assets/files/status_effect.json'
 import resourceData from '@/assets/files/resource.json'
 import { getHunters, saveHunters } from '@/services/hunterStorage'
 import { useRoomStore } from '@/stores/room'
 import CoopLobbyModal from './CoopLobbyModal.vue'
 import HQPhase from './HQPhase.vue'
+import { getPalico, drawPalicos } from '@/composables/usePalico'
 import { openCraftLookup } from '@/composables/useCraftLookup'
 import { useSfx, preloadSfx, preloadMedia } from '@/composables/useSfx'
+import { preloadImages } from '@/services/assetPreload'
+import RuleText from './RuleText.vue'
 
 const room = useRoomStore()
 const sfx = useSfx()
@@ -148,8 +152,6 @@ const joinCode = ref('')
 const joinError = ref('')
 const joinLoading = ref(false)
 
-// Quest Mode: 'full' | 'minimal'
-const questMode = ref('full')
 
 // ── Post Quest: ตั้งชื่อห้อง + รหัสผ่าน ──────────────────────
 const roomName = ref('')
@@ -191,7 +193,6 @@ const startCoopQuest = async () => {
   await room.postLobby?.({
     roomName: roomName.value.trim() || randomRoomName(),
     password: useRoomPassword.value ? roomPassword.value.trim() : '',
-    questMode: questMode.value,
     questInfo: {
       monster_id: selectedMonster.value?.monster_id,
       monster_name: selectedMonster.value?.monster_name,
@@ -242,10 +243,6 @@ const onCoopStart = () => {
         timeCardDeck.value = tcState.deck ?? []
         timeCardDiscard.value = tcState.discard ?? []
       }
-      // Restore quest mode (time cards only exist in Full mode — guards against stale 'minimal' in Firebase)
-      const _hasTc = (tcState?.deck?.length ?? 0) > 0 || (tcState?.discard?.length ?? 0) > 0
-      if (_hasTc) questMode.value = 'full'
-      else if (room.questModeState) questMode.value = room.questModeState
     }
     _syncToPhase(room.syncedDialogId, true)
     // Restore manual outcome AFTER _syncToPhase (canComplete watcher อาจล้างค่าในรอบ async เดียวกัน)
@@ -258,15 +255,17 @@ const onCoopStart = () => {
         _restoringOutcome = false
       })
     }
-  } else if (room.syncedPhase === 'hqVote' || room.syncedPhase === 'hq' || room.syncedPhase === 'handlerStart') {
+  } else if (room.syncedPhase === 'hqVote' || room.syncedPhase === 'hq' || room.syncedPhase === 'handlerStart' || room.syncedPhase === 'palicoDraft') {
     // Reconnect กลางช่วง HQ / handlerStart
     _resolveQuestFromRoom()
     isExhaustedAttempt.value = room.questInfo?.exhausted_attempt ?? false
     phase.value = room.syncedPhase
   } else if (!room.isHost) {
-    // Guest รอ phase จาก Firebase
+    // Guest รอ phase จาก Firebase — มาถึงกิ่งนี้ได้แปลว่าเควสต์ยังไม่เริ่ม
+    // (กิ่งบน ๆ ดักเควสต์ที่ดำเนินอยู่แล้วและการ reconnect ไปหมด) จึงล้างได้ปลอดภัย
+    _resetPalicoForNewQuest()
     const stop = watch([() => room.syncedDialogId, () => room.syncedPhase], ([id, sp]) => {
-      if (sp === 'hqVote' || sp === 'hq' || sp === 'handlerStart') {
+      if (sp === 'hqVote' || sp === 'hq' || sp === 'handlerStart' || sp === 'palicoDraft') {
         stop()
         if (sp === 'handlerStart') isExhaustedAttempt.value = room.questInfo?.exhausted_attempt ?? false
         phase.value = sp
@@ -278,23 +277,12 @@ const onCoopStart = () => {
     }, { immediate: true })
   } else {
     // Host เริ่มเควสใหม่
-    const day = room.questInfo?.campaign_day ?? hunter.value?.campaign_day ?? 1
     isExhaustedAttempt.value = room.questInfo?.exhausted_attempt ?? false
-    if (isExhaustedAttempt.value) {
-      // Attempts หมด: บังคับ HQ 2 actions
-      handlerStartDialogId.value = null
-      phase.value = 'hq'
-      room.syncPhase?.('hq')
-      room.clearHqVotesAll?.()
-      room.clearHqStateAll?.()
-    } else if (day <= 1) {
-      startQuest()
-    } else {
-      phase.value = 'hqVote'
-      room.syncPhase?.('hqVote')
-      room.clearHqVotesAll?.()
-      room.clearHqStateAll?.()
-    }
+    _resetPalicoForNewQuest()
+    // ดราฟต์ Palico มาก่อนทุกอย่าง — ต้องรู้ก่อนว่าได้ใบไหน ถึงจะตัดสินใจได้ว่าคุ้มไหม
+    // ที่จะโหวตแวะ Downtime ไปจ่าย 4 Resource เปลี่ยนใบที่ Lodge
+    if (needPalicoDraft.value) openPalicoDraft()
+    else afterPalicoDraft()
   }
 }
 
@@ -402,8 +390,37 @@ watch(phase, (p) => {
 })
 
 const pendingHqVote = ref(null)
-const confirmHqVote = () => { if (pendingHqVote.value) { castHqVote(pendingHqVote.value); pendingHqVote.value = null } }
+
+// เลือกธงยังไม่ผูกมัด — เสียงเบาแบบเดียวกับ doAction ในหน้า Dialog
+const pickHqVote = (vote) => {
+  sfx.play(`${SFX_UI}/action_select.mp3`, { key: 'action' })
+  pendingHqVote.value = vote
+}
+
+const confirmHqVote = () => {
+  if (!pendingHqVote.value) return
+  sfx.playRandom(`${SFX_UI}/action_confirm`, 3, { key: 'action' })
+  castHqVote(pendingHqVote.value)
+  pendingHqVote.value = null
+}
 const cancelHqVote = () => { pendingHqVote.value = null }
+
+// เสียงตอนเพื่อนโหวตว่าจะแวะ Downtime ไหม — โครงเดียวกับ dialogVotes ข้างล่าง
+// null = ยังไม่มี baseline (เพิ่งเข้าห้อง/เพิ่งเข้าเฟส) ต่างจาก {} ที่แปลว่าโหวตถูกล้างแล้ว
+// ถ้าใช้ {} แทน โหวตแรกของทุกรอบจะเงียบ
+let _prevHqVotes = null
+watch(() => room.roomCode, () => { _prevHqVotes = null })
+watch(phase, (p) => { if (p !== 'hqVote') _prevHqVotes = null })
+watch(() => room.hqVotes, (votes) => {
+  const cur = votes ?? {}
+  if (room.inRoom && _prevHqVotes !== null) {
+    const changed = Object.entries(cur).some(
+      ([id, v]) => String(id) !== String(room.myHunterId) && _prevHqVotes[id] !== v,
+    )
+    if (changed) sfx.playRandom(`${SFX_UI}/vote_cast`, 3)
+  }
+  _prevHqVotes = { ...cur }
+}, { deep: true })
 
 const castHqVote = (vote) => {
   myHqVote.value = vote
@@ -425,6 +442,7 @@ const confirmHandlerStart = (dialogId) => {
 }
 
 const breakHqTie = (vote) => {
+  sfx.playRandom(`${SFX_UI}/action_confirm`, 3, { key: 'action' })
   if (vote === 'hq') {
     phase.value = 'hq'
     room.syncPhase?.('hq')
@@ -450,17 +468,23 @@ watch(() => room.hqVoteResult, (result) => {
 // Guest syncs hqVote / hq / handlerStart phase
 watch([() => room.syncedPhase, () => room.joinSignal], ([sp]) => {
   if (!sp || !room.inRoom || room.isHost) return
-  if ((sp === 'hqVote' || sp === 'hq' || sp === 'handlerStart') && phase.value !== sp) {
+  if ((sp === 'hqVote' || sp === 'hq' || sp === 'handlerStart' || sp === 'palicoDraft') && phase.value !== sp) {
     if (sp === 'handlerStart') isExhaustedAttempt.value = room.questInfo?.exhausted_attempt ?? false
     phase.value = sp
   }
 })
 
 const _incrementDay = () => {
-  if (hunter.value) {
-    hunter.value.campaign_day = (hunter.value.campaign_day ?? 0) + 1
+  if (!hunter.value) return
+  // ธงจาก Time Management — ใช้ได้ครั้งเดียวแล้วหมดไป ต้องเคลียร์แม้จะไม่ได้บวกวัน
+  if (hunter.value.free_hq_day) {
+    hunter.value.free_hq_day = false
     saveHunter(hunter.value)
+    addNotif?.('🃏 Time Management — เข้า Downtime รอบนี้ไม่เสียวัน', 'info')
+    return
   }
+  hunter.value.campaign_day = (hunter.value.campaign_day ?? 0) + 1
+  saveHunter(hunter.value)
 }
 
 // All hunters ready in HQ → adds day for everyone, host also clears state and advances phase
@@ -470,6 +494,7 @@ watch(() => room.allHqReady, (allReady) => {
   if (!room.isHost) return
   room.clearHqVotesAll?.()
   room.clearHqStateAll?.()
+  room.clearPalicoOfferAll?.()
   myHqVote.value = null
   if (isExhaustedAttempt.value) {
     phase.value = 'handlerStart'
@@ -642,12 +667,155 @@ const startingDialog = computed(() => {
 const getDialog = (dialogId) =>
   selectedMonster.value?.quest_dialogs?.find(d => d.dialog_id === dialogId) ?? null
 
+// ── Palico ────────────────────────────────────────────────
+// ตี้เล็กแจกใบให้เลือกตอนเริ่มเควสต์ ตี้ใหญ่ไม่แจก เพราะได้จ้างจากกองที่ Lodge ไปแล้ว
+// (กติกาเดียวกันนี้ HQPhase.vue ใช้ตัดสินว่า Lodge จะโชว์แบบไหน)
+const PALICO_DRAFT_SIZE = 2
+const PALICO_SMALL_PARTY_MAX = 2
+const partySize = computed(() => (room.inRoom ? room.hunterCount : 1))
+const needPalicoDraft = computed(() => partySize.value <= PALICO_SMALL_PARTY_MAX)
+
+// เล่นคนเดียวไม่มี Firebase ให้พัก state — เก็บไว้ในนี้แทน
+const soloPalicoOffer = ref([])
+const soloPalicoPick = ref(null)
+const palicoPick = ref(null)   // ใบที่เล็งไว้ ยังกดยืนยันไม่ได้แปลว่าผูกมัด
+const palicoDetail = ref(null) // การ์ดที่กำลังเปิดอ่าน
+
+const myPalicoOffer = computed(() =>
+  (room.inRoom ? room.myPalicoOffer : soloPalicoOffer.value).map(getPalico).filter(Boolean),
+)
+const myPalicoPicked = computed(() =>
+  getPalico(room.inRoom ? room.myPalicoDraftPick : soloPalicoPick.value),
+)
+const myPalico = computed(() =>
+  getPalico(room.inRoom ? room.myPalicoId : (hunter.value?.palico_id ?? null)),
+)
+
+// แถวสลับในหน้าต่างการ์ด — ของเราขึ้นก่อนเสมอ แล้วตามด้วยของเพื่อน
+const palicoSwitcher = computed(() => {
+  const rows = []
+  if (myPalico.value) {
+    rows.push({ key: 'me', palico: myPalico.value, label: 'ของคุณ', icon: null })
+  }
+  for (const e of partyPalicos.value) {
+    rows.push({
+      key: String(e.hunter.hunter_id),
+      palico: e.palico,
+      label: e.hunter.hunter_name,
+      icon: getHunterClass(e.hunter.hunter_class_id)?.thumbnail ?? null,
+    })
+  }
+  return rows
+})
+
+// Palico ของเพื่อนร่วมตี้ — บางใบส่งผลกับคนอื่น (บัฟข้ามคน, ลด Dodge ของมอนสเตอร์)
+// จึงต้องเปิดอ่านของกันและกันได้ ไม่ใช่รู้แค่ของตัวเอง
+const partyPalicos = computed(() => {
+  if (!room.inRoom) return []
+  return room.hunters
+    .filter((h) => h.hunter_id !== room.myHunterId && h.palico_id != null)
+    .map((h) => ({ hunter: h, palico: getPalico(h.palico_id) }))
+    .filter((e) => e.palico)
+})
+
+// เขียนทั้งเซฟและห้อง — เซฟไว้ให้ข้ามเควสต์ได้ ห้องไว้ให้เพื่อนเห็นว่าเราถือใบไหน
+const _assignPalico = (palicoId) => {
+  if (hunter.value) {
+    hunter.value.palico_id = palicoId
+    saveHunter(hunter.value)
+  }
+  if (room.inRoom) room.setMyPalico?.(palicoId)
+}
+
+// ทางแยกหลังดราฟต์ — แยกออกมาเพราะต้องเรียกได้สองทาง: ตี้ใหญ่ที่ข้ามดราฟต์เรียกทันที
+// ส่วนตี้เล็กเรียกตอนทุกคนเลือกการ์ดเสร็จ
+const questDay = computed(
+  () => room.questInfo?.campaign_day ?? hunter.value?.campaign_day ?? 1,
+)
+const afterPalicoDraft = () => {
+  if (isExhaustedAttempt.value) {
+    // Attempts หมด: บังคับ Downtime 2 actions
+    handlerStartDialogId.value = null
+    phase.value = 'hq'
+    room.syncPhase?.('hq')
+    room.clearHqVotesAll?.()
+    room.clearHqStateAll?.()
+  } else if (questDay.value <= 1) {
+    startQuest()
+  } else {
+    phase.value = 'hqVote'
+    room.syncPhase?.('hqVote')
+    room.clearHqVotesAll?.()
+    room.clearHqStateAll?.()
+  }
+}
+
+// ล้าง Palico ของเควสต์ที่แล้วทิ้งก่อนเริ่มรอบใหม่
+// ต้องล้างที่ "ก่อนเริ่ม" ไม่ใช่ "ตอนจบ" เพราะตอนจบยังต้องเห็นใบที่ใช้อยู่ในหน้าสรุปรางวัล
+// และถ้าไม่ล้าง ตี้ 3-4 จะจ้างครั้งเดียวถือยาวข้ามเควสต์ ค่าจ้าง 4 Resource ก็ไม่มีความหมาย
+// อีกทั้งใบที่ค้างจะถูกนับเป็น "มีคนถือ" แล้วไปตัดกองที่สุ่มรอบใหม่ให้แคบลงเรื่อย ๆ
+const _resetPalicoForNewQuest = () => {
+  if (hunter.value?.palico_id != null) {
+    hunter.value.palico_id = null
+    saveHunter(hunter.value)
+  }
+  if (!room.inRoom) return
+  room.setMyPalico?.(null)
+  if (room.isHost) room.clearAllPalicos?.()
+}
+
+const openPalicoDraft = () => {
+  palicoPick.value = null
+  if (!room.inRoom) {
+    soloPalicoOffer.value = drawPalicos(PALICO_DRAFT_SIZE)
+    soloPalicoPick.value = null
+    phase.value = 'palicoDraft'
+    return
+  }
+  phase.value = 'palicoDraft'
+  room.syncPhase?.('palicoDraft')
+  if (!room.isHost) return
+  // Host แจกจากกองเดียวทีเดียว ถ้าปล่อยให้ต่างคนต่างสุ่มเองจะมีทางได้ใบซ้ำกัน
+  const offers = {}
+  let used = []
+  for (const h of room.hunters) {
+    const ids = drawPalicos(PALICO_DRAFT_SIZE, used)
+    offers[h.hunter_id] = ids
+    used = [...used, ...ids]
+  }
+  room.setPalicoDraft?.({ offers })
+}
+
+const pickPalico = (palico) => {
+  sfx.play(`${SFX_UI}/action_select.mp3`, { key: 'action' })
+  palicoPick.value = palico
+}
+
+const confirmPalicoDraft = () => {
+  if (!palicoPick.value || myPalicoPicked.value) return
+  sfx.playRandom(`${SFX_UI}/action_confirm`, 3, { key: 'action' })
+  _assignPalico(palicoPick.value.id)
+  if (room.inRoom) {
+    room.pickPalicoDraft?.(palicoPick.value.id)
+  } else {
+    soloPalicoPick.value = palicoPick.value.id
+    afterPalicoDraft()
+  }
+}
+
+// ครบทุกคนแล้วค่อยไปต่อ — Host คนเดียวเป็นคนสั่ง guest ตามผ่าน currentDialog เหมือนเดิม
+watch(() => room.allPalicoDrafted, (done) => {
+  if (!done || !room.inRoom || !room.isHost || phase.value !== 'palicoDraft') return
+  // สั่งไปเฟสถัดไปก่อนแล้วค่อยล้าง — เขียนเรียงตามลำดับ guest จะได้ย้ายเฟสตามก่อน
+  // ที่การ์ดจะหายไปจากจอ ถ้าล้างก่อนจะเห็น "กำลังแจกการ์ด..." แว่บหนึ่ง
+  afterPalicoDraft()
+  room.clearPalicoDraftAll?.()
+})
+
 const startQuest = () => {
   _clearPerQuestLocalState()
   initTrackTokens()
-  if (questMode.value === 'full') {
-    buildTimeCardDeck()
-  }
+  buildTimeCardDeck()
   const startDialogId = (isExhaustedAttempt.value && handlerStartDialogId.value)
     ? handlerStartDialogId.value
     : selectedQuest.value.starting_point[getAttempted(selectedMonster.value.monster_id, selectedQuest.value.quest_id)]
@@ -655,10 +823,9 @@ const startQuest = () => {
   phase.value = selectedMonster.value.dialog_hunting_phase.includes(currentDialogId.value)
     ? 'hunting'
     : 'dialog'
-  // Co-op: push initial dialog and quest mode to Firebase
+  // Co-op: push initial dialog to Firebase
   if (room.inRoom && room.isHost) {
     room.setCurrentDialog?.(currentDialogId.value)
-    room.syncQuestMode?.(questMode.value)
   }
 }
 
@@ -672,12 +839,6 @@ const tiedActions = ref([]) // actions ที่ votes เสมอกัน ร
 const showBattleIntro = ref(false)
 const showSpecialCardOverlay = ref(false)
 const specialCardOverlayCard = ref(null)
-const showSpecialCardSelect = ref(false)
-const specialCardSelectOptions = ref([])
-const _pendingTokenTotal = ref(0)
-const awaitingHostDeckBuild = ref(false)
-const showSpecialCardConfirm = ref(false)
-const _pendingSpecialCardChoice = ref(null)
 
 // Token Reveal Overlay
 const showTokenReveal = ref(false)
@@ -698,12 +859,6 @@ const startTokenReveal = (onDone) => {
   if (!room.inRoom || room.isHost) {
     trackTokens.value = trackTokens.value.map(t => ({ ...t, revealed: true }))
     _pushTokenState()
-  }
-
-  if (questMode.value === 'minimal') {
-    const finalTotal = trackTokens.value.reduce((s, t) => s + (t.value ?? 0), 0)
-    onDone(finalTotal)
-    return
   }
 
   showTokenReveal.value = true
@@ -765,6 +920,25 @@ const stopDialogBgm = () => {
   dialogBgm.value = null
 }
 
+// ── Downtime Theme — เล่นวนระหว่างอยู่ใน phase 'hq' (Downtime Activities) ──
+const DOWNTIME_THEME = 'assets/sounds/downtime_activities/downtime_activities_theme.mp3'
+const downtimeBgm = ref(null)
+
+const playDowntimeBgm = () => {
+  if (downtimeBgm.value || !soundEnabled.value) return
+  const audio = new Audio(`${import.meta.env.BASE_URL}${DOWNTIME_THEME}`)
+  audio.loop = true
+  audio.volume = soundVolume.value
+  audio.play().catch((e) => addNotif?.(`🔇 เล่นเพลงไม่ได้: ${e?.name ?? e}`, 'warn'))
+  downtimeBgm.value = audio
+}
+
+const stopDowntimeBgm = () => {
+  if (!downtimeBgm.value) return
+  downtimeBgm.value.pause()
+  downtimeBgm.value = null
+}
+
 // ── Monster Theme — เล่นวนตาม monster ที่เจอ ระหว่างอยู่ใน phase 'huntingPanel' ──
 // กฎ: 2 ตัวแรกของทุกกล่องใช้เพลงเริ่มต้นร่วมกัน ที่เหลือใช้เพลงประจำกล่องนั้น
 // เขียนเป็นกฎแทนที่จะ map ทีละตัว — เพิ่มกล่องใหม่แค่ต่อ 1 บรรทัดใน MONSTER_BOXES
@@ -814,6 +988,17 @@ watch(() => selectedMonster.value?.monster_id, (id) => {
     ...(theme ? [`assets/sounds/hunting_phase/monster_theme/${theme}`] : []),
     'assets/sounds/gethering_phase/during_gethering_phase.mp3',
   ])
+
+  // การ์ด Behavior ของทั้ง 10 ตัวรวมกัน 9MB — หนักเกินจะโหลดตั้งแต่หน้าแรก
+  // แต่พอรู้ว่าเจอตัวไหนแล้วก็เหลือ ~1MB โหลดทันก่อนจั่วใบแรกแน่นอน
+  const mon = selectedMonster.value
+  if (mon) {
+    preloadImages([
+      ...(mon.behavior_deck ?? []).flatMap((c) => [c.front_card_img, c.back_card_img]),
+      ...(mon.behavior_special_card ?? []).flatMap((c) => [c.front_card_img, c.back_card_img]),
+      ...(mon.difficulty ?? []).map((d) => d.map_image),
+    ])
+  }
 }, { immediate: true })
 
 // เปลี่ยนมอนสเตอร์ระหว่างอยู่ huntingPanel อยู่แล้ว (เช่น สลับเควสต์) — สลับ theme ให้ตรงตัวใหม่
@@ -856,6 +1041,7 @@ const playOutcomeSound = (type) => {
   // จบเควสต์แล้ว — ดับ BGM ทุกตัวทันที ไม่ให้เล่นซ้อนใต้เสียง complete/fail
   stopMonsterTheme()
   stopDialogBgm()
+  stopDowntimeBgm()
   if (!soundEnabled.value) return
   const src = type === 'complete'
     ? `hunting_phase/quest_complete/${_pickQuestCompleteSound()}`
@@ -889,22 +1075,32 @@ watch(phase, (p) => {
 
   if (p === 'huntingPanel') playMonsterTheme()
   else stopMonsterTheme()
+
+  if (p === 'hq') playDowntimeBgm()
+  else stopDowntimeBgm()
+
+  // ช่วงดราฟต์การ์ดกับช่วงโหวต คือเวลาว่างก่อนถึง Downtime — เริ่มโหลดไฟล์ 7MB ตั้งแต่ตรงนี้
+  // (เส้นทางที่ Attempt หมดและตี้ใหญ่จะกระโดดเข้า 'hq' เลย ไม่มีช่วงนี้ให้ดัก)
+  if (p === 'palicoDraft' || p === 'hqVote') preloadMedia([DOWNTIME_THEME])
 })
 
 watch(soundEnabled, (enabled) => {
   if (!enabled) {
     stopDialogBgm()
     stopMonsterTheme()
+    stopDowntimeBgm()
     stopOutcomeSound() // เสียงจบเควสต์ยาว ~8 วิ ต้องดับได้กลางคันด้วย
     return
   }
   if (phase.value === 'dialog') playDialogBgm()
   if (phase.value === 'huntingPanel') playMonsterTheme()
+  if (phase.value === 'hq') playDowntimeBgm()
 })
 
 watch(soundVolume, (v) => {
   if (dialogBgm.value) dialogBgm.value.volume = v
   if (monsterThemeAudio.value) monsterThemeAudio.value.volume = v
+  if (downtimeBgm.value) downtimeBgm.value.volume = v
   if (outcomeAudio.value && !_outcomeFadeTimer) outcomeAudio.value.volume = v
 })
 
@@ -912,6 +1108,7 @@ watch(soundVolume, (v) => {
 const _stopAllAudio = () => {
   stopDialogBgm()
   stopMonsterTheme()
+  stopDowntimeBgm()
   stopOutcomeSound()
   // component นี้ถูก keep-alive ไว้ สลับแท็บแล้ว onUnmounted ไม่ทำงาน
   // ต้องเก็บ timer ฝีเท้า/คำราม และ SFX ที่ค้างเองไม่งั้นเสียงจะดังตอนอยู่หน้าอื่น
@@ -923,6 +1120,7 @@ onDeactivated(_stopAllAudio)
 onActivated(() => {
   if (phase.value === 'dialog') playDialogBgm()
   if (phase.value === 'huntingPanel') playMonsterTheme()
+  if (phase.value === 'hq') playDowntimeBgm()
 })
 onUnmounted(_stopAllAudio)
 
@@ -964,50 +1162,25 @@ const _executeDialog = (dialogId) => {
       battleIntroPhase.value = 'enter'
       startTokenReveal((total) => {
         if (room.isHost || !room.inRoom) {
-          if (questMode.value === 'minimal') {
-            const info = monsterInfoData.find(m => m.monster_id === selectedMonster.value?.monster_id)
-            const names = selectedMonster.value?.special_attack_card ?? []
-            const cardTierMap = new Map()
-            names.forEach((name, tier) => {
-              if (!name) return
-              const card = info?.behavior_special_card?.find(c => c.behavior_name === name)
-              if (!card) return
-              if (!cardTierMap.has(card.behavior_name)) cardTierMap.set(card.behavior_name, { card, tiers: [] })
-              cardTierMap.get(card.behavior_name).tiers.push(tier)
-            })
-            const options = [...cardTierMap.values()]
-            if (options.length > 0) {
-              _pendingTokenTotal.value = total
-              specialCardSelectOptions.value = options
-              showSpecialCardSelect.value = true
-              return
-            }
-            buildBehaviorDeck(total)
-          } else {
-            const info = monsterInfoData.find(m => m.monster_id === selectedMonster.value?.monster_id)
-            const [min, max] = selectedQuest.value?.scoutfly_level ?? [0, 0]
-            let specialName = null
-            if (total < min) specialName = selectedMonster.value?.special_attack_card?.[0]
-            else if (total <= max) specialName = selectedMonster.value?.special_attack_card?.[1]
-            else specialName = selectedMonster.value?.special_attack_card?.[2]
-            const specialCard = specialName
-              ? info?.behavior_special_card?.find(c => c.behavior_name === specialName)
-              : null
-            buildBehaviorDeck(total, specialName)
-            if (specialCard) {
-              specialCardOverlayCard.value = specialCard
-              showSpecialCardOverlay.value = true
-              setTimeout(() => {
-                showSpecialCardOverlay.value = false
-                phase.value = 'huntingPanel'
-              }, 4000)
-              return
-            }
+          const info = monsterInfoData.find(m => m.monster_id === selectedMonster.value?.monster_id)
+          const [min, max] = selectedQuest.value?.scoutfly_level ?? [0, 0]
+          let specialName = null
+          if (total < min) specialName = selectedMonster.value?.special_attack_card?.[0]
+          else if (total <= max) specialName = selectedMonster.value?.special_attack_card?.[1]
+          else specialName = selectedMonster.value?.special_attack_card?.[2]
+          const specialCard = specialName
+            ? info?.behavior_special_card?.find(c => c.behavior_name === specialName)
+            : null
+          buildBehaviorDeck(total, specialName)
+          if (specialCard) {
+            specialCardOverlayCard.value = specialCard
+            showSpecialCardOverlay.value = true
+            setTimeout(() => {
+              showSpecialCardOverlay.value = false
+              phase.value = 'huntingPanel'
+            }, 4000)
+            return
           }
-        } else if (questMode.value === 'minimal') {
-          // Guest: รอ Host เลือก Special Attack Card ก่อน
-          awaitingHostDeckBuild.value = true
-          return
         }
         phase.value = 'huntingPanel'
       })
@@ -1276,15 +1449,6 @@ watch(() => room.joinSignal, () => {
       timeCardDeck.value = tcState.deck ?? []
       timeCardDiscard.value = tcState.discard ?? []
     }
-    // Restore quest mode จาก Firebase
-    // Time cards only exist in Full mode — if Firebase has stale 'minimal' but time cards are present, treat as Full
-    const _tcState = room.timeCardState
-    const _hasTimeCards = (_tcState?.deck?.length ?? 0) > 0 || (_tcState?.discard?.length ?? 0) > 0
-    if (_hasTimeCards) {
-      questMode.value = 'full'
-    } else if (room.questModeState) {
-      questMode.value = room.questModeState
-    }
     pendingAction.value = null
     tiedActions.value = []
     _syncToPhase(dialogId, true)
@@ -1307,7 +1471,7 @@ watch(() => room.joinSignal, () => {
   }
 
   const sp = room.syncedPhase
-  if (sp === 'hqVote' || sp === 'hq' || sp === 'handlerStart') {
+  if (sp === 'hqVote' || sp === 'hq' || sp === 'handlerStart' || sp === 'palicoDraft') {
     _resolveQuestFromRoom()
     isExhaustedAttempt.value = room.questInfo?.exhausted_attempt ?? false
     phase.value = sp
@@ -1321,14 +1485,13 @@ watch(() => room.joinSignal, () => {
     if (room.questInfo) {
       _resolveQuestFromRoom()
       isExhaustedAttempt.value = room.questInfo.exhausted_attempt ?? false
-      if (room.questModeState) questMode.value = room.questModeState
       phase.value = 'lobby'
     }
     // questInfo อาจมาช้ากว่า joinSignal — เฝ้าไว้ด้วย ไม่งั้นค้างหน้า Quest Board
     const stop = watch(
       [() => room.syncedDialogId, () => room.syncedPhase, () => room.questInfo],
       ([id, newSp, qi]) => {
-        if (newSp === 'hqVote' || newSp === 'hq' || newSp === 'handlerStart') {
+        if (newSp === 'hqVote' || newSp === 'hq' || newSp === 'handlerStart' || newSp === 'palicoDraft') {
           stop()
           _resolveQuestFromRoom()
           isExhaustedAttempt.value = room.questInfo?.exhausted_attempt ?? false
@@ -1344,8 +1507,7 @@ watch(() => room.joinSignal, () => {
         if (qi && phase.value !== 'lobby') {
           _resolveQuestFromRoom()
           isExhaustedAttempt.value = qi.exhausted_attempt ?? false
-          if (room.questModeState) questMode.value = room.questModeState
-          phase.value = 'lobby'
+              phase.value = 'lobby'
         }
       },
       { immediate: true },
@@ -1584,37 +1746,6 @@ const buildBehaviorDeck = (tokenTotal, forcedSpecialName = undefined) => {
   _pushDeckState(special ?? null)
 }
 
-const scoutflyTierLabel = (tier) => {
-  const [min, max] = selectedQuest.value?.scoutfly_level ?? [0, 0]
-  if (tier === 0) return `น้อยกว่า ${min}`
-  if (tier === 1) return `${min} - ${max}`
-  return `มากกว่า ${max}`
-}
-
-const selectSpecialAttackCard = (card) => {
-  _pendingSpecialCardChoice.value = card
-  showSpecialCardConfirm.value = true
-}
-
-const confirmSpecialAttackCard = () => {
-  const card = _pendingSpecialCardChoice.value
-  showSpecialCardConfirm.value = false
-  showSpecialCardSelect.value = false
-  buildBehaviorDeck(_pendingTokenTotal.value, card?.behavior_name ?? null)
-  if (card) {
-    specialCardOverlayCard.value = card
-    if (questMode.value !== 'minimal') {
-      showSpecialCardOverlay.value = true
-      setTimeout(() => {
-        showSpecialCardOverlay.value = false
-        phase.value = 'huntingPanel'
-      }, 4000)
-      return
-    }
-  }
-  phase.value = 'huntingPanel'
-}
-
 const _pushDeckState = (specialCard = undefined) => {
   if (!room.inRoom) return
   const payload = {
@@ -1811,24 +1942,16 @@ watch([() => room.behaviorDeckState, () => room.joinSignal], ([state], [prev]) =
   const newCard = state.current ?? null
   const oldCard = prev?.current ?? currentBehaviorCard.value
 
-  // Guest รออยู่ใน Minimal Mode → Host build deck เสร็จแล้ว ไปหน้า Hunting ได้
-  if (awaitingHostDeckBuild.value && state.specialCard !== undefined) {
-    awaitingHostDeckBuild.value = false
-    if (phase.value !== 'huntingPanel') phase.value = 'huntingPanel'
-  }
-
   // Special card overlay: แสดงเมื่อ deck ถูก build ใหม่ (ไม่แสดงตอน reconnect)
   const prevSpecial = prev?.specialCard
   const newSpecial = state.specialCard
   if (!_suppressAnimations && newSpecial && newSpecial?.behavior_id !== prevSpecial?.behavior_id) {
     specialCardOverlayCard.value = newSpecial
-    if (questMode.value !== 'minimal') {
-      showSpecialCardOverlay.value = true
-      setTimeout(() => {
-        showSpecialCardOverlay.value = false
-        if (phase.value !== 'huntingPanel') phase.value = 'huntingPanel'
-      }, 4000)
-    }
+    showSpecialCardOverlay.value = true
+    setTimeout(() => {
+      showSpecialCardOverlay.value = false
+      if (phase.value !== 'huntingPanel') phase.value = 'huntingPanel'
+    }, 4000)
   }
 
   // ถ้าการ์ดเปลี่ยน → แสดง animation + show float bar เฉพาะตอน Hunter มีเทิร์น
@@ -1933,7 +2056,6 @@ const resetToBookPhase = () => {
   manualOutcomeCheck.value = null
   if (room.inRoom && room.isHost) room.syncManualOutcome?.(null)
   floatBarCollapsed.value = false
-  questMode.value = 'full'
   if (room.inRoom && room.isHost) room.syncQuestMode?.('full')
   isExhaustedAttempt.value = false
   handlerStartDialogId.value = null
@@ -1950,6 +2072,9 @@ const myAttemptCounts = () => {
 
 const onComplete = () => {
   if (myAttemptCounts()) incrementAttempted()
+  // ต้องตั้งก่อน resetToBookPhase ไม่งั้นกองทิ้ง Time Card ถูกล้างไปแล้วตรวจไม่เจอ
+  // ทุกคนในตี้ตั้งธงของตัวเองจากกองทิ้งที่ sync กันอยู่ — "ทั้งกลุ่ม" เลยได้ครบโดยไม่ต้องส่งอะไรเพิ่ม
+  if (detectedTimeManagement.value && hunter.value) hunter.value.free_hq_day = true
   incrementDay()
   if (room.inRoom) room.leave()
   resetToBookPhase()
@@ -2202,10 +2327,16 @@ const showAddHunterTurnConfirm = ref(false)
 const pendingActivationAdjust = ref(0)
 const floatBarCollapsed = ref(false)
 const floatBarVisible = computed(() =>
-  questMode.value === 'full' &&
   phase.value === 'huntingPanel' &&
   (timeCardDeck.value.length > 0 || timeCardDiscard.value.length > 0) &&
   !showResultAnim.value && !showTcReveal.value && !showMonsterAttack.value
+)
+
+// แถบปาร์ตี้เป็นที่อยู่ของปุ่ม Palico — ที่ไหนไม่มีแถบนี้ ต้องมีทางเข้าสำรองให้
+const partyStripVisible = computed(() =>
+  room.inRoom &&
+  phase.value === 'huntingPanel' &&
+  !showResultAnim.value
 )
 
 const nextBehaviorCard = computed(() => behaviorDeck.value[0] ?? null)
@@ -2800,8 +2931,6 @@ const needHunterTokenPick = computed(
     !showTcReveal.value &&
     !showBattleIntro.value &&
     !showSpecialCardOverlay.value &&
-    !showSpecialCardSelect.value &&
-    !awaitingHostDeckBuild.value &&
     // ปิดเมื่อทุกคนยืนยันครบเท่านั้น ไม่ใช่พอตัวเองเลือกเสร็จ — ต้องเห็นว่าเพื่อนเลือกอะไรด้วย
     !room.allHunterTokensConfirmed,
 )
@@ -2832,6 +2961,144 @@ watch(
     }
   },
 )
+
+// ── Weakness Exploit (Rathalos Mail) ──────────────────────
+// "เควสละครั้ง, สลับโทเค็นนักล่าของตนกับผู้เล่นคนอื่นได้"
+// ทิศทางการหันหน้าของโทเค็นจัดการบนโต๊ะเหมือน Threat Shift — ในแอปสลับแค่ตัวเลข
+const ABILITY_WEAKNESS_EXPLOIT = 11
+
+const myArmorAbilityIds = computed(() => {
+  const slots = hunter.value?.equipments?.armors
+  if (!slots) return []
+  const worn = ['helm', 'mail', 'greaves']
+    .map((k) => (slots[k] ?? []).find((a) => a.is_equip))
+    .filter(Boolean)
+
+  const ids = new Set()
+  for (const w of worn) {
+    const set = armorData.find((s) => s.equip_set_id === w.equip_set_id)
+    const piece = set?.equips.find((e) => e.equip_id === w.equip_id)
+    if (piece?.ability_id) ids.add(piece.ability_id)
+  }
+  // โบนัสเซ็ตได้เมื่อใส่ครบสามชิ้นจากเซ็ตเดียวกัน
+  if (worn.length === 3 && new Set(worn.map((w) => w.equip_set_id)).size === 1) {
+    const bonus = armorData.find((s) => s.equip_set_id === worn[0].equip_set_id)?.set_ability_bonus
+    if (bonus) ids.add(bonus)
+  }
+  return [...ids]
+})
+
+const weaknessExploitUsed = computed(
+  () => !!room.myAbilityUsed?.[ABILITY_WEAKNESS_EXPLOIT],
+)
+
+// ต้องมีคนอื่นให้สลับด้วย — เล่นคนเดียวความสามารถนี้ไม่มีความหมาย
+const weaknessExploitTargets = computed(() =>
+  room.hunters.filter(
+    (h) => h.hunter_id !== room.myHunterId && room.hunterTokens?.[h.hunter_id] != null,
+  ),
+)
+
+// คำขอที่ค้างอยู่ — ทั้งสองฝั่งอ่าน node เดียวกัน
+const swapReq = computed(() => room.tokenSwapRequest)
+const incomingSwap = computed(() =>
+  swapReq.value?.status === 'pending' && swapReq.value.toId === room.myHunterId
+    ? swapReq.value
+    : null,
+)
+const outgoingSwap = computed(() =>
+  swapReq.value?.status === 'pending' && swapReq.value.fromId === room.myHunterId
+    ? swapReq.value
+    : null,
+)
+
+const canUseWeaknessExploit = computed(
+  () =>
+    phase.value === 'huntingPanel' &&
+    room.inRoom &&
+    myArmorAbilityIds.value.includes(ABILITY_WEAKNESS_EXPLOIT) &&
+    !weaknessExploitUsed.value &&
+    room.myHunterToken != null &&
+    weaknessExploitTargets.value.length > 0 &&
+    !swapReq.value,
+)
+
+// แตะที่ tile ของนักล่าอีกคนในแถบตี้ได้เลย — ไม่ต้องมีปุ่มกินที่บนจอมือถือ
+const canSwapWith = (h) =>
+  canUseWeaknessExploit.value &&
+  h.hunter_id !== room.myHunterId &&
+  room.hunterTokens?.[h.hunter_id] != null
+
+// ปุ่มหายไปแล้ว ต้องมีอะไรบอกว่าใช้ได้ ไม่งั้นไม่มีใครรู้ว่าแตะ tile ได้
+watch(canUseWeaknessExploit, (can, was) => {
+  if (!can || was) return
+  addNotif?.('🎯 Weakness Exploit พร้อมใช้ — แตะที่นักล่าในแถบตี้เพื่อขอสลับ Hunter Token', 'info')
+})
+
+// แตะ tile แล้วถามยืนยันก่อน — tile เล็กและอยู่ติดกัน แตะพลาดง่ายบนมือถือ
+const pendingSwapTarget = ref(null)
+
+const askSwapWith = (h) => {
+  pendingSwapTarget.value = { id: h.hunter_id, token: room.hunterTokens[h.hunter_id] }
+}
+
+// ชื่อนักล่ายาวไม่เท่ากันทำให้กล่องเบี้ยว — ใช้ไอคอนคลาสแทน สั้นและดูออกทันที
+const hunterClassImg = (hunterId) =>
+  getHunterClass(room.hunters.find((h) => h.hunter_id === hunterId)?.hunter_class_id)?.thumbnail ?? null
+
+const confirmSwapRequest = () => {
+  const t = pendingSwapTarget.value
+  pendingSwapTarget.value = null
+  if (t) requestWeaknessExploit(t.id)
+}
+
+// ส่งคำขอเฉย ๆ ยังไม่สลับและยังไม่ตัดสิทธิ์ — รอปลายทางกดยินยอมก่อน
+const requestWeaknessExploit = (targetId) => {
+  const mine = room.myHunterToken
+  const theirs = room.hunterTokens?.[targetId]
+  if (mine == null || theirs == null) return
+  room.requestTokenSwap?.({
+    status: 'pending',
+    fromId: room.myHunterId,
+    fromName: room.myHunter?.hunter_name ?? 'Hunter',
+    fromToken: mine,
+    toId: targetId,
+    toName: room.hunters.find((h) => h.hunter_id === targetId)?.hunter_name ?? 'Hunter',
+    toToken: theirs,
+  })
+  sfx.playRandom(`${SFX_UI}/action_confirm`, 3, { key: 'action' })
+}
+
+// ฝั่งที่ยินยอมเป็นคนลงมือทั้งหมดในจังหวะเดียว — สลับ ตัดสิทธิ์ผู้ขอ แล้วปิดคำขอ
+// ถ้าให้ผู้ขอเป็นคนทำหลังเห็นคำตอบ จะมีช่วงที่ค้างถ้าผู้ขอหลุดพอดี
+const acceptTokenSwap = () => {
+  const req = incomingSwap.value
+  if (!req) return
+  room.setAllHunterTokens?.({
+    ...(room.hunterTokens ?? {}),
+    [req.fromId]: req.toToken,
+    [req.toId]: req.fromToken,
+  })
+  room.markAbilityUsed?.(ABILITY_WEAKNESS_EXPLOIT, req.fromId)
+  room.clearTokenSwapRequestAll?.()
+  sfx.playRandom(`${SFX_UI}/action_confirm`, 3, { key: 'action' })
+}
+
+// ปฏิเสธไม่ตัดสิทธิ์ผู้ขอ — ยังไปขอคนอื่นได้ในเควสเดียวกัน
+const declineTokenSwap = () => {
+  const req = incomingSwap.value
+  if (!req) return
+  room.requestTokenSwap?.({ ...req, status: 'declined' })
+}
+
+const cancelTokenSwap = () => room.clearTokenSwapRequestAll?.()
+
+// ผู้ขอเป็นคนเก็บกวาดคำขอที่ถูกปฏิเสธ ปลายทางปิดหน้าต่างไปแล้ว
+watch(swapReq, (req) => {
+  if (req?.status !== 'declined' || req.fromId !== room.myHunterId) return
+  addNotif?.(`✕ ${req.toName} ไม่ยินยอมสลับ Hunter Token`, 'warn')
+  room.clearTokenSwapRequestAll?.()
+})
 
 const _shiftHunterTokens = () => {
   const ids = room.hunters.map((h) => String(h.hunter_id))
@@ -2906,6 +3173,17 @@ const threatShiftFlights = computed(() => {
   return out
 })
 
+// โดนสลับโทเค็นโดยคนอื่น (Weakness Exploit) จะไม่มีอะไรบอกเลยนอกจากเลขในแถบตี้เปลี่ยนไปเงียบ ๆ
+// Threat Shift มีแอนิเมชันของตัวเองอยู่แล้ว จึงเว้นไว้ไม่ให้เตือนซ้อน
+watch(
+  () => room.myHunterToken,
+  (now, before) => {
+    if (now == null || before == null || now === before) return
+    if (phase.value !== 'huntingPanel' || threatShift.value) return
+    addNotif?.(`🎯 Hunter Token ของคุณถูกสลับเป็นเลข ${now}`, 'info')
+  },
+)
+
 const _queueReveal = (hunterName, card, hunterClassId) => {
   tcRevealQueue.value = [...tcRevealQueue.value, { hunterName, card, hunterClassId }]
   _processTcRevealQueue()
@@ -2938,7 +3216,10 @@ const _drawTcCard = (hunterName, hunterId = null) => {
   if (!timeCardDeck.value.length) return null
   const [card, ...rest] = timeCardDeck.value
   timeCardDeck.value = rest
-  timeCardDiscard.value = [card, ...timeCardDiscard.value]
+  // กองทิ้งมีทั้งใบที่ถูกจั่วจริงและใบที่โดนทิ้งยกกอง (Roar / Time Waster / effect ทิ้ง N ใบ)
+  // ใบที่โดนทิ้งไม่ได้ถูกอ่าน ความสามารถบนการ์ดจึงไม่ทำงาน — ติดธงไว้ให้แยกออกจากกัน
+  // ธงติดไปกับตัวการ์ดเลย จะได้ sync ขึ้น Firebase และรอด reconnect ไปพร้อมกองทิ้งอยู่แล้ว
+  timeCardDiscard.value = [{ ...card, drawn: true }, ...timeCardDiscard.value]
   if (card.card_name === 'Rampage') rampageActive.value = true
   if (card.card_name === 'Misread') misreadActive.value = true
   if (card.card_name === 'Monster Sleeps') {
@@ -3113,10 +3394,6 @@ watch(canComplete, (val) => {
     manualOutcomeCheck.value = null
     if (room.inRoom && room.isHost) room.syncManualOutcome?.(null)
   }
-  // Minimal mode: HP = 0 → แสดง Slain บน portrait ทันที
-  if (val && questMode.value === 'minimal') {
-    _setManualOutcome('complete')
-  }
 })
 
 // ออกจาก huntingPanel → clear outcome buttons ทันที (ทุก client)
@@ -3136,18 +3413,11 @@ watch(() => room.outcomeSignal, (val) => {
 })
 
 // Guest syncs manualOutcome state จาก Firebase (รวมถึงตอน host clear เป็น null)
-// Host ก็ restore ได้ระหว่าง reconnect window (เหมือน behaviorDeck / timeCard / questMode)
+// Host ก็ restore ได้ระหว่าง reconnect window (เหมือน behaviorDeck / timeCard)
 watch(() => room.manualOutcomeState, (val) => {
   if (!room.inRoom) return
   if (room.isHost && !_isReconnecting) return
   manualOutcomeCheck.value = val ?? null
-})
-
-// Guest syncs quest mode from host (Host also restores from Firebase during reconnect)
-watch(() => room.questModeState, (val) => {
-  if (!room.inRoom) return
-  if (room.isHost && !_isReconnecting) return
-  if (val) questMode.value = val
 })
 
 const _incrementActivation = () => {
@@ -3273,6 +3543,10 @@ const initHuntingData = () => {
     room.clearHunterTokensAll?.()
     // ต้องล้างคู่กันเสมอ ไม่งั้นล่าครั้งใหม่จะนับว่ายืนยันไว้แล้วทั้งที่ยังไม่มีใครเลือก
     room.clearHunterTokenConfirmsAll?.()
+    // สิทธิ์ "เควสละครั้ง" คืนให้ทุกคนตอนเริ่มล่าใหม่
+    room.clearAbilityUsedAll?.()
+    // คำขอที่ค้างจากเควสก่อนต้องไม่เด้งขึ้นมากลางเควสใหม่
+    room.clearTokenSwapRequestAll?.()
   }
 }
 
@@ -3470,14 +3744,22 @@ const activeSlayerCardName = computed(
     'Slayer',
 )
 
-// Auto-detect: ตรวจจาก Time Card ที่ถูกจั่ว/ทิ้งไว้ในกองทิ้งระหว่างเควส
+// Auto-detect: ตรวจจาก Time Card ที่ "ถูกจั่ว" ระหว่างเควส (c.drawn)
+// ใบที่โดนทิ้งยกกองไม่ได้ถูกอ่าน ความสามารถไม่ทำงาน — ทั้งสองใบนี้ยังกดสลับเองได้ถ้าตรวจไม่ตรง
 const detectedBetrayal = computed(() =>
-  timeCardDiscard.value.some((c) => c.time_card_id === TC_BETRAYAL_ID),
+  timeCardDiscard.value.some((c) => c.time_card_id === TC_BETRAYAL_ID && c.drawn),
+)
+
+// Time Management: จบเควสสำเร็จแล้ว รอบ HQ ถัดไปไม่เสียวัน
+// ผลข้ามเควสไปอีกช่วงหนึ่ง จึงต้องเก็บเป็นธงบนตัวละคร ไม่ใช่ state ของเควสที่ถูกล้างทิ้ง
+const TC_TIME_MANAGEMENT_ID = 34
+const detectedTimeManagement = computed(() =>
+  timeCardDiscard.value.some((c) => c.time_card_id === TC_TIME_MANAGEMENT_ID && c.drawn),
 )
 const detectedSlayer = computed(
   () =>
     activeSlayerCardId.value != null &&
-    timeCardDiscard.value.some((c) => c.time_card_id === activeSlayerCardId.value),
+    timeCardDiscard.value.some((c) => c.time_card_id === activeSlayerCardId.value && c.drawn),
 )
 
 // Manual override: null/false = ใช้ค่าจาก Auto-detect (หรือปิด), true = บังคับเปิด
@@ -3662,6 +3944,7 @@ const EFFECT_LABEL = {
   revealTrackToken: (e) => `เปิดเผย Track Token ${e.n === 'all' ? 'ทั้งหมด' : `${e.n} อัน`}`,
   gainPotion: (e) => `รับยา ${e.n} ขวด`,
   discardPotion: (e) => `ทิ้งยา ${e.n} ขวด`,
+  discardPotionDownTo: (e) => `ทิ้งยาให้เหลือ ${e.n} ขวด`,
   shuffleTimeCard: (e) => `สับการ์ด ${e.card} เข้ากอง Time Card`,
   gainResource: (e) => `รับ ${e.name} ×${e.n}`,
   damage: (e) => `นักล่าทุกคนเสีย ${e.n} HP`,
@@ -3673,12 +3956,14 @@ const EFFECT_LABEL = {
   diceRoll: (e) => (e.scope === 'each' ? '🎲 ทอยเต๋า (ทุกคนทอยเอง)' : '🎲 ทอยเต๋า (ทอยครั้งเดียว)'),
   diceMonsterDamage: (e) => `🎲 ทอยเต๋า — ลด HP ${e.monster} ตามที่ทอยได้`,
   diceRollManual: () => '🎲 ทอยเต๋า แล้วเลือกตัวเลือกตามเลขที่ได้',
+  manualRest: () => 'ยังมีส่วนที่ต้องทำเอง — อ่านข้อความประกอบ',
 }
 
 // ผลที่ต้องทำบนกระดานเอง — แสดงเป็นหมายเหตุ ไม่ทำอัตโนมัติ
 // diceRollManual = สั่งทอยแต่ผลไปอยู่ที่ปุ่ม choice — ผู้เล่นทอยเองแล้วกดปุ่มที่ตรงกับเลข
 const MANUAL_EFFECTS = new Set([
   'damage', 'heal', 'healFull', 'drawTimeCardAside', 'startHunting', 'checkScoutfly', 'diceRollManual',
+  'manualRest',
 ])
 
 // ของติดตัวนักล่าแต่ละคน — ทุกคนต้อง apply เอง (dialogCounts แยกราย hunter)
@@ -3688,8 +3973,6 @@ const PER_HUNTER_EFFECTS = new Set(['gainResource'])
 // ต้องให้ผู้เล่นทอยก่อน ถึงจะรู้ว่าได้ผลอะไร
 const DICE_EFFECTS = new Set(['diceRoll', 'diceMonsterDamage'])
 
-// minimal mode ตั้งใจให้จัดการบนโต๊ะเองทั้งหมด (ไม่มี Time Card deck ด้วย)
-const autoCompleteEnabled = computed(() => questMode.value === 'full')
 
 const effectLabel = (e) => EFFECT_LABEL[e.type]?.(e) ?? e.type
 const isPerHunterEffect = (e) => PER_HUNTER_EFFECTS.has(e.type)
@@ -3709,6 +3992,7 @@ const EFFECT_ICON = {
   gainResource: '📦',
   gainPotion: '🧪',
   discardPotion: '🧪',
+  discardPotionDownTo: '🧪',
   gainTrackToken: '🔍',
   discardTrackToken: '🔍',
   revealTrackToken: '🔍',
@@ -3774,6 +4058,12 @@ const _applyOneEffect = (e) => {
       _pushHuntState()
       return null
 
+    case 'discardPotionDownTo':
+      if (potionCount.value <= e.n) return `มียาไม่เกิน ${e.n} ขวดอยู่แล้ว`
+      potionCount.value = e.n
+      _pushHuntState()
+      return null
+
     case 'shuffleTimeCard': {
       const card = timeCardData.red_time_cards.find((c) => c.time_card_id === e.time_card_id)
       if (!card) return `ไม่พบการ์ด ${e.card}`
@@ -3805,7 +4095,7 @@ const _noteTrailEffects = (effects) => {
 
 const applyEffects = (effects, source) => {
   _noteTrailEffects(effects)
-  if (!autoCompleteEnabled.value || !effects?.length) return
+  if (!effects?.length) return
   const done = []
   const skipped = []
 
@@ -4651,7 +4941,7 @@ const openPackDrawer = () => {
               "
               class="exhausted-notice"
             >
-              ⚠ จำนวนการลง Quest ครบแล้ว — ยังลงเล่นได้แต่จะบังคับเข้าช่วง HQ ก่อน (2 กิจกรรมใน HQ) และคุณจะเป็นคนเลือกจุดเริ่มต้น Quest ได้
+              ⚠ จำนวนการลง Quest ครบแล้ว — ยังลงเล่นได้แต่จะบังคับเข้าช่วง Downtime ก่อน (2 กิจกรรมใน Downtime) และคุณจะเป็นคนเลือกจุดเริ่มต้น Quest ได้
             </div>
           </div>
         </div>
@@ -4733,12 +5023,12 @@ const openPackDrawer = () => {
       <div v-else-if="isQuestExhausted(selectedQuest)" class="starting-scroll exhausted-banner">
         <div class="scroll-tab exhausted-tab">⚠ ATTEMPTS EXHAUSTED</div>
         <p class="scroll-flavor-title">จำนวนการลง Quest ครบแล้ว</p>
-        <p class="scroll-flavor-body">บังคับเข้า HQ ก่อน (2 Actions) · Host จะเลือก Starting Dialog เองหลัง HQ · ไม่นับ Attempt เพิ่ม</p>
+        <p class="scroll-flavor-body">บังคับเข้า Downtime ก่อน (2 Actions) · Host จะเลือก Starting Dialog เองหลัง Downtime · ไม่นับ Attempt เพิ่ม</p>
       </div>
 
       <div class="embark-mode-row">
         <button class="btn-embark btn-coop" @click="showCoopModeSelect = true">
-          <img :src="getImg('assets/img/menu_topbar_icon/quest.png')" class="embark-icon" />
+          <img :src="getImg('assets/img/menu_topbar_icon/quest.webp')" class="embark-icon" />
           Post Quest
         </button>
       </div>
@@ -4756,9 +5046,10 @@ const openPackDrawer = () => {
     <div v-if="phase === 'hqVote'" class="phase-hq-vote">
       <div class="hqv-header">
         <div class="hqv-line"></div>
-        <span class="hqv-title">แวะ Head Quarter ก่อนลุยไหม?</span>
+        <span class="hqv-title">⚜ คำร้องก่อนออกเดินทาง ⚜</span>
         <div class="hqv-line"></div>
       </div>
+      <p class="hqv-question">แวะ Downtime Activities ก่อนลุยไหม?</p>
 
       <div class="hqv-monster-row">
         <img :src="getImg(selectedMonster?.thumbnail)" class="hqv-monster-img" />
@@ -4768,16 +5059,49 @@ const openPackDrawer = () => {
         </div>
       </div>
 
+      <div v-if="myPalico" class="hqv-palico" @click="palicoDetail = myPalico">
+        <img :src="getImg(myPalico.card_img)" class="hqv-palico-img" />
+        <div class="hqv-palico-info">
+          <p class="hqv-target-label">Palico</p>
+          <p class="hqv-palico-name">{{ myPalico.shortName }}</p>
+          <p class="hqv-palico-hint">เปลี่ยนใบได้ที่ Hunter's Lodge · 4 Resource</p>
+        </div>
+        <span class="hqv-palico-more">👁</span>
+      </div>
+      <p v-else class="hqv-palico-none">
+        🐱 ยังไม่มี Palico — จ้างได้ที่ Hunter's Lodge ใน Downtime · 4 Resource
+      </p>
+
+      <div v-if="hunter?.free_hq_day" class="hqv-free-day">
+        <img :src="getImg('assets/img/time_cards/red_time_cards/time_management.webp')" class="hqv-free-card" />
+        <div>
+          <p class="hqv-free-title">🃏 Time Management</p>
+          <p class="hqv-free-sub">แวะ Downtime รอบนี้ไม่เสียวัน</p>
+        </div>
+      </div>
+
       <div v-if="!myHqVote" class="hqv-choices">
-        <button class="hqv-btn hqv-btn-hq" @click="pendingHqVote = 'hq'">
-          <img :src="getImg('assets/img/menu_topbar_icon/head_querter.png')" class="hqv-btn-icon hqv-hq-icon" />
-          <span class="hqv-btn-label">แวะ HQ ก่อน</span>
-          <span class="hqv-btn-sub">เพิ่มวัน · ทำ 3 กิจกรรม</span>
+        <button class="hqv-banner hqv-banner-hq" @click="pickHqVote('hq')">
+          <span class="hqv-rod"></span>
+          <span class="hqv-cloth">
+            <span class="hqv-crest">
+              <img :src="getImg('assets/img/menu_topbar_icon/head_querter.webp')" class="hqv-crest-img hqv-crest-white" />
+            </span>
+            <span class="hqv-banner-label">แวะ Downtime ก่อน</span>
+            <span class="hqv-banner-rule"></span>
+            <span class="hqv-banner-sub">{{ hunter?.free_hq_day ? 'ไม่เสียวัน' : 'เพิ่มวัน' }} · ทำ 3 กิจกรรม</span>
+          </span>
         </button>
-        <button class="hqv-btn hqv-btn-quest" @click="pendingHqVote = 'quest'">
-          <img :src="getImg('assets/img/menu_topbar_icon/quest.png')" class="hqv-btn-icon hqv-quest-icon" />
-          <span class="hqv-btn-label">ลุย Quest เลย</span>
-          <span class="hqv-btn-sub">ข้าม HQ ไปเริ่มล่าเลย</span>
+        <button class="hqv-banner hqv-banner-quest" @click="pickHqVote('quest')">
+          <span class="hqv-rod"></span>
+          <span class="hqv-cloth">
+            <span class="hqv-crest">
+              <img :src="getImg('assets/img/menu_topbar_icon/quest.webp')" class="hqv-crest-img" />
+            </span>
+            <span class="hqv-banner-label">ลุย Quest เลย</span>
+            <span class="hqv-banner-rule"></span>
+            <span class="hqv-banner-sub">ข้าม Downtime ไปเริ่มล่าเลย</span>
+          </span>
         </button>
       </div>
 
@@ -4790,15 +5114,15 @@ const openPackDrawer = () => {
               <div class="hqvc-choice" :class="pendingHqVote === 'hq' ? 'hqvc-hq' : 'hqvc-quest'">
                 <img
                   v-if="pendingHqVote === 'hq'"
-                  :src="getImg('assets/img/menu_topbar_icon/head_querter.png')"
+                  :src="getImg('assets/img/menu_topbar_icon/head_querter.webp')"
                   class="hqvc-icon hqvc-icon-white"
                 />
                 <img
                   v-else
-                  :src="getImg('assets/img/menu_topbar_icon/quest.png')"
+                  :src="getImg('assets/img/menu_topbar_icon/quest.webp')"
                   class="hqvc-icon"
                 />
-                <span class="hqvc-label">{{ pendingHqVote === 'hq' ? 'แวะ HQ ก่อน' : 'ลุย Quest เลย' }}</span>
+                <span class="hqvc-label">{{ pendingHqVote === 'hq' ? 'แวะ Downtime ก่อน' : 'ลุย Quest เลย' }}</span>
               </div>
               <div class="hqvc-btns">
                 <button class="hqvc-btn-confirm" @click="confirmHqVote">✓ ยืนยัน</button>
@@ -4810,37 +5134,116 @@ const openPackDrawer = () => {
       </Teleport>
 
       <div v-if="myHqVote" class="hqv-waiting">
-        <p class="hqv-voted-label">คุณโหวต: <strong>{{ myHqVote === 'hq' ? '🏰 แวะ HQ' : '⚔ ลุย Quest' }}</strong></p>
-        <p v-if="room.inRoom" class="hqv-waiting-sub">รอผลโหวตจากทีม...</p>
+        <span class="hqv-wax">{{ myHqVote === 'hq' ? '🏰' : '⚔' }}</span>
+        <p class="hqv-voted-label">
+          ลงเสียงแล้ว: <strong>{{ myHqVote === 'hq' ? 'แวะ Downtime' : 'ลุย Quest' }}</strong>
+        </p>
+        <p v-if="room.inRoom" class="hqv-waiting-sub">รอเสียงจากนักล่าที่เหลือ…</p>
       </div>
 
       <!-- Party vote status -->
       <div v-if="room.inRoom" class="hqv-party-votes">
+        <div class="hqv-tally-head">
+          <span class="hqv-tally-line"></span>
+          <span class="hqv-tally-title">⚜ บันทึกการลงเสียง ⚜</span>
+          <span class="hqv-tally-line"></span>
+        </div>
         <div v-for="h in room.hunters" :key="h.hunter_id" class="hqv-vote-row">
+          <img
+            v-if="getHunterClass(h.hunter_class_id)?.thumbnail"
+            :src="getImg(getHunterClass(h.hunter_class_id).thumbnail)"
+            class="hqv-vote-icon"
+          />
           <span class="hqv-hunter-name">{{ h.hunter_name }}</span>
-          <span v-if="room.hqVotes[h.hunter_id] === 'hq'" class="hqv-vote-pill hqv-vote-hq">🏰 HQ</span>
+          <span class="hqv-dotted"></span>
+          <span v-if="room.hqVotes[h.hunter_id] === 'hq'" class="hqv-vote-pill hqv-vote-hq">🏰 Downtime</span>
           <span v-else-if="room.hqVotes[h.hunter_id] === 'quest'" class="hqv-vote-pill hqv-vote-quest">⚔ Quest</span>
-          <span v-else class="hqv-vote-pill hqv-vote-pending">รอ...</span>
+          <span v-else class="hqv-vote-pill hqv-vote-pending">รอ…</span>
         </div>
       </div>
 
       <!-- Tiebreak -->
       <div v-if="room.inRoom && room.hqVoteTied" class="hqv-tiebreak">
-        <p class="hqv-tie-label">⚖ คะแนนเท่ากัน!</p>
+        <p class="hqv-tie-label">⚖ เสียงเท่ากัน</p>
         <template v-if="room.isHost">
-          <p class="hqv-tie-sub">Host ตัดสินใจเลือก</p>
+          <p class="hqv-tie-sub">คำตัดสินเป็นของ Host</p>
           <div class="hqv-choices">
-            <button class="hqv-btn hqv-btn-hq" @click="breakHqTie('hq')">
-              <img :src="getImg('assets/img/menu_topbar_icon/head_querter.png')" class="hqv-btn-icon hqv-hq-icon" />
-              <span class="hqv-btn-label">แวะ HQ ก่อน</span>
+            <button class="hqv-banner hqv-banner-hq" @click="breakHqTie('hq')">
+              <span class="hqv-rod"></span>
+              <span class="hqv-cloth">
+                <span class="hqv-crest">
+                  <img :src="getImg('assets/img/menu_topbar_icon/head_querter.webp')" class="hqv-crest-img hqv-crest-white" />
+                </span>
+                <span class="hqv-banner-label">แวะ Downtime ก่อน</span>
+              </span>
             </button>
-            <button class="hqv-btn hqv-btn-quest" @click="breakHqTie('quest')">
-              <span class="hqv-btn-icon">⚔</span>
-              <span class="hqv-btn-label">ลุย Quest เลย</span>
+            <button class="hqv-banner hqv-banner-quest" @click="breakHqTie('quest')">
+              <span class="hqv-rod"></span>
+              <span class="hqv-cloth">
+                <span class="hqv-crest">
+                  <img :src="getImg('assets/img/menu_topbar_icon/quest.webp')" class="hqv-crest-img" />
+                </span>
+                <span class="hqv-banner-label">ลุย Quest เลย</span>
+              </span>
             </button>
           </div>
         </template>
-        <p v-else class="hqv-tie-sub">รอ Host ตัดสิน...</p>
+        <p v-else class="hqv-tie-sub">รอคำตัดสินจาก Host…</p>
+      </div>
+    </div>
+
+    <!-- ═══════════ PALICO DRAFT PHASE ═══════════ -->
+    <div v-if="phase === 'palicoDraft'" class="phase-palico">
+      <div class="hqv-header">
+        <div class="hqv-line"></div>
+        <span class="hqv-title">⚜ เลือก Palico ร่วมทาง ⚜</span>
+        <div class="hqv-line"></div>
+      </div>
+      <p class="pd-sub">สุ่มมาให้ {{ PALICO_DRAFT_SIZE }} ใบ — เลือกได้ 1 ใบ ติดตัวไปตลอดเควสต์นี้</p>
+
+      <div v-if="myPalicoOffer.length" class="pd-cards">
+        <div
+          v-for="p in myPalicoOffer"
+          :key="p.id"
+          class="pd-card"
+          :class="{
+            'pd-card-picked': palicoPick?.id === p.id || myPalicoPicked?.id === p.id,
+            'pd-card-locked': !!myPalicoPicked && myPalicoPicked.id !== p.id,
+          }"
+          @click="!myPalicoPicked && pickPalico(p)"
+        >
+          <img :src="getImg(p.card_img)" class="pd-card-img" :alt="p.type" />
+          <div class="pd-card-body">
+            <span v-if="p.family" class="pd-card-family">{{ p.family }}</span>
+            <span class="pd-card-name">{{ p.shortName }}</span>
+            <p class="pd-card-ability">{{ p.ability }}</p>
+          </div>
+        </div>
+      </div>
+      <p v-else class="pd-waiting">กำลังแจกการ์ด...</p>
+
+      <button
+        v-if="!myPalicoPicked"
+        class="pd-confirm"
+        :disabled="!palicoPick"
+        @click="confirmPalicoDraft"
+      >{{ palicoPick ? `✓ เอา ${palicoPick.shortName}` : 'เลือกการ์ดก่อน' }}</button>
+      <p v-else class="pd-locked-note">เลือกแล้ว: <strong>{{ myPalicoPicked.shortName }}</strong></p>
+
+      <!-- ใครเลือกแล้วบ้าง — คนที่รออยู่จะได้รู้ว่ารอใคร -->
+      <div v-if="room.inRoom" class="pd-party">
+        <div v-for="h in room.hunters" :key="h.hunter_id" class="pd-party-row">
+          <img
+            v-if="getHunterClass(h.hunter_class_id)?.thumbnail"
+            :src="getImg(getHunterClass(h.hunter_class_id).thumbnail)"
+            class="pd-party-icon"
+          />
+          <span class="pd-party-name">{{ h.hunter_name }}</span>
+          <span class="hqv-dotted"></span>
+          <span class="pd-party-state" :class="{ done: room.palicoDraftPicks[h.hunter_id] }">
+            {{ room.palicoDraftPicks[h.hunter_id] ? '✓ เลือกแล้ว' : 'รอ…' }}
+          </span>
+        </div>
       </div>
     </div>
 
@@ -4973,8 +5376,7 @@ const openPackDrawer = () => {
                   class="rb-tag"
                   :class="questTypeTone(lobby.questInfo.quest_type)"
                 >{{ lobby.questInfo.quest_type }}</span>
-                <span class="rb-tag rb-tag-mode">{{ lobby.questMode === 'minimal' ? 'Minimal' : 'Full' }}</span>
-                <span v-if="lobby.questInfo?.exhausted_attempt" class="rb-tag rb-tag-warn">HQ บังคับ</span>
+                <span v-if="lobby.questInfo?.exhausted_attempt" class="rb-tag rb-tag-warn">Downtime บังคับ</span>
                 <span
                   v-if="lobbyAttemptTag(lobby)"
                   class="rb-tag"
@@ -5060,21 +5462,9 @@ const openPackDrawer = () => {
     <!-- ═══════════ CO-OP QUEST MODE MODAL ═══════════ -->
     <Teleport to="body">
       <Transition name="slain-fade">
-        <div v-if="showCoopModeSelect" class="cqm-overlay" @click.self="showCoopModeSelect = false; questMode = 'full'">
+        <div v-if="showCoopModeSelect" class="cqm-overlay" @click.self="showCoopModeSelect = false">
           <div class="cqm-modal">
-            <p class="cqm-title">เลือก Quest Mode</p>
-            <div class="qmode-options">
-              <button class="qmode-btn" :class="{ 'qmode-active': questMode === 'full' }" @click="questMode = 'full'">
-                <span class="qmode-icon">⚔</span>
-                <span class="qmode-name">Full</span>
-                <span class="qmode-desc">Time Card · Track Token · Behavior Deck · Hunter Turn</span>
-              </button>
-              <button class="qmode-btn" :class="{ 'qmode-active': questMode === 'minimal' }" @click="questMode = 'minimal'">
-                <span class="qmode-icon">🗡</span>
-                <span class="qmode-name">Minimal</span>
-                <span class="qmode-desc">HP · Part Damage · Status · Element เท่านั้น</span>
-              </button>
-            </div>
+            <p class="cqm-title">ตั้งค่าห้อง</p>
             <div class="rn-section">
               <label class="rn-label">ชื่อห้อง</label>
               <div class="rn-input-row">
@@ -5104,7 +5494,7 @@ const openPackDrawer = () => {
             </div>
 
             <div class="cqm-actions">
-              <button class="coop-mode-cancel" @click="showCoopModeSelect = false; questMode = 'full'">ยกเลิก</button>
+              <button class="coop-mode-cancel" @click="showCoopModeSelect = false">ยกเลิก</button>
               <button
                 class="coop-mode-confirm"
                 :disabled="useRoomPassword && !roomPassword.trim()"
@@ -5143,7 +5533,7 @@ const openPackDrawer = () => {
             @click="togglePotion(i)"
             title="คลิกเพื่อใช้ / เพิ่ม Potion"
           >
-            <img :src="getImg('assets/img/UI/potion_icon.png')" class="dialog-potion-img" />
+            <img :src="getImg('assets/img/UI/potion_icon.webp')" class="dialog-potion-img" />
             <span v-if="i > potionCount" class="dialog-potion-x">✕</span>
           </div>
         </div>
@@ -5191,10 +5581,10 @@ const openPackDrawer = () => {
       </div>
 
       <!-- Track Token Panel -->
-      <div v-if="questMode !== 'minimal'" class="tt-panel">
+      <div class="tt-panel">
         <div class="tt-header">
           <span class="tt-label">
-            <img :src="getImg('assets/img/UI/symbol/track_token_symbol.png')" class="ui-symbol ui-symbol-sm" alt="" />
+            <img :src="getImg('assets/img/UI/symbol/track_token_symbol.webp')" class="ui-symbol ui-symbol-sm" alt="" />
             Track Token
           </span>
           <span class="tt-pool">Pool: {{ trackTokenPool.length }}</span>
@@ -5215,7 +5605,7 @@ const openPackDrawer = () => {
               <span v-if="token.revealed" class="tt-value" :class="token.value > 0 ? 'val-pos' : token.value < 0 ? 'val-neg' : 'val-zero'">
                 {{ token.value > 0 ? '+' : '' }}{{ token.value }}
               </span>
-              <img v-else :src="getImg('assets/img/UI/symbol/track_token_symbol.png')" class="token-back-img" alt="" />
+              <img v-else :src="getImg('assets/img/UI/symbol/track_token_symbol.webp')" class="token-back-img" alt="" />
             </div>
           </div>
         </div>
@@ -5226,7 +5616,7 @@ const openPackDrawer = () => {
             <div v-if="selectedToken" class="tt-modal-overlay" @click.self="selectedToken = null">
               <div class="tt-modal">
                 <p class="tt-modal-title">
-                  <img :src="getImg('assets/img/UI/symbol/track_token_symbol.png')" class="ui-symbol ui-symbol-sm" alt="" />
+                  <img :src="getImg('assets/img/UI/symbol/track_token_symbol.webp')" class="ui-symbol ui-symbol-sm" alt="" />
                   Track Token
                 </p>
                 <div class="tt-modal-token">
@@ -5234,7 +5624,7 @@ const openPackDrawer = () => {
                     :class="selectedToken.value > 0 ? 'val-pos' : selectedToken.value < 0 ? 'val-neg' : 'val-zero'">
                     {{ selectedToken.value > 0 ? '+' : '' }}{{ selectedToken.value }}
                   </span>
-                  <img v-else :src="getImg('assets/img/UI/symbol/track_token_symbol.png')" class="token-back-img" alt="" />
+                  <img v-else :src="getImg('assets/img/UI/symbol/track_token_symbol.webp')" class="token-back-img" alt="" />
                 </div>
                 <div class="tt-modal-btns">
                   <button
@@ -5256,7 +5646,7 @@ const openPackDrawer = () => {
       </div>
 
       <!-- Time Card Panel -->
-      <div v-if="questMode === 'full'" class="tc-panel">
+      <div class="tc-panel">
         <div class="tc-header">
           <span class="tc-label">⏳ Time Cards</span>
           <div class="tc-deck-display">
@@ -5343,7 +5733,7 @@ const openPackDrawer = () => {
         <span v-for="n in 3" :key="n" class="trail-step" :style="`--i:${n}`">
           <img
             class="ts-print"
-            :src="getImg('assets/img/UI/monster_footprint.png')"
+            :src="getImg('assets/img/UI/monster_footprint.webp')"
             alt=""
           />
         </span>
@@ -5362,7 +5752,7 @@ const openPackDrawer = () => {
           {{ currentDialog.consequences }}
         </div>
 
-        <div v-if="autoCompleteEnabled && currentDialog.effects?.length" class="fx-panel fx-panel-parchment">
+        <div v-if="currentDialog.effects?.length" class="fx-panel fx-panel-parchment">
           <div class="fx-list">
             <span
               v-for="(e, i) in currentDialog.effects"
@@ -5596,7 +5986,7 @@ const openPackDrawer = () => {
             <p class="ad-con-text">{{ pendingAction.consequences }}</p>
           </div>
 
-          <div v-if="autoCompleteEnabled && pendingAction.effects?.length" class="fx-panel">
+          <div v-if="pendingAction.effects?.length" class="fx-panel">
             <span v-if="hasApplicableEffects(pendingAction.effects)" class="fx-note">
               ⚡ ระบบจะจัดการให้อัตโนมัติเมื่อ Proceed
             </span>
@@ -5696,7 +6086,7 @@ const openPackDrawer = () => {
       </div>
 
       <!-- TRACK TOKEN TOTAL -->
-      <div v-if="questMode !== 'minimal' && trackTokens.length" class="token-total-bar">
+      <div v-if="trackTokens.length" class="token-total-bar">
         <span class="token-total-label">🔍 Track Token รวม</span>
         <div class="token-total-tokens">
           <div
@@ -5768,7 +6158,7 @@ const openPackDrawer = () => {
                 @click="toggleFaint(i)"
                 title="คลิกเพื่อ Faint / ยกเลิก"
               >
-                <img :src="getImg('assets/img/UI/faint_icon.png')" class="qs-slot-img" />
+                <img :src="getImg('assets/img/UI/faint_icon.webp')" class="qs-slot-img" />
                 <span v-if="i <= faintCount" class="qs-slot-x">✕</span>
               </div>
             </div>
@@ -5785,7 +6175,7 @@ const openPackDrawer = () => {
                 @click="togglePotion(i)"
                 title="คลิกเพื่อใช้ / เพิ่ม Potion"
               >
-                <img :src="getImg('assets/img/UI/potion_icon.png')" class="qs-slot-img" />
+                <img :src="getImg('assets/img/UI/potion_icon.webp')" class="qs-slot-img" />
                 <span v-if="i > potionCount" class="qs-slot-x">✕</span>
               </div>
             </div>
@@ -5794,8 +6184,39 @@ const openPackDrawer = () => {
 
       </div>
 
+      <!-- Palico ประจำเควสต์ — การ์ดอยู่ข้าง Quest Card บนโต๊ะจริง แต่ความสามารถต้องเปิดอ่านได้ในแอป -->
+      <!-- แถบปาร์ตี้ขึ้นเฉพาะโหมด Full ที่อยู่ในห้อง — นอกจากนั้นปุ่มบนแถบเข้าไม่ถึง
+           จึงเหลือแถบนี้ไว้เป็นทางเข้าสำรอง และซ่อนเมื่อมีแถบแล้ว ไม่ให้เปิดได้สองที่ -->
+      <div v-if="!partyStripVisible && (myPalico || partyPalicos.length)" class="hp-palico-strip">
+        <button v-if="myPalico" class="hp-palico" @click="palicoDetail = myPalico">
+          <img :src="getImg(myPalico.card_img)" class="hp-palico-img" />
+          <div class="hp-palico-info">
+            <span class="qs-tracker-label">Palico</span>
+            <span class="hp-palico-name">{{ myPalico.shortName }}</span>
+          </div>
+          <span class="hp-palico-more">👁</span>
+        </button>
+        <!-- ของเพื่อน — เล็กกว่า เพราะเป็นข้อมูลประกอบ ไม่ใช่ของที่ต้องใช้เอง -->
+        <div v-if="partyPalicos.length" class="hp-palico-party">
+          <button
+            v-for="e in partyPalicos"
+            :key="e.hunter.hunter_id"
+            class="hp-palico-mini"
+            :title="`${e.hunter.hunter_name} — ${e.palico.type}`"
+            @click="palicoDetail = e.palico"
+          >
+            <img :src="getImg(e.palico.card_img)" class="hp-palico-mini-img" />
+            <img
+              v-if="getHunterClass(e.hunter.hunter_class_id)?.thumbnail"
+              :src="getImg(getHunterClass(e.hunter.hunter_class_id).thumbnail)"
+              class="hp-palico-mini-owner"
+            />
+          </button>
+        </div>
+      </div>
+
       <!-- Monster Turn (after map) -->
-      <div v-if="questMode === 'full' && (behaviorDeck.length > 0 || currentBehaviorCard)" class="monster-turn-section">
+      <div v-if="behaviorDeck.length > 0 || currentBehaviorCard" class="monster-turn-section">
         <p class="hunt-result-label">— Monster Turn —</p>
 
         <div class="mt-cards">
@@ -5866,14 +6287,14 @@ const openPackDrawer = () => {
           </div>
           <p class="act-status">
             <span v-if="!monsterTurnReady" class="act-waiting">
-              <img :src="getImg('assets/img/UI/symbol/hunter_turn_symbol.png')" class="ui-symbol" alt="" />
+              <img :src="getImg('assets/img/UI/symbol/hunter_turn_symbol.webp')" class="ui-symbol" alt="" />
               Hunter เล่นได้อีก <strong>{{ activationLimit - activationRoundsCompleted }}</strong> รอบ
             </span>
             <span v-else class="act-ready-text">✓ Monster Turn พร้อมแล้ว!</span>
             <template v-if="attackCardLimit">
               <span class="inline-sep" aria-hidden="true"></span>
               <span class="act-attack">
-                <img :src="getImg('assets/img/UI/symbol/hunter_attack_card_symbol.png')" class="ui-symbol" alt="" />
+                <img :src="getImg('assets/img/UI/symbol/hunter_attack_card_symbol.webp')" class="ui-symbol" alt="" />
                 เล่น Attack Card ได้ <strong>{{ attackCardLimit }}</strong> ใบต่อรอบ
               </span>
             </template>
@@ -6158,7 +6579,7 @@ const openPackDrawer = () => {
             <span class="hpanel-rule-icon">⚡</span>
             <div>
               <p class="hpanel-rule-title">{{ monsterHuntingData.special_rule.title }}</p>
-              <p class="hpanel-rule-desc">{{ monsterHuntingData.special_rule.description }}</p>
+              <p class="hpanel-rule-desc"><RuleText :text="monsterHuntingData.special_rule.description" /></p>
             </div>
           </div>
         </div>
@@ -6216,7 +6637,7 @@ const openPackDrawer = () => {
                   </div>
                   <div class="part-card-armor-wrap">
                     <div class="armor-element-card" :class="{ 'armor-blastblight': blastblightActive && partData.armor > 0 }">
-                      <img :src="getImg('assets/img/bonus_armor.png')" class="armor-base" />
+                      <img :src="getImg('assets/img/bonus_armor.webp')" class="armor-base" />
                       <span class="element-value">{{ blastblightActive ? Math.max(0, partData.armor - 1) : partData.armor }}</span>
                     </div>
                   </div>
@@ -6329,7 +6750,7 @@ const openPackDrawer = () => {
                     <span class="pbr-label">{{
                       brokenParts[position] ? 'BREAK EFFECT' : 'TIP ON BREAK'
                     }}</span>
-                    <p class="pbr-text">{{ partData.part_break_rule }}</p>
+                    <p class="pbr-text"><RuleText :text="partData.part_break_rule" /></p>
                   </div>
                 </div>
               </div>
@@ -6340,7 +6761,7 @@ const openPackDrawer = () => {
       <!-- end info-parts-row -->
 
       <!-- Time Card Turn -->
-      <div v-if="questMode === 'full' && (timeCardDeck.length > 0 || timeCardDiscard.length > 0)" class="tct-section">
+      <div v-if="timeCardDeck.length > 0 || timeCardDiscard.length > 0" class="tct-section">
         <p class="hunt-result-label">— Time Card —</p>
         <div class="tct-card-group">
           <div class="tct-deck-row">
@@ -7099,7 +7520,7 @@ const openPackDrawer = () => {
                       </div>
                       <div class="part-card-armor-wrap">
                         <div class="armor-element-card" :class="{ 'armor-blastblight': blastblightActive && partData.armor > 0 }">
-                          <img :src="getImg('assets/img/bonus_armor.png')" class="armor-base" />
+                          <img :src="getImg('assets/img/bonus_armor.webp')" class="armor-base" />
                           <span class="element-value">{{ blastblightActive ? Math.max(0, partData.armor - 1) : partData.armor }}</span>
                         </div>
                       </div>
@@ -7581,7 +8002,7 @@ const openPackDrawer = () => {
     <!-- ═══════════ PART BREAK TOKEN FLASH OVERLAY ═══════════ -->
     <teleport to="body">
       <Transition name="tc-hp-flash">
-        <div v-if="tcPartFlash && questMode !== 'minimal'" class="tc-part-flash-overlay"
+        <div v-if="tcPartFlash" class="tc-part-flash-overlay"
           :class="tcPartFlash.broken ? 'tc-part-shatter' : (tcPartFlash.delta > 0 ? 'tc-part-add' : 'tc-part-remove')">
           <div class="tc-part-icon-wrap" :class="{ 'tc-part-icon-hit': !tcPartFlash.broken }">
             <!-- Shatter shards (broken only) -->
@@ -7648,7 +8069,7 @@ const openPackDrawer = () => {
     <!-- ═══════════ TC HP FLASH OVERLAY ═══════════ -->
     <teleport to="body">
       <Transition name="tc-hp-flash">
-        <div v-if="tcHpFlash && questMode !== 'minimal'" class="tc-hp-flash-overlay" :class="tcHpFlash.type === 'heal' ? 'tc-hp-heal' : 'tc-hp-dmg'">
+        <div v-if="tcHpFlash" class="tc-hp-flash-overlay" :class="tcHpFlash.type === 'heal' ? 'tc-hp-heal' : 'tc-hp-dmg'">
           <img v-if="selectedMonster" :src="getImg(selectedMonster.thumbnail)" class="tc-hp-monster-icon" />
           <span class="tc-hp-value">{{ tcHpFlash.type === 'heal' ? '+' : '−' }}{{ tcHpFlash.delta }}</span>
           <div v-if="tcHpFlash.prevHp !== null" class="tc-hp-bar-wrap">
@@ -7686,7 +8107,7 @@ const openPackDrawer = () => {
     <!-- ═══════════ FLOATING TURN BAR ═══════════ -->
     <teleport to="body">
       <div
-        v-if="questMode === 'full' && phase === 'huntingPanel' && (timeCardDeck.length > 0 || timeCardDiscard.length > 0) && !showResultAnim && !showTcReveal && !showMonsterAttack"
+        v-if="floatBarVisible"
         class="float-turn-bar"
         :class="{ 'float-turn-bar-collapsed': floatBarCollapsed }"
       >
@@ -7754,13 +8175,13 @@ const openPackDrawer = () => {
             </div>
             <span class="float-act-label">
               <template v-if="!monsterTurnReady">
-                <img :src="getImg('assets/img/UI/symbol/hunter_turn_symbol.png')" class="ui-symbol ui-symbol-sm" alt="" />
+                <img :src="getImg('assets/img/UI/symbol/hunter_turn_symbol.webp')" class="ui-symbol ui-symbol-sm" alt="" />
                 เหลืออีก <strong>{{ activationLimit - activationRoundsCompleted }}</strong> ครั้ง
               </template>
               <template v-else>✓ ครบแล้ว — กด Monster Turn</template>
               <span v-if="attackCardLimit" class="inline-sep" aria-hidden="true"></span>
               <span v-if="attackCardLimit" class="float-atk-badge" title="Attack Card ที่เล่นได้ต่อรอบ">
-                <img :src="getImg('assets/img/UI/symbol/hunter_attack_card_symbol.png')" class="float-atk-img" alt="" />
+                <img :src="getImg('assets/img/UI/symbol/hunter_attack_card_symbol.webp')" class="float-atk-img" alt="" />
                 <span class="float-atk-num">{{ attackCardLimit }}</span>
               </span>
             </span>
@@ -7785,13 +8206,26 @@ const openPackDrawer = () => {
     <teleport to="body">
       <Transition name="slain-fade">
         <div
-          v-if="questMode === 'full' && room.inRoom && phase === 'huntingPanel' && !showResultAnim"
+          v-if="partyStripVisible"
           class="party-strip"
           :class="{
             'party-strip-lifted': floatBarVisible && !floatBarCollapsed,
             'party-strip-tab': floatBarVisible && floatBarCollapsed
           }"
         >
+          <!-- Palico ของตัวเอง — อยู่หัวแถบ ขยับตามแถบเองเวลาแถบเทิร์นเปิด/พับ -->
+          <template v-if="myPalico || partyPalicos.length">
+            <button
+              class="party-palico-btn"
+              title="ดูการ์ด Palico"
+              @click="palicoDetail = myPalico ?? partyPalicos[0].palico"
+            >
+              <img v-if="myPalico" :src="getImg(myPalico.card_img)" class="party-palico-img" alt="" />
+              <span v-else class="party-palico-fallback">🐱</span>
+            </button>
+            <div class="party-palico-sep"></div>
+          </template>
+
           <div
             v-for="h in room.hunters"
             :key="h.hunter_id"
@@ -7799,8 +8233,11 @@ const openPackDrawer = () => {
             :class="{
               'party-done':    !!room.tcTurnEnds?.[h.hunter_id]?.card,
               'party-pending': !!room.tcTurnEnds?.[h.hunter_id]?.pending,
-              'party-me':      h.hunter_id === room.myHunterId
+              'party-me':      h.hunter_id === room.myHunterId,
+              'party-swappable': canSwapWith(h)
             }"
+            :title="canSwapWith(h) ? `Weakness Exploit — ขอสลับ Hunter Token กับ ${h.hunter_name}` : null"
+            @click="canSwapWith(h) && askSwapWith(h)"
           >
             <div class="party-icon-wrap">
               <img
@@ -7814,6 +8251,99 @@ const openPackDrawer = () => {
               <span class="party-status-dot">
                 {{ room.tcTurnEnds?.[h.hunter_id]?.card ? '✓' : room.tcTurnEnds?.[h.hunter_id]?.pending ? '…' : '' }}
               </span>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ผู้ขอ — ยืนยันก่อนส่งคำขอ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div
+          v-if="pendingSwapTarget"
+          class="we-overlay"
+          @click.self="pendingSwapTarget = null"
+        >
+          <div class="we-modal">
+            <p class="we-title">🎯 Weakness Exploit</p>
+            <p class="we-sub">
+              ส่งคำขอสลับ Hunter Token ไปหานักล่าคนนี้ไหม?
+              <br />ใช้ได้เควสละครั้ง และจะตัดสิทธิ์ก็ต่อเมื่ออีกฝ่ายยินยอม
+            </p>
+            <div class="we-swap-row">
+              <div class="we-swap-side">
+                <img v-if="hunterClassImg(room.myHunterId)" :src="getImg(hunterClassImg(room.myHunterId))" class="we-swap-icon" />
+                <span class="we-swap-role">คุณ</span>
+                <span class="we-swap-token">{{ room.myHunterToken }}</span>
+              </div>
+              <span class="we-swap-arrow">⇄</span>
+              <div class="we-swap-side">
+                <img v-if="hunterClassImg(pendingSwapTarget.id)" :src="getImg(hunterClassImg(pendingSwapTarget.id))" class="we-swap-icon" />
+                <span class="we-swap-role">เป้าหมาย</span>
+                <span class="we-swap-token">{{ pendingSwapTarget.token }}</span>
+              </div>
+            </div>
+            <div class="we-answer">
+              <button class="we-decline" @click="pendingSwapTarget = null">ยกเลิก</button>
+              <button class="we-accept" @click="confirmSwapRequest">✓ ส่งคำขอ</button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ผู้ขอ — รออีกฝ่ายตอบ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="outgoingSwap" class="we-overlay">
+          <div class="we-modal">
+            <p class="we-title">🎯 รอคำตอบ</p>
+            <p class="we-sub">ส่งคำขอสลับ Hunter Token แล้ว รอให้อีกฝ่ายกดยินยอม</p>
+            <div class="we-swap-row">
+              <div class="we-swap-side">
+                <img v-if="hunterClassImg(outgoingSwap.fromId)" :src="getImg(hunterClassImg(outgoingSwap.fromId))" class="we-swap-icon" />
+                <span class="we-swap-role">คุณ</span>
+                <span class="we-swap-token">{{ outgoingSwap.fromToken }}</span>
+              </div>
+              <span class="we-swap-arrow">⇄</span>
+              <div class="we-swap-side">
+                <img v-if="hunterClassImg(outgoingSwap.toId)" :src="getImg(hunterClassImg(outgoingSwap.toId))" class="we-swap-icon" />
+                <span class="we-swap-role">เป้าหมาย</span>
+                <span class="we-swap-token">{{ outgoingSwap.toToken }}</span>
+              </div>
+            </div>
+            <div class="we-waiting-dots"><span>·</span><span>·</span><span>·</span></div>
+            <button class="we-cancel" @click="cancelTokenSwap">ยกเลิกคำขอ</button>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ปลายทาง — ขอความยินยอม -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="incomingSwap" class="we-overlay">
+          <div class="we-modal">
+            <p class="we-title">🎯 ขอสลับ Hunter Token</p>
+            <p class="we-sub">นักล่าคนนี้ใช้ Weakness Exploit ขอสลับ Hunter Token กับคุณ</p>
+            <div class="we-swap-row">
+              <div class="we-swap-side">
+                <img v-if="hunterClassImg(incomingSwap.toId)" :src="getImg(hunterClassImg(incomingSwap.toId))" class="we-swap-icon" />
+                <span class="we-swap-role">คุณ</span>
+                <span class="we-swap-token">{{ incomingSwap.toToken }}</span>
+              </div>
+              <span class="we-swap-arrow">⇄</span>
+              <div class="we-swap-side">
+                <img v-if="hunterClassImg(incomingSwap.fromId)" :src="getImg(hunterClassImg(incomingSwap.fromId))" class="we-swap-icon" />
+                <span class="we-swap-role">ผู้ขอ</span>
+                <span class="we-swap-token">{{ incomingSwap.fromToken }}</span>
+              </div>
+            </div>
+            <p class="we-note">ทิศทางการหันหน้าของโทเค็นให้จัดบนโต๊ะตามของเดิมของแต่ละคน</p>
+            <div class="we-answer">
+              <button class="we-decline" @click="declineTokenSwap">✕ ไม่ยินยอม</button>
+              <button class="we-accept" @click="acceptTokenSwap">✓ ยินยอม</button>
             </div>
           </div>
         </div>
@@ -7835,7 +8365,7 @@ const openPackDrawer = () => {
             <!-- Part break rules that give extra turns -->
             <div v-if="activationPartRules.length > 0" class="mtc-rules">
               <p class="mtc-rules-label">⚡ Part Break Effects</p>
-              <p v-for="(rule, i) in activationPartRules" :key="i" class="mtc-rule-text">{{ rule }}</p>
+              <p v-for="(rule, i) in activationPartRules" :key="i" class="mtc-rule-text"><RuleText :text="rule" /></p>
             </div>
 
             <!-- Manual activation adjust -->
@@ -7881,7 +8411,7 @@ const openPackDrawer = () => {
     <!-- ═══════════ END TURN CONFIRM ═══════════ -->
     <teleport to="body">
       <Transition name="slain-fade">
-        <div v-if="questMode === 'full' && showConfirmTurn" class="ct-overlay" @click.self="showConfirmTurn = false">
+        <div v-if="showConfirmTurn" class="ct-overlay" @click.self="showConfirmTurn = false">
           <div class="ct-modal">
             <p class="ct-title">🃏 จบเทิร์น?</p>
             <p class="ct-sub">จั๋ว Time Card 1 ใบจากกอง (เหลือ {{ timeCardDeck.length }} ใบ)</p>
@@ -7937,73 +8467,10 @@ const openPackDrawer = () => {
       </Transition>
     </teleport>
 
-    <!-- ═══════════ SPECIAL CARD SELECT (Host only) ═══════════ -->
-    <teleport to="body">
-      <Transition name="slain-fade">
-        <div v-if="showSpecialCardSelect" class="scs-overlay">
-          <div class="scs-modal">
-            <p class="scs-title">⚔ เลือก Special Attack Card</p>
-            <p class="scs-sub">Host เลือกการ์ด Special Attack ของ {{ selectedMonster?.monster_name }}</p>
-            <p class="scs-scoutfly">
-              🪰 Scoutfly Level รวม: <strong>{{ _pendingTokenTotal }}</strong>
-              <span v-if="selectedQuest?.scoutfly_level"> (เกณฑ์ {{ selectedQuest.scoutfly_level[0] }} - {{ selectedQuest.scoutfly_level[1] }})</span>
-            </p>
-            <div class="scs-options">
-              <button
-                v-for="opt in specialCardSelectOptions"
-                :key="opt.card.behavior_id"
-                class="scs-option"
-                @click="selectSpecialAttackCard(opt.card)"
-              >
-                <img :src="getImg(opt.card.front_card_img)" class="scs-card-img" />
-                <span class="scs-card-name">{{ opt.card.behavior_name }}</span>
-                <span class="scs-card-hint">
-                  🪰 ถ้าได้ {{ opt.tiers.map(scoutflyTierLabel).join(' หรือ ') }} ให้เลือกใบนี้
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </teleport>
-
-    <!-- ═══════════ WAITING FOR HOST SPECIAL CARD (Guest) ═══════════ -->
-    <teleport to="body">
-      <Transition name="slain-fade">
-        <div v-if="awaitingHostDeckBuild" class="scs-overlay">
-          <div class="scs-modal scs-waiting-modal">
-            <div class="scs-waiting-spinner"></div>
-            <p class="scs-title">⌛ รอ Host เลือก Special Attack Card</p>
-            <p class="scs-sub">Host กำลังเลือกการ์ด Special Attack ของ {{ selectedMonster?.monster_name }} อยู่...</p>
-          </div>
-        </div>
-      </Transition>
-    </teleport>
-
-    <!-- ═══════════ SPECIAL CARD CONFIRM (Host only) ═══════════ -->
-    <teleport to="body">
-      <Transition name="slain-fade">
-        <div v-if="showSpecialCardConfirm" class="mtc-overlay" @click.self="showSpecialCardConfirm = false">
-          <div class="mtc-modal">
-            <p class="mtc-title">⚔ ยืนยันการเลือกการ์ด</p>
-            <div v-if="_pendingSpecialCardChoice" class="scs-confirm-card-wrap">
-              <img :src="getImg(_pendingSpecialCardChoice.front_card_img)" class="scs-confirm-card-img" />
-              <span class="scs-confirm-card-name">{{ _pendingSpecialCardChoice.behavior_name }}</span>
-            </div>
-            <p class="aht-desc">ยืนยันเลือกการ์ดนี้เป็น Special Attack Card ของ Monster ตัวนี้ใช่ไหม?</p>
-            <div class="mtc-btns">
-              <button class="mtc-btn mtc-cancel" @click="showSpecialCardConfirm = false">ยกเลิก</button>
-              <button class="mtc-btn mtc-confirm" @click="confirmSpecialAttackCard">ยืนยัน</button>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </teleport>
-
     <!-- ═══════════ SPECIAL CARD OVERLAY ═══════════ -->
     <teleport to="body">
       <Transition name="slain-fade">
-        <div v-if="questMode !== 'minimal' && showSpecialCardOverlay" class="sc-overlay" @click="showSpecialCardOverlay = false; phase = 'huntingPanel'">
+        <div v-if="showSpecialCardOverlay" class="sc-overlay" @click="showSpecialCardOverlay = false; phase = 'huntingPanel'">
           <div class="sc-content">
             <p class="sc-label">⚔ Special Attack Added!</p>
             <div class="sc-card">
@@ -8068,12 +8535,42 @@ const openPackDrawer = () => {
       </Transition>
     </teleport>
 
+    <!-- ═══════════ PALICO CARD DETAIL ═══════════ -->
+    <teleport to="body">
+      <transition name="slain-fade">
+        <div v-if="palicoDetail" class="pd-detail-overlay" @click.self="palicoDetail = null">
+          <div class="pd-detail">
+            <img :src="getImg(palicoDetail.card_img)" class="pd-detail-img" :alt="palicoDetail.type" />
+            <p class="pd-detail-name">{{ palicoDetail.type }}</p>
+            <p class="pd-detail-ability">{{ palicoDetail.ability }}</p>
+
+            <!-- สลับดูของคนอื่นในหน้าต่างเดียว — หลายใบส่งผลข้ามคน ต้องเทียบกันได้ -->
+            <div v-if="palicoSwitcher.length > 1" class="pd-detail-switch">
+              <button
+                v-for="e in palicoSwitcher"
+                :key="e.key"
+                class="pd-switch-cell"
+                :class="{ active: e.palico.id === palicoDetail.id }"
+                :title="`${e.label} — ${e.palico.type}`"
+                @click="palicoDetail = e.palico"
+              >
+                <img :src="getImg(e.palico.card_img)" class="pd-switch-img" alt="" />
+                <img v-if="e.icon" :src="getImg(e.icon)" class="pd-switch-owner" alt="" />
+              </button>
+            </div>
+
+            <button class="pd-detail-close" @click="palicoDetail = null">← ปิด</button>
+          </div>
+        </div>
+      </transition>
+    </teleport>
+
     <!-- ═══════════ TOKEN REVEAL OVERLAY ═══════════ -->
     <teleport to="body">
       <transition name="slain-fade">
         <div v-if="showTokenReveal" class="tr-overlay" @click="if (tokenRevealDone) { showTokenReveal = false; phase = 'hunting' }">
           <p class="tr-title">
-            <img :src="getImg('assets/img/UI/symbol/track_token_symbol.png')" class="ui-symbol" alt="" />
+            <img :src="getImg('assets/img/UI/symbol/track_token_symbol.webp')" class="ui-symbol" alt="" />
             Track Token
           </p>
           <div class="tr-tokens">
@@ -8085,7 +8582,7 @@ const openPackDrawer = () => {
             >
               <div class="tr-token-inner">
                 <div class="tr-token-back">
-                  <img :src="getImg('assets/img/UI/symbol/track_token_symbol.png')" class="token-back-img" alt="" />
+                  <img :src="getImg('assets/img/UI/symbol/track_token_symbol.webp')" class="token-back-img" alt="" />
                 </div>
                 <div
                   class="tr-token-front"
@@ -9825,11 +10322,6 @@ const openPackDrawer = () => {
   color: #a88040;
   letter-spacing: 0.5px;
 }
-.rb-tag-mode {
-  background: rgba(60,100,200,0.12);
-  border-color: rgba(90,140,230,0.35);
-  color: #7ab3ff;
-}
 /* รูปมอนเรืองแสงจากกลางกรอบออกมา — Assigned ไม่เรือง ให้เควสพิเศษเด่นออกมา
    เขียนเจาะจงที่ .rb-monster-img เพราะ .qt-* มี background ของป้ายติดมาด้วย */
 .rb-monster-img.qt-invest {
@@ -9963,11 +10455,6 @@ const openPackDrawer = () => {
   background: rgba(120,95,55,0.14);
   border-color: rgba(120,95,55,0.4);
   color: #6b542e;
-}
-.rb-card .rb-tag-mode {
-  background: rgba(45,85,150,0.12);
-  border-color: rgba(45,85,150,0.4);
-  color: #2c5f9e;
 }
 /* บนกระดาษพื้นสว่าง — ใช้สีเข้มขึ้นถึงจะเห็นแสงจากกลางกรอบ */
 .rb-card .rb-monster-img.qt-invest {
@@ -10235,65 +10722,188 @@ const openPackDrawer = () => {
   border-color: rgba(220,175,80,0.8);
 }
 
-/* ── Quest Mode Selector ── */
-.qmode-selector {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.qmode-label {
-  font-size: 11px;
-  color: rgba(200,155,60,0.6);
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  margin: 0;
-  text-align: center;
-}
-.qmode-options {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-.qmode-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 12px 10px;
-  background: rgba(20,15,8,0.8);
-  border: 1px solid rgba(200,155,60,0.2);
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.2s;
+/* ═══════ Palico ตอนล่า ═══════ */
+.hp-palico-strip { display: flex; flex-direction: column; gap: 8px; }
+.hp-palico {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(124,90,43,0.5);
+  border-left: 3px solid #c89b3c;
+  background: linear-gradient(170deg, #2b1f13, #221809);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.07), 0 2px 6px rgba(0,0,0,0.45);
   font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s;
 }
-.qmode-btn:hover {
-  border-color: rgba(200,155,60,0.5);
-  background: rgba(40,28,12,0.9);
+.hp-palico:hover { border-color: #c89b3c; }
+.hp-palico-img { width: 34px; aspect-ratio: 5 / 7; object-fit: cover; object-position: top; border-radius: 2px; }
+.hp-palico-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; text-align: left; }
+.hp-palico-name { font-size: 12px; color: #ffd27a; }
+.hp-palico-more { font-size: 13px; color: rgba(200,155,60,0.6); }
+.hp-palico-party { display: flex; flex-wrap: wrap; gap: 6px; }
+.hp-palico-mini {
+  position: relative;
+  padding: 0; border: 1px solid rgba(124,90,43,0.5); border-radius: 2px;
+  background: rgba(0,0,0,0.3);
+  line-height: 0;
+  cursor: pointer;
+  transition: border-color 0.15s;
 }
-.qmode-active {
-  border-color: #c89b3c !important;
-  background: rgba(200,155,60,0.12) !important;
-  box-shadow: 0 0 12px rgba(200,155,60,0.25);
+.hp-palico-mini:hover { border-color: #c89b3c; }
+.hp-palico-mini-img { width: 30px; aspect-ratio: 5 / 7; object-fit: cover; object-position: top; display: block; }
+/* ไอคอนคลาสเจ้าของคร่อมมุม บอกว่าใบนี้ของใครโดยไม่กินพื้นที่เพิ่ม */
+.hp-palico-mini-owner {
+  position: absolute; bottom: -3px; right: -3px;
+  width: 16px; height: 16px; object-fit: contain;
+  border-radius: 2px;
+  border: 1px solid #c89b3c;
+  background: rgba(10,7,3,0.9);
 }
-.qmode-icon {
-  font-size: 20px;
+
+/* ═══════ หน้าต่างอ่านการ์ด Palico ═══════ */
+.pd-detail-overlay {
+  position: fixed; inset: 0; z-index: 800;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
 }
-.qmode-name {
-  font-size: 14px;
-  font-weight: bold;
-  color: #c89b3c;
-  letter-spacing: 1px;
+.pd-detail {
+  width: min(360px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 20px;
+  border-radius: 3px;
+  border: 3px solid #2e2113;
+  background: linear-gradient(170deg, #2b1f13, #1c1409 55%, #241a0e);
+  box-shadow: 0 10px 34px rgba(0,0,0,0.85);
 }
-.qmode-desc {
+/* จำกัดด้วยความสูงจอ ไม่ใช่ความกว้าง — การ์ดแนวตั้งบนมือถือแนวนอนจะล้นจอ */
+.pd-detail-img { width: 100%; max-height: 46vh; object-fit: contain; border-radius: 3px; }
+.pd-detail-name { margin: 0; text-align: center; font-size: 13px; color: #ffd27a; }
+/* แถวสลับการ์ดในหน้าต่าง — ใบที่กำลังเปิดอยู่ขอบทอง ที่เหลือจาง */
+.pd-detail-switch { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.pd-switch-cell {
+  position: relative;
+  padding: 0;
+  width: 42px;
+  border: 1px solid rgba(124,90,43,0.5);
+  border-radius: 3px;
+  background: rgba(0,0,0,0.3);
+  line-height: 0;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.15s, border-color 0.15s;
+}
+.pd-switch-cell:hover { opacity: 0.85; }
+.pd-switch-cell.active {
+  opacity: 1;
+  border-color: #c89b3c;
+  box-shadow: 0 0 10px rgba(200,155,60,0.35);
+}
+.pd-switch-img { width: 100%; aspect-ratio: 5 / 7; object-fit: cover; object-position: top; display: block; }
+.pd-switch-owner {
+  position: absolute; bottom: -3px; right: -3px;
+  width: 18px; height: 18px; object-fit: contain;
+  border-radius: 2px;
+  border: 1px solid #c89b3c;
+  background: rgba(10,7,3,0.9);
+}
+.pd-detail-ability {
+  margin: 0; padding: 10px 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(124,90,43,0.45);
+  border-left: 3px solid #7c5a2b;
+  background: rgba(0,0,0,0.28);
+  font-size: 12px; line-height: 1.7; color: #e4d3ab;
+}
+.pd-detail-close {
+  padding: 12px; border-radius: 3px;
+  border: 1px solid rgba(124,90,43,0.5);
+  background: linear-gradient(170deg, #2b1f13, #1c1409);
+  color: #a88040; font-family: 'Georgia', serif; font-size: 13px;
+  cursor: pointer; min-height: 44px;
+}
+.pd-detail-close:hover { color: #ffd27a; border-color: #c89b3c; }
+
+/* Palico ที่ถืออยู่ บนหน้าโหวต — โครงเดียวกับ .hqv-monster-row ที่อยู่เหนือมัน */
+.hqv-palico {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(124,90,43,0.45);
+  border-left: 3px solid #c89b3c;
+  background: linear-gradient(170deg, #33251b, #1c1409);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.hqv-palico:hover { border-color: #c89b3c; }
+.hqv-palico-img { width: 38px; aspect-ratio: 5 / 7; object-fit: cover; object-position: top; border-radius: 2px; flex-shrink: 0; }
+.hqv-palico-info { flex: 1; min-width: 0; }
+.hqv-palico-name { margin: 0; font-size: 13px; color: #ffd27a; }
+.hqv-palico-hint { margin: 2px 0 0; font-size: 9px; color: rgba(201,162,39,0.55); }
+.hqv-palico-more { font-size: 14px; color: rgba(200,155,60,0.6); flex-shrink: 0; }
+.hqv-palico-none {
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 3px;
+  border: 1px dashed rgba(124,90,43,0.5);
+  background: rgba(0,0,0,0.22);
   font-size: 10px;
-  color: rgba(200,155,60,0.5);
+  color: rgba(201,162,39,0.65);
   text-align: center;
-  line-height: 1.4;
 }
-.qmode-active .qmode-name { color: #ffd27a; }
-.qmode-active .qmode-desc { color: rgba(255,210,122,0.7); }
+
+/* ═══════ Palico Draft Phase ═══════ */
+.phase-palico { display: flex; flex-direction: column; gap: 12px; }
+.pd-sub { margin: 0; text-align: center; font-size: 11px; color: rgba(201,162,39,0.7); }
+/* การ์ดเรียงลงเป็นแถว ไม่ใช่วางคู่กัน — ต้องอ่านข้อความความสามารถเทียบกันก่อนตัดสินใจ
+   ซึ่งบนมือถือถ้าวางคู่กันจะเหลือคอลัมน์ละ ~150px อ่านไม่ไหว */
+.pd-cards { display: flex; flex-direction: column; gap: 10px; }
+.pd-card {
+  display: flex; gap: 12px;
+  padding: 10px;
+  border-radius: 3px;
+  border: 2px solid rgba(124,90,43,0.5);
+  background: linear-gradient(170deg, #33251b, #1c1409);
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, opacity 0.15s;
+}
+.pd-card:hover { border-color: rgba(200,155,60,0.7); }
+.pd-card-picked {
+  border-color: #c89b3c;
+  box-shadow: 0 0 14px rgba(200,155,60,0.35), inset 0 0 20px rgba(200,155,60,0.08);
+}
+.pd-card-locked { opacity: 0.35; cursor: default; }
+.pd-card-locked:hover { border-color: rgba(124,90,43,0.5); }
+.pd-card-img { width: 74px; aspect-ratio: 5 / 7; object-fit: cover; object-position: top; border-radius: 2px; flex-shrink: 0; }
+.pd-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.pd-card-family { font-size: 8px; letter-spacing: 1px; text-transform: uppercase; color: rgba(200,155,60,0.55); }
+.pd-card-name { font-size: 14px; color: #ffd27a; }
+.pd-card-ability { margin: 0; font-size: 11px; line-height: 1.6; color: #d8bf8c; }
+.pd-waiting { margin: 0; text-align: center; font-size: 12px; color: #7c5a2b; font-style: italic; padding: 20px 0; }
+.pd-confirm {
+  padding: 14px;
+  border-radius: 3px;
+  border: 1px solid #6b4f1c;
+  background: linear-gradient(to bottom, #b08a34 0%, #8a6a22 48%, #6b501a 100%);
+  color: #2a1d06;
+  font-family: 'Georgia', serif; font-size: 13px; font-weight: bold; letter-spacing: 1px;
+  cursor: pointer;
+  text-shadow: 0 1px 0 rgba(255,225,170,0.35);
+  box-shadow: inset 0 1px 0 rgba(255,230,180,0.4), 0 2px 6px rgba(0,0,0,0.5);
+}
+.pd-confirm:disabled { opacity: 0.4; cursor: not-allowed; }
+.pd-locked-note { margin: 0; text-align: center; font-size: 12px; color: #a88040; }
+.pd-locked-note strong { color: #ffd27a; }
+.pd-party { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 4px; border: 1px solid rgba(124,90,43,0.45); border-left: 3px solid #7c5a2b; background: linear-gradient(170deg, #2b1f13, #221809); }
+.pd-party-row { display: flex; align-items: center; gap: 8px; }
+.pd-party-icon { width: 22px; height: 22px; object-fit: contain; }
+.pd-party-name { font-size: 11px; color: #d8bf8c; }
+.pd-party-state { font-size: 10px; color: rgba(201,162,39,0.55); }
+.pd-party-state.done { color: #6fcf97; }
 
 /* ═══════ HQ Vote Phase ═══════ */
 .phase-hq-vote {
@@ -10307,57 +10917,212 @@ const openPackDrawer = () => {
 .hqv-header { display: flex; align-items: center; gap: 10px; }
 .hqv-line { flex: 1; height: 1px; background: linear-gradient(to right, transparent, #7c5a2b); }
 .hqv-line:last-child { background: linear-gradient(to left, transparent, #7c5a2b); }
-.hqv-title { font-size: 12px; letter-spacing: 3px; color: #c89b3c; white-space: nowrap; text-transform: uppercase; }
-.hqv-monster-row { display: flex; align-items: center; gap: 14px; padding: 10px 14px; border-radius: 8px; background: rgba(20,14,6,0.8); border: 1px solid rgba(124,90,43,0.3); }
-.hqv-monster-img { width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 0 4px rgba(0,0,0,0.6)); }
-.hqv-target-label { font-size: 9px; letter-spacing: 3px; color: #7c5a2b; text-transform: uppercase; margin: 0; }
-.hqv-monster-name { font-size: 16px; color: #ffd27a; font-weight: bold; margin: 0; }
-.hqv-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.hqv-btn {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  padding: 18px 10px; border-radius: 12px;
-  border: 2px solid; cursor: pointer; transition: all 0.2s;
-  font-family: 'Georgia', serif;
-  background: rgba(10,8,4,0.8);
+.hqv-title { font-size: 11px; letter-spacing: 4px; color: #c89b3c; white-space: nowrap; text-transform: uppercase; }
+.hqv-question {
+  margin: -6px 0 0;
+  text-align: center;
+  font-size: 19px;
+  color: #ffd27a;
+  letter-spacing: 1px;
+  text-shadow: 0 0 18px rgba(255,200,80,0.35), 0 2px 4px rgba(0,0,0,0.85);
 }
-.hqv-btn-hq { border-color: rgba(200,155,60,0.5); }
-.hqv-btn-hq:hover { border-color: #c89b3c; background: rgba(40,28,8,0.9); box-shadow: 0 0 16px rgba(200,155,60,0.2); }
-.hqv-btn-quest { border-color: rgba(200,80,80,0.5); }
-.hqv-btn-quest:hover { border-color: #cc4444; background: rgba(40,14,14,0.9); box-shadow: 0 0 16px rgba(200,60,60,0.2); }
-.hqv-btn-icon { font-size: 26px; }
-.hqv-hq-icon { width: 28px; height: 28px; object-fit: contain; filter: brightness(0) invert(1); }
-.hqv-quest-icon { width: 28px; height: 28px; object-fit: contain; }
+
+/* ป้ายไม้ประกาศเป้าหมาย — ชุดเดียวกับ .target-banner ในหน้าเลือกเควส */
+.hqv-monster-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.16) 0px, rgba(0,0,0,0.16) 1px, transparent 1px, transparent 7px),
+    linear-gradient(175deg, #4a3520 0%, #3a2917 58%, #43301c 100%);
+  border: 3px solid #2e2113;
+  border-left: 4px solid #6b4f1c;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.5), 0 3px 10px rgba(0,0,0,0.5);
+}
+.hqv-monster-img { width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 0 4px rgba(0,0,0,0.6)); }
+.hqv-target-label { font-size: 9px; letter-spacing: 3px; color: #b89a68; text-transform: uppercase; margin: 0; }
+.hqv-monster-name { font-size: 16px; color: #ffd27a; font-weight: bold; margin: 0; }
+
+.hqv-free-day { display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 3px; background: rgba(58,26,20,0.85); border: 1px solid rgba(204,68,68,0.45); box-shadow: inset 0 0 12px rgba(204,68,68,0.12); }
+.hqv-free-card { width: 38px; border-radius: 4px; border: 1px solid rgba(124,90,43,0.5); }
+.hqv-free-title { margin: 0; font-size: 12px; font-weight: bold; color: #ffb0a0; letter-spacing: 1px; }
+.hqv-free-sub { margin: 2px 0 0; font-size: 11px; color: #c8a27a; }
+
+/* ── ตัวเลือกเป็นธงผ้าห้อยจากคานไม้ ──
+   ปลายล่างตัดเป็นหางนกนางแอ่นด้วย clip-path จึงต้องแยก .hqv-cloth ออกจากปุ่ม
+   ไม่งั้นคานไม้ (.hqv-rod) จะโดนตัดไปด้วย */
+.hqv-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.hqv-banner {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: 'Georgia', serif;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6));
+  transition: transform 0.18s ease, filter 0.18s ease;
+}
+.hqv-banner:hover { transform: translateY(-3px); }
+.hqv-banner:active { transform: translateY(0); }
+
+.hqv-rod {
+  display: block;
+  height: 9px;
+  margin: 0 -5px;
+  border-radius: 2px;
+  background:
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.2) 0px, rgba(0,0,0,0.2) 1px, transparent 1px, transparent 6px),
+    linear-gradient(to bottom, #7a5a24, #3a2917);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.2), 0 2px 5px rgba(0,0,0,0.7);
+}
+
+.hqv-cloth {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 16px 8px 34px;
+  clip-path: polygon(0 0, 100% 0, 100% 86%, 50% 100%, 0 86%);
+  background:
+    repeating-linear-gradient(100deg, rgba(0,0,0,0.14) 0px, rgba(0,0,0,0.14) 1px, transparent 1px, transparent 5px),
+    var(--cloth);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.1);
+}
+.hqv-banner-hq    { --cloth: linear-gradient(170deg, #4a3714 0%, #2b2010 60%, #332614 100%); --ink: #ffd27a; --edge: rgba(200,155,60,0.55); }
+.hqv-banner-quest { --cloth: linear-gradient(170deg, #4a1616 0%, #2c0e0e 60%, #351111 100%); --ink: #ff9c9c; --edge: rgba(200,80,80,0.5); }
+.hqv-banner:hover .hqv-cloth { box-shadow: inset 0 1px 0 rgba(255,220,160,0.16), inset 0 0 30px var(--edge); }
+
+/* ตราวงกลมบนหัวธง */
+.hqv-crest {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,0,0,0.55), rgba(0,0,0,0.15));
+  border: 1px solid var(--edge);
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.6);
+}
+.hqv-crest-img { width: 26px; height: 26px; object-fit: contain; }
+.hqv-crest-white { filter: brightness(0) invert(1); }
+
+.hqv-banner-label { font-size: 14px; font-weight: bold; color: var(--ink); letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+.hqv-banner-rule { width: 42px; height: 1px; background: linear-gradient(to right, transparent, var(--edge), transparent); }
+.hqv-banner-sub { font-size: 10px; color: #b09468; font-style: italic; text-align: center; line-height: 1.5; }
+
+@media (max-width: 380px) {
+  .hqv-cloth { padding: 12px 6px 28px; }
+  .hqv-crest { width: 36px; height: 36px; }
+  .hqv-crest-img { width: 21px; height: 21px; }
+  .hqv-banner-label { font-size: 12px; }
+}
 
 /* HQ Vote Confirm Modal */
 .hqvc-overlay { position: fixed; inset: 0; background: rgba(5,4,2,0.75); backdrop-filter: blur(8px) brightness(0.5); display: flex; justify-content: center; align-items: center; z-index: 400; padding: 16px; }
-.hqvc-modal { width: min(320px,100%); padding: 24px 20px; border-radius: 12px; background: linear-gradient(160deg,#1c1508,#13100a); border: 1px solid rgba(124,90,43,0.5); box-shadow: 0 0 40px rgba(0,0,0,0.9); display: flex; flex-direction: column; gap: 16px; align-items: center; font-family: 'Georgia',serif; animation: hqModalIn 0.2s cubic-bezier(0.34,1.56,0.64,1); }
-.hqvc-title { font-size: 12px; letter-spacing: 3px; color: #c89b3c; text-transform: uppercase; margin: 0; }
-.hqvc-choice { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-radius: 10px; border: 2px solid; width: 100%; }
-.hqvc-hq { border-color: rgba(200,155,60,0.6); background: rgba(40,28,8,0.8); }
-.hqvc-quest { border-color: rgba(200,80,80,0.5); background: rgba(40,14,14,0.8); }
+.hqvc-modal {
+  width: min(320px,100%);
+  padding: 22px 20px;
+  border-radius: 3px;
+  border: 1px solid rgba(124,90,43,0.55);
+  border-left: 3px solid #7c5a2b;
+  background:
+    repeating-linear-gradient(100deg, rgba(0,0,0,0.14) 0px, rgba(0,0,0,0.14) 1px, transparent 1px, transparent 5px),
+    linear-gradient(170deg, #2b1f13, #1a1309 60%, #22190e);
+  box-shadow: 0 0 40px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,220,160,0.08);
+  display: flex; flex-direction: column; gap: 16px; align-items: center;
+  font-family: 'Georgia',serif;
+  animation: hqModalIn 0.2s cubic-bezier(0.34,1.56,0.64,1);
+}
+.hqvc-title { font-size: 11px; letter-spacing: 4px; color: #c89b3c; text-transform: uppercase; margin: 0; }
+.hqvc-choice { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-radius: 3px; border: 1px solid; width: 100%; box-shadow: inset 0 0 22px rgba(0,0,0,0.45); }
+.hqvc-hq { border-color: rgba(200,155,60,0.6); background: linear-gradient(170deg, #4a3714, #2b2010); }
+.hqvc-quest { border-color: rgba(200,80,80,0.5); background: linear-gradient(170deg, #4a1616, #2c0e0e); }
 .hqvc-icon { width: 32px; height: 32px; object-fit: contain; }
 .hqvc-icon-white { filter: brightness(0) invert(1); }
 .hqvc-label { font-size: 16px; font-weight: bold; color: #f0ddb0; letter-spacing: 1px; }
 .hqvc-btns { display: flex; gap: 10px; width: 100%; }
-.hqvc-btn-confirm { flex: 1; padding: 12px; border-radius: 8px; border: 2px solid #c89b3c; background: linear-gradient(to bottom,#3a2a10,#1a1308); color: #ffd27a; font-family: 'Georgia',serif; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+.hqvc-btn-confirm { flex: 1; padding: 12px; border-radius: 3px; border: 1px solid #c89b3c; background: linear-gradient(to bottom,#3a2a10,#1a1308); color: #ffd27a; font-family: 'Georgia',serif; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; }
 .hqvc-btn-confirm:hover { box-shadow: 0 0 14px rgba(200,155,60,0.4); }
 .hqvc-btn-cancel { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid rgba(124,90,43,0.3); background: rgba(10,8,4,0.6); color: #7c5a2b; font-family: 'Georgia',serif; font-size: 13px; cursor: pointer; transition: 0.2s; }
 .hqvc-btn-cancel:hover { border-color: rgba(124,90,43,0.6); color: #c89b3c; }
-.hqv-btn-label { font-size: 14px; font-weight: bold; color: #f0ddb0; letter-spacing: 1px; }
-.hqv-btn-sub { font-size: 10px; color: #7c5a2b; font-style: italic; }
-.hqv-waiting { text-align: center; padding: 16px; border-radius: 10px; background: rgba(10,8,4,0.7); border: 1px solid rgba(124,90,43,0.3); }
-.hqv-voted-label { margin: 0 0 4px; font-size: 14px; color: #f0ddb0; }
+/* ── ใบเสียงที่ลงแล้ว — แผงหนังพร้อมตราครั่ง ── */
+.hqv-waiting {
+  position: relative;
+  text-align: center;
+  padding: 18px 16px 16px;
+  border-radius: 3px;
+  border: 1px solid rgba(124,90,43,0.5);
+  border-left: 3px solid #7c5a2b;
+  background:
+    repeating-linear-gradient(100deg, rgba(0,0,0,0.14) 0px, rgba(0,0,0,0.14) 1px, transparent 1px, transparent 5px),
+    linear-gradient(170deg, #2b1f13, #221809 55%, #281d10);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.07), 0 3px 10px rgba(0,0,0,0.5);
+}
+.hqv-wax {
+  position: absolute;
+  top: -12px;
+  right: 14px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #a83232, #5e1414);
+  border: 1px solid rgba(255,150,120,0.35);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.7), inset 0 -2px 4px rgba(0,0,0,0.5);
+}
+.hqv-voted-label { margin: 0 0 4px; font-size: 14px; color: #c0a870; }
 .hqv-voted-label strong { color: #ffd27a; }
 .hqv-waiting-sub { margin: 0; font-size: 12px; color: #7c5a2b; font-style: italic; }
-.hqv-party-votes { display: flex; flex-direction: column; gap: 6px; }
-.hqv-vote-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-radius: 8px; background: rgba(14,10,4,0.7); border: 1px solid rgba(90,61,31,0.3); }
-.hqv-hunter-name { font-size: 13px; color: #e0c88a; font-weight: bold; }
-.hqv-vote-pill { font-size: 11px; padding: 3px 10px; border-radius: 12px; }
+
+/* ── บันทึกการลงเสียง — หน้าสมุดบัญชี ── */
+.hqv-party-votes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(124,90,43,0.45);
+  background:
+    repeating-linear-gradient(100deg, rgba(0,0,0,0.14) 0px, rgba(0,0,0,0.14) 1px, transparent 1px, transparent 5px),
+    linear-gradient(170deg, #241a10, #1c1409);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.06), 0 3px 10px rgba(0,0,0,0.45);
+}
+.hqv-tally-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.hqv-tally-line { flex: 1; height: 1px; background: rgba(124,90,43,0.4); }
+.hqv-tally-title { font-size: 10px; letter-spacing: 2px; color: #a88040; white-space: nowrap; }
+.hqv-vote-row { display: flex; align-items: center; gap: 8px; padding: 6px 2px; }
+.hqv-vote-icon { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; }
+.hqv-hunter-name { font-size: 13px; color: #e0c88a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* เส้นประนำสายตาไปหาผลโหวต แบบรายการในบัญชีเก่า */
+.hqv-dotted { flex: 1; min-width: 10px; border-bottom: 1px dotted rgba(124,90,43,0.45); transform: translateY(-3px); }
+.hqv-vote-pill { font-size: 11px; padding: 3px 10px; border-radius: 3px; white-space: nowrap; flex-shrink: 0; }
 .hqv-vote-hq { background: rgba(200,155,60,0.15); border: 1px solid rgba(200,155,60,0.4); color: #ffd27a; }
 .hqv-vote-quest { background: rgba(200,80,80,0.12); border: 1px solid rgba(200,80,80,0.4); color: #ff9090; }
-.hqv-vote-pending { background: rgba(60,60,60,0.2); border: 1px solid rgba(90,90,90,0.3); color: #5a5a5a; }
-.hqv-tiebreak { text-align: center; padding: 14px 12px; border-radius: 10px; background: rgba(20,12,4,0.85); border: 1px solid rgba(200,155,60,0.4); display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.hqv-tie-label { margin: 0; font-size: 16px; font-weight: bold; color: #ffd27a; letter-spacing: 1px; }
+.hqv-vote-pending { background: rgba(60,60,60,0.2); border: 1px dashed rgba(124,90,43,0.35); color: #6b563a; }
+
+/* ── คำตัดสินเมื่อเสียงเท่ากัน ── */
+.hqv-tiebreak {
+  text-align: center;
+  padding: 14px 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(200,155,60,0.45);
+  background:
+    repeating-linear-gradient(100deg, rgba(0,0,0,0.14) 0px, rgba(0,0,0,0.14) 1px, transparent 1px, transparent 5px),
+    linear-gradient(170deg, #2e2210, #1d1508);
+  box-shadow: inset 0 0 24px rgba(200,155,60,0.08), 0 3px 10px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.hqv-tie-label { margin: 0; font-size: 16px; font-weight: bold; color: #ffd27a; letter-spacing: 2px; }
 .hqv-tie-sub { margin: 0; font-size: 12px; color: #a07840; font-style: italic; }
 .hqv-tiebreak .hqv-choices { width: 100%; }
 
@@ -10552,64 +11317,6 @@ const openPackDrawer = () => {
 }
 .sc-card-name { font-size: 18px; font-weight: bold; color: #ffd27a; margin: 0; letter-spacing: 2px; }
 .sc-hint { font-size: 10px; color: rgba(124,90,43,0.5); letter-spacing: 2px; margin: 0; animation: cml-pulse 1.5s ease-in-out infinite; }
-
-/* ── Special Card Select Modal ── */
-.scs-overlay {
-  position: fixed; inset: 0;
-  background: rgba(5,2,0,0.92);
-  backdrop-filter: blur(6px);
-  z-index: 489;
-  display: flex; align-items: center; justify-content: center;
-  padding: 20px;
-}
-.scs-modal {
-  display: flex; flex-direction: column; align-items: center; gap: 14px;
-  background: rgba(20,14,8,0.9);
-  border: 1px solid rgba(200,155,60,0.4);
-  border-radius: 14px;
-  padding: 24px;
-  max-width: 560px;
-  width: 100%;
-}
-.scs-title { font-size: 18px; font-weight: bold; color: #ffd27a; margin: 0; letter-spacing: 2px; text-align: center; }
-.scs-sub { font-size: 13px; color: #c8b89a; margin: 0; text-align: center; }
-.scs-scoutfly { font-size: 13px; color: #9adfff; margin: 0; text-align: center; }
-.scs-scoutfly strong { color: #ffe08a; }
-.scs-options {
-  display: flex; flex-wrap: wrap; justify-content: center; gap: 16px;
-  width: 100%;
-}
-.scs-option {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  background: rgba(255,255,255,0.04);
-  border: 2px solid rgba(200,155,60,0.35);
-  border-radius: 10px;
-  padding: 10px;
-  cursor: pointer;
-  transition: 0.2s;
-  flex: 1 1 140px;
-  max-width: 180px;
-}
-.scs-option:hover {
-  border-color: rgba(255,210,122,0.9);
-  box-shadow: 0 0 20px rgba(255,210,122,0.4);
-  transform: translateY(-2px);
-}
-.scs-card-img { width: 100%; max-width: 140px; height: auto; border-radius: 6px; display: block; }
-.scs-card-name { font-size: 13px; font-weight: bold; color: #ffd27a; text-align: center; }
-.scs-card-hint { font-size: 11px; color: #9adfff; text-align: center; line-height: 1.4; }
-.scs-confirm-card-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 8px; }
-.scs-confirm-card-img { width: min(220px, 70vw); height: auto; border-radius: 8px; border: 2px solid #c89b3c; box-shadow: 0 0 20px rgba(200,155,60,0.4); }
-.scs-confirm-card-name { font-size: 15px; font-weight: bold; color: #ffd27a; }
-.scs-waiting-modal { gap: 18px; }
-.scs-waiting-spinner {
-  width: 44px; height: 44px;
-  border: 4px solid rgba(255,210,122,0.2);
-  border-top-color: #ffd27a;
-  border-radius: 50%;
-  animation: scs-spin 1s linear infinite;
-}
-@keyframes scs-spin { to { transform: rotate(360deg); } }
 
 /* ── Current Attack Card (below msc-wrap) ── */
 .current-attack-card {
@@ -12163,12 +12870,105 @@ const openPackDrawer = () => {
   backdrop-filter: blur(6px);
   transition: bottom 0.25s ease;
 }
+/* ปุ่ม Palico หัวแถบปาร์ตี้ — กว้างเท่าไอคอนคลาสด้านล่าง คอลัมน์จะได้ตรงกัน
+   ใช้รูปการ์ดจริงแทนไอคอนแมว เห็นปุ๊บรู้เลยว่าถือใบไหนโดยไม่ต้องกด */
+.party-palico-btn {
+  width: 28px;
+  padding: 0;
+  border: 1px solid rgba(200,155,60,0.45);
+  border-radius: 3px;
+  background: rgba(20,14,6,0.8);
+  line-height: 0;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.party-palico-btn:hover { border-color: #c89b3c; box-shadow: 0 0 8px rgba(200,155,60,0.4); }
+.party-palico-img {
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  object-fit: cover;
+  object-position: top;
+  border-radius: 2px;
+  display: block;
+}
+.party-palico-fallback { display: block; font-size: 15px; line-height: 26px; }
+.party-palico-sep {
+  width: 20px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(201,162,39,0.45), transparent);
+}
+
 .party-strip-lifted {
   bottom: 110px;
 }
 .party-strip-tab {
   bottom: 50px;
 }
+/* tile ที่แตะขอสลับโทเค็นได้ — เรืองแสงแดงเพื่อไม่ให้ปนกับสถานะจบเทิร์น (เขียว/เหลือง) */
+/* ไม่มีไอคอนกำกับแล้ว (บังเลขโทเค็นที่มุมบนซ้าย) — วงแสงเป็นตัวบอกอย่างเดียว เลยต้องชัดพอ
+   ใช้ outline ไม่ใช่ border เพราะ border จะดันขนาด tile ทำให้แถวขยับตอนความสามารถพร้อมใช้ */
+.party-swappable {
+  cursor: pointer;
+  border-radius: 10px;
+  outline: 1px solid rgba(255,120,90,0.5);
+  outline-offset: 1px;
+  animation: weGlow 1.8s ease-in-out infinite;
+}
+@keyframes weGlow {
+  0%, 100% { box-shadow: 0 0 6px rgba(204,68,68,0.35); }
+  50%      { box-shadow: 0 0 15px rgba(255,120,90,0.75); }
+}
+
+.we-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(4, 3, 1, 0.82);
+  backdrop-filter: blur(4px);
+}
+.we-modal {
+  width: min(360px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 16px;
+  border-radius: 12px;
+  text-align: center;
+  background: linear-gradient(160deg, rgba(28,18,10,0.98), rgba(12,8,4,0.99));
+  border: 1px solid rgba(204,68,68,0.45);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.85), inset 0 0 20px rgba(204,68,68,0.08);
+}
+.we-title { margin: 0; font-size: 15px; font-weight: bold; color: #ffb0a0; letter-spacing: 1px; }
+.we-sub { margin: 0; font-size: 11px; color: #a88040; line-height: 1.6; }
+
+.we-note { margin: 0; font-size: 10px; color: #7c5a2b; line-height: 1.6; }
+.we-cancel { padding: 8px; border-radius: 8px; font-size: 12px; color: #a88040; cursor: pointer; background: rgba(0,0,0,0.4); border: 1px solid rgba(124,90,43,0.35); }
+
+.we-swap-row { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.4); border: 1px solid rgba(200,155,60,0.25); }
+.we-swap-side { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 70px; }
+.we-swap-icon { width: 34px; height: 34px; object-fit: contain; }
+.we-swap-role { font-size: 10px; color: #a88040; letter-spacing: 1px; }
+.we-swap-token { font-size: 22px; font-weight: bold; color: #ffd27a; }
+.we-swap-arrow { font-size: 18px; color: #cc4444; }
+
+.we-waiting-dots { display: flex; justify-content: center; gap: 6px; font-size: 24px; color: #c89b3c; line-height: 0.6; }
+.we-waiting-dots span { animation: weDot 1.2s ease-in-out infinite; }
+.we-waiting-dots span:nth-child(2) { animation-delay: 0.2s; }
+.we-waiting-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes weDot {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 1; }
+}
+
+.we-answer { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.we-decline, .we-accept { padding: 10px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; }
+.we-decline { color: #c8a27a; background: rgba(0,0,0,0.45); border: 1px solid rgba(124,90,43,0.4); }
+.we-accept { color: #0f0b05; background: linear-gradient(to bottom, #ffd27a, #c89b3c); border: 1px solid #ffd27a; }
+
 .party-member {
   display: flex;
   flex-direction: column;

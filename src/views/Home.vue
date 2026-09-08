@@ -109,11 +109,11 @@ import Inventory from './components/Inventory.vue'
 import Crafting from './components/Crafting.vue'
 import Setting from './components/Setting.vue'
 const menus = [
-  { menu: 'Quest',     label: 'Quest',     thumbnail: 'assets/img/menu_topbar_icon/quest.png' },
-  { menu: 'State',     label: 'State',     thumbnail: 'assets/img/menu_topbar_icon/hunter.png' },
-  { menu: 'Inventory', label: 'Inventory', thumbnail: 'assets/img/menu_topbar_icon/inv.png' },
-  { menu: 'Crafting',  label: 'Crafting',  thumbnail: 'assets/img/menu_topbar_icon/craft.png' },
-  { menu: 'Setting',   label: 'Setting',   thumbnail: 'assets/img/menu_topbar_icon/setting.png' },
+  { menu: 'Quest',     label: 'Quest',     thumbnail: 'assets/img/menu_topbar_icon/quest.webp' },
+  { menu: 'State',     label: 'State',     thumbnail: 'assets/img/menu_topbar_icon/hunter.webp' },
+  { menu: 'Inventory', label: 'Inventory', thumbnail: 'assets/img/menu_topbar_icon/inv.webp' },
+  { menu: 'Crafting',  label: 'Crafting',  thumbnail: 'assets/img/menu_topbar_icon/craft.webp' },
+  { menu: 'Setting',   label: 'Setting',   thumbnail: 'assets/img/menu_topbar_icon/setting.webp' },
 ]
 
 const componentMap = { Quest, State, Inventory, Crafting, Setting }
@@ -135,33 +135,40 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
   <div class="home">
 
     <!-- ══════════ TOPBAR / NAV ══════════ -->
-    <nav class="topbar" role="navigation">
-      <div
-        v-for="item in menus"
-        :key="item.menu"
-        class="nav-item"
-        :class="{ active: activeMenu === item.menu }"
-        @click="activeMenu = item.menu"
-        :aria-label="item.menu"
-      >
-        <div class="nav-icon-wrap">
-          <span v-if="item.text" class="nav-icon-text">{{ item.text }}</span>
-          <img
-            v-else
-            :src="getImg(item.thumbnail)"
-            class="nav-icon"
-            :style="item.white ? 'filter: brightness(0) invert(1)' : ''"
-          />
+    <!-- ตัวครอบไว้ยึดปุ่มตี้ให้ห้อยพอดีขอบล่าง topbar โดยไม่ต้องเดาความสูง
+         (ใส่ในตัว nav เองไม่ได้ เพราะ topbar มี overflow-x: auto แล้วจะโดนตัด) -->
+    <div class="topbar-wrap">
+      <nav class="topbar" role="navigation">
+        <div
+          v-for="item in menus"
+          :key="item.menu"
+          class="nav-item"
+          :class="{ active: activeMenu === item.menu }"
+          @click="activeMenu = item.menu"
+          :aria-label="item.menu"
+        >
+          <div class="nav-icon-wrap">
+            <span v-if="item.text" class="nav-icon-text">{{ item.text }}</span>
+            <img
+              v-else
+              :src="getImg(item.thumbnail)"
+              class="nav-icon"
+              :style="item.white ? 'filter: brightness(0) invert(1)' : ''"
+            />
+          </div>
+          <span class="nav-label">{{ item.label ?? item.menu }}</span>
+          <div v-if="activeMenu === item.menu" class="nav-underline"></div>
         </div>
-        <span class="nav-label">{{ item.label ?? item.menu }}</span>
-        <div v-if="activeMenu === item.menu" class="nav-underline"></div>
-      </div>
+      </nav>
 
-      <button v-if="room.inRoom" class="topbar-party-btn" @click="showPartyPanel = true">
-        ⚔ <span class="topbar-party-count">{{ room.hunterCount }}</span>
+      <!-- ปุ่มตี้ — ห้อยใต้เมนู Quest ซึ่งเป็นปุ่มซ้ายสุด -->
+      <button v-if="room.inRoom" class="party-fab" @click="showPartyPanel = true">
+        <span class="party-fab-badge">
+          <img :src="getImg('assets/img/UI/symbol/hunter_turn_symbol.webp')" class="party-fab-icon" alt="" />
+          <span class="party-fab-count">{{ room.hunterCount }}</span>
+        </span>
       </button>
-
-    </nav>
+    </div>
 
     <!-- ══════════ SECTION TITLE BAR ══════════ -->
     <div class="section-title-bar">
@@ -173,6 +180,7 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
       </div>
       <div class="stb-line"></div>
     </div>
+
 
     <!-- ══════════ CONTENT ══════════ -->
     <div class="content">
@@ -411,33 +419,63 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
   text-shadow: 0 0 8px rgba(255,200,100,0.7);
 }
 
-.topbar-party-btn {
+.topbar-wrap { position: relative; }
+
+/* ห้อยจากขอบล่างของ topbar — top: 100% จึงพอดีเสมอไม่ว่าความสูง topbar จะเปลี่ยน */
+.party-fab {
+  position: absolute;
+  left: 8px;
+  top: calc(100% - 3px);
+  z-index: 5;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  margin-left: auto;
-  flex-shrink: 0;
-  background: linear-gradient(to bottom, rgba(200,155,60,0.26), rgba(120,88,26,0.18));
-  border: 1px solid #6b4f1c;
-  border-radius: 2px;
-  box-shadow: inset 0 1px 0 rgba(255, 230, 180, 0.3);
+  /* เผื่อขอบขวา/ล่างให้เลขที่ล้นออกนอกรูป symbol ไม่ให้โดนขอบปุ่มตัด */
+  padding: 7px 13px 8px 9px;
+  border-radius: 0 0 10px 10px;
+  border: 1px solid rgba(200, 155, 60, 0.45);
+  border-top: none;
+  background: linear-gradient(to bottom, rgba(48, 34, 14, 0.92), rgba(20, 14, 6, 0.9));
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
   color: #ffe7bb;
-  font-size: 13px;
-  font-weight: bold;
+  font-family: inherit;
   cursor: pointer;
   transition: 0.15s;
 }
-.topbar-party-btn:hover { background: rgba(200,155,60,0.22); }
-.topbar-party-count {
-  background: radial-gradient(circle at 35% 30%, #8fd9a8, #3f8f5f 60%, #24603c);
-  border: 1px solid rgba(20, 50, 32, 0.6);
-  color: #0d2417;
-  font-size: 10px;
-  font-weight: bold;
+.party-fab:hover {
+  border-color: #c89b3c;
+  background: linear-gradient(to bottom, rgba(66, 46, 18, 0.95), rgba(28, 20, 8, 0.92));
+}
+/* ชุดเดียวกับ .float-atk-badge บนแถบลอยในหน้า Quest — เลขเกาะมุมล่างขวาของ symbol
+   ไม่ทับกลางภาพ เพราะลาย symbol มีรายละเอียดเยอะจนตัวเลขจมหาย */
+.party-fab-badge {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+.party-fab-icon {
+  height: 22px;
+  width: auto;
+  display: block;
+  border-radius: 6px;
+}
+.party-fab-count {
+  position: absolute;
+  right: -5px;
+  bottom: -4px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  box-sizing: border-box;
   border-radius: 999px;
-  padding: 1px 6px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  background: #12100a;
+  border: 1px solid rgba(200, 155, 60, 0.7);
+  color: #ffd27a;
+  font-size: 11px;
+  font-weight: bold;
+  line-height: 13px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
 }
 
 .nav-item.active .nav-icon {

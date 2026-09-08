@@ -8,7 +8,7 @@
         "difficulty_id": 1,
         "level": 1,
         "health": 50,
-        "map_image": "assets/img/maps/great_jagras/great_jagras_1_star_map.png",
+        "map_image": "assets/img/maps/great_jagras/great_jagras_1_star_map.webp",
         "special_rule": {
           "title": "Gluttonous",
           "description": "ทุกครั้งที่ Great Jagras สร้างความเสียหายใส่ Hunter ได้สำเร็จ, มันจะฟื้นฟูพลังชีวิตที่เสียไปของมัน 1 หน่วย"
@@ -19,7 +19,7 @@
             "connect_part_position": null,
             "part_break_threshold": 4,
             "armor": 0,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Water จะถือว่าเป็นการโจมตีกายภาพแทน"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ {water} จะถือว่าเป็นการโจมตีกายภาพแทน"
           },
           "back": {
             "part_id": 2,
@@ -203,10 +203,10 @@
         "difficulty_id": 2,
         "level": 2,
         "health": 60,
-        "map_image": "assets/img/maps/great_jagras/great_jagras_2_star_map.png",
+        "map_image": "assets/img/maps/great_jagras/great_jagras_2_star_map.webp",
         "special_rule": {
           "title": "Irritable",
-          "description": "ทุกครั้งที่ Great Jagras สร้างความเสียหายใส่ Hunter ได้สำเร็จ มันจะฟื้นฟูพลังชีวิตที่เสียไปของมัน 1 หน่วย, ในระหว่างที่ Great Jagras มีชิ้นส่วนที่ถูกทำลาย มันจะสร้างความเสียหายเพิ่มขึ้น 1 หน่วย และ ระยะการโจมตี กับ ค่าหลบหลีก ของมันจะเพิ่มขึ้น 1 หน่วย"
+          "description": "ทุกครั้งที่ Great Jagras สร้างความเสียหายใส่ Hunter ได้สำเร็จ มันจะฟื้นฟูพลังชีวิตที่เสียไปของมัน 1 หน่วย, ในระหว่างที่ Great Jagras มีชิ้นส่วนที่ถูกทำลาย {atk}+1 และ {agility}+1"
         },
         "monster_parts": {
           "front": {
@@ -214,7 +214,7 @@
             "connect_part_position": null,
             "part_break_threshold": 4,
             "armor": 0,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Water จะถือว่าเป็นการโจมตีกายภาพแทน"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ {water} จะถือว่าเป็นการโจมตีกายภาพแทน"
           },
           "back": {
             "part_id": 2,
@@ -228,7 +228,7 @@
             "connect_part_position": ["right"],
             "part_break_threshold": 5,
             "armor": 1,
-            "part_break_rule": "Great Jagras จะสร้างความเสียหายผ่าน Claw ลดลง 1 หน่วย"
+            "part_break_rule": "Great Jagras จะสร้างความเสียหายผ่าน {claw}-1"
           }
         },
         "element_resistance": [
@@ -397,10 +397,10 @@
         "difficulty_id": 3,
         "level": 3,
         "health": 65,
-        "map_image": "assets/img/maps/great_jagras/great_jagras_3_star_map.png",
+        "map_image": "assets/img/maps/great_jagras/great_jagras_3_star_map.webp",
         "special_rule": {
           "title": "Jagras Alpha",
-          "description": "ทุกครั้งที่ Great Jagras สร้างความเสียหายใส่ Hunter ได้สำเร็จ มันจะฟื้นฟูพลังชีวิตที่เสียไปของมัน 1 หน่วย, Great Jagras จะสร้างความเสียหายเพิ่มขึ้น 1 หน่วย และ ระยะการโจมตี กับ ค่าหลบหลีก ของมันจะเพิ่มขึ้น 1 หน่วย"
+          "description": "ทุกครั้งที่ Great Jagras สร้างความเสียหายใส่ Hunter ได้สำเร็จ มันจะฟื้นฟูพลังชีวิตที่เสียไปของมัน 1 หน่วย, การ์ดพฤติกรรมทุกใบ {atk}+1 และ {agility}+1"
         },
         "monster_parts": {
           "front": {
@@ -408,7 +408,7 @@
             "connect_part_position": null,
             "part_break_threshold": 5,
             "armor": 1,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Water จะถือว่าเป็นการโจมตีกายภาพแทน"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ {water} จะถือว่าเป็นการโจมตีกายภาพแทน"
           },
           "back": {
             "part_id": 2,
@@ -422,7 +422,7 @@
             "connect_part_position": ["right"],
             "part_break_threshold": 5,
             "armor": 1,
-            "part_break_rule": "Great Jagras จะสร้างความเสียหายผ่าน Claw ลดลง 1 หน่วย"
+            "part_break_rule": "Great Jagras จะสร้างความเสียหายผ่าน {claw} -1"
           }
         },
         "element_resistance": [
@@ -592,80 +592,80 @@
       {
         "behavior_id": 1,
         "behavior_name": "Headbutt",
-        "front_card_img": "assets/img/behavior_deck/great_jagras/headbutt_front.png",
-        "back_card_img": "assets/img/behavior_deck/great_jagras/headbutt_back.png",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/headbutt_front.webp",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/headbutt_back.webp",
         "activations": 1,
         "attack_cards": 2
       },
       {
         "behavior_id": 2,
         "behavior_name": "Belly Roll Right",
-        "front_card_img": "assets/img/behavior_deck/great_jagras/belly_roll_right_front.png",
-        "back_card_img": "assets/img/behavior_deck/great_jagras/belly_roll_right_back.png",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/belly_roll_right_front.webp",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/belly_roll_right_back.webp",
         "activations": 2,
         "attack_cards": 2
       },
       {
         "behavior_id": 3,
         "behavior_name": "Heavy Bite",
-        "front_card_img": "assets/img/behavior_deck/great_jagras/heavy_bite_front.png",
-        "back_card_img": "assets/img/behavior_deck/great_jagras/heavy_bite_back.png",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/heavy_bite_front.webp",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/heavy_bite_back.webp",
         "activations": 1,
         "attack_cards": 3
       },
       {
         "behavior_id": 4,
         "behavior_name": "Belly Slam",
-        "front_card_img": "assets/img/behavior_deck/great_jagras/belly_slam_front.png",
-        "back_card_img": "assets/img/behavior_deck/great_jagras/belly_slam_back.png",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/belly_slam_front.webp",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/belly_slam_back.webp",
         "activations": 1,
         "attack_cards": 2
       },
       {
         "behavior_id": 5,
         "behavior_name": "Spit Up",
-        "front_card_img": "assets/img/behavior_deck/great_jagras/spit_up_front.png",
-        "back_card_img": "assets/img/behavior_deck/great_jagras/spit_up_back.png",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/spit_up_front.webp",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/spit_up_back.webp",
         "activations": 2,
         "attack_cards": 3
       },
       {
         "behavior_id": 6,
         "behavior_name": "Front Claw Smash",
-        "front_card_img": "assets/img/behavior_deck/great_jagras/front_claw_smash_front.png",
-        "back_card_img": "assets/img/behavior_deck/great_jagras/front_claw_smash_back.png",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/front_claw_smash_front.webp",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/front_claw_smash_back.webp",
         "activations": 2,
         "attack_cards": 2
       },
       {
         "behavior_id": 7,
         "behavior_name": "Belly Charge",
-        "front_card_img": "assets/img/behavior_deck/great_jagras/belly_charge_front.png",
-        "back_card_img": "assets/img/behavior_deck/great_jagras/belly_charge_back.png",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/belly_charge_front.webp",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/belly_charge_back.webp",
         "activations": 2,
         "attack_cards": 2
       },
       {
         "behavior_id": 8,
         "behavior_name": "Head Slam",
-        "front_card_img": "assets/img/behavior_deck/great_jagras/head_slam_front.png",
-        "back_card_img": "assets/img/behavior_deck/great_jagras/head_slam_back.png",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/head_slam_front.webp",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/head_slam_back.webp",
         "activations": 1,
         "attack_cards": 2
       },
       {
         "behavior_id": 9,
         "behavior_name": "Belly Roll Left",
-        "front_card_img": "assets/img/behavior_deck/great_jagras/belly_roll_left_front.png",
-        "back_card_img": "assets/img/behavior_deck/great_jagras/belly_roll_left_back.png",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/belly_roll_left_front.webp",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/belly_roll_left_back.webp",
         "activations": 2,
         "attack_cards": 2
       },
       {
         "behavior_id": 10,
         "behavior_name": "Forward Swing",
-        "front_card_img": "assets/img/behavior_deck/great_jagras/forward_swing_front.png",
-        "back_card_img": "assets/img/behavior_deck/great_jagras/forward_swing_back.png",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/forward_swing_front.webp",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/forward_swing_back.webp",
         "activations": 1,
         "attack_cards": 2
       }
@@ -674,24 +674,24 @@
       {
         "behavior_id": 11,
         "behavior_name": "Forward Roll",
-        "front_card_img": "assets/img/behavior_deck/great_jagras/forward_roll_front.png",
-        "back_card_img": "assets/img/behavior_deck/great_jagras/forward_roll_back.png",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/forward_roll_front.webp",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/forward_roll_back.webp",
         "activations": 3,
         "attack_cards": 2
       },
       {
         "behavior_id": 12,
         "behavior_name": "Jagras Spit",
-        "front_card_img": "assets/img/behavior_deck/great_jagras/jagras_spit_front.png",
-        "back_card_img": "assets/img/behavior_deck/great_jagras/jagras_spit_back.png",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/jagras_spit_front.webp",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/jagras_spit_back.webp",
         "activations": 1,
         "attack_cards": 2
       },
       {
         "behavior_id": 13,
         "behavior_name": "Retreat Swing",
-        "front_card_img": "assets/img/behavior_deck/great_jagras/retreat_swing_front.png",
-        "back_card_img": "assets/img/behavior_deck/great_jagras/retreat_swing_back.png",
+        "front_card_img": "assets/img/behavior_deck/great_jagras/retreat_swing_front.webp",
+        "back_card_img": "assets/img/behavior_deck/great_jagras/retreat_swing_back.webp",
         "activations": 2,
         "attack_cards": 3
       }
@@ -707,10 +707,10 @@
         "difficulty_id": 1,
         "level": 1,
         "health": 60,
-        "map_image": "assets/img/maps/tobi/tobi_1_star_map.png",
+        "map_image": "assets/img/maps/tobi/tobi_1_star_map.webp",
         "special_rule": {
           "title": "Shocking",
-          "description": "เมื่อกำหนดเป้าหมายของการ์ดพฤติกรรมที่มีการโจมตีธาตุ Thunder ให้ Tobi-Kadachi แล้ว, ให้นำ Tobi-Kadachi ออกจากบอร์ด จากนั้นวาง Tobi-Kadachi ไปยัง Rock Node ที่อยู่ไกลจากตำแหน่งปัจจุบันมากที่สุด โดยไม่เปลี่ยนทิศทางการหันหน้าเดิมของมัน, หากมี Rock Node ที่ไกลที่สุดมากกว่าหนึ่งช่อง ให้ Hunters เป็นคนเลือก, หากมี Hunter อยู่บน Node นั้น ให้ย้าย Hunter เหล่านั้นเสมือนว่า Tobi-Kadachi ได้เคลื่อนที่เข้ามายัง Node ดังกล่าว, หลังจากนั้น ให้ดำเนินการการ์ดพฤติกรรมของ Tobi-Kadachi ตามปกติ"
+          "description": "เมื่อกำหนดเป้าหมายของการ์ดพฤติกรรมที่มีการโจมตีธาตุ {thunder} ให้ Tobi-Kadachi แล้ว, ให้นำ Tobi-Kadachi ออกจากบอร์ด จากนั้นวาง Tobi-Kadachi ไปยัง Rock Node ที่อยู่ไกลจากตำแหน่งปัจจุบันมากที่สุด โดยไม่เปลี่ยนทิศทางการหันหน้าเดิมของมัน, หากมี Rock Node ที่ไกลที่สุดมากกว่าหนึ่งช่อง ให้ Hunters เป็นคนเลือก, หากมี Hunter อยู่บน Node นั้น ให้ย้าย Hunter เหล่านั้นเสมือนว่า Tobi-Kadachi ได้เคลื่อนที่เข้ามายัง Node ดังกล่าว, หลังจากนั้น ให้ดำเนินการการ์ดพฤติกรรมของ Tobi-Kadachi ตามปกติ"
         },
         "monster_parts": {
           "front": {
@@ -732,7 +732,7 @@
             "connect_part_position": ["right"],
             "part_break_threshold": 3,
             "armor": 2,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีติดสถานะ Paralysis ความเสียหายของการโจมตีจะลดลง 1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีติดสถานะ {paralysis}, ความเสียหาย {atk}-1"
           },
           "right": {}
         },
@@ -902,10 +902,10 @@
         "difficulty_id": 2,
         "level": 2,
         "health": 65,
-        "map_image": "assets/img/maps/tobi/tobi_2_star_map.png",
+        "map_image": "assets/img/maps/tobi/tobi_2_star_map.webp",
         "special_rule": {
           "title": "Electrifying",
-          "description": "เมื่อกำหนดเป้าหมายของการ์ดพฤติกรรมที่มีการโจมตีธาตุ Thunder ให้ Tobi-Kadachi แล้ว, ให้นำ Tobi-Kadachi ออกจากบอร์ด จากนั้นวาง Tobi-Kadachi ไปยัง Rock Node ที่อยู่ไกลจากตำแหน่งปัจจุบันมากที่สุด โดยไม่เปลี่ยนทิศทางการหันหน้าเดิมของมัน, หากมี Rock Node ที่ไกลที่สุดมากกว่าหนึ่งช่อง ให้ Hunters เป็นคนเลือก, หากมี Hunter อยู่บน Node นั้น ให้ย้าย Hunter เหล่านั้นเสมือนว่า Tobi-Kadachi ได้เคลื่อนที่เข้ามายัง Node ดังกล่าว, หลังจากนั้น ให้ดำเนินการการ์ดพฤติกรรมของ Tobi-Kadachi ตามปกติ, การ์ดพฤติกรรมที่มีการโจมตีธาตุ Thunder ความเสียหายของการโจมตีนั้นจะเพิ่มขึ้น 1 หน่วย"
+          "description": "เมื่อกำหนดเป้าหมายของการ์ดพฤติกรรมที่มีการโจมตีธาตุ {thunder} ให้ Tobi-Kadachi แล้ว, ให้นำ Tobi-Kadachi ออกจากบอร์ด จากนั้นวาง Tobi-Kadachi ไปยัง Rock Node ที่อยู่ไกลจากตำแหน่งปัจจุบันมากที่สุด โดยไม่เปลี่ยนทิศทางการหันหน้าเดิมของมัน, หากมี Rock Node ที่ไกลที่สุดมากกว่าหนึ่งช่อง ให้ Hunters เป็นคนเลือก, หากมี Hunter อยู่บน Node นั้น ให้ย้าย Hunter เหล่านั้นเสมือนว่า Tobi-Kadachi ได้เคลื่อนที่เข้ามายัง Node ดังกล่าว, หลังจากนั้น ให้ดำเนินการการ์ดพฤติกรรมของ Tobi-Kadachi ตามปกติ, การ์ดพฤติกรรมที่มีการโจมตีธาตุ {thunder}, ความเสียหาย {atk}+1"
         },
         "monster_parts": {
           "front": {
@@ -927,7 +927,7 @@
             "connect_part_position": ["right"],
             "part_break_threshold": 4,
             "armor": 2,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีติดสถานะ Paralysis ความเสียหายของการโจมตีจะลดลง 1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีติดสถานะ {paralysis}, ความเสียหาย {atk}-1"
           },
           "right": {}
         },
@@ -1097,10 +1097,10 @@
         "difficulty_id": 3,
         "level": 3,
         "health": 70,
-        "map_image": "assets/img/maps/tobi/tobi_3_star_map.png",
+        "map_image": "assets/img/maps/tobi/tobi_3_star_map.webp",
         "special_rule": {
           "title": "Static Charge",
-          "description": "เมื่อกำหนดเป้าหมายของการ์ดพฤติกรรมที่มีการโจมตีธาตุ Thunder ให้ Tobi-Kadachi แล้ว, ให้นำ Tobi-Kadachi ออกจากบอร์ด จากนั้นวาง Tobi-Kadachi ไปยัง Rock Node ที่อยู่ไกลจากตำแหน่งปัจจุบันมากที่สุด โดยไม่เปลี่ยนทิศทางการหันหน้าเดิมของมัน, หากมี Rock Node ที่ไกลที่สุดมากกว่าหนึ่งช่อง ให้ Hunters เป็นคนเลือก, หากมี Hunter อยู่บน Node นั้น ให้ย้าย Hunter เหล่านั้นเสมือนว่า Tobi-Kadachi ได้เคลื่อนที่เข้ามายัง Node ดังกล่าว, หลังจากนั้น ให้ดำเนินการการ์ดพฤติกรรมของ Tobi-Kadachi ตามปกติ, การ์ดพฤติกรรมที่มีการโจมตีธาตุ Thunder ความเสียหายของการโจมตีนั้นจะเพิ่มขึ้น 2 หน่วย"
+          "description": "เมื่อกำหนดเป้าหมายของการ์ดพฤติกรรมที่มีการโจมตีธาตุ {thunder} ให้ Tobi-Kadachi แล้ว, ให้นำ Tobi-Kadachi ออกจากบอร์ด จากนั้นวาง Tobi-Kadachi ไปยัง Rock Node ที่อยู่ไกลจากตำแหน่งปัจจุบันมากที่สุด โดยไม่เปลี่ยนทิศทางการหันหน้าเดิมของมัน, หากมี Rock Node ที่ไกลที่สุดมากกว่าหนึ่งช่อง ให้ Hunters เป็นคนเลือก, หากมี Hunter อยู่บน Node นั้น ให้ย้าย Hunter เหล่านั้นเสมือนว่า Tobi-Kadachi ได้เคลื่อนที่เข้ามายัง Node ดังกล่าว, หลังจากนั้น ให้ดำเนินการการ์ดพฤติกรรมของ Tobi-Kadachi ตามปกติ, การ์ดพฤติกรรมที่มีการโจมตีธาตุ {thunder}, ความเสียหาย {atk}+2"
         },
         "monster_parts": {
           "front": {
@@ -1115,14 +1115,14 @@
             "connect_part_position": null,
             "part_break_threshold": 5,
             "armor": 2,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Thunder ความเสียหายของการโจมตีนั้นจะลดลง 1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ {thunder}, ความเสียหาย {atk}-1"
           },
           "left": {
             "part_id": 2,
             "connect_part_position": ["right"],
             "part_break_threshold": 5,
             "armor": 3,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีติดสถานะ Paralysis ความเสียหายของการโจมตีจะลดลง 1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีติดสถานะ {paralysis}, ความเสียหาย {atk}-1"
           },
           "right": {}
         },
@@ -1293,80 +1293,80 @@
       {
         "behavior_id": 1,
         "behavior_name": "Tail Spin",
-        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_spin_front.png",
-        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_spin_back.png",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_spin_front.webp",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_spin_back.webp",
         "activations": 2,
         "attack_cards": 2
       },
       {
         "behavior_id": 2,
         "behavior_name": "Backflip Slam",
-        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/backflip_slam_front.png",
-        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/backflip_slam_back.png",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/backflip_slam_front.webp",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/backflip_slam_back.webp",
         "activations": 4,
         "attack_cards": 2
       },
       {
         "behavior_id": 3,
         "behavior_name": "Tail Swing",
-        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_swing_front.png",
-        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_swing_back.png",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_swing_front.webp",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_swing_back.webp",
         "activations": 3,
         "attack_cards": 2
       },
       {
         "behavior_id": 4,
         "behavior_name": "Tail Spark",
-        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_spark_front.png",
-        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_spark_back.png",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_spark_front.webp",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_spark_back.webp",
         "activations": 1,
         "attack_cards": 3
       },
       {
         "behavior_id": 5,
         "behavior_name": "Tail Slash",
-        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_slash_front.png",
-        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_slash_back.png",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_slash_front.webp",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_slash_back.webp",
         "activations": 2,
         "attack_cards": 2
       },
       {
         "behavior_id": 6,
         "behavior_name": "Backslash Swoop",
-        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/backslash_swoop_front.png",
-        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/backslash_swoop_back.png",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/backslash_swoop_front.webp",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/backslash_swoop_back.webp",
         "activations": 3,
         "attack_cards": 2
       },
       {
         "behavior_id": 7,
         "behavior_name": "Leaping Bite",
-        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/leaping_bite_front.png",
-        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/leaping_bite_back.png",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/leaping_bite_front.webp",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/leaping_bite_back.webp",
         "activations": 2,
         "attack_cards": 2
       },
       {
         "behavior_id": 8,
         "behavior_name": "Tail Shock Pulse",
-        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_shock_pulse_front.png",
-        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_shock_pulse_back.png",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_shock_pulse_front.webp",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/tail_shock_pulse_back.webp",
         "activations": 3,
         "attack_cards": 2
       },
       {
         "behavior_id": 9,
         "behavior_name": "Rapid Bite",
-        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/rapid_bite_front.png",
-        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/rapid_bite_back.png",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/rapid_bite_front.webp",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/rapid_bite_back.webp",
         "activations": 1,
         "attack_cards": 2
       },
       {
         "behavior_id": 10,
         "behavior_name": "Gliding Tail Slam",
-        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/gliding_tail_slam_front.png",
-        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/gliding_tail_slam_back.png",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/gliding_tail_slam_front.webp",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/gliding_tail_slam_back.webp",
         "activations": 2,
         "attack_cards": 3
       }
@@ -1375,24 +1375,24 @@
       {
         "behavior_id": 11,
         "behavior_name": "Front Flip Slam",
-        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/front_flip_slam_front.png",
-        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/front_flip_slam_back.png",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/front_flip_slam_front.webp",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/front_flip_slam_back.webp",
         "activations": 3,
         "attack_cards": 2
       },
       {
         "behavior_id": 12,
         "behavior_name": "Leap Quick Bite",
-        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/leap_quick_bite_front.png",
-        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/leap_quick_bite_back.png",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/leap_quick_bite_front.webp",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/leap_quick_bite_back.webp",
         "activations": 1,
         "attack_cards": 3
       },
       {
         "behavior_id": 13,
         "behavior_name": "Gliding Tail Cleave",
-        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/gliding_tail_cleave_front.png",
-        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/gliding_tail_cleave_back.png",
+        "front_card_img": "assets/img/behavior_deck/tobi_kadachi/gliding_tail_cleave_front.webp",
+        "back_card_img": "assets/img/behavior_deck/tobi_kadachi/gliding_tail_cleave_back.webp",
         "activations": 2,
         "attack_cards": 2
       }
@@ -1408,10 +1408,10 @@
         "difficulty_id": 1,
         "level": 1,
         "health": 65,
-        "map_image": "assets/img/maps/anjanath/anjanath_1_star_map.png",
+        "map_image": "assets/img/maps/anjanath/anjanath_1_star_map.webp",
         "special_rule": {
           "title": "Reckless Aggression",
-          "description": "ทุกครั้งที่ Anjanath ได้รับความเสียหายมากกว่าหรือเท่ากับ 4 หน่วยจาก Attack Card หลังจากแสดงผลลัพท์ของการโจมตี มันจะเคลื่อนที่ 2 nodes ไปหา Hunter ที่อยู่ไกลที่สุด"
+          "description": "ทุกครั้งที่ Anjanath ได้รับความเสียหายมากกว่าหรือเท่ากับ 4 หน่วยจาก Attack Card หลังจากแสดงผลลัพท์ของการโจมตี มันจะเคลื่อนที่ 2 nodes ไปหา Hunter {furthest}"
         },
         "monster_parts": {
           "front": {
@@ -1419,7 +1419,7 @@
             "connect_part_position": null,
             "part_break_threshold": 5,
             "armor": 2,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ความเสียหายของการโจมตีนั้นจะลดลง 1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ {fire}, ความเสียหาย {atk}-1"
           },
           "back": {
             "part_id": 6,
@@ -1612,10 +1612,10 @@
         "difficulty_id": 2,
         "level": 2,
         "health": 70,
-        "map_image": "assets/img/maps/anjanath/anjanath_2_star_map.png",
+        "map_image": "assets/img/maps/anjanath/anjanath_2_star_map.webp",
         "special_rule": {
           "title": "Flaming Anger",
-          "description": "ทุกครั้งที่ Anjanath ได้รับความเสียหายมากกว่าหรือเท่ากับ 4 หน่วยจาก Attack Card หลังจากแสดงผลลัพท์ของการโจมตี มันจะเคลื่อนที่ 2 nodes ไปหา Hunter ที่อยู่ไกลที่สุด, การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ความเสียหายของการโจมตีนั้นจะเพิ่มขึ้น 1 หน่วย"
+          "description": "ทุกครั้งที่ Anjanath ได้รับความเสียหายมากกว่าหรือเท่ากับ 4 หน่วยจาก Attack Card หลังจากแสดงผลลัพท์ของการโจมตี มันจะเคลื่อนที่ 2 nodes ไปหา Hunter {furthest}, การ์ดพฤติกรรมที่มีการโจมตีธาตุ {fire} ความเสียหาย {atk}+1"
         },
         "monster_parts": {
           "front": {
@@ -1623,7 +1623,7 @@
             "connect_part_position": null,
             "part_break_threshold": 6,
             "armor": 2,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ความเสียหายของการโจมตีนั้นจะลดลง 1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ {fire} ความเสียหาย {atk}-1"
           },
           "back": {
             "part_id": 6,
@@ -1816,10 +1816,10 @@
         "difficulty_id": 3,
         "level": 3,
         "health": 75,
-        "map_image": "assets/img/maps/anjanath/anjanath_3_star_map.png",
+        "map_image": "assets/img/maps/anjanath/anjanath_3_star_map.webp",
         "special_rule": {
           "title": "Burning Wrath",
-          "description": "ทุกครั้งที่ Anjanath ได้รับความเสียหายมากกว่าหรือเท่ากับ 4 หน่วยจาก Attack Card หลังจากแสดงผลลัพท์ของการโจมตี มันจะเคลื่อนที่ 2 nodes ไปหา Hunter ที่อยู่ไกลที่สุด, การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ความเสียหายของการโจมตีนั้นจะเพิ่มขึ้น 1 หน่วย และระยะโจมตีกับค่าหลบหลีกเพิ่มขึ้น 1 หน่วย"
+          "description": "ทุกครั้งที่ Anjanath ได้รับความเสียหายมากกว่าหรือเท่ากับ 4 หน่วยจาก Attack Card หลังจากแสดงผลลัพท์ของการโจมตี มันจะเคลื่อนที่ 2 nodes ไปหา Hunter ที่อยู่ไกลที่สุด{furthest}, การ์ดพฤติกรรมที่มีการโจมตีธาตุ {fire}, ความเสียหาย {atk}+1 และหลบหลีก {agility}+1"
         },
         "monster_parts": {
           "front": {
@@ -1827,14 +1827,14 @@
             "connect_part_position": null,
             "part_break_threshold": 6,
             "armor": 2,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ความเสียหายของการโจมตีนั้นจะลดลง 1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ {fire} ความเสียหาย {atk}-1"
           },
           "back": {
             "part_id": 6,
             "connect_part_position": null,
             "part_break_threshold": 5,
             "armor": 2,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ระยะการโจมตีของการ์ดนั้นจะลดลง 1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ {fire} ระยะการโจมตี {range}-1"
           },
           "left": {
             "part_id": 5,
@@ -2021,80 +2021,80 @@
       {
         "behavior_id": 1,
         "behavior_name": "Flame Jet",
-        "front_card_img": "assets/img/behavior_deck/anjanath/flame_jet_front.png",
-        "back_card_img": "assets/img/behavior_deck/anjanath/flame_jet_back.png",
+        "front_card_img": "assets/img/behavior_deck/anjanath/flame_jet_front.webp",
+        "back_card_img": "assets/img/behavior_deck/anjanath/flame_jet_back.webp",
         "activations": 3,
         "attack_cards": 2
       },
       {
         "behavior_id": 2,
         "behavior_name": "Bludgeon",
-        "front_card_img": "assets/img/behavior_deck/anjanath/bludgeon_front.png",
-        "back_card_img": "assets/img/behavior_deck/anjanath/bludgeon_back.png",
+        "front_card_img": "assets/img/behavior_deck/anjanath/bludgeon_front.webp",
+        "back_card_img": "assets/img/behavior_deck/anjanath/bludgeon_back.webp",
         "activations": 3,
         "attack_cards": 2
       },
       {
         "behavior_id": 3,
         "behavior_name": "Flame Spray",
-        "front_card_img": "assets/img/behavior_deck/anjanath/flame_spray_front.png",
-        "back_card_img": "assets/img/behavior_deck/anjanath/flame_spray_back.png",
+        "front_card_img": "assets/img/behavior_deck/anjanath/flame_spray_front.webp",
+        "back_card_img": "assets/img/behavior_deck/anjanath/flame_spray_back.webp",
         "activations": 3,
         "attack_cards": 3
       },
       {
         "behavior_id": 4,
         "behavior_name": "Head Plunge",
-        "front_card_img": "assets/img/behavior_deck/anjanath/head_plunge_front.png",
-        "back_card_img": "assets/img/behavior_deck/anjanath/head_plunge_back.png",
+        "front_card_img": "assets/img/behavior_deck/anjanath/head_plunge_front.webp",
+        "back_card_img": "assets/img/behavior_deck/anjanath/head_plunge_back.webp",
         "activations": 2,
         "attack_cards": 2
       },
       {
         "behavior_id": 5,
         "behavior_name": "Charge",
-        "front_card_img": "assets/img/behavior_deck/anjanath/charge_front.png",
-        "back_card_img": "assets/img/behavior_deck/anjanath/charge_back.png",
+        "front_card_img": "assets/img/behavior_deck/anjanath/charge_front.webp",
+        "back_card_img": "assets/img/behavior_deck/anjanath/charge_back.webp",
         "activations": 1,
         "attack_cards": 3
       },
       {
         "behavior_id": 6,
         "behavior_name": "Crush",
-        "front_card_img": "assets/img/behavior_deck/anjanath/crush_front.png",
-        "back_card_img": "assets/img/behavior_deck/anjanath/crush_back.png",
+        "front_card_img": "assets/img/behavior_deck/anjanath/crush_front.webp",
+        "back_card_img": "assets/img/behavior_deck/anjanath/crush_back.webp",
         "activations": 4,
         "attack_cards": 1
       },
       {
         "behavior_id": 7,
         "behavior_name": "Bite",
-        "front_card_img": "assets/img/behavior_deck/anjanath/bite_front.png",
-        "back_card_img": "assets/img/behavior_deck/anjanath/bite_back.png",
+        "front_card_img": "assets/img/behavior_deck/anjanath/bite_front.webp",
+        "back_card_img": "assets/img/behavior_deck/anjanath/bite_back.webp",
         "activations": 1,
         "attack_cards": 2
       },
       {
         "behavior_id": 8,
         "behavior_name": "Slam",
-        "front_card_img": "assets/img/behavior_deck/anjanath/slam_front.png",
-        "back_card_img": "assets/img/behavior_deck/anjanath/slam_back.png",
+        "front_card_img": "assets/img/behavior_deck/anjanath/slam_front.webp",
+        "back_card_img": "assets/img/behavior_deck/anjanath/slam_back.webp",
         "activations": 3,
         "attack_cards": 2
       },
       {
         "behavior_id": 9,
         "behavior_name": "Tail Swing",
-        "front_card_img": "assets/img/behavior_deck/anjanath/tail_swing_front.png",
-        "back_card_img": "assets/img/behavior_deck/anjanath/tail_swing_back.png",
+        "front_card_img": "assets/img/behavior_deck/anjanath/tail_swing_front.webp",
+        "back_card_img": "assets/img/behavior_deck/anjanath/tail_swing_back.webp",
         "activations": 2,
         "attack_cards": 3
       },
       {
         "behavior_id": 10,
         "behavior_name": "Fire Snort",
-        "front_card_img": "assets/img/behavior_deck/anjanath/fire_snort_front.png",
-        "back_card_img": "assets/img/behavior_deck/anjanath/fire_snort_back.png",
+        "front_card_img": "assets/img/behavior_deck/anjanath/fire_snort_front.webp",
+        "back_card_img": "assets/img/behavior_deck/anjanath/fire_snort_back.webp",
         "activations": 2,
         "attack_cards": 2
       }
@@ -2103,24 +2103,24 @@
       {
         "behavior_id": 11,
         "behavior_name": "Crushing Charge",
-        "front_card_img": "assets/img/behavior_deck/anjanath/crushing_charge_front.png",
-        "back_card_img": "assets/img/behavior_deck/anjanath/crushing_charge_back.png",
+        "front_card_img": "assets/img/behavior_deck/anjanath/crushing_charge_front.webp",
+        "back_card_img": "assets/img/behavior_deck/anjanath/crushing_charge_back.webp",
         "activations": 2,
         "attack_cards": 2
       },
       {
         "behavior_id": 12,
         "behavior_name": "Deadly Bludgeon",
-        "front_card_img": "assets/img/behavior_deck/anjanath/deadly_bludgeon_front.png",
-        "back_card_img": "assets/img/behavior_deck/anjanath/deadly_bludgeon_back.png",
+        "front_card_img": "assets/img/behavior_deck/anjanath/deadly_bludgeon_front.webp",
+        "back_card_img": "assets/img/behavior_deck/anjanath/deadly_bludgeon_back.webp",
         "activations": 3,
         "attack_cards": 3
       },
       {
         "behavior_id": 13,
         "behavior_name": "Right Flame Spray",
-        "front_card_img": "assets/img/behavior_deck/anjanath/right_flame_spray_front.png",
-        "back_card_img": "assets/img/behavior_deck/anjanath/right_flame_spray_back.png",
+        "front_card_img": "assets/img/behavior_deck/anjanath/right_flame_spray_front.webp",
+        "back_card_img": "assets/img/behavior_deck/anjanath/right_flame_spray_back.webp",
         "activations": 3,
         "attack_cards": 2
       }
@@ -2130,16 +2130,16 @@
   {
     "monster_id": 4,
     "monster_name": "Rathalos",
-    "thumbnail": "assets/img/rathalos_Icon.png",
+    "thumbnail": "assets/img/rathalos_Icon.webp",
     "difficulty": [
       {
         "difficulty_id": 1,
         "level": 1,
         "health": 80,
-        "map_image": "assets/img/maps/rathalos/rathalos_1_star_map.png",
+        "map_image": "assets/img/maps/rathalos/rathalos_1_star_map.webp",
         "special_rule": {
           "title": "Chaotic Rage",
-          "description": "เมื่อ Rathalos มี HP น้อยกว่าเท่ากับ 35 หน่วย ให้นำการ์ดพฤติกรรม Special Attack(ที่มีรูป Track Token มุมบนซ้ายของการ์ด) ออกจากกองการ์ด หลังจากนั้นทำการสุ่มการ์ด Special Attack 1 ใบ(รวมใบที่เอาออกไปด้วย) เข้ากองการ์ด จากนั้นนำกองการ์ดที่ทิ้งแล้วสับกลับเข้ากองการ์ดพฤติกรรมของ Rathalos"
+          "description": "เมื่อ Rathalos มี HP น้อยกว่าเท่ากับ 35 หน่วย ให้นำการ์ดพฤติกรรม {track} ออกจากกองการ์ด หลังจากนั้นทำการสุ่มการ์ดพฤติกรรม {track} 1 ใบ(รวมใบที่เอาออกไปด้วย) เข้ากองการ์ด จากนั้นนำกองการ์ดที่ทิ้งแล้วสับกลับเข้ากองการ์ดพฤติกรรมของ Rathalos"
         },
         "monster_parts": {
           "front": {
@@ -2147,7 +2147,7 @@
             "connect_part_position": null,
             "part_break_threshold": 6,
             "armor": 3,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ระยะการโจมตีของการ์ดนั้นจะลดลง 1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ {fire} ระยะการโจมตี {range}-1"
           },
           "back": {
             "part_id": 6,
@@ -2161,7 +2161,7 @@
             "connect_part_position": ["right"],
             "part_break_threshold": 5,
             "armor": 4,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Body จะทำให้ Hunter เล่นเพิ่มได้อีก 1 คน และเล่น Attack Card ได้เพิ่มอีก 1 ใบ"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {body} จะทำให้ {hturn}+1 และ {hcard}+1"
           },
           "right": {
             "part_id": 4,
@@ -2340,10 +2340,10 @@
         "difficulty_id": 2,
         "level": 2,
         "health": 85,
-        "map_image": "assets/img/maps/rathalos/rathalos_2_star_map.png",
+        "map_image": "assets/img/maps/rathalos/rathalos_2_star_map.webp",
         "special_rule": {
           "title": "Burning Rage",
-          "description": "เมื่อ Rathalos มี HP น้อยกว่าเท่ากับ 35 หน่วย ให้นำการ์ดพฤติกรรม Special Attack(ที่มีรูป Track Token มุมบนซ้ายของการ์ด) ออกจากกองการ์ด หลังจากนั้นทำการสุ่มการ์ด Special Attack 1 ใบ(รวมใบที่เอาออกไปด้วย) เข้ากองการ์ด จากนั้นนำกองการ์ดที่ทิ้งแล้วสับกลับเข้ากองการ์ดพฤติกรรมของ Rathalos, การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ความเสียหายของการ์ดนั้นจะเพิ่มขึ้น 1 หน่วย"
+          "description": "เมื่อ Rathalos มี HP น้อยกว่าเท่ากับ 35 หน่วย ให้นำการ์ดพฤติกรรม {track} ออกจากกองการ์ด หลังจากนั้นทำการสุ่มการ์ดพฤติกรรม {track} 1 ใบ(รวมใบที่เอาออกไปด้วย) เข้ากองการ์ด จากนั้นนำกองการ์ดที่ทิ้งแล้วสับกลับเข้ากองการ์ดพฤติกรรมของ Rathalos, การ์ดพฤติกรรมที่มีการโจมตีธาตุ {fire} ความเสียหาย {atk}+1"
         },
         "monster_parts": {
           "front": {
@@ -2351,7 +2351,7 @@
             "connect_part_position": null,
             "part_break_threshold": 6,
             "armor": 3,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ระยะการโจมตีของการ์ดนั้นจะลดลง 1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ {fire} ระยะการโจมตี {range}-1"
           },
           "back": {
             "part_id": 6,
@@ -2365,7 +2365,7 @@
             "connect_part_position": ["right"],
             "part_break_threshold": 7,
             "armor": 4,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Body จะทำให้ Hunter เล่นเพิ่มได้อีก 1 คน และเล่น Attack Card ได้เพิ่มอีก 1 ใบ"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {body} จะทำให้ {hturn}+1 และ {hcard}+1"
           },
           "right": {
             "part_id": 4,
@@ -2544,10 +2544,10 @@
         "difficulty_id": 4,
         "level": 4,
         "health": 90,
-        "map_image": "assets/img/maps/rathalos/rathalos_4_star_map.png",
+        "map_image": "assets/img/maps/rathalos/rathalos_4_star_map.webp",
         "special_rule": {
           "title": "King of the Skies",
-          "description": "เมื่อ Rathalos มี HP น้อยกว่าเท่ากับ 35 หน่วย ให้นำการ์ดพฤติกรรม Special Attack(ที่มีรูป Track Token มุมบนซ้ายของการ์ด) ออกจากกองการ์ด หลังจากนั้นทำการสุ่มการ์ด Special Attack 1 ใบ(รวมใบที่เอาออกไปด้วย) เข้ากองการ์ด จากนั้นนำกองการ์ดที่ทิ้งแล้วสับกลับเข้ากองการ์ดพฤติกรรมของ Rathalos, การ์ดพฤติกรรมทั้งหมด จะทำความเสียหายเพิ่มขึ้น 1 หน่วย และระยะการโจมตีกับค่าหลบหลีกเพิ่มขึ้น 1 หน่วย"
+          "description": "เมื่อ Rathalos มี HP น้อยกว่าเท่ากับ 35 หน่วย ให้นำการ์ดพฤติกรรม {track} ออกจากกองการ์ด หลังจากนั้นทำการสุ่มการ์ดพฤติกรรม {track} 1 ใบ(รวมใบที่เอาออกไปด้วย) เข้ากองการ์ด จากนั้นนำกองการ์ดที่ทิ้งแล้วสับกลับเข้ากองการ์ดพฤติกรรมของ Rathalos, การ์ดพฤติกรรมทุกใบ {atk}+1 และ {agility}+1"
         },
         "monster_parts": {
           "front": {
@@ -2555,7 +2555,7 @@
             "connect_part_position": null,
             "part_break_threshold": 7,
             "armor": 4,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ระยะการโจมตีของการ์ดนั้นจะลดลง 1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ {fire} ระยะการโจมตี {range}-1"
           },
           "back": {
             "part_id": 6,
@@ -2569,7 +2569,7 @@
             "connect_part_position": ["right"],
             "part_break_threshold": 7,
             "armor": 5,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Body จะทำให้ Hunter เล่นเพิ่มได้อีก 1 คน และเล่น Attack Card ได้เพิ่มอีก 1 ใบ"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {body} จะทำให้ {hturn}+1 และ {hcard}+1"
           },
           "right": {
             "part_id": 4,
@@ -2748,48 +2748,48 @@
     "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2],
     "behavior_deck": [
       { "behavior_id": 1,  "behavior_name": "Claw Drop",        "activations": 3,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/rathalos/claw_drop_front.png",        "back_card_img": "assets/img/behavior_deck/rathalos/claw_drop_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/rathalos/claw_drop_front.webp",        "back_card_img": "assets/img/behavior_deck/rathalos/claw_drop_back.webp" },
       { "behavior_id": 2,  "behavior_name": "Fire Spin",         "activations": 2,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/rathalos/fire_spin_front.png",         "back_card_img": "assets/img/behavior_deck/rathalos/fire_spin_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/rathalos/fire_spin_front.webp",         "back_card_img": "assets/img/behavior_deck/rathalos/fire_spin_back.webp" },
       { "behavior_id": 3,  "behavior_name": "Flame Burst",       "activations": 3,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/rathalos/flame_burst_front.png",       "back_card_img": "assets/img/behavior_deck/rathalos/flame_burst_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/rathalos/flame_burst_front.webp",       "back_card_img": "assets/img/behavior_deck/rathalos/flame_burst_back.webp" },
       { "behavior_id": 4,  "behavior_name": "Flamethrower",      "activations": 1,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/rathalos/flamethrower_front.png",      "back_card_img": "assets/img/behavior_deck/rathalos/flamethrower_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/rathalos/flamethrower_front.webp",      "back_card_img": "assets/img/behavior_deck/rathalos/flamethrower_back.webp" },
       { "behavior_id": 5,  "behavior_name": "Flying Fire Ball",  "activations": 3,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/rathalos/flying_fire_ball_front.png",  "back_card_img": "assets/img/behavior_deck/rathalos/flying_fire_ball_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/rathalos/flying_fire_ball_front.webp",  "back_card_img": "assets/img/behavior_deck/rathalos/flying_fire_ball_back.webp" },
       { "behavior_id": 6,  "behavior_name": "Raging Charge",     "activations": 1,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/rathalos/raging_charge_front.png",     "back_card_img": "assets/img/behavior_deck/rathalos/raging_charge_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/rathalos/raging_charge_front.webp",     "back_card_img": "assets/img/behavior_deck/rathalos/raging_charge_back.webp" },
       { "behavior_id": 7,  "behavior_name": "Swooping Evade",    "activations": 1,
-        "attack_cards": 3 ,"front_card_img": "assets/img/behavior_deck/rathalos/swooping_evade_front.png",    "back_card_img": "assets/img/behavior_deck/rathalos/swooping_evade_back.png" },
+        "attack_cards": 3 ,"front_card_img": "assets/img/behavior_deck/rathalos/swooping_evade_front.webp",    "back_card_img": "assets/img/behavior_deck/rathalos/swooping_evade_back.webp" },
       { "behavior_id": 8,  "behavior_name": "Tackle",            "activations": 1,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/rathalos/tackle_front.png",            "back_card_img": "assets/img/behavior_deck/rathalos/tackle_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/rathalos/tackle_front.webp",            "back_card_img": "assets/img/behavior_deck/rathalos/tackle_back.webp" },
       { "behavior_id": 9,  "behavior_name": "Tail Swing",        "activations": 2,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/rathalos/tail_swing_front.png",        "back_card_img": "assets/img/behavior_deck/rathalos/tail_swing_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/rathalos/tail_swing_front.webp",        "back_card_img": "assets/img/behavior_deck/rathalos/tail_swing_back.webp" },
       { "behavior_id": 10, "behavior_name": "Take Off Blast",    "activations": 1,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/rathalos/take_off_blast_front.png",    "back_card_img": "assets/img/behavior_deck/rathalos/take_off_blast_back.png" }
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/rathalos/take_off_blast_front.webp",    "back_card_img": "assets/img/behavior_deck/rathalos/take_off_blast_back.webp" }
     ],
     "behavior_special_card": [
       { "behavior_id": 11, "behavior_name": "Stunning Spin",   "activations": 2,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/rathalos/stunning_spin_front.png",   "back_card_img": "assets/img/behavior_deck/rathalos/stunning_spin_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/rathalos/stunning_spin_front.webp",   "back_card_img": "assets/img/behavior_deck/rathalos/stunning_spin_back.webp" },
       { "behavior_id": 12, "behavior_name": "Molten Bite",     "activations": 2,
-        "attack_cards": 3 ,"front_card_img": "assets/img/behavior_deck/rathalos/molten_bite_front.png",     "back_card_img": "assets/img/behavior_deck/rathalos/molten_bite_back.png" },
+        "attack_cards": 3 ,"front_card_img": "assets/img/behavior_deck/rathalos/molten_bite_front.webp",     "back_card_img": "assets/img/behavior_deck/rathalos/molten_bite_back.webp" },
       { "behavior_id": 13, "behavior_name": "Charging Swoop",  "activations": 1,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/rathalos/charging_swoop_front.png",  "back_card_img": "assets/img/behavior_deck/rathalos/charging_swoop_back.png" }
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/rathalos/charging_swoop_front.webp",  "back_card_img": "assets/img/behavior_deck/rathalos/charging_swoop_back.webp" }
     ]
   },
   {
     "monster_id": 5,
     "monster_name": "Azure Rathalos",
-    "thumbnail": "assets/img/azure_rathalos_Icon.png",
+    "thumbnail": "assets/img/azure_rathalos_Icon.webp",
     "difficulty": [
       {
         "difficulty_id": 1,
         "level": 1,
         "health": 80,
-        "map_image": "assets/img/maps/a_rathalos/a_rathalos_1_star_map.png",
+        "map_image": "assets/img/maps/a_rathalos/a_rathalos_1_star_map.webp",
         "special_rule": {
           "title": "Fleeting Instinct",
-          "description": "ทุกครั้งที่ Azure Rathalos ได้รับความเสียหายจาก Attack Card หลังจากแสดงผลลัพท์ของการโจมตี มันจะเคลื่อนที่ 1 node ไปหา Hunter ที่อยู่ไกล้ที่สุด"
+          "description": "ทุกครั้งที่ Azure Rathalos ได้รับความเสียหายจาก Attack Card หลังจากแสดงผลลัพท์ของการโจมตี มันจะเคลื่อนที่ 1 node ไปหา Hunter {closest}"
         },
         "monster_parts": {
           "front": {
@@ -2797,14 +2797,14 @@
             "connect_part_position": null,
             "part_break_threshold": 5,
             "armor": 3,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ระยะการโจมตีของการ์ดนั้นจะลดลง 1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ {fire} ระยะการโจมตี {range}-1"
           },
           "back": {
             "part_id": 6,
             "connect_part_position": null,
             "part_break_threshold": 6,
             "armor": 3,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Tail ระยะการโจมตีของการ์ดนั้นจะลดลง 1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {tail} ระยะการโจมตี {range}-1"
           },
           "left": {
             "part_id": 2,
@@ -2818,7 +2818,7 @@
             "connect_part_position": ["left"],
             "part_break_threshold": 6,
             "armor": 3,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Wing ในการโจมตีนั้นจะทำให้ Hunter เล่นเพิ่มได้อีก 1 คน"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {wing} ในการโจมตีนั้นจะทำให้ {hturn}+1"
           }
         },
         "element_resistance": [
@@ -2990,10 +2990,10 @@
         "difficulty_id": 2,
         "level": 2,
         "health": 85,
-        "map_image": "assets/img/maps/a_rathalos/a_rathalos_2_star_map.png",
+        "map_image": "assets/img/maps/a_rathalos/a_rathalos_2_star_map.webp",
         "special_rule": {
           "title": "Strafing Instinct",
-          "description": "ทุกครั้งที่ Azure Rathalos ได้รับความเสียหายจาก Attack Card หลังจากแสดงผลลัพท์ของการโจมตี มันจะเคลื่อนที่ 1 node ไปหา Hunter ที่อยู่ไกล้ที่สุด, การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ความเสียหายของการ์ดนั้นจะเพิ่มขึ้น 1 หน่วย"
+          "description": "ทุกครั้งที่ Azure Rathalos ได้รับความเสียหายจาก Attack Card หลังจากแสดงผลลัพท์ของการโจมตี มันจะเคลื่อนที่ 1 node ไปหา Hunter {closest}, การ์ดพฤติกรรมที่มีการโจมตีธาตุ {fire} ความเสียหาย {atk}+1"
         },
         "monster_parts": {
           "front": {
@@ -3001,14 +3001,14 @@
             "connect_part_position": null,
             "part_break_threshold": 6,
             "armor": 3,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ระยะการโจมตีของการ์ดนั้นจะลดลง 1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ {fire} ระยะการโจมตี {range}-1"
           },
           "back": {
             "part_id": 6,
             "connect_part_position": null,
             "part_break_threshold": 6,
             "armor": 3,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Tail ระยะการโจมตีของการ์ดนั้นจะลดลง 1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {tail} ระยะการโจมตี {range}-1"
           },
           "left": {
             "part_id": 2,
@@ -3022,7 +3022,7 @@
             "connect_part_position": ["left"],
             "part_break_threshold": 7,
             "armor": 4,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Wing ในการโจมตีนั้นจะทำให้ Hunter เล่นเพิ่มได้อีก 1 คน"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {wing} ในการโจมตีนั้นจะทำให้ {hturn}+1"
           }
         },
         "element_resistance": [
@@ -3194,10 +3194,10 @@
         "difficulty_id": 4,
         "level": 4,
         "health": 90,
-        "map_image": "assets/img/maps/a_rathalos/a_rathalos_4_star_map.png",
+        "map_image": "assets/img/maps/a_rathalos/a_rathalos_4_star_map.webp",
         "special_rule": {
           "title": "Skyfire Instinct",
-          "description": "ทุกครั้งที่ Azure Rathalos ได้รับความเสียหายจาก Attack Card หลังจากแสดงผลลัพท์ของการโจมตี มันจะเคลื่อนที่ 1 node ไปหา Hunter ที่อยู่ไกล้ที่สุด, การ์ดพฤติกรรมทุกใบจะความเสียหายเพิ่มขึ้น 1 หน่วย"
+          "description": "ทุกครั้งที่ Azure Rathalos ได้รับความเสียหายจาก Attack Card หลังจากแสดงผลลัพท์ของการโจมตี มันจะเคลื่อนที่ 1 node ไปหา Hunter {closest}, การ์ดพฤติกรรมทุกใบจะความเสียหาย {atk}+1"
         },
         "monster_parts": {
           "front": {
@@ -3205,14 +3205,14 @@
             "connect_part_position": null,
             "part_break_threshold": 6,
             "armor": 4,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Fire ระยะการโจมตีของการ์ดนั้นจะลดลง 1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ {fire} ระยะการโจมตี {range}-1"
           },
           "back": {
             "part_id": 6,
             "connect_part_position": null,
             "part_break_threshold": 7,
             "armor": 4,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Tail ระยะการโจมตีของการ์ดนั้นจะลดลง 1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {tail} ระยะการโจมตี {range}-1"
           },
           "left": {
             "part_id": 2,
@@ -3226,7 +3226,7 @@
             "connect_part_position": ["left"],
             "part_break_threshold": 7,
             "armor": 4,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Wing ในการโจมตีนั้นจะทำให้ Hunter เล่นเพิ่มได้อีก 1 คน"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {wing} ในการโจมตีนั้นจะทำให้ {hturn}+1"
           }
         },
         "element_resistance": [
@@ -3398,48 +3398,48 @@
     "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2],
     "behavior_deck": [
       { "behavior_id": 1,  "behavior_name": "Claw Drop",         "activations": 1,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/claw_drop_front.png",         "back_card_img": "assets/img/behavior_deck/azure_rathalos/claw_drop_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/claw_drop_front.webp",         "back_card_img": "assets/img/behavior_deck/azure_rathalos/claw_drop_back.webp" },
       { "behavior_id": 2,  "behavior_name": "Fire Spray",        "activations": 1,
-        "attack_cards": 3 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/fire_spray_front.png",        "back_card_img": "assets/img/behavior_deck/azure_rathalos/fire_spray_back.png" },
+        "attack_cards": 3 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/fire_spray_front.webp",        "back_card_img": "assets/img/behavior_deck/azure_rathalos/fire_spray_back.webp" },
       { "behavior_id": 3,  "behavior_name": "Left Flame Burst",  "activations": 3,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/left_flame_burst_front.png",  "back_card_img": "assets/img/behavior_deck/azure_rathalos/left_flame_burst_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/left_flame_burst_front.webp",  "back_card_img": "assets/img/behavior_deck/azure_rathalos/left_flame_burst_back.webp" },
       { "behavior_id": 4,  "behavior_name": "Retreating Sweep",  "activations": 1,
-        "attack_cards": 3 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/retreating_sweep_front.png",  "back_card_img": "assets/img/behavior_deck/azure_rathalos/retreating_sweep_back.png" },
+        "attack_cards": 3 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/retreating_sweep_front.webp",  "back_card_img": "assets/img/behavior_deck/azure_rathalos/retreating_sweep_back.webp" },
       { "behavior_id": 5,  "behavior_name": "Right Flame Burst", "activations": 3,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/right_flame_burst_front.png", "back_card_img": "assets/img/behavior_deck/azure_rathalos/right_flame_burst_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/right_flame_burst_front.webp", "back_card_img": "assets/img/behavior_deck/azure_rathalos/right_flame_burst_back.webp" },
       { "behavior_id": 6,  "behavior_name": "Swooping Evade",    "activations": 1,
-        "attack_cards": 3 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/swooping_evade_front.png",    "back_card_img": "assets/img/behavior_deck/azure_rathalos/swooping_evade_back.png" },
+        "attack_cards": 3 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/swooping_evade_front.webp",    "back_card_img": "assets/img/behavior_deck/azure_rathalos/swooping_evade_back.webp" },
       { "behavior_id": 7,  "behavior_name": "Tackle",            "activations": 1,
-        "attack_cards": 3 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/tackle_front.png",            "back_card_img": "assets/img/behavior_deck/azure_rathalos/tackle_back.png" },
+        "attack_cards": 3 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/tackle_front.webp",            "back_card_img": "assets/img/behavior_deck/azure_rathalos/tackle_back.webp" },
       { "behavior_id": 8,  "behavior_name": "Tail Swing",        "activations": 2,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/tail_swing_front.png",        "back_card_img": "assets/img/behavior_deck/azure_rathalos/tail_swing_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/tail_swing_front.webp",        "back_card_img": "assets/img/behavior_deck/azure_rathalos/tail_swing_back.webp" },
       { "behavior_id": 9,  "behavior_name": "Take Off Blast",    "activations": 1,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/take_off_blast_front.png",    "back_card_img": "assets/img/behavior_deck/azure_rathalos/take_off_blast_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/take_off_blast_front.webp",    "back_card_img": "assets/img/behavior_deck/azure_rathalos/take_off_blast_back.webp" },
       { "behavior_id": 10, "behavior_name": "Talon Charge",      "activations": 1,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/talon_charge_front.png",      "back_card_img": "assets/img/behavior_deck/azure_rathalos/talon_charge_back.png" }
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/talon_charge_front.webp",      "back_card_img": "assets/img/behavior_deck/azure_rathalos/talon_charge_back.webp" }
     ],
     "behavior_special_card": [
       { "behavior_id": 11, "behavior_name": "Fire Spin",   "activations": 2,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/fire_spin_front.png",   "back_card_img": "assets/img/behavior_deck/azure_rathalos/fire_spin_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/fire_spin_front.webp",   "back_card_img": "assets/img/behavior_deck/azure_rathalos/fire_spin_back.webp" },
       { "behavior_id": 12, "behavior_name": "Fireball",    "activations": 3,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/fireball_front.png",    "back_card_img": "assets/img/behavior_deck/azure_rathalos/fireball_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/fireball_front.webp",    "back_card_img": "assets/img/behavior_deck/azure_rathalos/fireball_back.webp" },
       { "behavior_id": 13, "behavior_name": "Talon Dive",  "activations": 1,
-        "attack_cards": 3 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/talon_dive_front.png",  "back_card_img": "assets/img/behavior_deck/azure_rathalos/talon_dive_back.png" }
+        "attack_cards": 3 ,"front_card_img": "assets/img/behavior_deck/azure_rathalos/talon_dive_front.webp",  "back_card_img": "assets/img/behavior_deck/azure_rathalos/talon_dive_back.webp" }
     ]
   },
   {
     "monster_id": 6,
     "monster_name": "Barroth",
-    "thumbnail": "assets/img/barroth_Icon.png",
+    "thumbnail": "assets/img/barroth_Icon.webp",
     "difficulty": [
       {
         "difficulty_id": 1,
         "level": 1,
         "health": 50,
-        "map_image": "assets/img/maps/barroth/barroth_1_star_map.png",
+        "map_image": "assets/img/maps/barroth/barroth_1_star_map.webp",
         "special_rule": {
           "title": "Mud Coating",
-          "description": "ครั้งแรกที่ Barroth เคลื่อนที่เข้าไปยังพื้นที่ Pond, ให้เอา Break Token 1 อันออกจากทุก Part ที่ยังไม่ถูกทำลาย"
+          "description": "ครั้งแรกที่ Barroth เคลื่อนที่เข้าไปยังพื้นที่ Pond, ให้เอา {break} 1 อันออกจาก {head}, {tail}, {claw} และ {body} ที่ยังไม่ถูกทำลาย"
         },
         "monster_parts": {
           "front": {
@@ -3447,7 +3447,7 @@
             "connect_part_position": null,
             "part_break_threshold": 3,
             "armor": 1,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Head การเคลื่อนที่ของการ์ดนั้นจะ -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {head} การเคลื่อนที่ {move}-1"
           },
           "back": {
             "part_id": 6,
@@ -3468,7 +3468,7 @@
             "connect_part_position": ["left"],
             "part_break_threshold": 3,
             "armor": 0,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Water ระยะโจมตีและค่าหลบหลีกลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ {water}, หลบหลีก {agility}-1"
           }
         },
         "element_resistance": [
@@ -3544,10 +3544,10 @@
         "difficulty_id": 2,
         "level": 2,
         "health": 60,
-        "map_image": "assets/img/maps/barroth/barroth_2_star_map.png",
+        "map_image": "assets/img/maps/barroth/barroth_2_star_map.webp",
         "special_rule": {
           "title": "Mud Cladding",
-          "description": "ทุกครั้งที่ Barroth เคลื่อนที่เข้าไปยังพื้นที่ Pond, ให้เอา Break Token 1 อันออกจากทุก Part ที่ยังไม่ถูกทำลาย"
+          "description": "ทุกครั้งที่ Barroth เคลื่อนที่เข้าไปยังพื้นที่ Pond, ให้เอา {break} 1 อันออกจาก {head}, {tail}, {claw} และ {body} ที่ยังไม่ถูกทำลาย"
         },
         "monster_parts": {
           "front": {
@@ -3555,7 +3555,7 @@
             "connect_part_position": null,
             "part_break_threshold": 4,
             "armor": 2,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Head การเคลื่อนที่ของการ์ดนั้นจะ -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {head} การเคลื่อนที่ {move}-1"
           },
           "back": {
             "part_id": 6,
@@ -3576,7 +3576,7 @@
             "connect_part_position": ["left"],
             "part_break_threshold": 4,
             "armor": 1,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Water ระยะโจมตีและค่าหลบหลีกลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ {water}, หลบหลีก {agility}-1"
           }
         },
         "element_resistance": [
@@ -3652,10 +3652,10 @@
         "difficulty_id": 3,
         "level": 3,
         "health": 65,
-        "map_image": "assets/img/maps/barroth/barroth_3_star_map.png",
+        "map_image": "assets/img/maps/barroth/barroth_3_star_map.webp",
         "special_rule": {
           "title": "Mud Armour",
-          "description": "ทุกครั้งที่ Barroth เคลื่อนที่เข้าไปยังพื้นที่ Pond, ให้เอา Break Token 1 อันออกจากทุก Part ที่ยังไม่ถูกทำลาย, การ์ดพฤติกรรมทุกใบจะ สร้างความเสียหาย เพิ่มเติม +1 หน่วย"
+          "description": "ทุกครั้งที่ Barroth เคลื่อนที่เข้าไปยังพื้นที่ Pond, ให้เอา {break} 1 อันออกจาก {head}, {tail}, {claw} และ {body} ที่ยังไม่ถูกทำลาย, การ์ดพฤติกรรมทุกใบ {atk}+1"
         },
         "monster_parts": {
           "front": {
@@ -3663,14 +3663,14 @@
             "connect_part_position": null,
             "part_break_threshold": 5,
             "armor": 3,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Head การเคลื่อนที่ของการ์ดนั้นจะ -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {head} การเคลื่อนที่ {move}-1"
           },
           "back": {
             "part_id": 6,
             "connect_part_position": null,
             "part_break_threshold": 4,
             "armor": 1,
-            "part_break_rule": "Barroth จะไม่นำ Break Token ออกอีกต่อไป เมื่อเคลื่อนที่เข้าไปยังพื้นที่ Pond"
+            "part_break_rule": "Barroth จะไม่นำ {break} ออกอีกต่อไป เมื่อเคลื่อนที่เข้าไปยังพื้นที่ Pond"
           },
           "left": {
             "part_id": 3,
@@ -3684,7 +3684,7 @@
             "connect_part_position": ["left"],
             "part_break_threshold": 5,
             "armor": 2,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ Water ระยะโจมตีและค่าหลบหลีกลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีธาตุ {water}, หลบหลีก {agility}-1"
           }
         },
         "element_resistance": [
@@ -3760,33 +3760,33 @@
     "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2],
     "behavior_deck": [
       { "behavior_id": 1,  "behavior_name": "Mud Shake",       "activations": 1,
-        "attack_cards": 3 ,"front_card_img": "assets/img/behavior_deck/barroth/mud_shake_front.png",       "back_card_img": "assets/img/behavior_deck/barroth/mud_shake_back.png" },
+        "attack_cards": 3 ,"front_card_img": "assets/img/behavior_deck/barroth/mud_shake_front.webp",       "back_card_img": "assets/img/behavior_deck/barroth/mud_shake_back.webp" },
       { "behavior_id": 2,  "behavior_name": "Nose Dive",       "activations": 2,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/barroth/nose_dive_front.png",       "back_card_img": "assets/img/behavior_deck/barroth/nose_dive_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/barroth/nose_dive_front.webp",       "back_card_img": "assets/img/behavior_deck/barroth/nose_dive_back.webp" },
       { "behavior_id": 3,  "behavior_name": "Rear Slam",       "activations": 2,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/barroth/rear_slam_front.png",       "back_card_img": "assets/img/behavior_deck/barroth/rear_slam_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/barroth/rear_slam_front.webp",       "back_card_img": "assets/img/behavior_deck/barroth/rear_slam_back.webp" },
       { "behavior_id": 4,  "behavior_name": "Shoulder Barge",  "activations": 2,
-        "attack_cards": 1 ,"front_card_img": "assets/img/behavior_deck/barroth/shoulder_barge_front.png",  "back_card_img": "assets/img/behavior_deck/barroth/shoulder_barge_back.png" },
+        "attack_cards": 1 ,"front_card_img": "assets/img/behavior_deck/barroth/shoulder_barge_front.webp",  "back_card_img": "assets/img/behavior_deck/barroth/shoulder_barge_back.webp" },
       { "behavior_id": 5,  "behavior_name": "Skull Slam",      "activations": 1,
-        "attack_cards": 3 ,"front_card_img": "assets/img/behavior_deck/barroth/skull_slam_front.png",      "back_card_img": "assets/img/behavior_deck/barroth/skull_slam_back.png" },
+        "attack_cards": 3 ,"front_card_img": "assets/img/behavior_deck/barroth/skull_slam_front.webp",      "back_card_img": "assets/img/behavior_deck/barroth/skull_slam_back.webp" },
       { "behavior_id": 6,  "behavior_name": "Steamroller",     "activations": 3,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/barroth/steamroller_front.png",     "back_card_img": "assets/img/behavior_deck/barroth/steamroller_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/barroth/steamroller_front.webp",     "back_card_img": "assets/img/behavior_deck/barroth/steamroller_back.webp" },
       { "behavior_id": 7,  "behavior_name": "Tail Thrash",     "activations": 2,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/barroth/tail_thrash_front.png",     "back_card_img": "assets/img/behavior_deck/barroth/tail_thrash_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/barroth/tail_thrash_front.webp",     "back_card_img": "assets/img/behavior_deck/barroth/tail_thrash_back.webp" },
       { "behavior_id": 8,  "behavior_name": "Thrash Left",     "activations": 1,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/barroth/thrash_left_front.png",     "back_card_img": "assets/img/behavior_deck/barroth/thrash_left_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/barroth/thrash_left_front.webp",     "back_card_img": "assets/img/behavior_deck/barroth/thrash_left_back.webp" },
       { "behavior_id": 9,  "behavior_name": "Thrash Right",    "activations": 1,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/barroth/thrash_right_front.png",    "back_card_img": "assets/img/behavior_deck/barroth/thrash_right_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/barroth/thrash_right_front.webp",    "back_card_img": "assets/img/behavior_deck/barroth/thrash_right_back.webp" },
       { "behavior_id": 10, "behavior_name": "Wide Sweep",      "activations": 1,
-        "attack_cards": 3 ,"front_card_img": "assets/img/behavior_deck/barroth/wide_sweep_front.png",      "back_card_img": "assets/img/behavior_deck/barroth/wide_sweep_back.png" }
+        "attack_cards": 3 ,"front_card_img": "assets/img/behavior_deck/barroth/wide_sweep_front.webp",      "back_card_img": "assets/img/behavior_deck/barroth/wide_sweep_back.webp" }
     ],
     "behavior_special_card": [
       { "behavior_id": 11, "behavior_name": "Skull Crush",      "activations": 2,
-        "attack_cards": 3 ,"front_card_img": "assets/img/behavior_deck/barroth/skull_crush_front.png",      "back_card_img": "assets/img/behavior_deck/barroth/skull_crush_back.png" },
+        "attack_cards": 3 ,"front_card_img": "assets/img/behavior_deck/barroth/skull_crush_front.webp",      "back_card_img": "assets/img/behavior_deck/barroth/skull_crush_back.webp" },
       { "behavior_id": 12, "behavior_name": "Furious Trample",  "activations": 3,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/barroth/furious_trample_front.png",  "back_card_img": "assets/img/behavior_deck/barroth/furious_trample_back.png" },
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/barroth/furious_trample_front.webp",  "back_card_img": "assets/img/behavior_deck/barroth/furious_trample_back.webp" },
       { "behavior_id": 13, "behavior_name": "Tail Smash",       "activations": 1,
-        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/barroth/tail_smash_front.png",       "back_card_img": "assets/img/behavior_deck/barroth/tail_smash_back.png" }
+        "attack_cards": 2 ,"front_card_img": "assets/img/behavior_deck/barroth/tail_smash_front.webp",       "back_card_img": "assets/img/behavior_deck/barroth/tail_smash_back.webp" }
     ]
   },
   {
@@ -3798,10 +3798,10 @@
         "difficulty_id": 1,
         "level": 1,
         "health": 60,
-        "map_image": "assets/img/maps/pukei-pukei/pukei-pukei_1_star_map.png",
+        "map_image": "assets/img/maps/pukei-pukei/pukei-pukei_1_star_map.webp",
         "special_rule": {
           "title": "Toxic Presence",
-          "description": "เมื่อ Hunter ติดสถานะ Poison จาก Pukei-Pukei, Hunter คนนั้นจะสูญเสีย HP -3 หน่วยแทนที่จะเป็น -2 หน่วย เมื่อจบเทิร์นของ Hunter คนนั้น"
+          "description": "เมื่อ Hunter ติดสถานะ {poison} จาก Pukei-Pukei, Hunter คนนั้นจะสูญเสีย HP -3 หน่วยแทนที่จะเป็น -2 หน่วย เมื่อจบเทิร์นของ Hunter คนนั้น"
         },
         "monster_parts": {
           "front": {
@@ -3823,7 +3823,7 @@
             "connect_part_position": ["right"],
             "part_break_threshold": 3,
             "armor": 1,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Claw จะทำให้ Hunter เล่นเพิ่มได้อีก +1 คน"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {claw} จะทำให้ {hturn}+1"
           },
           "right": {}
         },
@@ -3860,10 +3860,10 @@
         "difficulty_id": 2,
         "level": 2,
         "health": 65,
-        "map_image": "assets/img/maps/pukei-pukei/pukei-pukei_2_star_map.png",
+        "map_image": "assets/img/maps/pukei-pukei/pukei-pukei_2_star_map.webp",
         "special_rule": {
           "title": "Toxic Presence",
-          "description": "เมื่อ Hunter ติดสถานะ Poison จาก Pukei-Pukei, Hunter คนนั้นจะสูญเสีย HP -3 หน่วยแทนที่จะเป็น -2 หน่วย เมื่อจบเทิร์นของ Hunter คนนั้น, การ์ดพฤติกรรมที่มีการโจมตีสถานะ Poison ระยะโจมตีและค่าหลบหลีกเพิ่มขึ้น +1 หน่วย"
+          "description": "เมื่อ Hunter ติดสถานะ {poison} จาก Pukei-Pukei, Hunter คนนั้นจะสูญเสีย HP -3 หน่วยแทนที่จะเป็น -2 หน่วย เมื่อจบเทิร์นของ Hunter คนนั้น, การ์ดพฤติกรรมที่มีการโจมตีสถานะ {poison} , หลบหลีก {agility}+1"
         },
         "monster_parts": {
           "front": {
@@ -3878,14 +3878,14 @@
             "connect_part_position": null,
             "part_break_threshold": 5,
             "armor": 1,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Tail จะทำให้ระยะโจมตีของการ์ดนั้นลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {tail} จะทำให้ระยะโจมตี {range}-1"
           },
           "left": {
             "part_id": 3,
             "connect_part_position": ["right"],
             "part_break_threshold": 4,
             "armor": 2,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Claw จะทำให้ Hunter เล่นเพิ่มได้อีก +1 คน"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {claw} จะทำให้ {hturn}+1"
           },
           "right": {}
         },
@@ -3922,10 +3922,10 @@
         "difficulty_id": 3,
         "level": 3,
         "health": 65,
-        "map_image": "assets/img/maps/pukei-pukei/pukei-pukei_3_star_map.png",
+        "map_image": "assets/img/maps/pukei-pukei/pukei-pukei_3_star_map.webp",
         "special_rule": {
           "title": "Toxic Predator",
-          "description": "เมื่อ Hunter ติดสถานะ Poison จาก Pukei-Pukei, Hunter คนนั้นจะสูญเสีย HP -3 หน่วยแทนที่จะเป็น -2 หน่วย เมื่อจบเทิร์นของ Hunter คนนั้น, การ์ดพฤติกรรมทุกใบ ระยะโจมตีและค่าหลบหลีกเพิ่มขึ้น +1 หน่วย"
+          "description": "เมื่อ Hunter ติดสถานะ {poison} จาก Pukei-Pukei, Hunter คนนั้นจะสูญเสีย HP -3 หน่วยแทนที่จะเป็น -2 หน่วย เมื่อจบเทิร์นของ Hunter คนนั้น, การ์ดพฤติกรรมทุกใบ {agility}+1"
         },
         "monster_parts": {
           "front": {
@@ -3933,21 +3933,21 @@
             "connect_part_position": null,
             "part_break_threshold": 5,
             "armor": 2,
-            "part_break_rule": "Poison จะทำให้ Hunter สูญเสีย HP -2 หน่วยแทน -3 หน่วย"
+            "part_break_rule": "{poison} จะทำให้ Hunter สูญเสีย HP -2 หน่วยแทน -3 หน่วย"
           },
           "back": {
             "part_id": 6,
             "connect_part_position": null,
             "part_break_threshold": 6,
             "armor": 2,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Tail จะทำให้ระยะโจมตีของการ์ดนั้นลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {tail} จะทำให้ระยะโจมตี {range}-1"
           },
           "left": {
             "part_id": 3,
             "connect_part_position": ["right"],
             "part_break_threshold": 5,
             "armor": 3,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน Claw จะทำให้ Hunter เล่นเพิ่มได้อีก +1 คน"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {claw} จะทำให้ {hturn}+1"
           },
           "right": {}
         },
@@ -3984,33 +3984,33 @@
     "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2],
     "behavior_deck": [
       { "behavior_id": 1,  "behavior_name": "Poison Glob",       "activations": 2,
-        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/pukei-pukei/poison_glob_front.png",       "back_card_img": "assets/img/behavior_deck/pukei-pukei/poison_glob_back.png" },
+        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/pukei-pukei/poison_glob_front.webp",       "back_card_img": "assets/img/behavior_deck/pukei-pukei/poison_glob_back.webp" },
       { "behavior_id": 2,  "behavior_name": "Poison Spit",       "activations": 3,
-        "attack_cards": 1, "front_card_img": "assets/img/behavior_deck/pukei-pukei/poison_spit_front.png",       "back_card_img": "assets/img/behavior_deck/pukei-pukei/poison_spit_back.png" },
+        "attack_cards": 1, "front_card_img": "assets/img/behavior_deck/pukei-pukei/poison_spit_front.webp",       "back_card_img": "assets/img/behavior_deck/pukei-pukei/poison_spit_back.webp" },
       { "behavior_id": 3,  "behavior_name": "Right Wing Swipe",  "activations": 2,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/right_wing_swipe_front.png",  "back_card_img": "assets/img/behavior_deck/pukei-pukei/right_wing_swipe_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/right_wing_swipe_front.webp",  "back_card_img": "assets/img/behavior_deck/pukei-pukei/right_wing_swipe_back.webp" },
       { "behavior_id": 4,  "behavior_name": "Tongue Whip Left",  "activations": 3,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/tongue_whip_left_front.png",  "back_card_img": "assets/img/behavior_deck/pukei-pukei/tongue_whip_left_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/tongue_whip_left_front.webp",  "back_card_img": "assets/img/behavior_deck/pukei-pukei/tongue_whip_left_back.webp" },
       { "behavior_id": 5,  "behavior_name": "Tail Whip",         "activations": 2,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/tail_whip_front.png",         "back_card_img": "assets/img/behavior_deck/pukei-pukei/tail_whip_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/tail_whip_front.webp",         "back_card_img": "assets/img/behavior_deck/pukei-pukei/tail_whip_back.webp" },
       { "behavior_id": 6,  "behavior_name": "Left Wing Swipe",   "activations": 2,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/left_wing_swipe_front.png",   "back_card_img": "assets/img/behavior_deck/pukei-pukei/left_wing_swipe_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/left_wing_swipe_front.webp",   "back_card_img": "assets/img/behavior_deck/pukei-pukei/left_wing_swipe_back.webp" },
       { "behavior_id": 7,  "behavior_name": "Poison Spew",       "activations": 2,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/poison_spew_front.png",       "back_card_img": "assets/img/behavior_deck/pukei-pukei/poison_spew_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/poison_spew_front.webp",       "back_card_img": "assets/img/behavior_deck/pukei-pukei/poison_spew_back.webp" },
       { "behavior_id": 8,  "behavior_name": "Tongue Whip Right", "activations": 3,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/tongue_whip_right_front.png", "back_card_img": "assets/img/behavior_deck/pukei-pukei/tongue_whip_right_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/tongue_whip_right_front.webp", "back_card_img": "assets/img/behavior_deck/pukei-pukei/tongue_whip_right_back.webp" },
       { "behavior_id": 9,  "behavior_name": "Flying Spit",       "activations": 2,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/flying_spit_front.png",       "back_card_img": "assets/img/behavior_deck/pukei-pukei/flying_spit_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/flying_spit_front.webp",       "back_card_img": "assets/img/behavior_deck/pukei-pukei/flying_spit_back.webp" },
       { "behavior_id": 10, "behavior_name": "Tongue Lash",       "activations": 3,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/tongue_lash_front.png",       "back_card_img": "assets/img/behavior_deck/pukei-pukei/tongue_lash_back.png" }
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/tongue_lash_front.webp",       "back_card_img": "assets/img/behavior_deck/pukei-pukei/tongue_lash_back.webp" }
     ],
     "behavior_special_card": [
       { "behavior_id": 11, "behavior_name": "Flying Bite",     "activations": 3,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/flying_bite_front.png",     "back_card_img": "assets/img/behavior_deck/pukei-pukei/flying_bite_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/flying_bite_front.webp",     "back_card_img": "assets/img/behavior_deck/pukei-pukei/flying_bite_back.webp" },
       { "behavior_id": 12, "behavior_name": "Rear Spray",      "activations": 2,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/rear_spray_front.png",      "back_card_img": "assets/img/behavior_deck/pukei-pukei/rear_spray_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/rear_spray_front.webp",      "back_card_img": "assets/img/behavior_deck/pukei-pukei/rear_spray_back.webp" },
       { "behavior_id": 13, "behavior_name": "Chicken Scratch", "activations": 3,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/chicken_scratch_front.png", "back_card_img": "assets/img/behavior_deck/pukei-pukei/chicken_scratch_back.png" }
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/pukei-pukei/chicken_scratch_front.webp", "back_card_img": "assets/img/behavior_deck/pukei-pukei/chicken_scratch_back.webp" }
     ]
   },
   {
@@ -4022,10 +4022,10 @@
         "difficulty_id": 1,
         "level": 1,
         "health": 65,
-        "map_image": "assets/img/maps/jyuratodus/jyuratodus_1_star_map.png",
+        "map_image": "assets/img/maps/jyuratodus/jyuratodus_1_star_map.webp",
         "special_rule": {
           "title": "Mire Dweller",
-          "description": "ในระหว่างที่ Jyuratodus อยู่ในพื้นที่ Pond(บ่อน้ำ) จะทำให้การ์ดพฤติกรรมทุกใบมีระยะโจมตีและค่าหลบหลีกเพิ่มขึ้น +1 หน่วย"
+          "description": "ในระหว่างที่ Jyuratodus อยู่ในพื้นที่ Pond จะทำให้การ์ดพฤติกรรมทุกใบ {agility}+1"
         },
         "monster_parts": {
           "front": {
@@ -4033,14 +4033,14 @@
             "connect_part_position": null,
             "part_break_threshold": 5,
             "armor": 2,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน (Head), จะทำให้ (ระยะโจมตี) และ (ค่าหลบหลีก) ของการ์ดนั้นลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {head}, หลบหลีก {agility}-1"
           },
           "back": {
             "part_id": 6,
             "connect_part_position": null,
             "part_break_threshold": 5,
             "armor": 1,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน (Tail), จะทำให้ (ค่าความเสียหาย) ของการ์ดนั้นลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {tail}, ค่าความเสียหาย {atk}-1"
           },
           "left": {
             "part_id": 5,
@@ -4090,10 +4090,10 @@
         "difficulty_id": 2,
         "level": 2,
         "health": 70,
-        "map_image": "assets/img/maps/jyuratodus/jyuratodus_2_star_map.png",
+        "map_image": "assets/img/maps/jyuratodus/jyuratodus_2_star_map.webp",
         "special_rule": {
           "title": "Mire Stalker",
-          "description": "ในระหว่างที่ Jyuratodus อยู่ในพื้นที่ Pond(บ่อน้ำ) จะทำให้การ์ดพฤติกรรมทุกใบมี (ระยะโจมตี), (ค่าหลบหลีก) และ (ค่าความเสียหาย) เพิ่มขึ้น +1 หน่วย"
+          "description": "ในระหว่างที่ Jyuratodus อยู่ในพื้นที่ Pond จะทำให้การ์ดพฤติกรรมทุกใบ {agility}+1 และ {atk}+1"
         },
         "monster_parts": {
           "front": {
@@ -4101,14 +4101,14 @@
             "connect_part_position": null,
             "part_break_threshold": 6,
             "armor": 2,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน (Head), จะทำให้ (ระยะโจมตี) และ (ค่าหลบหลีก) ของการ์ดนั้นลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {head}, หลบหลีก {agility}-1"
           },
           "back": {
             "part_id": 6,
             "connect_part_position": null,
             "part_break_threshold": 5,
             "armor": 2,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน (Tail), จะทำให้ (ค่าความเสียหาย) ของการ์ดนั้นลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {tail}, ค่าความเสียหาย {atk}-1"
           },
           "left": {
             "part_id": 5,
@@ -4122,7 +4122,7 @@
             "connect_part_position": null,
             "part_break_threshold": 5,
             "armor": 3,
-            "part_break_rule": "Part ส่วนนี้ เกราะ -1 หน่วย"
+            "part_break_rule": "Part ส่วนนี้ {armor}-1"
           }
         },
         "element_resistance": [
@@ -4158,10 +4158,10 @@
         "difficulty_id": 3,
         "level": 3,
         "health": 75,
-        "map_image": "assets/img/maps/jyuratodus/jyuratodus_3_star_map.png",
+        "map_image": "assets/img/maps/jyuratodus/jyuratodus_3_star_map.webp",
         "special_rule": {
           "title": "Mire Beast",
-          "description": "ในระหว่างที่ Jyuratodus อยู่ในพื้นที่ Pond(บ่อน้ำ) ทุก Body Parts ของมัน (เกราะ) +1 หน่วย และทำให้การ์ดพฤติกรรมทุกใบมี (ระยะโจมตี), (ค่าหลบหลีก) และ (ค่าความเสียหาย) เพิ่มขึ้น +1 หน่วย"
+          "description": "ในระหว่างที่ Jyuratodus อยู่ในพื้นที่ Pond ทุก Parts ของมัน {armor}+1 และทำให้การ์ดพฤติกรรมทุกใบ {agility}+1 และ {atk}+1"
         },
         "monster_parts": {
           "front": {
@@ -4169,28 +4169,28 @@
             "connect_part_position": null,
             "part_break_threshold": 6,
             "armor": 3,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน (Head), จะทำให้ (ระยะโจมตี) และ (ค่าหลบหลีก) ของการ์ดนั้นลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {head}, หลบหลีก {agility}-1"
           },
           "back": {
             "part_id": 6,
             "connect_part_position": null,
             "part_break_threshold": 5,
             "armor": 2,
-            "part_break_rule": ""
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {tail}, ค่าความเสียหาย {atk}-1"
           },
           "left": {
             "part_id": 5,
             "connect_part_position": null,
             "part_break_threshold": 6,
             "armor": 3,
-            "part_break_rule": "Part ส่วนนี้ เกราะ -1 หน่วย"
+            "part_break_rule": "Part ส่วนนี้ {armor}-1"
           },
           "right": {
             "part_id": 5,
             "connect_part_position": null,
             "part_break_threshold": 6,
             "armor": 3,
-            "part_break_rule": "Part ส่วนนี้ เกราะ -1 หน่วย"
+            "part_break_rule": "Part ส่วนนี้ {armor}-1"
           }
         },
         "element_resistance": [
@@ -4226,33 +4226,33 @@
     "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2],
     "behavior_deck": [
       { "behavior_id": 1,  "behavior_name": "Back Flip",      "activations": 4,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/back_flip_front.png",      "back_card_img": "assets/img/behavior_deck/jyuratodus/back_flip_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/back_flip_front.webp",      "back_card_img": "assets/img/behavior_deck/jyuratodus/back_flip_back.webp" },
       { "behavior_id": 2,  "behavior_name": "Direct Rush",    "activations": 2,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/direct_rush_front.png",    "back_card_img": "assets/img/behavior_deck/jyuratodus/direct_rush_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/direct_rush_front.webp",    "back_card_img": "assets/img/behavior_deck/jyuratodus/direct_rush_back.webp" },
       { "behavior_id": 3,  "behavior_name": "Dive Smash",     "activations": 3,
-        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/jyuratodus/dive_smash_front.png",     "back_card_img": "assets/img/behavior_deck/jyuratodus/dive_smash_back.png" },
+        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/jyuratodus/dive_smash_front.webp",     "back_card_img": "assets/img/behavior_deck/jyuratodus/dive_smash_back.webp" },
       { "behavior_id": 4,  "behavior_name": "Double Spit",    "activations": 3,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/double_spit_front.png",    "back_card_img": "assets/img/behavior_deck/jyuratodus/double_spit_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/double_spit_front.webp",    "back_card_img": "assets/img/behavior_deck/jyuratodus/double_spit_back.webp" },
       { "behavior_id": 5,  "behavior_name": "Mud Bomb",       "activations": 2,
-        "attack_cards": 1, "front_card_img": "assets/img/behavior_deck/jyuratodus/mud_bomb_front.png",       "back_card_img": "assets/img/behavior_deck/jyuratodus/mud_bomb_back.png" },
+        "attack_cards": 1, "front_card_img": "assets/img/behavior_deck/jyuratodus/mud_bomb_front.webp",       "back_card_img": "assets/img/behavior_deck/jyuratodus/mud_bomb_back.webp" },
       { "behavior_id": 6,  "behavior_name": "Mud Spit",       "activations": 3,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/mud_spit_front.png",       "back_card_img": "assets/img/behavior_deck/jyuratodus/mud_spit_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/mud_spit_front.webp",       "back_card_img": "assets/img/behavior_deck/jyuratodus/mud_spit_back.webp" },
       { "behavior_id": 7,  "behavior_name": "Mud Splash",     "activations": 2,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/mud_splash_front.png",     "back_card_img": "assets/img/behavior_deck/jyuratodus/mud_splash_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/mud_splash_front.webp",     "back_card_img": "assets/img/behavior_deck/jyuratodus/mud_splash_back.webp" },
       { "behavior_id": 8,  "behavior_name": "Rapid Headbutt", "activations": 2,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/rapid_headbutt_front.png", "back_card_img": "assets/img/behavior_deck/jyuratodus/rapid_headbutt_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/rapid_headbutt_front.webp", "back_card_img": "assets/img/behavior_deck/jyuratodus/rapid_headbutt_back.webp" },
       { "behavior_id": 9,  "behavior_name": "Shark Bite",     "activations": 2,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/shark_bite_front.png",     "back_card_img": "assets/img/behavior_deck/jyuratodus/shark_bite_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/shark_bite_front.webp",     "back_card_img": "assets/img/behavior_deck/jyuratodus/shark_bite_back.webp" },
       { "behavior_id": 10, "behavior_name": "Tidal Waves",    "activations": 3,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/tidal_waves_front.png",    "back_card_img": "assets/img/behavior_deck/jyuratodus/tidal_waves_back.png" }
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/tidal_waves_front.webp",    "back_card_img": "assets/img/behavior_deck/jyuratodus/tidal_waves_back.webp" }
     ],
     "behavior_special_card": [
       { "behavior_id": 11, "behavior_name": "Forward Bite",    "activations": 2,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/forward_bite_front.png",    "back_card_img": "assets/img/behavior_deck/jyuratodus/forward_bite_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/forward_bite_front.webp",    "back_card_img": "assets/img/behavior_deck/jyuratodus/forward_bite_back.webp" },
       { "behavior_id": 12, "behavior_name": "Submerge Attack", "activations": 2,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/submerge_attack_front.png", "back_card_img": "assets/img/behavior_deck/jyuratodus/submerge_attack_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/jyuratodus/submerge_attack_front.webp", "back_card_img": "assets/img/behavior_deck/jyuratodus/submerge_attack_back.webp" },
       { "behavior_id": 13, "behavior_name": "Water Wrap",      "activations": 2,
-        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/jyuratodus/water_wrap_front.png",      "back_card_img": "assets/img/behavior_deck/jyuratodus/water_wrap_back.png" }
+        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/jyuratodus/water_wrap_front.webp",      "back_card_img": "assets/img/behavior_deck/jyuratodus/water_wrap_back.webp" }
     ]
   },
   {
@@ -4264,10 +4264,10 @@
         "difficulty_id": 1,
         "level": 1,
         "health": 80,
-        "map_image": "assets/img/maps/diablos/diablos_1_star_map.png",
+        "map_image": "assets/img/maps/diablos/diablos_1_star_map.webp",
         "special_rule": {
           "title": "Boundless Charge",
-          "description": "ในระหว่างที่ การ์ดพฤติกรรมส่วน (Head) กำลังแสดงผล, เมื่อ Diablos เคลื่อนที่ไปยังตำแหน่งเดียวกับ Hunters, Hunters เหล่านั้นจะต้องเคลื่อนที่ไปยังตำแหน่งที่อยู่ (ตรงกลางของส่วนโค้งด้านหน้า) ของ Diablos เท่านั้น, เว้นแต่ว่าจุดนั้นจะไม่ว่าง"
+          "description": "ในระหว่างที่ การ์ดพฤติกรรมส่วน {head} กำลังแสดงผล, เมื่อ Diablos เคลื่อนที่ไปยังตำแหน่งเดียวกับ Hunters, Hunters เหล่านั้นจะต้องเคลื่อนที่ไปยังตำแหน่งที่อยู่ (ตรงกลางของส่วนโค้งด้านหน้า) ของ Diablos เท่านั้น, เว้นแต่ว่าจุดนั้นจะไม่ว่าง"
         },
         "monster_parts": {
           "front": {
@@ -4275,14 +4275,14 @@
             "connect_part_position": null,
             "part_break_threshold": 7,
             "armor": 4,
-            "part_break_rule": "การ์ดพฤติกรรมทุกใบทำ (ความเสียหาย) ลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมทุกใบสร้างความเสียหาย {atk}-1"
           },
           "back": {
             "part_id": 6,
             "connect_part_position": null,
             "part_break_threshold": 5,
             "armor": 3,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน (Tail), จะทำให้ (ระยะโจมตี) ของการ์ดนั้นลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {tail}, ระยะโจมตี {range}-1"
           },
           "left": {
             "part_id": 3,
@@ -4296,7 +4296,7 @@
             "connect_part_position": ["left"],
             "part_break_threshold": 6,
             "armor": 3,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน (Head), จะทำให้ (ระยะโจมตี) และ (ค่าหลบหลีก) ของการ์ดนั้นลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {head}, หลบหลีก {agility}-1"
           }
         },
         "element_resistance": [
@@ -4332,10 +4332,10 @@
         "difficulty_id": 2,
         "level": 2,
         "health": 85,
-        "map_image": "assets/img/maps/diablos/diablos_2_star_map.png",
+        "map_image": "assets/img/maps/diablos/diablos_2_star_map.webp",
         "special_rule": {
           "title": "Primal Charge",
-          "description": "ในระหว่างที่ การ์ดพฤติกรรมส่วน (Head) กำลังแสดงผล, เมื่อ Diablos เคลื่อนที่ไปยังตำแหน่งเดียวกับ Hunters, Hunters เหล่านั้นจะต้องเคลื่อนที่ไปยังตำแหน่งที่อยู่ (ตรงกลางของส่วนโค้งด้านหน้า) ของ Diablos เท่านั้น, เว้นแต่ว่าจุดนั้นจะไม่ว่าง และการ์ดพฤติกรรมที่มีการโจมตีส่วน (Head) จะทำให้ (ความเสียหาย) ของการ์ดนั้นเพิ่มขึ้น +1 หน่วย"
+          "description": "ในระหว่างที่ การ์ดพฤติกรรมส่วน {head} กำลังแสดงผล, เมื่อ Diablos เคลื่อนที่ไปยังตำแหน่งเดียวกับ Hunters, Hunters เหล่านั้นจะต้องเคลื่อนที่ไปยังตำแหน่งที่อยู่ (ตรงกลางของส่วนโค้งด้านหน้า) ของ Diablos เท่านั้น, เว้นแต่ว่าจุดนั้นจะไม่ว่าง และการ์ดพฤติกรรมที่มีการโจมตีส่วน {head} จะทำให้ {atk}+1"
         },
         "monster_parts": {
           "front": {
@@ -4343,14 +4343,14 @@
             "connect_part_position": null,
             "part_break_threshold": 7,
             "armor": 4,
-            "part_break_rule": "การ์ดพฤติกรรมทุกใบทำ (ความเสียหาย) ลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมทุกใบ {atk}-1"
           },
           "back": {
             "part_id": 6,
             "connect_part_position": null,
             "part_break_threshold": 6,
             "armor": 3,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน (Tail), จะทำให้ (ระยะโจมตี) ของการ์ดนั้นลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {tail}, {range}-1"
           },
           "left": {
             "part_id": 3,
@@ -4364,7 +4364,7 @@
             "connect_part_position": ["left"],
             "part_break_threshold": 6,
             "armor": 4,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน (Head), จะทำให้ (การเคลื่อนที่) ของการ์ดนั้นลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {head}, {move}-1"
           }
         },
         "element_resistance": [
@@ -4400,10 +4400,10 @@
         "difficulty_id": 4,
         "level": 4,
         "health": 90,
-        "map_image": "assets/img/maps/diablos/diablos_4_star_map.png",
+        "map_image": "assets/img/maps/diablos/diablos_4_star_map.webp",
         "special_rule": {
           "title": "Devastating Charge",
-          "description": "ในระหว่างที่ การ์ดพฤติกรรมส่วน (Head) กำลังแสดงผล, เมื่อ Diablos เคลื่อนที่ไปยังตำแหน่งเดียวกับ Hunters, Hunters เหล่านั้นจะต้องเคลื่อนที่ไปยังตำแหน่งที่อยู่ (ตรงกลางของส่วนโค้งด้านหน้า) ของ Diablos เท่านั้น, เว้นแต่ว่าจุดนั้นจะไม่ว่าง และการ์ดพฤติกรรมที่มีการโจมตีส่วน (Head) จะทำให้ (ความเสียหาย) ของการ์ดนั้นเพิ่มขึ้น +2 หน่วย"
+          "description": "ในระหว่างที่ การ์ดพฤติกรรมส่วน {head} กำลังแสดงผล, เมื่อ Diablos เคลื่อนที่ไปยังตำแหน่งเดียวกับ Hunters, Hunters เหล่านั้นจะต้องเคลื่อนที่ไปยังตำแหน่งที่อยู่ (ตรงกลางของส่วนโค้งด้านหน้า) ของ Diablos เท่านั้น, เว้นแต่ว่าจุดนั้นจะไม่ว่าง และการ์ดพฤติกรรมที่มีการโจมตีส่วน {head} จะทำให้ {atk}+2"
         },
         "monster_parts": {
           "front": {
@@ -4411,14 +4411,14 @@
             "connect_part_position": null,
             "part_break_threshold": 8,
             "armor": 5,
-            "part_break_rule": "การ์ดพฤติกรรมทุกใบทำ (ความเสียหาย) ลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมทุกใบ {atk}-1"
           },
           "back": {
             "part_id": 6,
             "connect_part_position": null,
             "part_break_threshold": 6,
             "armor": 4,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน (Tail), จะทำให้ (ระยะโจมตี) ของการ์ดนั้นลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {tail}, {range}-1"
           },
           "left": {
             "part_id": 3,
@@ -4432,7 +4432,7 @@
             "connect_part_position": ["left"],
             "part_break_threshold": 7,
             "armor": 4,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน (Head), จะทำให้ (การเคลื่อนที่) ของการ์ดนั้นลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {head}, {move}-1"
           }
         },
         "element_resistance": [
@@ -4468,33 +4468,33 @@
     "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2],
     "behavior_deck": [
       { "behavior_id": 1,  "behavior_name": "Horn Swing Left",     "activations": 2,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/diablos/horn_swing_left_front.png",     "back_card_img": "assets/img/behavior_deck/diablos/horn_swing_left_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/diablos/horn_swing_left_front.webp",     "back_card_img": "assets/img/behavior_deck/diablos/horn_swing_left_back.webp" },
       { "behavior_id": 2,  "behavior_name": "Horn Swing Right",    "activations": 2,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/diablos/horn_swing_right_front.png",    "back_card_img": "assets/img/behavior_deck/diablos/horn_swing_right_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/diablos/horn_swing_right_front.webp",    "back_card_img": "assets/img/behavior_deck/diablos/horn_swing_right_back.webp" },
       { "behavior_id": 3,  "behavior_name": "Left Side Bash",      "activations": 3,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/diablos/left_side_bash_front.png",      "back_card_img": "assets/img/behavior_deck/diablos/left_side_bash_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/diablos/left_side_bash_front.webp",      "back_card_img": "assets/img/behavior_deck/diablos/left_side_bash_back.webp" },
       { "behavior_id": 4,  "behavior_name": "Left Surface Smash",  "activations": 2,
-        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/diablos/left_surface_smash_front.png",  "back_card_img": "assets/img/behavior_deck/diablos/left_surface_smash_back.png" },
+        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/diablos/left_surface_smash_front.webp",  "back_card_img": "assets/img/behavior_deck/diablos/left_surface_smash_back.webp" },
       { "behavior_id": 5,  "behavior_name": "Long Charge",         "activations": 2,
-        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/diablos/long_charge_front.png",         "back_card_img": "assets/img/behavior_deck/diablos/long_charge_back.png" },
+        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/diablos/long_charge_front.webp",         "back_card_img": "assets/img/behavior_deck/diablos/long_charge_back.webp" },
       { "behavior_id": 6,  "behavior_name": "Right Side Bash",     "activations": 3,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/diablos/right_side_bash_front.png",     "back_card_img": "assets/img/behavior_deck/diablos/right_side_bash_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/diablos/right_side_bash_front.webp",     "back_card_img": "assets/img/behavior_deck/diablos/right_side_bash_back.webp" },
       { "behavior_id": 7,  "behavior_name": "Right Surface Smash", "activations": 2,
-        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/diablos/right_surface_smash_front.png", "back_card_img": "assets/img/behavior_deck/diablos/right_surface_smash_back.png" },
+        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/diablos/right_surface_smash_front.webp", "back_card_img": "assets/img/behavior_deck/diablos/right_surface_smash_back.webp" },
       { "behavior_id": 8,  "behavior_name": "Short Charge",        "activations": 1,
-        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/diablos/short_charge_front.png",        "back_card_img": "assets/img/behavior_deck/diablos/short_charge_back.png" },
+        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/diablos/short_charge_front.webp",        "back_card_img": "assets/img/behavior_deck/diablos/short_charge_back.webp" },
       { "behavior_id": 9,  "behavior_name": "Tail Sweep Left",     "activations": 1,
-        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/diablos/tail_sweep_left_front.png",     "back_card_img": "assets/img/behavior_deck/diablos/tail_sweep_left_back.png" },
+        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/diablos/tail_sweep_left_front.webp",     "back_card_img": "assets/img/behavior_deck/diablos/tail_sweep_left_back.webp" },
       { "behavior_id": 10, "behavior_name": "Tail Sweep Right",    "activations": 1,
-        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/diablos/tail_sweep_right_front.png",    "back_card_img": "assets/img/behavior_deck/diablos/tail_sweep_right_back.png" }
+        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/diablos/tail_sweep_right_front.webp",    "back_card_img": "assets/img/behavior_deck/diablos/tail_sweep_right_back.webp" }
     ],
     "behavior_special_card": [
       { "behavior_id": 11, "behavior_name": "Forward Rush", "activations": 2,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/diablos/forward_rush_front.png", "back_card_img": "assets/img/behavior_deck/diablos/forward_rush_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/diablos/forward_rush_front.webp", "back_card_img": "assets/img/behavior_deck/diablos/forward_rush_back.webp" },
       { "behavior_id": 12, "behavior_name": "Horn Thrust",  "activations": 2,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/diablos/horn_thrust_front.png",  "back_card_img": "assets/img/behavior_deck/diablos/horn_thrust_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/diablos/horn_thrust_front.webp",  "back_card_img": "assets/img/behavior_deck/diablos/horn_thrust_back.webp" },
       { "behavior_id": 13, "behavior_name": "Surface Bite", "activations": 4,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/diablos/surface_bite_front.png", "back_card_img": "assets/img/behavior_deck/diablos/surface_bite_back.png" }
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/diablos/surface_bite_front.webp", "back_card_img": "assets/img/behavior_deck/diablos/surface_bite_back.webp" }
     ]
   },
   {
@@ -4506,10 +4506,10 @@
         "difficulty_id": 1,
         "level": 1,
         "health": 80,
-        "map_image": "assets/img/maps/b_diablos/b_diablos_1_star_map.png",
+        "map_image": "assets/img/maps/b_diablos/b_diablos_1_star_map.webp",
         "special_rule": {
           "title": "Delving Wyvern",
-          "description": "เมื่อกำหนด (Target) ของการ์ดพฤติกรรมที่มีการโจมตีส่วน (Claw) ให้ Black Diablos แล้ว, ให้นำ Black Diablos ออกจากบอร์ด จากนั้นวาง มัน ไปยัง (Node) เดียวกับ (Target) ของมัน โดยไม่เปลี่ยนทิศทางการหันหน้าเดิมของมัน จากนั้นให้ย้าย Hunters เหล่านั้นเสมือนว่า Black Diablos ได้เคลื่อนที่เข้ามายัง Node ดังกล่าว, หลังจากนั้น ให้ดำเนินการการ์ดพฤติกรรมของ Black Diablos ตามปกติ"
+          "description": "เมื่อกำหนด (Target) ของการ์ดพฤติกรรมที่มีการโจมตีส่วน {claw} ให้ Black Diablos แล้ว, ให้นำ Black Diablos ออกจากบอร์ด จากนั้นวาง มัน ไปยัง (Node) เดียวกับ (Target) ของมัน โดยไม่เปลี่ยนทิศทางการหันหน้าเดิมของมัน จากนั้นให้ย้าย Hunters เหล่านั้นเสมือนว่า Black Diablos ได้เคลื่อนที่เข้ามายัง Node ดังกล่าว, หลังจากนั้น ให้ดำเนินการการ์ดพฤติกรรมของ Black Diablos ตามปกติ"
         },
         "monster_parts": {
           "front": {
@@ -4517,28 +4517,28 @@
             "connect_part_position": null,
             "part_break_threshold": 7,
             "armor": 4,
-            "part_break_rule": "การ์ดพฤติกรรมทุกใบทำ (ความเสียหาย) ลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมทุกใบสร้างความเสียหาย {atk}-1"
           },
           "back": {
             "part_id": 6,
             "connect_part_position": null,
             "part_break_threshold": 5,
             "armor": 3,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน (Tail), จะทำให้ (ระยะโจมตี) ของการ์ดนั้นลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {tail}, ระยะโจมตี {range}-1"
           },
           "left": {
             "part_id": 3,
             "connect_part_position": ["right"],
             "part_break_threshold": 6,
             "armor": 3,
-            "part_break_rule": "ทิ้งการ์ดพฤติกรรมที่มีการโจมตีส่วน (Claw) ออก 1 ใบจาก Deck หลังจากนั้นทำการสับกองการ์ดพฤติกรรม"
+            "part_break_rule": "ทิ้งการ์ดพฤติกรรมที่มีการโจมตีส่วน {claw} ออก 1 ใบจาก Deck หลังจากนั้นทำการสับกองการ์ดพฤติกรรม"
           },
           "right": {
             "part_id": 5,
             "connect_part_position": ["left"],
             "part_break_threshold": 6,
             "armor": 3,
-            "part_break_rule": "อวัยวะส่วนนี้ (เกราะ) -1 หน่วย"
+            "part_break_rule": "Part ส่วนนี้ {armor}-1"
           }
         },
         "element_resistance": [
@@ -4574,10 +4574,10 @@
         "difficulty_id": 2,
         "level": 2,
         "health": 85,
-        "map_image": "assets/img/maps/b_diablos/b_diablos_2_star_map.png",
+        "map_image": "assets/img/maps/b_diablos/b_diablos_2_star_map.webp",
         "special_rule": {
           "title": "Tunnelling Wyvern",
-          "description": "เมื่อกำหนด (Target) ของการ์ดพฤติกรรมที่มีการโจมตีส่วน (Claw) ให้ Black Diablos แล้ว, ให้นำ Black Diablos ออกจากบอร์ด จากนั้นวาง มัน ไปยัง (Node) เดียวกับ (Target) ของมัน โดยไม่เปลี่ยนทิศทางการหันหน้าเดิมของมัน จากนั้นให้ย้าย Hunters เหล่านั้นเสมือนว่า Black Diablos ได้เคลื่อนที่เข้ามายัง Node ดังกล่าว, หลังจากนั้น ให้ดำเนินการการ์ดพฤติกรรมของ Black Diablos ตามปกติ, การ์ดพฤติกรรมที่มีการโจมตีส่วน (Claw) จะทำ (ความเสียหาย) เพิ่มขึ้น +1 หน่วย"
+          "description": "เมื่อกำหนด (Target) ของการ์ดพฤติกรรมที่มีการโจมตีส่วน {claw} ให้ Black Diablos แล้ว, ให้นำ Black Diablos ออกจากบอร์ด จากนั้นวาง มัน ไปยัง (Node) เดียวกับ (Target) ของมัน โดยไม่เปลี่ยนทิศทางการหันหน้าเดิมของมัน จากนั้นให้ย้าย Hunters เหล่านั้นเสมือนว่า Black Diablos ได้เคลื่อนที่เข้ามายัง Node ดังกล่าว, หลังจากนั้น ให้ดำเนินการการ์ดพฤติกรรมของ Black Diablos ตามปกติ, การ์ดพฤติกรรมที่มีการโจมตีส่วน {claw} สร้างความเสียหาย {atk}+1"
         },
         "monster_parts": {
           "front": {
@@ -4585,28 +4585,28 @@
             "connect_part_position": null,
             "part_break_threshold": 7,
             "armor": 4,
-            "part_break_rule": "การ์ดพฤติกรรมทุกใบทำ (ความเสียหาย) ลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมทุกใบสร้างความเสียหาย {atk}-1"
           },
           "back": {
             "part_id": 6,
             "connect_part_position": null,
             "part_break_threshold": 6,
             "armor": 3,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน (Tail), จะทำให้ (ระยะโจมตี) ของการ์ดนั้นลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {tail}, ระยะโจมตี {range}-1"
           },
           "left": {
             "part_id": 3,
             "connect_part_position": ["right"],
             "part_break_threshold": 7,
             "armor": 4,
-            "part_break_rule": "ทิ้งการ์ดพฤติกรรมที่มีการโจมตีส่วน (Claw) ออก 1 ใบจาก Deck หลังจากนั้นทำการสับกองการ์ดพฤติกรรม"
+            "part_break_rule": "ทิ้งการ์ดพฤติกรรมที่มีการโจมตีส่วน {claw} ออก 1 ใบจาก Deck หลังจากนั้นทำการสับกองการ์ดพฤติกรรม"
           },
           "right": {
             "part_id": 5,
             "connect_part_position": ["left"],
             "part_break_threshold": 6,
             "armor": 4,
-            "part_break_rule": "อวัยวะส่วนนี้ (เกราะ) -1 หน่วย"
+            "part_break_rule": "Part ส่วนนี้ {armor}-1"
           }
         },
         "element_resistance": [
@@ -4642,10 +4642,10 @@
         "difficulty_id": 4,
         "level": 4,
         "health": 90,
-        "map_image": "assets/img/maps/b_diablos/b_diablos_4_star_map.png",
+        "map_image": "assets/img/maps/b_diablos/b_diablos_4_star_map.webp",
         "special_rule": {
           "title": "Burrowong Wyvern",
-          "description": "เมื่อกำหนด (Target) ของการ์ดพฤติกรรมที่มีการโจมตีส่วน (Claw) ให้ Black Diablos แล้ว, ให้นำ Black Diablos ออกจากบอร์ด จากนั้นวาง มัน ไปยัง (Node) เดียวกับ (Target) ของมัน โดยไม่เปลี่ยนทิศทางการหันหน้าเดิมของมัน จากนั้นให้ย้าย Hunters เหล่านั้นเสมือนว่า Black Diablos ได้เคลื่อนที่เข้ามายัง Node ดังกล่าว, หลังจากนั้น ให้ดำเนินการการ์ดพฤติกรรมของ Black Diablos ตามปกติ, การ์ดพฤติกรรมที่มีการโจมตีส่วน (Claw) จะทำ (ความเสียหาย) เพิ่มขึ้น +2 หน่วย"
+          "description": "เมื่อกำหนด (Target) ของการ์ดพฤติกรรมที่มีการโจมตีส่วน {claw} ให้ Black Diablos แล้ว, ให้นำ Black Diablos ออกจากบอร์ด จากนั้นวาง มัน ไปยัง (Node) เดียวกับ (Target) ของมัน โดยไม่เปลี่ยนทิศทางการหันหน้าเดิมของมัน จากนั้นให้ย้าย Hunters เหล่านั้นเสมือนว่า Black Diablos ได้เคลื่อนที่เข้ามายัง Node ดังกล่าว, หลังจากนั้น ให้ดำเนินการการ์ดพฤติกรรมของ Black Diablos ตามปกติ, การ์ดพฤติกรรมที่มีการโจมตีส่วน {claw} สร้างความเสียหาย {atk}+2"
         },
         "monster_parts": {
           "front": {
@@ -4653,28 +4653,28 @@
             "connect_part_position": null,
             "part_break_threshold": 8,
             "armor": 5,
-            "part_break_rule": "การ์ดพฤติกรรมทุกใบทำ (ความเสียหาย) ลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมทุกใบ {atk}-1"
           },
           "back": {
             "part_id": 6,
             "connect_part_position": null,
             "part_break_threshold": 6,
             "armor": 4,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน (Tail), จะทำให้ (ระยะโจมตี) ของการ์ดนั้นลดลง -1 หน่วย"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {tail}, ระยะโจมตี {range}-1"
           },
           "left": {
             "part_id": 3,
             "connect_part_position": ["right"],
             "part_break_threshold": 7,
             "armor": 4,
-            "part_break_rule": "ทิ้งการ์ดพฤติกรรมที่มีการโจมตีส่วน (Claw) ออก 1 ใบจาก Deck หลังจากนั้นทำการสับกองการ์ดพฤติกรรม"
+            "part_break_rule": "ทิ้งการ์ดพฤติกรรมที่มีการโจมตีส่วน {claw} ออก 1 ใบจาก Deck หลังจากนั้นทำการสับกองการ์ดพฤติกรรม"
           },
           "right": {
             "part_id": 5,
             "connect_part_position": ["left"],
             "part_break_threshold": 7,
             "armor": 4,
-            "part_break_rule": "อวัยวะส่วนนี้ (เกราะ) -1 หน่วย"
+            "part_break_rule": "Part ส่วนนี้ {armor}-1"
           }
         },
         "element_resistance": [
@@ -4710,33 +4710,33 @@
     "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2],
     "behavior_deck": [
       { "behavior_id": 1,  "behavior_name": "Horn Swing Left",  "activations": 2,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/b_diablos/horn_swing_left_front.png",  "back_card_img": "assets/img/behavior_deck/b_diablos/horn_swing_left_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/b_diablos/horn_swing_left_front.webp",  "back_card_img": "assets/img/behavior_deck/b_diablos/horn_swing_left_back.webp" },
       { "behavior_id": 2,  "behavior_name": "Horn Swing Right", "activations": 2,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/b_diablos/horn_swing_right_front.png", "back_card_img": "assets/img/behavior_deck/b_diablos/horn_swing_right_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/b_diablos/horn_swing_right_front.webp", "back_card_img": "assets/img/behavior_deck/b_diablos/horn_swing_right_back.webp" },
       { "behavior_id": 3,  "behavior_name": "Long Charge",      "activations": 2,
-        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/b_diablos/long_charge_front.png",      "back_card_img": "assets/img/behavior_deck/b_diablos/long_charge_back.png" },
+        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/b_diablos/long_charge_front.webp",      "back_card_img": "assets/img/behavior_deck/b_diablos/long_charge_back.webp" },
       { "behavior_id": 4,  "behavior_name": "Short Charge",     "activations": 1,
-        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/b_diablos/short_charge_front.png",     "back_card_img": "assets/img/behavior_deck/b_diablos/short_charge_back.png" },
+        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/b_diablos/short_charge_front.webp",     "back_card_img": "assets/img/behavior_deck/b_diablos/short_charge_back.webp" },
       { "behavior_id": 5,  "behavior_name": "Surface Bite",     "activations": 2,
-        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/b_diablos/surface_bite_front.png",     "back_card_img": "assets/img/behavior_deck/b_diablos/surface_bite_back.png" },
+        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/b_diablos/surface_bite_front.webp",     "back_card_img": "assets/img/behavior_deck/b_diablos/surface_bite_back.webp" },
       { "behavior_id": 6,  "behavior_name": "Surface Charge",   "activations": 3,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/b_diablos/surface_charge_front.png",   "back_card_img": "assets/img/behavior_deck/b_diablos/surface_charge_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/b_diablos/surface_charge_front.webp",   "back_card_img": "assets/img/behavior_deck/b_diablos/surface_charge_back.webp" },
       { "behavior_id": 7,  "behavior_name": "Surface Dive",     "activations": 2,
-        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/b_diablos/surface_dive_front.png",     "back_card_img": "assets/img/behavior_deck/b_diablos/surface_dive_back.png" },
+        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/b_diablos/surface_dive_front.webp",     "back_card_img": "assets/img/behavior_deck/b_diablos/surface_dive_back.webp" },
       { "behavior_id": 8,  "behavior_name": "Surface Retreat",  "activations": 3,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/b_diablos/surface_retreat_front.png",  "back_card_img": "assets/img/behavior_deck/b_diablos/surface_retreat_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/b_diablos/surface_retreat_front.webp",  "back_card_img": "assets/img/behavior_deck/b_diablos/surface_retreat_back.webp" },
       { "behavior_id": 9,  "behavior_name": "Tail Bash",        "activations": 1,
-        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/b_diablos/tail_bash_front.png",        "back_card_img": "assets/img/behavior_deck/b_diablos/tail_bash_back.png" },
+        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/b_diablos/tail_bash_front.webp",        "back_card_img": "assets/img/behavior_deck/b_diablos/tail_bash_back.webp" },
       { "behavior_id": 10, "behavior_name": "Tail Sweep",       "activations": 1,
-        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/b_diablos/tail_sweep_front.png",       "back_card_img": "assets/img/behavior_deck/b_diablos/tail_sweep_back.png" }
+        "attack_cards": 3, "front_card_img": "assets/img/behavior_deck/b_diablos/tail_sweep_front.webp",       "back_card_img": "assets/img/behavior_deck/b_diablos/tail_sweep_back.webp" }
     ],
     "behavior_special_card": [
       { "behavior_id": 11, "behavior_name": "Burrowing Retreat", "activations": 2,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/b_diablos/burrowing_retreat_front.png", "back_card_img": "assets/img/behavior_deck/b_diablos/burrowing_retreat_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/b_diablos/burrowing_retreat_front.webp", "back_card_img": "assets/img/behavior_deck/b_diablos/burrowing_retreat_back.webp" },
       { "behavior_id": 12, "behavior_name": "Side Horn Thrust",  "activations": 2,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/b_diablos/side_horn_thrust_front.png",  "back_card_img": "assets/img/behavior_deck/b_diablos/side_horn_thrust_back.png" },
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/b_diablos/side_horn_thrust_front.webp",  "back_card_img": "assets/img/behavior_deck/b_diablos/side_horn_thrust_back.webp" },
       { "behavior_id": 13, "behavior_name": "Surface Impale",    "activations": 4,
-        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/b_diablos/surface_impale_front.png",    "back_card_img": "assets/img/behavior_deck/b_diablos/surface_impale_back.png" }
+        "attack_cards": 2, "front_card_img": "assets/img/behavior_deck/b_diablos/surface_impale_front.webp",    "back_card_img": "assets/img/behavior_deck/b_diablos/surface_impale_back.webp" }
     ]
   }
 ]

@@ -339,7 +339,20 @@
             "required_dialog": "",
             "title": "ทำตามคำแนะนำของเธอ และค่อยๆ เดินหน้าไป",
             "consequences": "ได้รับและเปิดเผย Track Token 1 อัน แล้วเลือกว่าจะเก็บหรือทิ้ง",
-            "PathToDialog": 26
+            "PathToDialog": 26,
+            "effects": [
+              {
+                "type": "revealTrackToken",
+                "n": 1
+              },
+              {
+                "type": "gainTrackToken",
+                "n": 1
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           },
           {
             "action_id": 2,
@@ -716,7 +729,20 @@
             "required_dialog": "",
             "title": "ขอความแนะนำจากพวกเขา",
             "consequences": "ได้รับและเปิดเผย Track Token  4 อัน จากนั้นเลือกว่าจะเก็บหรือทิ้ง",
-            "PathToDialog": 19
+            "PathToDialog": 19,
+            "effects": [
+              {
+                "type": "revealTrackToken",
+                "n": 4
+              },
+              {
+                "type": "gainTrackToken",
+                "n": 4
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           }
         ],
         "effects": [
@@ -1122,7 +1148,23 @@
             "required_dialog": "",
             "title": "ขุดค้นร่างกายของมัน",
             "consequences": "ทิ้ง Time card 2 ใบ นักล่าทุกคนจะได้รับ 1 Great Jagras Scale หากกลุ่มมีอย่างน้อย 1 Great Jagras Mane ทุกคนจะได้รับ Great Jagras Mane เพิ่มเติม 1 ชิ้น",
-            "PathToDialog": 15
+            "PathToDialog": 15,
+            "effects": [
+              {
+                "type": "discardTimeCard",
+                "n": 2
+              },
+              {
+                "type": "gainResource",
+                "n": 1,
+                "name": "Great Jagras Scale",
+                "type_id": 3,
+                "item_id": 2
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           },
           {
             "action_id": 2,
@@ -2344,7 +2386,20 @@
             "required_dialog": "",
             "title": "เก็บซากและออกเดินทางต่อไป!",
             "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token  2 อัน แต่ละนักล่าได้รับ 1 Monster Bone small หรือ 1 Monster Bone large.",
-            "PathToDialog": 6
+            "PathToDialog": 6,
+            "effects": [
+              {
+                "type": "discardTimeCard",
+                "n": 1
+              },
+              {
+                "type": "gainTrackToken",
+                "n": 2
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           },
           {
             "action_id": 2,
@@ -2480,7 +2535,16 @@
             "required_dialog": "",
             "title": "หลบซ่อนในกองกระดูก!",
             "consequences": "ทิ้ง Time card 1 ใบ นักล่าทุกคนได้รับ Quality Bone 1 ชิ้น หรือ Monster Bone large 1 ชิ้น.",
-            "PathToDialog": 35
+            "PathToDialog": 35,
+            "effects": [
+              {
+                "type": "discardTimeCard",
+                "n": 1
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           },
           {
             "action_id": 2,
@@ -3191,6 +3255,12 @@
             "consequences": "",
             "PathToDialog": 11
           }
+        ],
+        "effects": [
+          {
+            "type": "discardPotionDownTo",
+            "n": 1
+          }
         ]
       },
       {
@@ -3236,7 +3306,23 @@
             "required_dialog": "",
             "title": "เข้าไปในถ้ำและเริ่มขุดแร่",
             "consequences": "ทิ้ง Time card 1 ใบ นักล่าทุกคนได้รับ 1 Carbalite ore. นักล่าสามารถทิ้ง time card เพิ่มอีก 2 ใบ เพื่อรับ 1 Machalite ore, 1 Fucium ore, และ 1 Dragonite ore.",
-            "PathToDialog": 13
+            "PathToDialog": 13,
+            "effects": [
+              {
+                "type": "discardTimeCard",
+                "n": 1
+              },
+              {
+                "type": "gainResource",
+                "n": 1,
+                "name": "Carbalite Ore",
+                "type_id": 1,
+                "item_id": 1
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           },
           {
             "action_id": 2,
@@ -3481,7 +3567,23 @@
             "required_dialog": "",
             "title": "เข้าไปในถ้ำและเริ่มขุดแร่",
             "consequences": "ทิ้ง Time card 1 ใบ นักล่าทุกคนได้รับ 1 Carbalite ore. นักล่าสามารถทิ้ง time card เพิ่มอีก 2 ใบ เพื่อรับ 1 Machalite ore, 1 Fucium ore, และ 1 Dragonite ore.",
-            "PathToDialog": 31
+            "PathToDialog": 31,
+            "effects": [
+              {
+                "type": "discardTimeCard",
+                "n": 1
+              },
+              {
+                "type": "gainResource",
+                "n": 1,
+                "name": "Carbalite Ore",
+                "type_id": 1,
+                "item_id": 1
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           },
           {
             "action_id": 2,
@@ -4108,7 +4210,16 @@
             "required_dialog": "",
             "title": "หยุดเพื่อหาทิศทาง",
             "consequences": "ทิ้ง 2 time card เปิดเผยและทิ้ง track token เท่าใดก็ได้",
-            "PathToDialog": 8
+            "PathToDialog": 8,
+            "effects": [
+              {
+                "type": "discardTimeCard",
+                "n": 2
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           }
         ],
         "effects": [
@@ -4392,7 +4503,16 @@
             "required_dialog": "",
             "title": "อยากขุด!",
             "consequences": "ทิ้ง 2 time cards แต่ละนักล่าสามารถได้รับ 1 Fucium ore และ 1 Dragonite ore",
-            "PathToDialog": 28
+            "PathToDialog": 28,
+            "effects": [
+              {
+                "type": "discardTimeCard",
+                "n": 2
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           },
           {
             "action_id": 2,
@@ -4839,6 +4959,19 @@
               }
             ]
           }
+        ],
+        "effects": [
+          {
+            "type": "discardTimeCard",
+            "n": 1
+          },
+          {
+            "type": "discardPotion",
+            "n": 1
+          },
+          {
+            "type": "manualRest"
+          }
         ]
       },
       {
@@ -4932,7 +5065,20 @@
             "required_dialog": "",
             "title": "คุณสามารถฟื้นฟูได้บ้าง แต่การพักผ่อนสั้นๆ ก็ช่วยได้แค่ในระดับหนึ่ง",
             "consequences": "ทิ้ง 1 time card. ทิ้ง 1 potion หากผู้เล่นไม่สามารถทิ้ง potion ได้ ให้สับการ์ด the Exhaustion เข้าไปในกอง Time card",
-            "PathToDialog": 15
+            "PathToDialog": 15,
+            "effects": [
+              {
+                "type": "discardTimeCard",
+                "n": 1
+              },
+              {
+                "type": "discardPotion",
+                "n": 1
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           }
         ]
       },
@@ -5030,7 +5176,7 @@
   {
     "monster_id": 4,
     "monster_name": "Rathalos",
-    "thumbnail": "assets/img/rathalos_Icon.png",
+    "thumbnail": "assets/img/rathalos_Icon.webp",
     "special_attack_card": [
       "Stunning Spin",
       "Molten Bite",
@@ -6027,14 +6173,40 @@
             "required_dialog": "",
             "title": "หากทอยได้ 1-3",
             "consequences": "นักล่าทุกคนได้รับความเสียหาย 2 หน่วยจากการตกลงมาและต้องปีนกลับขึ้นไป ทิ้ง 2 Time card",
-            "PathToDialog": 28
+            "PathToDialog": 28,
+            "effects": [
+              {
+                "type": "discardTimeCard",
+                "n": 2
+              },
+              {
+                "type": "damage",
+                "n": 2
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           },
           {
             "action_id": 2,
             "required_dialog": "",
             "title": "หากทอยได้ 4-6",
             "consequences": "นักล่าได้รับ Track Token 3 อัน จากการปีนขึ้นไปโดยไม่มีการบาดเจ็บ ทิ้ง 1 Time card",
-            "PathToDialog": 28
+            "PathToDialog": 28,
+            "effects": [
+              {
+                "type": "discardTimeCard",
+                "n": 1
+              },
+              {
+                "type": "gainTrackToken",
+                "n": 3
+              },
+              {
+                "type": "manualRest"
+              }
+            ]
           }
         ],
         "effects": [
@@ -6584,7 +6756,7 @@
   {
     "monster_id": 5,
     "monster_name": "Azure Rathalos",
-    "thumbnail": "assets/img/azure_rathalos_Icon.png",
+    "thumbnail": "assets/img/azure_rathalos_Icon.webp",
     "special_attack_card": [
       "Fire Spin",
       "Fireball",
@@ -7184,7 +7356,20 @@
             "required_dialog": "",
             "title": "...",
             "consequences": "นักล่าทุกคนได้รับ Azure Rathalos Tail 1 ชิ้น track token 1 ชิ้น",
-            "PathToDialog": 13
+            "PathToDialog": 13,
+            "effects": [
+              {
+                "type": "gainTrackToken",
+                "n": 1
+              },
+              {
+                "type": "gainResource",
+                "n": 1,
+                "name": "Azure Rathalos Tail",
+                "type_id": 3,
+                "item_id": 31
+              }
+            ]
           }
         ]
       },

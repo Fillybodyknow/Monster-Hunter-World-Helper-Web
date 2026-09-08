@@ -2,6 +2,7 @@
 import { useRoute } from 'vue-router'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { hunter, loadHunter } from '@/stores/hunter'
+import BootLoader from '@/views/components/BootLoader.vue'
 import {
   craftNotifications,
   dismissNotification,
@@ -33,10 +34,14 @@ watch(hunter, (val) => {
   checkCraftability(val)
 })
 
-const logo = `${import.meta.env.BASE_URL}assets/img/UI/icon.jpg`
+const logo = `${import.meta.env.BASE_URL}assets/img/UI/icon.webp`
+
+const booting = ref(true)
 </script>
 
 <template>
+  <BootLoader v-if="booting" @done="booting = false" />
+
   <div class="app-wrapper">
     <!-- LOGO + TITLE HEADER -->
     <div class="app-header" :class="{ compact: !isHomePage }">

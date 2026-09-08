@@ -3,97 +3,97 @@
         {
             "time_card_id": 1,
             "card_name": "Wiggle Litchi",
-            "card_img": "assets/img/time_cards/normal_time_cards/1_wiggly_litchi.png",
+            "card_img": "assets/img/time_cards/normal_time_cards/1_wiggly_litchi.webp",
             "copies": 1
         },
         {
             "time_card_id": 2,
             "card_name": "Misread",
-            "card_img": "assets/img/time_cards/normal_time_cards/2_misread.png",
+            "card_img": "assets/img/time_cards/normal_time_cards/2_misread.webp",
             "copies": 2
         },
         {
             "time_card_id": 3,
             "card_name": "Monster Retreats",
-            "card_img": "assets/img/time_cards/normal_time_cards/2_monster_retreats.png",
+            "card_img": "assets/img/time_cards/normal_time_cards/2_monster_retreats.webp",
             "copies": 2
         },
         {
             "time_card_id": 4,
             "card_name": "Monster Sleeps",
-            "card_img": "assets/img/time_cards/normal_time_cards/2_monster_sleeps.png",
+            "card_img": "assets/img/time_cards/normal_time_cards/2_monster_sleeps.webp",
             "copies": 2
         },
         {
             "time_card_id": 5,
             "card_name": "Nitrotoad",
-            "card_img": "assets/img/time_cards/normal_time_cards/2_nitrotoad.png",
+            "card_img": "assets/img/time_cards/normal_time_cards/2_nitrotoad.webp",
             "copies": 2
         },
         {
             "time_card_id": 6,
             "card_name": "Paratoad",
-            "card_img": "assets/img/time_cards/normal_time_cards/2_paratoad.png",
+            "card_img": "assets/img/time_cards/normal_time_cards/2_paratoad.webp",
             "copies": 2
         },
         {
             "time_card_id": 7,
             "card_name": "Poisoncup",
-            "card_img": "assets/img/time_cards/normal_time_cards/2_poisoncup.png",
+            "card_img": "assets/img/time_cards/normal_time_cards/2_poisoncup.webp",
             "copies": 2
         },
         {
             "time_card_id": 8,
             "card_name": "Rampage",
-            "card_img": "assets/img/time_cards/normal_time_cards/2_rampage.png",
+            "card_img": "assets/img/time_cards/normal_time_cards/2_rampage.webp",
             "copies": 2
         },
         {
             "time_card_id": 9,
             "card_name": "Roar",
-            "card_img": "assets/img/time_cards/normal_time_cards/2_roar.png",
+            "card_img": "assets/img/time_cards/normal_time_cards/2_roar.webp",
             "copies": 2
         },
         {
             "time_card_id": 10,
             "card_name": "Sleeptoad",
-            "card_img": "assets/img/time_cards/normal_time_cards/2_sleeptoad.png",
+            "card_img": "assets/img/time_cards/normal_time_cards/2_sleeptoad.webp",
             "copies": 2
         },
         {
             "time_card_id": 11,
             "card_name": "Suspended Boulder",
-            "card_img": "assets/img/time_cards/normal_time_cards/2_suspended_boulder.png",
+            "card_img": "assets/img/time_cards/normal_time_cards/2_suspended_boulder.webp",
             "copies": 2
         },
         {
             "time_card_id": 12,
             "card_name": "Vespoid Attack",
-            "card_img": "assets/img/time_cards/normal_time_cards/2_vespoid_attack.png",
+            "card_img": "assets/img/time_cards/normal_time_cards/2_vespoid_attack.webp",
             "copies": 2
         },
         {
             "time_card_id": 13,
             "card_name": "Brief Respite",
-            "card_img": "assets/img/time_cards/normal_time_cards/4_brief_respite.png",
+            "card_img": "assets/img/time_cards/normal_time_cards/4_brief_respite.webp",
             "copies": 4
         },
         {
             "time_card_id": 14,
             "card_name": "Keep Hunting",
-            "card_img": "assets/img/time_cards/normal_time_cards/5_keep_hunting.png",
+            "card_img": "assets/img/time_cards/normal_time_cards/5_keep_hunting.webp",
             "copies": 5
         },
         {
             "time_card_id": 15,
             "card_name": "Tactical Shift",
-            "card_img": "assets/img/time_cards/normal_time_cards/5_tactical_shift.png",
+            "card_img": "assets/img/time_cards/normal_time_cards/5_tactical_shift.webp",
             "copies": 5
         },
         {
             "time_card_id": 16,
             "card_name": "Threat Shift",
-            "card_img": "assets/img/time_cards/normal_time_cards/8_threat_shift.png",
+            "card_img": "assets/img/time_cards/normal_time_cards/8_threat_shift.webp",
             "copies": 8
         }
     ],
@@ -101,105 +101,111 @@
         {
             "time_card_id": 17,
             "card_name": "Aimless Wandering",
-            "card_img": "assets/img/time_cards/red_time_cards/aimless_wandering.png",
+            "card_img": "assets/img/time_cards/red_time_cards/aimless_wandering.webp",
             "copies": 1
         },
         {
             "time_card_id": 18,
             "card_name": "Ancient Guardian",
-            "card_img": "assets/img/time_cards/red_time_cards/ancient_guardian.png",
+            "card_img": "assets/img/time_cards/red_time_cards/ancient_guardian.webp",
             "copies": 1
         },
         {
             "time_card_id": 19,
             "card_name": "Exhaustion",
-            "card_img": "assets/img/time_cards/red_time_cards/exhaustion.png",
+            "card_img": "assets/img/time_cards/red_time_cards/exhaustion.webp",
             "copies": 1
         },
         {
             "time_card_id": 20,
             "card_name": "Fumbled Carving",
-            "card_img": "assets/img/time_cards/red_time_cards/fumbled_carving.png",
+            "card_img": "assets/img/time_cards/red_time_cards/fumbled_carving.webp",
             "copies": 1
         },
         {
             "time_card_id": 21,
             "card_name": "Jagras Slayer",
-            "card_img": "assets/img/time_cards/red_time_cards/jagras_slayer.png",
+            "card_img": "assets/img/time_cards/red_time_cards/jagras_slayer.webp",
             "copies": 1
         },
         {
             "time_card_id": 22,
             "card_name": "Palico Assistant",
-            "card_img": "assets/img/time_cards/red_time_cards/palico_assistant.png",
+            "card_img": "assets/img/time_cards/red_time_cards/palico_assistant.webp",
             "copies": 1
         },
         {
             "time_card_id": 23,
             "card_name": "Recovery",
-            "card_img": "assets/img/time_cards/red_time_cards/recovery.png",
+            "card_img": "assets/img/time_cards/red_time_cards/recovery.webp",
             "copies": 1
         },
         {
             "time_card_id": 24,
             "card_name": "Researcher's Favour",
-            "card_img": "assets/img/time_cards/red_time_cards/researcher_s_favour.png",
+            "card_img": "assets/img/time_cards/red_time_cards/researcher_s_favour.webp",
             "copies": 1
         },
         {
             "time_card_id": 25,
             "card_name": "Rushed Advance",
-            "card_img": "assets/img/time_cards/red_time_cards/rushed_advance.png",
+            "card_img": "assets/img/time_cards/red_time_cards/rushed_advance.webp",
             "copies": 1
         },
         {
             "time_card_id": 26,
             "card_name": "Time Waster",
-            "card_img": "assets/img/time_cards/red_time_cards/time_waster.png",
+            "card_img": "assets/img/time_cards/red_time_cards/time_waster.webp",
             "copies": 1
         },
         {
             "time_card_id": 27,
             "card_name": "Turf War",
-            "card_img": "assets/img/time_cards/red_time_cards/turf_war.png",
+            "card_img": "assets/img/time_cards/red_time_cards/turf_war.webp",
             "copies": 1
         },
         {
             "time_card_id": 28,
             "card_name": "Unavenged",
-            "card_img": "assets/img/time_cards/red_time_cards/unavenged.png",
+            "card_img": "assets/img/time_cards/red_time_cards/unavenged.webp",
             "copies": 1
         },
         {
             "time_card_id": 29,
             "card_name": "Wake Up!",
-            "card_img": "assets/img/time_cards/red_time_cards/wake_up.png",
+            "card_img": "assets/img/time_cards/red_time_cards/wake_up.webp",
             "copies": 1
         },
         {
             "time_card_id": 30,
             "card_name": "Barroth Slayer",
-            "card_img": "assets/img/time_cards/red_time_cards/barroth_slayer.png",
+            "card_img": "assets/img/time_cards/red_time_cards/barroth_slayer.webp",
             "copies": 1
         },
         {
             "time_card_id": 31,
             "card_name": "The Betrayal",
-            "card_img": "assets/img/time_cards/red_time_cards/the_betrayal.png",
+            "card_img": "assets/img/time_cards/red_time_cards/the_betrayal.webp",
             "copies": 1
         },
         {
             "time_card_id": 32,
             "card_name": "Rathalos Slayer",
-            "card_img": "assets/img/time_cards/red_time_cards/rathalos_slayer.png",
+            "card_img": "assets/img/time_cards/red_time_cards/rathalos_slayer.webp",
             "copies": 1
         },
         {
             "time_card_id": 33,
             "card_name": "Diablos Slayer",
-            "card_img": "assets/img/time_cards/red_time_cards/diablos_slayer.png",
+            "card_img": "assets/img/time_cards/red_time_cards/diablos_slayer.webp",
+            "copies": 1
+        },
+        {
+            "time_card_id": 34,
+            "card_name": "Time Management",
+            "card_img": "assets/img/time_cards/red_time_cards/time_management.webp",
             "copies": 1
         }
     ],
-    "back_time_card_img": "assets/img/time_cards/back_time_card.png"
+    "back_time_card_img": "assets/img/time_cards/back_time_card.webp"
 }

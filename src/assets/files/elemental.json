@@ -2,22 +2,22 @@
     {
         "elemental_id": 1,
         "elemental": "Fire",
-        "thumbnail": "assets/img/elemental/fire.png"
+        "thumbnail": "assets/img/elemental/fire.webp"
     },
     {
         "elemental_id": 2,
         "elemental": "Water",
-        "thumbnail": "assets/img/elemental/water.png"
+        "thumbnail": "assets/img/elemental/water.webp"
     },
     {
         "elemental_id": 3,
         "elemental": "Thunder",
-        "thumbnail": "assets/img/elemental/thunder.png"
+        "thumbnail": "assets/img/elemental/thunder.webp"
     },
     {
         "elemental_id": 4,
         "elemental": "Ice",
-        "thumbnail": "assets/img/elemental/ice.png"
+        "thumbnail": "assets/img/elemental/ice.webp"
     },
     {
         "elemental_id": 5,

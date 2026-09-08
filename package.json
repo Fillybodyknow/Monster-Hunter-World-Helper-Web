@@ -4,10 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "npm run assets && vite",
+    "build": "npm run assets && vite build",
     "preview": "vite preview",
-    "format": "prettier --write --experimental-cli src/"
+    "format": "prettier --write --experimental-cli src/",
+    "assets": "node scripts/build-asset-manifest.cjs"
   },
   "dependencies": {
     "bootstrap": "^5.3.8",
@@ -21,6 +22,7 @@
     "@vitejs/plugin-vue": "^6.0.6",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
     "prettier": "3.8.3",
+    "sharp": "^0.35.4",
     "vite": "^8.0.8",
     "vite-plugin-vue-devtools": "^8.1.1"
   },
