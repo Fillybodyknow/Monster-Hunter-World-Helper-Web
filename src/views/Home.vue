@@ -103,6 +103,21 @@ watch(
 
 // Party panel
 const showPartyPanel = ref(false)
+
+// โอนหัวห้อง — ถามยืนยันก่อนเสมอ เพราะคนโอนเอาสิทธิ์คืนเองไม่ได้
+const pendingHostTransfer = ref(null)
+
+const confirmHostTransfer = async () => {
+  const target = pendingHostTransfer.value
+  pendingHostTransfer.value = null
+  if (!target) return
+  try {
+    await room.transferHost(target.hunter_id)
+    addNotif(`👑 โอนหัวห้องให้ ${target.hunter_name} แล้ว`, 'info')
+  } catch (e) {
+    addNotif(`❌ โอนหัวห้องไม่สำเร็จ: ${e?.message ?? e}`, 'error')
+  }
+}
 import Quest from './components/Quest.vue'
 import State from './components/State.vue'
 import Inventory from './components/Inventory.vue'
@@ -215,11 +230,14 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
                   <span v-if="h.hunter_id === room.myHunterId" class="party-me-badge">YOU</span>
                   <span v-if="h.connected === false" class="party-offline-label">ขาดการเชื่อมต่อ</span>
                 </div>
-                <button
-                  v-if="room.isHost && h.hunter_id !== room.myHunterId"
-                  class="party-kick-btn"
-                  @click="room.kick(h.hunter_id)"
-                >เตะ</button>
+                <div v-if="room.isHost && h.hunter_id !== room.myHunterId" class="party-member-actions">
+                  <button
+                    class="party-host-btn"
+                    title="โอนหัวห้องให้คนนี้"
+                    @click="pendingHostTransfer = h"
+                  >👑</button>
+                  <button class="party-kick-btn" @click="room.kick(h.hunter_id)">เตะ</button>
+                </div>
               </div>
             </div>
 
@@ -230,6 +248,27 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
               <button v-else class="party-btn-leave" @click="room.leave(); showPartyPanel = false">
                 🚪 ออกจากตี้
               </button>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </teleport>
+
+    <!-- ยืนยันโอนหัวห้อง — กดแล้วเอาคืนเองไม่ได้ ต้องให้อีกฝ่ายโอนกลับ -->
+    <teleport to="body">
+      <transition name="notif-slide">
+        <div v-if="pendingHostTransfer" class="ht-overlay" @click.self="pendingHostTransfer = null">
+          <div class="ht-modal">
+            <span class="ht-crown">👑</span>
+            <p class="ht-title">โอนหัวห้อง?</p>
+            <p class="ht-sub">
+              <strong>{{ pendingHostTransfer.hunter_name }}</strong>
+              จะเป็นคนคุมกอง จั่วการ์ด และตัดสินผลเควสแทนคุณ
+            </p>
+            <p class="ht-warn">⚠ คุณจะกลายเป็นลูกทีม เอาคืนเองไม่ได้</p>
+            <div class="ht-btns">
+              <button class="ht-cancel" @click="pendingHostTransfer = null">ยกเลิก</button>
+              <button class="ht-confirm" @click="confirmHostTransfer">✓ โอน</button>
             </div>
           </div>
         </div>
@@ -664,7 +703,8 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
   backdrop-filter: blur(6px);
   z-index: 600;
   display: flex;
-  align-items: flex-end;
+  /* มุมบนซ้าย — ให้ตรงกับปุ่มตี้ที่ห้อยอยู่ใต้เมนู Quest */
+  align-items: flex-start;
   justify-content: flex-start;
   padding: 16px;
 }
@@ -678,8 +718,60 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
   width: min(340px, 100%);
   overflow: hidden;
   box-shadow: inset 0 1px 0 rgba(232,198,152,0.07), 0 10px 40px rgba(0,0,0,0.85);
-  margin-bottom: 70px;
+  /* เว้นให้พ้น topbar กับแถบชื่อหมวด ไม่ทับปุ่มที่กดเปิดมันขึ้นมา */
+  margin-top: 96px;
 }
+
+/* ── โอนหัวห้อง ── */
+.party-member-actions { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+.party-host-btn {
+  padding: 3px 7px;
+  border-radius: 3px;
+  border: 1px solid rgba(200,155,60,0.5);
+  background: rgba(200,155,60,0.12);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.party-host-btn:hover { border-color: #ffd27a; background: rgba(200,155,60,0.3); }
+
+.ht-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(4,3,1,0.82);
+  backdrop-filter: blur(4px);
+}
+.ht-modal {
+  width: min(330px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 22px 18px;
+  border-radius: 3px;
+  text-align: center;
+  border: 1px solid rgba(200,155,60,0.5);
+  border-left: 3px solid #c89b3c;
+  background:
+    repeating-linear-gradient(100deg, rgba(0,0,0,0.14) 0px, rgba(0,0,0,0.14) 1px, transparent 1px, transparent 5px),
+    linear-gradient(170deg, #2e2210, #1a1308);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,220,160,0.08);
+  font-family: 'Georgia', serif;
+}
+.ht-crown { font-size: 34px; line-height: 1; filter: drop-shadow(0 0 10px rgba(255,200,100,0.6)); }
+.ht-title { margin: 0; font-size: 16px; font-weight: bold; color: #ffd27a; letter-spacing: 1px; }
+.ht-sub { margin: 0; font-size: 12px; color: #a88040; line-height: 1.6; }
+.ht-sub strong { color: #f0ddb0; }
+.ht-warn { margin: 2px 0 0; font-size: 11px; color: #ff9090; }
+.ht-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; margin-top: 6px; }
+.ht-cancel { padding: 10px; border-radius: 3px; font-size: 12px; color: #a88040; cursor: pointer; background: rgba(0,0,0,0.4); border: 1px solid rgba(124,90,43,0.4); font-family: inherit; }
+.ht-confirm { padding: 10px; border-radius: 3px; font-size: 13px; font-weight: bold; color: #0f0b05; cursor: pointer; background: linear-gradient(to bottom, #ffd27a, #c89b3c); border: 1px solid #ffd27a; font-family: inherit; }
 .party-panel-header {
   display: flex;
   align-items: center;

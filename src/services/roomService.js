@@ -141,6 +141,16 @@ export const updateHunterProfile = async (code, hunter) => {
   })
 }
 
+// ── โอนหัวห้อง ───────────────────────────────────────────
+// เขียนครั้งเดียวทั้ง hostId และธง isHost ของทั้งสองคน ไม่งั้นมีจังหวะที่ห้องมีสองหัวหรือไม่มีเลย
+export const setRoomHost = (code, newHostId, oldHostId) =>
+  update(ref(db, `rooms/${code}`), {
+    hostId: newHostId,
+    [`hunters/${newHostId}/isHost`]: true,
+    [`hunters/${oldHostId}/isHost`]: false,
+    hostConnected: true,
+  })
+
 // ── Leave Room ───────────────────────────────────────────
 export const leaveRoom = async (code, hunterId, isHost) => {
   if (isHost) {
@@ -300,6 +310,12 @@ export const clearRerollRequest = (code) =>
 export const pushPartyDice = (code, hunterId, rolls) =>
   set(ref(db, `rooms/${code}/partyDice/${hunterId}`), rolls)
 
+// เต๋าโบนัสจาก Slayer Card — คนละลูกต่อคน แยก node จาก partyDice ที่เป็นกองรวมของตี้
+export const pushSlayerDie = (code, hunterId, value) =>
+  set(ref(db, `rooms/${code}/slayerDice/${hunterId}`), value)
+
+export const clearSlayerDice = (code) => remove(ref(db, `rooms/${code}/slayerDice`))
+
 export const clearPartyDice = (code) =>
   remove(ref(db, `rooms/${code}/partyDice`))
 
@@ -339,6 +355,11 @@ export const pushTokenSwapRequest = (code, req) =>
   set(ref(db, `rooms/${code}/tokenSwapRequest`), req)
 
 export const clearTokenSwapRequest = (code) => remove(ref(db, `rooms/${code}/tokenSwapRequest`))
+
+// ใช้ยา / ล้ม — ทุกคนยิงสัญญาณนี้ได้เอง แต่คนที่แก้ huntState จริงคือ Host เท่านั้น
+// (huntState ถูกเขียนทั้งก้อน ถ้าปล่อยให้ guest เขียนจะทับ HP/ชิ้นส่วนที่ Host ถืออยู่)
+export const pushUseSignal = (code, payload) =>
+  set(ref(db, `rooms/${code}/useSignal`), { at: Date.now(), ...payload })
 
 // ── Dialog Dice (ผลทอยแบบ "ทอยครั้งเดียว" ใช้ร่วมกันทั้งกลุ่ม) ──
 export const pushDialogDice = (code, key, value) =>

@@ -22,17 +22,18 @@ import CoopLobbyModal from './CoopLobbyModal.vue'
 import HQPhase from './HQPhase.vue'
 import { getPalico, drawPalicos } from '@/composables/usePalico'
 import { openCraftLookup } from '@/composables/useCraftLookup'
-import { useSfx, preloadSfx, preloadMedia } from '@/composables/useSfx'
+import { useSfx, preloadSfx, preloadMedia, playMedia, cancelPendingMedia, onUserGesture } from '@/composables/useSfx'
 import { preloadImages } from '@/services/assetPreload'
 import RuleText from './RuleText.vue'
 
 const room = useRoomStore()
 const sfx = useSfx()
 const SFX_UI = 'assets/sounds/ui'
+const SFX_COMBAT = `${SFX_UI}/combat`
 // ไฟล์คำรามดังกว่าเสียงอื่นมาก ต้องหรี่ลงไม่ให้กลบเพลง theme ที่เริ่มพร้อมกัน
 // ปรับที่นี่ที่เดียว — 1 = ดังเท่าเสียงอื่น
 // อย่าลดต่ำกว่า ~0.3: ฐาน soundVolume คือ 0.1 อยู่แล้ว ลดมากไปจะเงียบจนไม่ได้ยิน
-const MONSTER_ROAR_GAIN = 0.4
+const MONSTER_ROAR_GAIN = 0.7
 // หน่วงให้ไปลงพร้อม impact flash สีขาวของ modal (CSS: bi-impact-anim 0.25s 0.45s)
 // ถ้าดังทันทีตอน modal เพิ่งเด้งจะสะดุ้ง เพราะเสียงมาก่อนภาพ
 const MONSTER_ROAR_DELAY_MS = 450
@@ -468,10 +469,21 @@ watch(() => room.hqVoteResult, (result) => {
 // Guest syncs hqVote / hq / handlerStart phase
 watch([() => room.syncedPhase, () => room.joinSignal], ([sp]) => {
   if (!sp || !room.inRoom || room.isHost) return
+  // เควสต์เดินอยู่แล้ว = ค่า gamePhase ที่ค้างจากช่วง HQ ใช้ตัดสินอะไรไม่ได้
+  // joinSignal เด้งทุกครั้งที่ต่อกลับ (สลับแอปบนมือถือก็นับ) ถ้าไม่กันตรงนี้จะถูกดีดกลับหน้า HQ Vote
+  if (room.syncedDialogId) return
   if ((sp === 'hqVote' || sp === 'hq' || sp === 'handlerStart' || sp === 'palicoDraft') && phase.value !== sp) {
     if (sp === 'handlerStart') isExhaustedAttempt.value = room.questInfo?.exhausted_attempt ?? false
     phase.value = sp
   }
+})
+
+// gamePhase ต้องสะท้อนของจริงเสมอ — เดิมดันเฉพาะช่วง HQ กับช่วงรางวัล
+// ค่าเลยค้างอยู่ที่ 'hqVote' ตลอดการล่า แล้วคนที่ต่อกลับเข้ามาจะถูกพากลับไปหน้านั้น
+const SYNCED_HUNT_PHASES = ['dialog', 'hunting', 'huntingPanel']
+watch(phase, (p) => {
+  if (!room.inRoom || !room.isHost) return
+  if (SYNCED_HUNT_PHASES.includes(p)) room.syncPhase?.(p)
 })
 
 const _incrementDay = () => {
@@ -901,21 +913,38 @@ const huntEmberStyle = (em) => ({
   '--rise': `${-em.rise}px`,
 })
 
+// เพลงที่ "ควรจะเล่นอยู่ตอนนี้" — ใช้แทนการเดาจาก phase เพราะ phase ขยับช้ากว่าความเป็นจริง
+// ตอนเจอมอนสเตอร์เราดับเพลง dialog ทันทีแต่ phase ยังเป็น 'dialog' ต่ออีกหลายวินาที
+// ถ้าอิง phase การแตะจอช่วงนั้นจะปลุกเพลง dialog กลับมาเล่นทับเพลง theme
+let _intendedBgm = null // 'dialog' | 'monster' | 'downtime' | null
+
+// เพลงที่ถูก autoplay policy บล็อกจะยังถูกเก็บไว้ใน ref แต่สถานะเป็น paused
+// การ์ด `if (ref.value) return` เดิมเลยกันไม่ให้มีทางกู้คืนเลย ต้องแยกเคสนี้ออกมา
+const _resumeIfPaused = (mediaRef) => {
+  if (!mediaRef.value) return false
+  if (mediaRef.value.paused) playMedia(mediaRef.value, () => {})
+  return true
+}
+
 // ── Dialog BGM — เล่นวนระหว่างอยู่ใน phase 'dialog' ──
 const dialogBgm = ref(null)
 
 const playDialogBgm = () => {
-  if (dialogBgm.value || !soundEnabled.value) return
+  _intendedBgm = 'dialog'
+  if (!soundEnabled.value) return
+  if (_resumeIfPaused(dialogBgm)) return
   const audio = new Audio(`${import.meta.env.BASE_URL}assets/sounds/gethering_phase/during_gethering_phase.mp3`)
   audio.loop = true
   audio.volume = soundVolume.value
   // เดิม catch เปล่า ๆ ทำให้ตอนเบราว์เซอร์ปฏิเสธ (เช่น iOS บล็อก autoplay) เงียบทั้งเสียงและ error
-  audio.play().catch((e) => addNotif?.(`🔇 เล่นเพลงไม่ได้: ${e?.name ?? e}`, 'warn'))
+  playMedia(audio, (e) => addNotif?.(`🔇 เล่นเพลงไม่ได้: ${e?.name ?? e}`, 'warn'))
   dialogBgm.value = audio
 }
 
 const stopDialogBgm = () => {
+  if (_intendedBgm === 'dialog') _intendedBgm = null
   if (!dialogBgm.value) return
+  cancelPendingMedia(dialogBgm.value)
   dialogBgm.value.pause()
   dialogBgm.value = null
 }
@@ -925,16 +954,20 @@ const DOWNTIME_THEME = 'assets/sounds/downtime_activities/downtime_activities_th
 const downtimeBgm = ref(null)
 
 const playDowntimeBgm = () => {
-  if (downtimeBgm.value || !soundEnabled.value) return
+  _intendedBgm = 'downtime'
+  if (!soundEnabled.value) return
+  if (_resumeIfPaused(downtimeBgm)) return
   const audio = new Audio(`${import.meta.env.BASE_URL}${DOWNTIME_THEME}`)
   audio.loop = true
   audio.volume = soundVolume.value
-  audio.play().catch((e) => addNotif?.(`🔇 เล่นเพลงไม่ได้: ${e?.name ?? e}`, 'warn'))
+  playMedia(audio, (e) => addNotif?.(`🔇 เล่นเพลงไม่ได้: ${e?.name ?? e}`, 'warn'))
   downtimeBgm.value = audio
 }
 
 const stopDowntimeBgm = () => {
+  if (_intendedBgm === 'downtime') _intendedBgm = null
   if (!downtimeBgm.value) return
+  cancelPendingMedia(downtimeBgm.value)
   downtimeBgm.value.pause()
   downtimeBgm.value = null
 }
@@ -959,19 +992,23 @@ const MONSTER_THEME_FILES = Object.fromEntries(
 const monsterThemeAudio = ref(null)
 
 const playMonsterTheme = () => {
-  if (monsterThemeAudio.value || !soundEnabled.value) return
+  _intendedBgm = 'monster'
+  if (!soundEnabled.value) return
+  if (_resumeIfPaused(monsterThemeAudio)) return
   const file = MONSTER_THEME_FILES[selectedMonster.value?.monster_id]
   if (!file) return
   const audio = new Audio(`${import.meta.env.BASE_URL}assets/sounds/hunting_phase/monster_theme/${file}`)
   audio.loop = true
   audio.volume = soundVolume.value
   // เดิม catch เปล่า ๆ ทำให้ตอนเบราว์เซอร์ปฏิเสธ (เช่น iOS บล็อก autoplay) เงียบทั้งเสียงและ error
-  audio.play().catch((e) => addNotif?.(`🔇 เล่นเพลงไม่ได้: ${e?.name ?? e}`, 'warn'))
+  playMedia(audio, (e) => addNotif?.(`🔇 เล่นเพลงไม่ได้: ${e?.name ?? e}`, 'warn'))
   monsterThemeAudio.value = audio
 }
 
 const stopMonsterTheme = () => {
+  if (_intendedBgm === 'monster') _intendedBgm = null
   if (!monsterThemeAudio.value) return
+  cancelPendingMedia(monsterThemeAudio.value)
   monsterThemeAudio.value.pause()
   monsterThemeAudio.value = null
 }
@@ -1032,6 +1069,7 @@ const stopOutcomeSound = () => {
   clearInterval(_outcomeFadeTimer)
   _outcomeFadeTimer = null
   if (!outcomeAudio.value) return
+  cancelPendingMedia(outcomeAudio.value)
   outcomeAudio.value.pause()
   outcomeAudio.value = null
 }
@@ -1049,7 +1087,7 @@ const playOutcomeSound = (type) => {
   const audio = new Audio(`${import.meta.env.BASE_URL}assets/sounds/${src}`)
   audio.volume = soundVolume.value
   // เดิม catch เปล่า ๆ ทำให้ตอนเบราว์เซอร์ปฏิเสธ (เช่น iOS บล็อก autoplay) เงียบทั้งเสียงและ error
-  audio.play().catch((e) => addNotif?.(`🔇 เล่นเพลงไม่ได้: ${e?.name ?? e}`, 'warn'))
+  playMedia(audio, (e) => addNotif?.(`🔇 เล่นเพลงไม่ได้: ${e?.name ?? e}`, 'warn'))
   outcomeAudio.value = audio
 }
 
@@ -1086,15 +1124,16 @@ watch(phase, (p) => {
 
 watch(soundEnabled, (enabled) => {
   if (!enabled) {
+    // ปิดเสียงคือหยุดชั่วคราว ไม่ใช่เลิกเล่นเพลงนั้นแล้ว — เก็บเจตนาไว้ให้เปิดกลับมาเล่นต่อได้
+    const keep = _intendedBgm
     stopDialogBgm()
     stopMonsterTheme()
     stopDowntimeBgm()
     stopOutcomeSound() // เสียงจบเควสต์ยาว ~8 วิ ต้องดับได้กลางคันด้วย
+    _intendedBgm = keep
     return
   }
-  if (phase.value === 'dialog') playDialogBgm()
-  if (phase.value === 'huntingPanel') playMonsterTheme()
-  if (phase.value === 'hq') playDowntimeBgm()
+  _resumeIntendedBgm()
 })
 
 watch(soundVolume, (v) => {
@@ -1104,25 +1143,43 @@ watch(soundVolume, (v) => {
   if (outcomeAudio.value && !_outcomeFadeTimer) outcomeAudio.value.volume = v
 })
 
-// สลับแท็บออกจาก Quest (component ถูก keep-alive ไว้) — หยุดเพลงไว้ก่อน แล้วเล่นต่อตอนกลับมาถ้ายังอยู่ phase เดิม
+// เสียงชั่วคราว — SFX กับ timer ที่ยิงเป็นครั้ง ๆ
+// component นี้ถูก keep-alive ไว้ สลับแท็บแล้ว onUnmounted ไม่ทำงาน ต้องเก็บกวาดเอง
+const _stopTransientAudio = () => {
+  _clearTrailTimers()
+  clearTimeout(_roarTimer)
+  sfx.stopAll()
+}
+
+// ออกจากหน้านี้จริง ๆ — ดับทุกอย่างรวมเพลงประกอบ
 const _stopAllAudio = () => {
   stopDialogBgm()
   stopMonsterTheme()
   stopDowntimeBgm()
   stopOutcomeSound()
-  // component นี้ถูก keep-alive ไว้ สลับแท็บแล้ว onUnmounted ไม่ทำงาน
-  // ต้องเก็บ timer ฝีเท้า/คำราม และ SFX ที่ค้างเองไม่งั้นเสียงจะดังตอนอยู่หน้าอื่น
-  _clearTrailTimers()
-  clearTimeout(_roarTimer)
-  sfx.stopAll()
+  _stopTransientAudio()
 }
-onDeactivated(_stopAllAudio)
-onActivated(() => {
-  if (phase.value === 'dialog') playDialogBgm()
-  if (phase.value === 'huntingPanel') playMonsterTheme()
-  if (phase.value === 'hq') playDowntimeBgm()
+const _resumeIntendedBgm = () => {
+  if (!soundEnabled.value || !_intendedBgm) return
+  if (_intendedBgm === 'dialog') playDialogBgm()
+  else if (_intendedBgm === 'monster') playMonsterTheme()
+  else if (_intendedBgm === 'downtime') playDowntimeBgm()
+}
+
+// สลับแท็บออกจาก Quest — ผู้ใช้ยังอยู่ในเควสต์เดิม แค่ไปเปิดคลัง/คราฟดู เพลงจึงเล่นต่อ
+// แต่ SFX กับ timer ที่ค้างต้องดับ ไม่งั้นเสียงฝีเท้า/คำรามจะโผล่มาดังตอนอยู่หน้าอื่น
+onDeactivated(_stopTransientAudio)
+onActivated(_resumeIntendedBgm)
+
+// รีเฟรชหน้ากลางเควสต์ = ไม่มี user gesture เพลงเริ่มเองไม่ได้
+// ผูกไว้กับ gesture ทุกครั้ง ไม่ใช่แค่ครั้งแรก เผื่อครั้งแรกยังกู้ไม่สำเร็จ
+// (_resumeIfPaused ทำให้เรียกซ้ำแล้วไม่มีผลข้างเคียง ถ้าเพลงเล่นอยู่แล้วจะไม่ทำอะไร)
+const _offGesture = onUserGesture(_resumeIntendedBgm)
+
+onUnmounted(() => {
+  _offGesture()
+  _stopAllAudio()
 })
-onUnmounted(_stopAllAudio)
 
 const doAction = (action) => {
   // เลือก/เปลี่ยนใจได้เรื่อย ๆ ยังไม่ผูกมัด — เสียงเบากว่าตอนยืนยัน
@@ -1355,7 +1412,7 @@ const _syncToPhase = (dialogId, applyHuntState = false) => {
     const sp = room.syncedPhase
     if (sp === 'reward') {
       phase.value = 'reward'
-      rewardPhase.value = 'diceRoll'
+      rewardPhase.value = _needSlayerRoll() ? 'slayerRoll' : 'diceRoll'
       // Restore dice from Firebase
       const myDice = room.partyDice?.[room.myHunterId]
       if (myDice?.length) {
@@ -1387,7 +1444,7 @@ watch([() => room.syncedPhase, () => room.joinSignal], ([syncPhase]) => {
   if (!syncPhase || !room.inRoom || room.isHost) return
   if (syncPhase === 'reward' && phase.value !== 'reward') {
     phase.value = 'reward'
-    rewardPhase.value = 'diceRoll'
+    rewardPhase.value = _needSlayerRoll() ? 'slayerRoll' : 'diceRoll'
   } else if (syncPhase === 'assign' && rewardPhase.value !== 'assign') {
     phase.value = 'reward'
     rewardPhase.value = 'assign'
@@ -2339,6 +2396,14 @@ const partyStripVisible = computed(() =>
   !showResultAnim.value
 )
 
+// เงื่อนไขต้องตรงกับ .phase-hunting-panel ที่เป็นเจ้าของตัวนับยา/ล้ม
+// ตัวนับไม่ได้ผูกกับโหมด full ปุ่มลัดของมันก็ต้องไม่ผูกเหมือนกัน
+const useStripVisible = computed(() =>
+  phase.value === 'huntingPanel' &&
+  !!monsterHuntingData.value &&
+  !showResultAnim.value
+)
+
 const nextBehaviorCard = computed(() => behaviorDeck.value[0] ?? null)
 const activationPartRules = computed(() =>
   Object.entries(activeParts.value)
@@ -2422,6 +2487,7 @@ let _discardFlashTimer = null
 
 const _showDiscardFlash = (cards) => {
   clearTimeout(_discardFlashTimer)
+  if (cards?.length) sfx.playRandom(`${SFX_COMBAT}/card_sweep`, 1, { gain: 0.6, key: 'discard' })
   tcDiscardFlash.value = cards
   _pushTimeCardState()
   _discardFlashTimer = setTimeout(() => {
@@ -3509,15 +3575,79 @@ watch(() => room.tcTurnEnds, (ends) => {
 
 const potionCount = ref(0)
 
+// แถบตัวนับเป็นของ Host — guest ปรับเลขเองไม่ได้ ต้องผ่านปุ่มลอยที่ยิงสัญญาณไปให้ Host ทำ
+const canEditTrackers = computed(() => !room.inRoom || room.isHost)
+
 const toggleFaint = (index) => {
+  if (!canEditTrackers.value) return
   faintCount.value = faintCount.value === index ? index - 1 : index
   _pushHuntState()
 }
 
 const togglePotion = (index) => {
+  if (!canEditTrackers.value) return
   potionCount.value = potionCount.value === index ? index - 1 : index
   _pushHuntState()
 }
+
+// ── ใช้ยา / ล้ม — ปุ่มลอยที่ทุกคนกดได้ ────────────────────
+// กดแล้วยังไม่ทำทันที ถามยืนยันก่อน เพราะทั้งสองอย่างย้อนกลับเองไม่ได้ (guest แก้ตัวนับไม่ได้)
+const pendingUse = ref(null)      // null | 'potion' | 'faint'
+const useAnim = ref(null)         // { kind, classId, hunterName }
+let _useAnimTimer = null
+
+const canUsePotion = computed(() => potionCount.value > 0)
+const canFaint = computed(() => faintCount.value < 3)
+
+const _applyUse = (kind) => {
+  if (kind === 'potion') {
+    if (potionCount.value <= 0) return
+    potionCount.value = potionCount.value - 1
+  } else {
+    if (faintCount.value >= 3) return
+    faintCount.value = faintCount.value + 1
+  }
+  _pushHuntState()
+}
+
+const _showUseAnim = (sig) => {
+  clearTimeout(_useAnimTimer)
+  useAnim.value = sig
+  _useAnimTimer = setTimeout(() => { useAnim.value = null }, 2600)
+}
+
+const confirmUse = () => {
+  const kind = pendingUse.value
+  pendingUse.value = null
+  if (!kind) return
+
+  const me = room.inRoom ? room.myHunter : hunter.value
+  const sig = {
+    kind,
+    hunterName: me?.hunter_name ?? 'Hunter',
+    classId: me?.hunter_class_id ?? null,
+    // ส่งผลลัพธ์ไปเลย ไม่ให้แอนิเมชันต้องรอ huntState sync กลับมาก่อนถึงจะรู้เลขที่ถูกต้อง
+    left: kind === 'potion' ? potionCount.value - 1 : faintCount.value + 1,
+  }
+
+  if (!room.inRoom) {
+    _applyUse(kind)
+    _showUseAnim(sig)
+    return
+  }
+  // ในห้องไม่ทำอะไรตรงนี้เลย — ปล่อยให้ watcher ของสัญญาณจัดการให้ทุกเครื่องเหมือนกัน
+  // ไม่งั้น Host จะทำสองรอบ (ตรงนี้หนึ่ง แล้ว watcher ของตัวเองอีกหนึ่ง)
+  room.triggerUseSignal?.(sig)
+}
+
+const _useSignalAt = computed(() => room.useSignal?.at ?? null)
+watch(_useSignalAt, (at) => {
+  if (!at || !room.inRoom || _suppressAnimations) return
+  const sig = room.useSignal
+  if (!sig) return
+  _showUseAnim(sig)
+  if (room.isHost) _applyUse(sig.kind)
+})
 
 const initHuntingData = () => {
   if (!monsterHuntingData.value) return
@@ -3574,8 +3704,12 @@ const adjustHpWithFlash = (delta) => {
 let _dmgCounter = 0
 let _shakeTimer = null
 
+// จุดร่วมของทุกฝั่ง — ฝั่งที่กดเรียกตรง ๆ ส่วนคนอื่นถูกเรียกจาก watcher ที่รับ huntState
+// มาจาก Firebase เสียงเลยดังพร้อมกันทั้งตี้โดยไม่ต้องเพิ่ม state sync อะไรใหม่
 const _showDamageIndicator = (amount, type = 'dmg') => {
   if (amount <= 0) return
+  if (type === 'dmg') sfx.playRandom(`${SFX_COMBAT}/monster_hit`, 3, { gain: 0.9, key: 'hp' })
+  else sfx.playRandom(`${SFX_COMBAT}/heal`, 2, { gain: 0.7, key: 'hp' })
   const id = ++_dmgCounter
   const x = 35 + Math.random() * 30
   damageIndicators.value.push({ id, value: amount, x, type })
@@ -3592,6 +3726,58 @@ const _showDamageIndicator = (amount, type = 'dmg') => {
     })
   }
 }
+
+// ── SFX ช่วงต่อสู้ ────────────────────────────────────────
+// แขวนกับ state ที่ sync อยู่แล้ว ไม่ใช่กับ event ของปุ่ม — คนที่ไม่ได้กดก็ได้ยินด้วย
+// ทุกตัวเช็ค _suppressAnimations เพราะตอน reconnect state ทั้งก้อนไหลเข้ามาทีเดียว
+// ถ้าไม่กันไว้จะได้ยินเสียงรัวย้อนหลังทุกอย่างที่เกิดไปแล้วตั้งแต่ต้นเควส
+const _combatSfx = (name, takes, gain, key) => {
+  if (_suppressAnimations) return
+  sfx.playRandom(`${SFX_COMBAT}/${name}`, takes, { gain, key })
+}
+
+// มอนสเตอร์เปิดการ์ดโจมตี — จังหวะที่ควรดังที่สุดในหน้านี้ เลยดันเกิน 1
+// gain คูณกับ soundVolume ก่อนถูกตัดที่ 1 (ดู play() ใน useSfx) ค่าเกิน 1 จึงยังมีผลจริง
+watch(showMonsterAttack, (on) => {
+  // if (on) _combatSfx('monster_attack', 4, 1, 'monster')
+  if (on) sfx.playRandom(`${SFX_UI}/monster_roar`, 4, { gain: MONSTER_ROAR_GAIN, key: 'roar' })
+})
+
+// ชิ้นส่วนแตก — จับจังหวะข้าม threshold ไม่ใช่ทุกครั้งที่ดาเมจขยับ
+watch(partDamage, (now, before) => {
+  if (!before) return
+  for (const pos of Object.keys(now)) {
+    const max = activeParts.value[pos]?.part_break_threshold ?? 0
+    if (!max) continue
+    if ((before[pos] ?? 0) < max && (now[pos] ?? 0) >= max) {
+      _combatSfx('part_break', 2, 1, 'break')
+      return
+    }
+  }
+}, { deep: true })
+
+// นักล่าล้ม — ใบที่ 3 คือจบเควส เลยใช้เสียงหนักกว่า
+watch(faintCount, (now, before) => {
+  if (now <= (before ?? 0)) return
+  if (now >= 3) _combatSfx('faint', 3, 1, 'hunter')
+  else _combatSfx('hunter_hurt', 3, 0.9, 'hunter')
+})
+
+// ใช้ยา — นับเฉพาะตอนลดลง ตอนเพิ่มคือได้ยามาไม่ใช่ดื่ม
+watch(potionCount, (now, before) => {
+  if (before == null || now >= before || _suppressAnimations) return
+  sfx.play(`${SFX_COMBAT}/potion_drink/3.mp3`, { gain: 0.8, key: 'potion' })
+})
+
+// ลงโทเคนสถานะบนมอนสเตอร์
+watch(appliedStatuses, (now, before) => {
+  if (now.length > (before?.length ?? 0)) _combatSfx('status_apply', 4, 0.7, 'status')
+}, { deep: true })
+
+// โทเคนธาตุทำงาน — ผูกกับ triggeringElement ที่ sync ให้ทุกคนเห็นอนิเมชันพร้อมกันอยู่แล้ว
+watch(triggeringElement, (el) => {
+  if (el) _combatSfx('element_trigger', 3, 0.7, 'status')
+})
 
 // ── Hunt State Sync ──────────────────────────────────────
 let _remoteSyncing = false
@@ -3728,15 +3914,23 @@ const diceCountTable = {
 // ─── Time Card Reward Dice Modifiers ───────────────────────────────────────
 const TC_BETRAYAL_ID = 31
 
-// Slayer card แต่ละใบให้ +1 🎲 เฉพาะตอนล่ามอนสเตอร์ของตัวเอง — time_card_id → monster_id
-const SLAYER_CARD_MONSTER = { 21: 1, 30: 6, 32: 4, 33: 9 }
+// Slayer card: "ถ้า Complete Quest นี้ Hunter ทุกคนทอยเต๋า 1 ลูก รับ Reward จากตารางของมอนสเตอร์
+// บนการ์ด ก่อนไปรับตารางของมอนที่ล่าอยู่" — จั่วเจอตอนล่าตัวไหนก็ใช้ได้ ไม่ต้องล่าตัวเดียวกับการ์ด
+// ข้อความไม่เหมือนกันทุกใบ — Barroth Slayer ให้ "เลือก" รางวัลเองโดยไม่ต้องทอย
+// mode: 'roll' = ทอย 1 ลูกแล้วได้ตามช่องนั้น · 'pick' = เลือกได้เลย 1 ช่อง
+const SLAYER_CARDS = {
+  21: { monsterId: 1, mode: 'roll' }, // Jagras Slayer
+  30: { monsterId: 6, mode: 'pick' }, // Barroth Slayer
+  32: { monsterId: 4, mode: 'roll' }, // Rathalos Slayer
+  33: { monsterId: 9, mode: 'roll' }, // Diablos Slayer
+}
+// ตารางโบนัสใช้ระดับ 1 เสมอ ตัวการ์ดไม่ได้ระบุระดับไว้
+const SLAYER_BONUS_DIFFICULTY = 1
 
-// Slayer card ที่ใช้ได้กับเควสนี้ (มอนสเตอร์หนึ่งตัวมีได้ใบเดียว)
+// ใบที่ถูกจั่วออกมาจริงระหว่างเควส — ไม่เกี่ยวกับว่ากำลังล่ามอนตัวไหนอยู่
 const activeSlayerCardId = computed(() => {
-  const monsterId = selectedMonster.value?.monster_id
-  if (monsterId == null) return null
-  const found = Object.entries(SLAYER_CARD_MONSTER).find(([, id]) => id === monsterId)
-  return found ? Number(found[0]) : null
+  const hit = timeCardDiscard.value.find((c) => c.drawn && SLAYER_CARDS[c.time_card_id])
+  return hit ? hit.time_card_id : null
 })
 const activeSlayerCardName = computed(
   () =>
@@ -3756,10 +3950,17 @@ const TC_TIME_MANAGEMENT_ID = 34
 const detectedTimeManagement = computed(() =>
   timeCardDiscard.value.some((c) => c.time_card_id === TC_TIME_MANAGEMENT_ID && c.drawn),
 )
-const detectedSlayer = computed(
+const detectedSlayer = computed(() => activeSlayerCardId.value != null)
+
+// มอนสเตอร์เจ้าของตารางโบนัส + ตารางระดับ 1 ของมัน
+const slayerBonusMonster = computed(() => {
+  const monsterId = SLAYER_CARDS[activeSlayerCardId.value]?.monsterId
+  return monsterId ? monsterInfoData.find((m) => m.monster_id === monsterId) ?? null : null
+})
+const slayerBonusTable = computed(
   () =>
-    activeSlayerCardId.value != null &&
-    timeCardDiscard.value.some((c) => c.time_card_id === activeSlayerCardId.value && c.drawn),
+    slayerBonusMonster.value?.difficulty.find((d) => d.difficulty_id === SLAYER_BONUS_DIFFICULTY)
+      ?.reward_table ?? [],
 )
 
 // Manual override: null/false = ใช้ค่าจาก Auto-detect (หรือปิด), true = บังคับเปิด
@@ -3814,15 +4015,94 @@ const setPlunderbladeModifier = (val) => {
   _syncRewardDiceModifiers()
 }
 
+// Slayer ไม่อยู่ในนี้แล้ว — มันไม่ได้เพิ่มเต๋าให้ตารางของมอนที่ล่า แต่เป็นการทอยแยกอีกตารางหนึ่ง
 const rewardDiceModifier = computed(() => {
   let mod = 0
-  if (slayerActive.value) mod += 1
   if (betrayalActive.value) mod -= 1
   if (plunderbladeActive.value) mod += 2
   return mod
 })
 
-const rewardPhase = ref('hunterSelect') // 'hunterSelect' | 'diceRoll' | 'assign'
+const rewardPhase = ref('hunterSelect') // 'hunterSelect' | 'slayerRoll' | 'diceRoll' | 'assign' | 'trade'
+
+// ── Slayer Card: ทอยโบนัส 1 ลูกก่อนรับรางวัลปกติ ─────────
+// ต่างจากการทอยหลักตรงที่ "ต่างคนต่างทอยของตัวเอง" ไม่ใช่กองเต๋ารวมของตี้
+// รางวัลจึงเข้าคลังของคนทอยโดยตรง ไม่ผ่านหน้าแบ่งของ
+const slayerDie = ref({ value: 1, rolling: false })
+const slayerClaimed = ref(false)
+
+const slayerMode = computed(() => SLAYER_CARDS[activeSlayerCardId.value]?.mode ?? 'roll')
+
+// ช่องในตารางที่ได้มา — มาจากการทอย (roll) หรือการเลือกเอง (pick) ก็เก็บที่เดียวกัน
+const mySlayerRow = computed(() =>
+  room.inRoom ? (room.slayerDice?.[room.myHunterId] ?? null) : slayerDie.value.settled ?? null,
+)
+
+const slayerBonusRow = computed(() => {
+  const v = mySlayerRow.value
+  if (v == null) return null
+  return slayerBonusTable.value.find((r) => r.rolled_number === v) ?? null
+})
+
+const rollSlayerDie = () => {
+  if (slayerDie.value.rolling || mySlayerRow.value != null) return
+  const final = Math.ceil(Math.random() * 6)
+  slayerDie.value = { value: slayerDie.value.value, rolling: true }
+  sfx.play(`${SFX_UI}/dice_roll.mp3`, { key: 'dice' })
+  const spin = setInterval(() => {
+    slayerDie.value = { ...slayerDie.value, value: Math.ceil(Math.random() * 6) }
+  }, 55)
+  setTimeout(() => {
+    clearInterval(spin)
+    slayerDie.value = { value: final, rolling: false, settled: final }
+    sfx.play(`${SFX_UI}/dice_land.mp3`, { key: 'dice' })
+    if (room.inRoom) room.pushMySlayerDie?.(final)
+  }, 700)
+}
+
+// รางวัลโบนัสเข้าคลังของคนทอยเองทันที — ไม่เข้ากองรวมเพราะการ์ดบอกว่า "Hunter ทุกคน" ได้คนละครั้ง
+const claimSlayerBonus = () => {
+  const row = slayerBonusRow.value
+  if (!row || slayerClaimed.value) return
+  slayerClaimed.value = true
+  const { resource_type_id, item_id } = row.reward ?? {}
+  if (resource_type_id != null && item_id != null) addDialogResource(resource_type_id, item_id)
+  sfx.playRandom(`${SFX_UI}/item_pickup`, 3, { key: 'item' })
+}
+
+// โหมด pick — เลือกช่องเองโดยไม่ต้องทอย เก็บที่เดียวกับผลทอยเพื่อให้ทางรับรางวัลใช้ร่วมกันได้
+const pickSlayerRow = (row) => {
+  if (mySlayerRow.value != null) return
+  slayerDie.value = { value: row.rolled_number, rolling: false, settled: row.rolled_number }
+  if (room.inRoom) room.pushMySlayerDie?.(row.rolled_number)
+  sfx.play(`${SFX_UI}/action_select.mp3`, { key: 'action' })
+}
+
+const _resetSlayerBonus = () => {
+  slayerDie.value = { value: 1, rolling: false }
+  slayerClaimed.value = false
+  if (room.inRoom && room.isHost) room.clearSlayerDiceAll?.()
+}
+
+// ยังไม่ได้ทอยโบนัส และเควสนี้มี Slayer Card อยู่จริง
+const _needSlayerRoll = () =>
+  slayerActive.value && slayerBonusTable.value.length > 0 && mySlayerRow.value == null
+
+// เข้าขั้นถัดไปหลังหน้าเลือกจำนวน Hunter — มี Slayer Card ค่อยแวะทอยโบนัสก่อน
+const startRewardRoll = () => {
+  if (slayerActive.value && slayerBonusTable.value.length) {
+    _resetSlayerBonus()
+    rewardPhase.value = 'slayerRoll'
+    return
+  }
+  rewardPhase.value = 'diceRoll'
+  rollAllDice()
+}
+
+const finishSlayerBonus = () => {
+  rewardPhase.value = 'diceRoll'
+  rollAllDice()
+}
 const rewardHunterCount = ref(2)
 const rewardDiceCount = computed(() => {
   const qt = selectedQuest.value?.quest_type ?? ''
@@ -4620,8 +4900,7 @@ const goToRewardPhase = () => {
   if (room.inRoom) room.syncPhase?.('reward')
   if (room.inRoom && room.hunterCount >= 2) {
     rewardHunterCount.value = room.hunterCount
-    rewardPhase.value = 'diceRoll'
-    rollAllDice()
+    startRewardRoll()
   } else {
     rewardHunterCount.value = 2
     rewardPhase.value = 'hunterSelect'
@@ -6154,9 +6433,9 @@ const openPackDrawer = () => {
                 v-for="i in 3"
                 :key="i"
                 class="qs-slot"
-                :class="{ 'qs-slot-used': i <= faintCount }"
+                :class="{ 'qs-slot-used': i <= faintCount, 'qs-slot-locked': !canEditTrackers }"
                 @click="toggleFaint(i)"
-                title="คลิกเพื่อ Faint / ยกเลิก"
+                :title="canEditTrackers ? 'คลิกเพื่อ Faint / ยกเลิก' : 'Host เท่านั้นที่ปรับตัวนับได้ — ใช้ปุ่มลอยด้านซ้าย'"
               >
                 <img :src="getImg('assets/img/UI/faint_icon.webp')" class="qs-slot-img" />
                 <span v-if="i <= faintCount" class="qs-slot-x">✕</span>
@@ -6171,9 +6450,9 @@ const openPackDrawer = () => {
                 v-for="i in 3"
                 :key="i"
                 class="qs-slot qs-slot-potion"
-                :class="{ 'qs-slot-empty': i > potionCount }"
+                :class="{ 'qs-slot-empty': i > potionCount, 'qs-slot-locked': !canEditTrackers }"
                 @click="togglePotion(i)"
-                title="คลิกเพื่อใช้ / เพิ่ม Potion"
+                :title="canEditTrackers ? 'คลิกเพื่อใช้ / เพิ่ม Potion' : 'Host เท่านั้นที่ปรับตัวนับได้ — ใช้ปุ่มลอยด้านซ้าย'"
               >
                 <img :src="getImg('assets/img/UI/potion_icon.webp')" class="qs-slot-img" />
                 <span v-if="i > potionCount" class="qs-slot-x">✕</span>
@@ -6859,7 +7138,7 @@ const openPackDrawer = () => {
               @change="setSlayerModifier($event.target.checked)"
             />
             <span class="rw-tc-name">🃏 {{ activeSlayerCardName }}</span>
-            <span class="rw-tc-effect rw-tc-effect-plus">+1 🎲</span>
+            <span class="rw-tc-effect rw-tc-effect-plus">🎲 ทอยโบนัส</span>
           </label>
           <label
             class="rw-tc-toggle"
@@ -6890,13 +7169,108 @@ const openPackDrawer = () => {
         </div>
         <button
           class="rw-btn-primary"
-          @click="
-            rewardPhase = 'diceRoll';
-            rollAllDice()
-          "
+          @click="startRewardRoll"
         >
           ⚔ เริ่มรับรางวัล
         </button>
+      </div>
+
+      <!-- ── Slayer Card: ทอยโบนัสก่อนรับรางวัลปกติ ── -->
+      <div v-else-if="rewardPhase === 'slayerRoll'" class="rw-slayer">
+        <div class="rw-slayer-head">
+          <img
+            v-if="activeSlayerCardId"
+            :src="getImg(timeCardData.red_time_cards.find(c => c.time_card_id === activeSlayerCardId)?.card_img)"
+            class="rw-slayer-card"
+          />
+          <div>
+            <p class="rw-title">{{ activeSlayerCardName }}</p>
+            <p class="rw-sub">
+              {{ slayerMode === 'pick' ? 'เลือกรางวัล 1 ชิ้น' : 'ทอย 1 ลูก รับรางวัล' }}
+              จากตาราง <strong>{{ slayerBonusMonster?.monster_name }}</strong>
+              (Level {{ SLAYER_BONUS_DIFFICULTY }}) ก่อนรับรางวัลของเควสนี้
+            </p>
+          </div>
+        </div>
+
+        <div v-if="slayerMode === 'roll'" class="rw-slayer-die-wrap">
+          <div class="rw-die rw-slayer-die" :class="{ rolling: slayerDie.rolling }">
+            <div class="die-face">
+              <span
+                v-for="pos in 9" :key="pos" class="die-dot"
+                :class="{ visible: dotPatterns[mySlayerRow ?? slayerDie.value]?.includes(pos - 1) }"
+              />
+            </div>
+          </div>
+        </div>
+
+        <button
+          v-if="slayerMode === 'roll' && mySlayerRow == null"
+          class="rw-btn-primary"
+          :disabled="slayerDie.rolling"
+          @click="rollSlayerDie"
+        >
+          🎲 ทอยเต๋า
+        </button>
+
+        <!-- โหมดเลือกเอง — กางตารางให้กดเลือกช่องที่ต้องการ -->
+        <div v-else-if="slayerMode === 'pick' && mySlayerRow == null" class="rw-slayer-pick">
+          <p class="rw-section-label">เลือก 1 ช่อง</p>
+          <div class="rw-slayer-grid">
+            <button
+              v-for="row in slayerBonusTable"
+              :key="row.rolled_number"
+              class="rw-slayer-cell"
+              @click="pickSlayerRow(row)"
+            >
+              <span class="rw-slayer-cell-num">{{ row.rolled_number }}</span>
+              <img :src="getImg(getResourceItem(row.reward.resource_type_id, row.reward.item_id)?.thumbnail)" class="rw-slayer-cell-img" />
+              <span class="rw-slayer-cell-name">
+                {{ getResourceItem(row.reward.resource_type_id, row.reward.item_id)?.item ?? '—' }}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <template v-if="mySlayerRow != null">
+          <div v-if="slayerBonusRow" class="rw-slayer-prize" :class="{ claimed: slayerClaimed }">
+            <img :src="getImg(getResourceItem(slayerBonusRow.reward.resource_type_id, slayerBonusRow.reward.item_id)?.thumbnail)" class="rw-slayer-prize-img" />
+            <div class="rw-slayer-prize-info">
+              <span class="rw-slayer-prize-num">{{ slayerMode === 'pick' ? 'เลือกช่อง' : 'ทอยได้' }} {{ mySlayerRow }}</span>
+              <span class="rw-slayer-prize-name">
+                {{ getResourceItem(slayerBonusRow.reward.resource_type_id, slayerBonusRow.reward.item_id)?.item ?? '—' }}
+              </span>
+            </div>
+            <span v-if="slayerClaimed" class="rw-slayer-check">✓</span>
+          </div>
+          <p v-else class="rw-sub">ช่อง {{ mySlayerRow }} — ไม่มีรางวัล</p>
+
+          <button v-if="slayerBonusRow && !slayerClaimed" class="rw-btn-primary" @click="claimSlayerBonus">
+            📦 รับเข้าคลัง
+          </button>
+          <button v-else class="rw-btn-primary" @click="finishSlayerBonus">
+            ⚔ ไปรับรางวัลของเควส
+          </button>
+        </template>
+
+        <!-- เต๋าของเพื่อนร่วมตี้ — ต่างคนต่างทอยของตัวเอง -->
+        <div v-if="room.inRoom" class="rw-slayer-party">
+          <div
+            v-for="h in room.hunters.filter(h => h.hunter_id !== room.myHunterId)"
+            :key="h.hunter_id"
+            class="rw-slayer-party-row"
+          >
+            <img
+              v-if="getHunterClass(h.hunter_class_id)?.thumbnail"
+              :src="getImg(getHunterClass(h.hunter_class_id).thumbnail)"
+              class="rw-slayer-party-icon"
+            />
+            <span class="rw-slayer-party-name">{{ h.hunter_name }}</span>
+            <span class="rw-slayer-party-die">
+              {{ room.slayerDice?.[h.hunter_id] ?? '…' }}
+            </span>
+          </div>
+        </div>
       </div>
 
       <!-- ── Dice Roll ── -->
@@ -8202,6 +8576,126 @@ const openPackDrawer = () => {
       </div>
     </teleport>
 
+    <!-- ═══════════ USE STRIP (fixed left) — ยา / ล้ม ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div
+          v-if="useStripVisible"
+          class="use-strip"
+          :class="{ 'use-strip-lifted': floatBarVisible && !floatBarCollapsed, 'use-strip-tab': floatBarVisible && floatBarCollapsed }"
+        >
+          <button
+            class="use-btn use-btn-potion"
+            :disabled="!canUsePotion"
+            :title="canUsePotion ? 'ใช้ Potion' : 'ไม่มียาเหลือ'"
+            @click="pendingUse = 'potion'"
+          >
+            <img :src="getImg('assets/img/UI/potion_icon.webp')" class="use-btn-img" />
+            <span class="use-btn-count">{{ potionCount }}</span>
+          </button>
+          <button
+            class="use-btn use-btn-faint"
+            :disabled="!canFaint"
+            :title="canFaint ? 'บันทึกว่าล้ม' : 'ล้มครบ 3 แล้ว'"
+            @click="pendingUse = 'faint'"
+          >
+            <img :src="getImg('assets/img/UI/faint_icon.webp')" class="use-btn-img" />
+            <span class="use-btn-count">{{ faintCount }}/3</span>
+          </button>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ยืนยันก่อนใช้ — ย้อนเองไม่ได้ถ้าไม่ใช่ Host -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="pendingUse" class="uc-overlay" @click.self="pendingUse = null">
+          <div class="uc-modal">
+            <img
+              :src="getImg(pendingUse === 'potion' ? 'assets/img/UI/potion_icon.webp' : 'assets/img/UI/faint_icon.webp')"
+              class="uc-icon"
+            />
+            <p class="uc-title">{{ pendingUse === 'potion' ? 'ใช้ Potion?' : 'บันทึกว่าล้ม?' }}</p>
+            <p class="uc-sub">
+              {{ pendingUse === 'potion'
+                ? `ยาในกลุ่มจะลดจาก ${potionCount} เหลือ ${potionCount - 1} ขวด`
+                : `ล้มจะเพิ่มจาก ${faintCount} เป็น ${faintCount + 1} จาก 3` }}
+            </p>
+            <p v-if="pendingUse === 'faint' && faintCount + 1 >= 3" class="uc-warn">
+              ⚠ ครบ 3 แล้วเควสจะล้มเหลว
+            </p>
+            <div class="uc-btns">
+              <button class="uc-cancel" @click="pendingUse = null">ยกเลิก</button>
+              <button class="uc-confirm" @click="confirmUse">✓ ยืนยัน</button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ใครใช้อะไร — ขึ้นให้ทุกคนเห็นพร้อมกันจากสัญญาณเดียว -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div
+          v-if="useAnim"
+          class="ua-overlay"
+          :class="[useAnim.kind === 'potion' ? 'ua-potion' : 'ua-faint', { 'ua-fatal': useAnim.kind === 'faint' && useAnim.left >= 3 }]"
+        >
+          <div class="ua-card">
+            <span class="ua-burst"></span>
+
+            <div class="ua-stage">
+              <!-- ไอคอนคลาส — ยาจะเรืองเขียวขึ้นมา ส่วนล้มจะซีดแล้วเอียงลง -->
+              <div class="ua-hunter">
+                <img
+                  v-if="getHunterClass(useAnim.classId)?.thumbnail"
+                  :src="getImg(getHunterClass(useAnim.classId).thumbnail)"
+                  class="ua-class-img"
+                />
+                <span class="ua-fill"></span>
+              </div>
+
+              <!-- ยา: ขวดเอียงรินลงมา · ล้ม: ตัวมอนสเตอร์กระแทกลงใส่นักล่า -->
+              <img
+                :src="getImg(useAnim.kind === 'potion'
+                  ? 'assets/img/UI/potion_icon.webp'
+                  : (selectedMonster?.thumbnail ?? 'assets/img/UI/faint_icon.webp'))"
+                class="ua-item"
+                :class="{ 'ua-item-monster': useAnim.kind === 'faint' && selectedMonster?.thumbnail }"
+              />
+
+              <!-- คลื่นกระแทกตอนมอนสเตอร์ลง — ขยายออกแล้วหายในครึ่งวินาที -->
+              <span v-if="useAnim.kind === 'faint'" class="ua-shock"></span>
+
+              <!-- รอยพื้นร้าว — วาดออกจากจุดตกด้วย stroke-dashoffset ทีละเส้น -->
+              <svg v-if="useAnim.kind === 'faint'" class="ua-cracks" viewBox="0 0 160 70" aria-hidden="true">
+                <path d="M80 34 L62 39 L50 34 L32 41" />
+                <path d="M80 34 L98 38 L112 33 L130 40" />
+                <path d="M80 34 L68 46 L56 53" />
+                <path d="M80 34 L92 47 L106 55" />
+                <path d="M80 34 L78 49 L71 62" />
+                <path d="M80 34 L86 48 L84 63" />
+                <path d="M80 34 L58 30 L44 24" />
+                <path d="M80 34 L104 29 L118 23" />
+              </svg>
+              <span v-for="n in 6" :key="n" class="ua-mote" :style="{ '--i': n }"></span>
+            </div>
+
+            <p class="ua-name">{{ useAnim.hunterName }}</p>
+            <p class="ua-action">{{ useAnim.kind === 'potion' ? 'ใช้ Potion' : 'ล้มลง' }}</p>
+            <p class="ua-detail">
+              <template v-if="useAnim.kind === 'potion'">
+                {{ useAnim.left > 0 ? `เหลืออีก ${useAnim.left} ขวด` : 'ยาหมดแล้ว' }}
+              </template>
+              <template v-else>
+                {{ useAnim.left >= 3 ? 'ล้มครบ 3 — เควสล้มเหลว' : `ล้มครั้งที่ ${useAnim.left} จาก 3` }}
+              </template>
+            </p>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
     <!-- ═══════════ PARTY STRIP (fixed right) ═══════════ -->
     <teleport to="body">
       <Transition name="slain-fade">
@@ -8432,6 +8926,13 @@ const openPackDrawer = () => {
     <teleport to="body">
       <Transition name="ma-trans">
         <div v-if="showMonsterAttack" class="ma-overlay" @click="showMonsterAttack = false; monsterAttackStatuses = []">
+          <!-- FX เสียงคำราม — แสงอัด คลื่นเสียง เส้นแรงพุ่งออก และขอบจอแดง
+               ทั้งหมดอยู่หลัง .ma-content (z-index 0 vs 1) และไม่รับคลิก -->
+          <span class="ma-flash"></span>
+          <span v-for="n in 3" :key="`ring${n}`" class="ma-ring" :style="{ '--i': n }"></span>
+          <span v-for="n in 10" :key="`streak${n}`" class="ma-streak" :style="{ '--a': `${n * 36}deg`, '--i': n }"></span>
+          <span class="ma-vignette"></span>
+
           <div class="ma-content">
             <p class="ma-label">⚔ Monster Attack!</p>
             <div v-if="monsterAttackStatuses.length" class="ma-status-list">
@@ -12853,6 +13354,336 @@ const openPackDrawer = () => {
   transform: translateY(calc(100% - 0px));
 }
 /* ── Party Strip (fixed bottom-right) ── */
+/* ── แถบใช้ยา/ล้ม — ติดขอบซ้าย ล้อกับ party-strip ฝั่งขวา ── */
+.use-strip {
+  position: fixed;
+  left: 0;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 4px;
+  background: rgba(10, 8, 4, 0.72);
+  border: 1px solid rgba(200,155,60,0.2);
+  border-left: none;
+  border-radius: 0 12px 12px 0;
+  z-index: 900;
+  backdrop-filter: blur(6px);
+  transition: bottom 0.25s ease;
+}
+.use-strip-lifted { bottom: 110px; }
+.use-strip-tab { bottom: 50px; }
+
+.use-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(124,90,43,0.45);
+  background: linear-gradient(170deg, #33251b, #1c1409);
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.15s;
+}
+.use-btn:hover:not(:disabled) { border-color: #c89b3c; background: linear-gradient(170deg, #46331f, #241a0e); }
+.use-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.use-btn-img { width: 24px; height: 24px; object-fit: contain; }
+.use-btn-count { font-size: 9px; font-weight: bold; color: #ffd27a; letter-spacing: 0.5px; }
+.use-btn-faint .use-btn-count { color: #ff9090; }
+
+/* ตัวนับที่ guest แก้ไม่ได้ — ยังอ่านได้ชัดแต่ไม่ชวนให้กด */
+.qs-slot-locked { cursor: default; opacity: 0.85; }
+
+/* ── ยืนยันก่อนใช้ ── */
+.uc-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(4, 3, 1, 0.82);
+  backdrop-filter: blur(4px);
+}
+.uc-modal {
+  width: min(320px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 18px;
+  border-radius: 3px;
+  text-align: center;
+  border: 1px solid rgba(124,90,43,0.55);
+  border-left: 3px solid #7c5a2b;
+  background:
+    repeating-linear-gradient(100deg, rgba(0,0,0,0.14) 0px, rgba(0,0,0,0.14) 1px, transparent 1px, transparent 5px),
+    linear-gradient(170deg, #2b1f13, #1a1309 60%, #22190e);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,220,160,0.08);
+  font-family: 'Georgia', serif;
+}
+.uc-icon { width: 46px; height: 46px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0,0,0,0.7)); }
+.uc-title { margin: 0; font-size: 16px; font-weight: bold; color: #ffd27a; letter-spacing: 1px; }
+.uc-sub { margin: 0; font-size: 12px; color: #a88040; line-height: 1.6; }
+.uc-warn { margin: 2px 0 0; font-size: 11px; color: #ff9090; }
+.uc-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; margin-top: 6px; }
+.uc-cancel { padding: 10px; border-radius: 3px; font-size: 12px; color: #a88040; cursor: pointer; background: rgba(0,0,0,0.4); border: 1px solid rgba(124,90,43,0.4); font-family: inherit; }
+.uc-confirm { padding: 10px; border-radius: 3px; font-size: 13px; font-weight: bold; color: #0f0b05; cursor: pointer; background: linear-gradient(to bottom, #ffd27a, #c89b3c); border: 1px solid #ffd27a; font-family: inherit; }
+
+/* ══ ใครใช้อะไร — ยาคือการฟื้น ล้มคือการร่วง สองอันเลยเล่าคนละทิศทาง ══
+   ยา  : ขวดเอียงรินจากด้านบน → น้ำยาเขียวไล่ขึ้นทับไอคอนคลาส → ละอองลอยขึ้น
+   ล้ม : ไอคอนคลาสซีดและเอียงร่วง → ไอเทมกระแทกลงจากบน → การ์ดสะเทือน */
+.ua-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.ua-potion { background: radial-gradient(circle at center, rgba(10,40,26,0.6), rgba(0,0,0,0.5) 55%, rgba(0,0,0,0.25)); }
+.ua-faint  { background: radial-gradient(circle at center, rgba(48,8,8,0.6), rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.3)); }
+.ua-fatal  { animation: uaFatalPulse 0.5s ease-out 2; }
+@keyframes uaFatalPulse {
+  0%, 100% { background: radial-gradient(circle at center, rgba(48,8,8,0.6), rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.3)); }
+  40%      { background: radial-gradient(circle at center, rgba(120,20,20,0.75), rgba(20,0,0,0.6) 55%, rgba(0,0,0,0.35)); }
+}
+
+/* ไม่มีกรอบ ไม่มีพื้นหลัง — เนื้อหาลอยอยู่บนฉากมืดล้วน ๆ
+   ข้อความเลยต้องพึ่งเงาของตัวเองแทนที่จะพึ่งพื้นการ์ด */
+.ua-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  text-align: center;
+  font-family: 'Georgia', serif;
+}
+.ua-potion .ua-card { animation: uaPop 0.45s cubic-bezier(0.22, 1.4, 0.5, 1); }
+.ua-faint .ua-card { animation: uaPop 0.3s ease-out, uaSlam 0.4s ease-out 0.42s; }
+@keyframes uaPop {
+  from { opacity: 0; transform: scale(0.82); }
+  to   { opacity: 1; transform: scale(1); }
+}
+/* สะเทือนตอนมอนสเตอร์กระแทกถึงพื้นพอดี — แรงพอให้รู้สึกถึงน้ำหนัก */
+@keyframes uaSlam {
+  0%, 100% { transform: translate(0, 0); }
+  12% { transform: translate(-11px, 7px); }
+  28% { transform: translate(9px, -5px); }
+  45% { transform: translate(-6px, 4px); }
+  62% { transform: translate(4px, -2px); }
+  80% { transform: translate(-2px, 1px); }
+}
+
+/* แสงวาบด้านหลัง — เบิกฉากแล้วจางหายไป */
+.ua-burst {
+  position: absolute;
+  inset: -60px -80px;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: uaBurst 0.7s ease-out forwards;
+}
+.ua-potion .ua-burst { background: radial-gradient(circle, rgba(120,240,180,0.5), transparent 65%); }
+.ua-faint  .ua-burst { background: radial-gradient(circle, rgba(255,90,70,0.55), transparent 65%); }
+@keyframes uaBurst {
+  0%   { opacity: 0; transform: scale(0.5); }
+  30%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+
+.ua-stage {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  margin-bottom: 4px;
+}
+
+/* ── ไอคอนคลาส ── */
+.ua-hunter {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  z-index: 2;
+  width: 72px;
+  height: 72px;
+  margin-left: -36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(circle, rgba(0,0,0,0.65), rgba(0,0,0,0.25));
+  border: 2px solid rgba(200,155,60,0.55);
+}
+.ua-class-img { position: relative; z-index: 2; width: 46px; height: 46px; object-fit: contain; }
+
+.ua-potion .ua-hunter { animation: uaHeal 1.8s ease-out 0.35s both; }
+@keyframes uaHeal {
+  0%   { border-color: rgba(200,155,60,0.55); box-shadow: none; }
+  35%  { border-color: rgba(140,240,190,0.9); box-shadow: 0 0 22px rgba(80,220,150,0.75); }
+  100% { border-color: rgba(140,240,190,0.5); box-shadow: 0 0 10px rgba(80,220,150,0.3); }
+}
+
+/* ล้ม — ซีดแล้วเอียงร่วงลง เริ่มหลังมอนสเตอร์กระแทกพอดี
+   ไม่หรี่ brightness ลงมากเพราะยังต้องดูออกว่าเป็นคลาสอะไร */
+.ua-faint .ua-hunter { animation: uaCollapse 0.7s cubic-bezier(0.4, 0, 0.6, 1) 0.44s both; }
+@keyframes uaCollapse {
+  0%   { transform: rotate(0) translateY(0); filter: none; border-color: rgba(200,155,60,0.55); }
+  /* เทาสนิท แต่คุม brightness ไว้ไม่ให้จมมืดจนดูไม่ออกว่าคลาสอะไร */
+  100% { transform: rotate(14deg) translateY(7px); filter: grayscale(1) brightness(0.8); border-color: rgba(160,120,120,0.6); }
+}
+
+/* น้ำยาไล่ขึ้นทับไอคอน — ใช้ได้เพราะ .ua-hunter เป็นวงกลม overflow:hidden */
+.ua-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0;
+  z-index: 1;
+  background: linear-gradient(to top, rgba(60,200,130,0.75), rgba(120,240,180,0.35));
+  box-shadow: 0 -2px 8px rgba(120,240,180,0.6);
+}
+.ua-potion .ua-fill { animation: uaFill 1.5s ease-out 0.4s forwards; }
+@keyframes uaFill {
+  0%   { height: 0; opacity: 0.9; }
+  55%  { height: 100%; opacity: 0.9; }
+  100% { height: 100%; opacity: 0; }
+}
+
+/* ── ไอเทม ── */
+.ua-item {
+  position: absolute;
+  left: 50%;
+  width: 38px;
+  height: 38px;
+  margin-left: -19px;
+  object-fit: contain;
+  z-index: 3;
+}
+/* ขวดลอยลงมาแล้วเอียงริน ค้างไว้ให้เห็นว่ากำลังเท */
+.ua-potion .ua-item { animation: uaPour 2s ease-out both; }
+@keyframes uaPour {
+  0%   { top: -6px; opacity: 0; transform: rotate(0) scale(0.7); }
+  18%  { top: 0; opacity: 1; transform: rotate(0) scale(1); }
+  38%  { top: 2px; transform: rotate(-38deg) scale(1); }
+  80%  { top: 2px; transform: rotate(-38deg) scale(1); }
+  100% { top: -4px; opacity: 0; transform: rotate(0) scale(0.9); }
+}
+/* มอนสเตอร์ทิ้งตัวลงทับนักล่าเต็ม ๆ อยู่ข้างหน้า แล้วจางหายทันทีหลังกระแทก
+   ที่ยอมให้บังได้เพราะบังอยู่แค่ ~0.3 วิ ที่เหลืออีกวินาทีครึ่งเห็นนักล่าโล่ง */
+.ua-item-monster {
+  width: 72px;
+  height: 72px;
+  margin-left: -36px;
+  z-index: 3;
+  filter: drop-shadow(0 8px 18px rgba(0,0,0,0.9));
+}
+.ua-faint .ua-item { animation: uaDrop 2s cubic-bezier(0.55, 0, 0.7, 0) both; }
+@keyframes uaDrop {
+  0%   { top: -90px; opacity: 0; transform: scale(2) rotate(-14deg); }
+  6%   { opacity: 1; }
+  /* น้ำหนักมาจากความเร็วที่ตกลงมา คลื่นกระแทก และจอสะเทือน ไม่ใช่การบิดรูปตัวมอน
+     top: 24px คือจุดที่ตัวมอน (สูง 72) ทับกึ่งกลางไอคอนคลาสพอดี — ไอคอนอยู่ y 24..96 กลางที่ 60 */
+  20%  { top: 24px; opacity: 1; transform: scale(1) rotate(0deg); } /* กระแทก */
+  50%  { top: 24px; opacity: 0; transform: scale(1) rotate(0deg); } /* จางหายทันที */
+  100% { top: 24px; opacity: 0; }
+}
+
+/* คลื่นกระแทก — วงแหวนขยายออกจากจุดตกพอดีจังหวะยุบ */
+.ua-shock {
+  position: absolute;
+  left: 50%;
+  top: 60px;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border-radius: 50%;
+  border: 4px solid rgba(255,130,100,0.95);
+  opacity: 0;
+  z-index: 4;
+  animation: uaShock 0.55s cubic-bezier(0.2, 0.8, 0.3, 1) 0.42s both;
+}
+@keyframes uaShock {
+  0%   { opacity: 1; transform: scale(0.25); border-width: 5px; }
+  100% { opacity: 0; transform: scale(5); border-width: 0; }
+}
+
+/* รอยพื้นร้าว — อยู่ z-index 0 คือใต้ทั้งนักล่าและมอนสเตอร์ จึงอ่านเป็น "พื้น" ไม่ใช่เอฟเฟกต์ลอย
+   เส้นถูกวาดด้วยการไล่ stroke-dashoffset จากปลายเข้าหาศูนย์กลาง ทำให้ดูเหมือนร้าวแตกออก */
+.ua-cracks {
+  position: absolute;
+  left: 50%;
+  bottom: -14px;
+  width: 168px;
+  height: 74px;
+  margin-left: -84px;
+  z-index: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.ua-cracks path {
+  fill: none;
+  stroke: #ff7a4a;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 90;
+  stroke-dashoffset: 90;
+  filter: drop-shadow(0 0 5px rgba(255,90,40,0.95));
+  animation:
+    uaCrack 0.28s cubic-bezier(0.15, 0.75, 0.35, 1) 0.42s forwards,
+    uaCrackFade 0.7s ease-out 1.3s forwards;
+}
+/* เหลื่อมกันเล็กน้อยให้ดูเป็นรอยร้าวจริง ไม่ใช่ดาวกระจายที่แตกพร้อมกันเป๊ะ */
+.ua-cracks path:nth-child(3), .ua-cracks path:nth-child(4) { animation-delay: 0.46s, 1.3s; }
+.ua-cracks path:nth-child(5), .ua-cracks path:nth-child(6) { animation-delay: 0.5s, 1.3s; }
+.ua-cracks path:nth-child(7), .ua-cracks path:nth-child(8) { animation-delay: 0.54s, 1.3s; stroke-width: 1.6; }
+@keyframes uaCrack   { to { stroke-dashoffset: 0; } }
+@keyframes uaCrackFade { to { opacity: 0; } }
+
+/* ละอองยาลอยขึ้น — เฉพาะฝั่ง Potion */
+.ua-mote {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  opacity: 0;
+  background: radial-gradient(circle, #d6ffe8, #5fd79a);
+}
+.ua-potion .ua-mote {
+  animation: uaMote 1.5s ease-out both;
+  animation-delay: calc(0.55s + var(--i) * 0.12s);
+  margin-left: calc(-2.5px + (var(--i) - 3.5) * 9px);
+}
+@keyframes uaMote {
+  0%   { opacity: 0; transform: translateY(0) scale(0.5); }
+  25%  { opacity: 1; transform: translateY(-14px) scale(1); }
+  100% { opacity: 0; transform: translateY(-46px) scale(0.4); }
+}
+
+.ua-name { margin: 0; font-size: 17px; font-weight: bold; color: #f0ddb0; text-shadow: 0 2px 10px rgba(0,0,0,0.95), 0 0 20px rgba(0,0,0,0.8); }
+.ua-action { margin: 0; font-size: 13px; letter-spacing: 3px; text-transform: uppercase; text-shadow: 0 2px 10px rgba(0,0,0,0.95); }
+.ua-potion .ua-action { color: #8fe0aa; }
+.ua-faint  .ua-action { color: #ff9090; }
+.ua-detail { margin: 2px 0 0; font-size: 11px; color: #c0a870; font-style: italic; text-shadow: 0 2px 8px rgba(0,0,0,0.95); }
+.ua-fatal .ua-detail { color: #ff9090; font-style: normal; font-weight: bold; letter-spacing: 1px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ua-overlay, .ua-card, .ua-burst, .ua-hunter, .ua-fill, .ua-item, .ua-mote, .ua-shock, .ua-cracks path { animation: none !important; }
+  .ua-item { top: 24px; }
+  .ua-shock { display: none; }
+  .ua-cracks path { stroke-dashoffset: 0; }
+  .ua-mote { display: none; }
+}
+
 .party-strip {
   position: fixed;
   right: 0;
@@ -13247,6 +14078,94 @@ const openPackDrawer = () => {
   overflow-y: auto;
   padding: 16px 8px;
   width: 100%;
+  /* สั่นตามแรงคำราม แล้วหยุดสนิท ปล่อยให้อ่านการ์ดได้ */
+  animation: maQuake 0.55s ease-out;
+}
+@keyframes maQuake {
+  0%, 100% { transform: translate(0, 0); }
+  9%  { transform: translate(-10px, 6px); }
+  22% { transform: translate(8px, -5px); }
+  37% { transform: translate(-6px, 4px); }
+  54% { transform: translate(5px, -3px); }
+  72% { transform: translate(-3px, 2px); }
+  87% { transform: translate(2px, -1px); }
+}
+
+/* ── FX เสียงคำราม ─────────────────────────────────── */
+.ma-flash,
+.ma-ring,
+.ma-streak,
+.ma-vignette {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* แสงอัดจากใจกลางตอนคำรามออก */
+.ma-flash {
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(255,214,170,0.85), rgba(255,110,50,0.45) 35%, transparent 68%);
+  animation: maFlash 0.45s ease-out forwards;
+}
+@keyframes maFlash {
+  0%   { opacity: 0; transform: scale(0.6); }
+  15%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.4); }
+}
+
+/* คลื่นเสียง 3 ระลอกซ้อนกัน */
+.ma-ring {
+  left: 50%;
+  top: 50%;
+  width: 140px;
+  height: 140px;
+  margin: -70px 0 0 -70px;
+  border-radius: 50%;
+  border: 4px solid rgba(255,150,90,0.8);
+  opacity: 0;
+  animation: maRing 1.25s cubic-bezier(0.12, 0.7, 0.3, 1) both;
+  animation-delay: calc((var(--i) - 1) * 0.17s);
+}
+@keyframes maRing {
+  0%   { opacity: 0.95; transform: scale(0.15); border-width: 6px; }
+  100% { opacity: 0; transform: scale(9); border-width: 0; }
+}
+
+/* เส้นแรงพุ่งออกรอบทิศ — บอกทิศทางว่าเสียงอัดออกจากกลางจอ */
+.ma-streak {
+  left: 50%;
+  top: 50%;
+  width: 2px;
+  height: 22vh;
+  margin-left: -1px;
+  transform-origin: 50% 0;
+  background: linear-gradient(to bottom, rgba(255,180,120,0.9), transparent);
+  opacity: 0;
+  animation: maStreak 0.8s ease-out both;
+  animation-delay: calc(0.04s + var(--i) * 0.02s);
+}
+@keyframes maStreak {
+  0%   { opacity: 0; transform: rotate(var(--a)) translateY(0) scaleY(0.25); }
+  22%  { opacity: 0.75; }
+  100% { opacity: 0; transform: rotate(var(--a)) translateY(75vh) scaleY(1); }
+}
+
+/* ขอบจอแดงเต้นสองระลอกตามจังหวะเสียง */
+.ma-vignette {
+  inset: 0;
+  background: radial-gradient(circle at center, transparent 42%, rgba(180,40,20,0.6) 100%);
+  opacity: 0;
+  animation: maVignette 0.9s ease-out 2;
+}
+@keyframes maVignette {
+  0%   { opacity: 0; }
+  20%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ma-content { animation: none; }
+  .ma-flash, .ma-ring, .ma-streak, .ma-vignette { display: none; }
 }
 
 .ma-label {
@@ -20040,6 +20959,83 @@ const openPackDrawer = () => {
   box-shadow: none;
   transform: none;
 }
+
+/* ── Slayer Card: ขั้นทอยโบนัสก่อนรางวัลปกติ ── */
+.rw-slayer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 16px;
+  border-radius: 3px;
+  border: 1px solid rgba(200,155,60,0.45);
+  border-left: 3px solid #c89b3c;
+  background:
+    repeating-linear-gradient(100deg, rgba(0,0,0,0.14) 0px, rgba(0,0,0,0.14) 1px, transparent 1px, transparent 5px),
+    linear-gradient(170deg, #2e2210, #1a1308);
+  box-shadow: inset 0 0 26px rgba(200,155,60,0.08), 0 3px 12px rgba(0,0,0,0.55);
+}
+.rw-slayer-head { display: flex; align-items: center; gap: 14px; width: 100%; }
+.rw-slayer-card {
+  width: 62px;
+  border-radius: 4px;
+  border: 1px solid rgba(200,155,60,0.5);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+  flex-shrink: 0;
+}
+.rw-slayer-die-wrap { padding: 4px 0; }
+.rw-slayer-die { width: 68px; height: 68px; }
+
+.rw-slayer-prize {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(124,90,43,0.5);
+  background: rgba(0,0,0,0.35);
+  transition: 0.2s;
+}
+.rw-slayer-prize.claimed { border-color: rgba(0,200,150,0.5); background: rgba(0,200,150,0.08); }
+.rw-slayer-prize-img { width: 40px; height: 40px; object-fit: contain; flex-shrink: 0; }
+.rw-slayer-prize-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rw-slayer-prize-num { font-size: 10px; letter-spacing: 2px; color: #a88040; text-transform: uppercase; }
+.rw-slayer-prize-name { font-size: 14px; font-weight: bold; color: #ffd27a; }
+.rw-slayer-check { font-size: 18px; color: #00c896; flex-shrink: 0; }
+
+/* โหมดเลือกเอง (Barroth Slayer) — กางทั้งตารางให้กดได้ทีละช่อง */
+.rw-slayer-pick { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.rw-slayer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 6px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+.rw-slayer-cell {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 8px;
+  border-radius: 3px;
+  border: 1px solid rgba(124,90,43,0.45);
+  background: linear-gradient(170deg, #2b1f13, #1a1209);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: 0.15s;
+}
+.rw-slayer-cell:hover { border-color: #c89b3c; background: linear-gradient(170deg, #3d2c19, #241a0e); }
+.rw-slayer-cell-num { font-size: 11px; font-weight: bold; color: #a88040; width: 16px; flex-shrink: 0; text-align: center; }
+.rw-slayer-cell-img { width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; }
+.rw-slayer-cell-name { flex: 1; min-width: 0; font-size: 11px; color: #c4a060; line-height: 1.3; }
+
+.rw-slayer-party { width: 100%; display: flex; flex-direction: column; gap: 4px; padding-top: 6px; border-top: 1px solid rgba(124,90,43,0.3); }
+.rw-slayer-party-row { display: flex; align-items: center; gap: 8px; }
+.rw-slayer-party-icon { width: 20px; height: 20px; object-fit: contain; }
+.rw-slayer-party-name { flex: 1; min-width: 0; font-size: 12px; color: #c0a870; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rw-slayer-party-die { font-size: 14px; font-weight: bold; color: #ffd27a; }
 
 .rw-hunter-select {
   display: flex;
