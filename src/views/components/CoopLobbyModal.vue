@@ -20,6 +20,22 @@ const questTypeTone = (type) => {
   return ''
 }
 
+// โอนหัวห้อง — เปิดหน้าต่างเลือกสมาชิกก่อน แล้วค่อยยืนยัน
+// สองขั้นเพราะคนโอนเอาสิทธิ์คืนเองไม่ได้ กดพลาดครั้งเดียวแก้ไม่ได้
+const hostPickOpen = ref(false)
+const pendingHostTransfer = ref(null)
+
+const closeHostPicker = () => {
+  hostPickOpen.value = false
+  pendingHostTransfer.value = null
+}
+
+const confirmHostTransfer = async () => {
+  const target = pendingHostTransfer.value
+  closeHostPicker()
+  if (target) await room.transferHost?.(target.hunter_id)
+}
+
 // Countdown state
 const countdownMsg = ref('')
 const counting = ref(false)
@@ -186,6 +202,7 @@ const starColor = computed(() => {
           class="cl-hunter"
           :class="{ ready: h.ready, me: h.hunter_id === room.myHunterId }"
         >
+
           <div class="cl-hunter-head">
             <img
               v-if="getClass(h.hunter_class_id)?.thumbnail"
@@ -240,6 +257,13 @@ const starColor = computed(() => {
         >
           {{ room.amReady ? '✓ Ready!' : 'Ready' }}
         </button>
+        <button
+          v-if="room.isHost && room.hunterCount > 1"
+          class="cl-btn-host"
+          title="โอนหัวห้อง"
+          :disabled="counting"
+          @click="hostPickOpen = true"
+        >👑</button>
         <button class="cl-btn-leave" @click="handleLeave" :disabled="counting">
           {{ room.isHost ? '🗑 ยุบ Room' : '🚪 ออก' }}
         </button>
@@ -247,10 +271,132 @@ const starColor = computed(() => {
 
     </div>
     </div>
+
+    <!-- โอนหัวห้อง — เลือกสมาชิกก่อน แล้วค่อยยืนยัน -->
+    <teleport to="body">
+      <div v-if="hostPickOpen" class="clht-overlay" @click.self="closeHostPicker">
+        <div class="clht-modal">
+          <span class="clht-crown">👑</span>
+
+          <template v-if="!pendingHostTransfer">
+            <p class="clht-title">โอนหัวห้องให้ใคร?</p>
+            <p class="clht-sub">คนที่เลือกจะเป็นคนเริ่มเควส คุมกอง และตัดสินผลแทนคุณ</p>
+            <div class="clht-list">
+              <button
+                v-for="h in room.hunters.filter(x => x.hunter_id !== room.myHunterId)"
+                :key="h.hunter_id"
+                class="clht-row"
+                @click="pendingHostTransfer = h"
+              >
+                <img
+                  v-if="getClass(h.hunter_class_id)?.thumbnail"
+                  :src="getImg(getClass(h.hunter_class_id).thumbnail)"
+                  class="clht-row-icon"
+                />
+                <span class="clht-row-body">
+                  <span class="clht-row-name">{{ h.hunter_name }}</span>
+                  <span class="clht-row-class">{{ getClass(h.hunter_class_id)?.hunter_class }}</span>
+                </span>
+                <span class="clht-row-arrow">›</span>
+              </button>
+            </div>
+            <button class="clht-cancel clht-wide" @click="closeHostPicker">ยกเลิก</button>
+          </template>
+
+          <template v-else>
+            <p class="clht-title">โอนหัวห้อง?</p>
+            <p class="clht-sub">
+              <strong>{{ pendingHostTransfer.hunter_name }}</strong>
+              จะเป็นคนเริ่มเควส คุมกอง และตัดสินผลแทนคุณ
+            </p>
+            <p class="clht-warn">⚠ คุณจะกลายเป็นลูกทีม เอาคืนเองไม่ได้</p>
+            <div class="clht-btns">
+              <button class="clht-cancel" @click="pendingHostTransfer = null">‹ เลือกใหม่</button>
+              <button class="clht-confirm" @click="confirmHostTransfer">✓ โอน</button>
+            </div>
+          </template>
+        </div>
+      </div>
+    </teleport>
   </div>
 </template>
 
 <style scoped>
+/* ── โอนหัวห้อง ── */
+/* ปุ่มโอนหัวห้อง — อยู่ในแถวเดียวกับ Ready/ออก แต่แคบกว่าเพราะเป็นของที่นาน ๆ ใช้ที */
+.cl-btn-host {
+  flex: 0 0 auto;
+  width: 46px;
+  padding: 13px 0;
+  border-radius: 8px;
+  border: 1px solid rgba(200,155,60,0.45);
+  background: rgba(200,155,60,0.1);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.cl-btn-host:hover:not(:disabled) { border-color: #ffd27a; background: rgba(200,155,60,0.26); }
+.cl-btn-host:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* รายการสมาชิกในหน้าต่างเลือก */
+.clht-list { width: 100%; display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
+.clht-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 3px;
+  border: 1px solid rgba(124,90,43,0.45);
+  background: linear-gradient(170deg, #2b1f13, #1a1209);
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.15s;
+}
+.clht-row:hover { border-color: #ffd27a; background: linear-gradient(170deg, #3d2c19, #241a0e); }
+.clht-row-icon { width: 30px; height: 30px; object-fit: contain; flex-shrink: 0; }
+.clht-row-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; text-align: left; }
+.clht-row-name { font-size: 13px; font-weight: bold; color: #f0ddb0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.clht-row-class { font-size: 10px; color: #a88040; }
+.clht-row-arrow { font-size: 16px; color: rgba(200,155,60,0.6); flex-shrink: 0; }
+.clht-wide { width: 100%; margin-top: 4px; }
+.clht-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(4,3,1,0.82);
+  backdrop-filter: blur(4px);
+}
+.clht-modal {
+  width: min(330px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 22px 18px;
+  border-radius: 3px;
+  text-align: center;
+  border: 1px solid rgba(200,155,60,0.5);
+  border-left: 3px solid #c89b3c;
+  background:
+    repeating-linear-gradient(100deg, rgba(0,0,0,0.14) 0px, rgba(0,0,0,0.14) 1px, transparent 1px, transparent 5px),
+    linear-gradient(170deg, #2e2210, #1a1308);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,220,160,0.08);
+  font-family: 'Georgia', serif;
+}
+.clht-crown { font-size: 34px; line-height: 1; filter: drop-shadow(0 0 10px rgba(255,200,100,0.6)); }
+.clht-title { margin: 0; font-size: 16px; font-weight: bold; color: #ffd27a; letter-spacing: 1px; }
+.clht-sub { margin: 0; font-size: 12px; color: #a88040; line-height: 1.6; }
+.clht-sub strong { color: #f0ddb0; }
+.clht-warn { margin: 2px 0 0; font-size: 11px; color: #ff9090; }
+.clht-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; margin-top: 6px; }
+.clht-cancel { padding: 10px; border-radius: 3px; font-size: 12px; color: #a88040; cursor: pointer; background: rgba(0,0,0,0.4); border: 1px solid rgba(124,90,43,0.4); font-family: inherit; }
+.clht-confirm { padding: 10px; border-radius: 3px; font-size: 13px; font-weight: bold; color: #0f0b05; cursor: pointer; background: linear-gradient(to bottom, #ffd27a, #c89b3c); border: 1px solid #ffd27a; font-family: inherit; }
+
 .cl-page {
   display: flex;
   flex-direction: column;
@@ -689,6 +835,7 @@ const starColor = computed(() => {
   gap: 8px;
 }
 .cl-hunter {
+  position: relative;
   min-width: 0;
   display: flex;
   flex-direction: column;

@@ -23,10 +23,52 @@ const _getCtx = () => {
   return _ctx
 }
 
+// ── เพลงที่โดน autoplay policy บล็อก ──────────────────────
+// รีเฟรชหน้ากลางเควสต์แล้วเพลงจะเริ่มเองไม่ได้ เพราะยังไม่มี user gesture ในหน้าใหม่
+// เดิมแค่แจ้งเตือนแล้วปล่อยเงียบยาว ต้องสลับเมนูไปกลับ (= ได้ gesture) ถึงจะเล่น
+// เก็บไว้ลองใหม่ตอนแตะจอครั้งแรกแทน — ผู้ใช้ไม่ต้องรู้ว่าต้องทำอะไร
+const _pendingMedia = new Set()
+
+const _retryPendingMedia = () => {
+  if (!_pendingMedia.size) return
+  for (const el of [..._pendingMedia]) {
+    _pendingMedia.delete(el)
+    el.play().catch(() => {})
+  }
+}
+
+// เรียกแทน audio.play() ตรง ๆ — onError จะถูกเรียกเฉพาะตอนที่ไม่ใช่เรื่อง autoplay
+export const playMedia = (audio, onError) =>
+  audio.play().catch((e) => {
+    if (e?.name === 'NotAllowedError') {
+      _pendingMedia.add(audio)
+      return
+    }
+    onError?.(e)
+  })
+
+// ต้องเรียกตอนสั่งหยุดเพลง ไม่งั้นเพลงที่ถูกยกเลิกไปแล้วจะโผล่มาเล่นตอนแตะจอครั้งถัดไป
+export const cancelPendingMedia = (audio) => {
+  if (audio) _pendingMedia.delete(audio)
+}
+
+
+// ให้หน้าอื่นฝากงานที่ต้องรอ user gesture ไว้ตรงนี้ได้ ใช้ listener ชุดเดียวกับที่มีอยู่แล้ว
+// ยิงทุก gesture ไม่ใช่แค่ครั้งแรก — งานที่ฝากต้องเขียนให้เรียกซ้ำแล้วไม่มีผลข้างเคียง
+const _gestureHooks = new Set()
+export const onUserGesture = (fn) => {
+  _gestureHooks.add(fn)
+  return () => _gestureHooks.delete(fn)
+}
+
 // context เกิดมาในสถานะ suspended บนมือถือ ต้องปลุกด้วย gesture ก่อนถึงจะมีเสียงออก
 const _unlock = () => {
   const ctx = _getCtx()
   if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {})
+  _retryPendingMedia()
+  for (const fn of _gestureHooks) {
+    try { fn() } catch { /* hook พังต้องไม่ทำให้ตัวอื่นไม่ได้ทำงาน */ }
+  }
 }
 
 if (typeof window !== 'undefined') {
@@ -97,6 +139,8 @@ export const sfxTakes = (dir, count) =>
 // ไม่รวมเพลง เพราะไฟล์ยาว ถอดรหัสเก็บใน RAM ไม่ไหว
 const UI = 'assets/sounds/ui'
 const CRAFT = 'assets/sounds/crafting'
+// เสียงในช่วงต่อสู้ — วางไว้ใต้ ui/ เพราะ _isSfxPath ยอมเฉพาะ ui/ กับ crafting/
+const COMBAT = `${UI}/combat`
 export const ALL_SFX = [
   ...sfxTakes(`${UI}/menu_change`, 4),
   ...sfxTakes(`${UI}/action_confirm`, 3),
@@ -111,6 +155,17 @@ export const ALL_SFX = [
   `${UI}/dice_roll.mp3`,
   `${UI}/dice_land.mp3`,
   `${UI}/token_reveal.mp3`,
+  ...sfxTakes(`${COMBAT}/monster_hit`, 3),
+  ...sfxTakes(`${COMBAT}/monster_attack`, 4),
+  ...sfxTakes(`${COMBAT}/hunter_hurt`, 3),
+  ...sfxTakes(`${COMBAT}/part_break`, 2),
+  ...sfxTakes(`${COMBAT}/heal`, 2),
+  // ใช้ take เดียว — อีกสองไฟล์ยังอยู่ในโฟลเดอร์แต่ไม่ต้อง preload ให้เปลืองเปล่า
+  `${COMBAT}/potion_drink/3.mp3`,
+  ...sfxTakes(`${COMBAT}/status_apply`, 4),
+  ...sfxTakes(`${COMBAT}/element_trigger`, 3),
+  ...sfxTakes(`${COMBAT}/faint`, 3),
+  ...sfxTakes(`${COMBAT}/card_sweep`, 1),
   ...sfxTakes(`${CRAFT}/hammer_strike`, 4),
   ...sfxTakes(`${CRAFT}/igniting`, 4),
   ...sfxTakes(`${CRAFT}/quenching`, 4),
