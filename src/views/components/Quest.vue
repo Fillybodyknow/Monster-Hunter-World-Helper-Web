@@ -2102,6 +2102,7 @@ const resetToBookPhase = () => {
   manualBetrayal.value = null
   manualSlayer.value = null
   manualPlunderblade.value = false
+  manualDiceAdjust.value = 0
   dialogDice.value = null
   pendingMonsterDiceDamage.value = 0
   pendingProceedAction.value = null
@@ -3987,6 +3988,14 @@ const effectiveManualPlunderblade = computed(() => {
   return manualPlunderblade.value
 })
 
+// ปรับจำนวนเต๋าด้วยมือ — เผื่อกฎบนโต๊ะที่แอปยังไม่รู้จัก (เอฟเฟกต์การ์ด, กติกาบ้าน)
+// เดินตามแพตเทิร์นเดียวกับตัวปรับอื่น: Host กดได้คนเดียวแล้ว sync ให้ทั้งตี้เห็นตรงกัน
+const manualDiceAdjust = ref(0)
+const effectiveManualDiceAdjust = computed(() => {
+  if (room.inRoom && !room.isHost) return room.rewardDiceModifierState?.adjust ?? 0
+  return manualDiceAdjust.value
+})
+
 const betrayalActive = computed(() => effectiveManualBetrayal.value ?? detectedBetrayal.value)
 const slayerActive = computed(() => effectiveManualSlayer.value ?? detectedSlayer.value)
 const plunderbladeActive = computed(() => effectiveManualPlunderblade.value)
@@ -3997,6 +4006,7 @@ const _syncRewardDiceModifiers = () => {
     betrayal: manualBetrayal.value,
     slayer: manualSlayer.value,
     plunderblade: manualPlunderblade.value,
+    adjust: manualDiceAdjust.value,
   })
 }
 const setBetrayalModifier = (val) => {
@@ -4014,12 +4024,18 @@ const setPlunderbladeModifier = (val) => {
   manualPlunderblade.value = val
   _syncRewardDiceModifiers()
 }
+const setDiceAdjustModifier = (val) => {
+  if (room.inRoom && !room.isHost) return
+  manualDiceAdjust.value = val
+  _syncRewardDiceModifiers()
+}
 
 // Slayer ไม่อยู่ในนี้แล้ว — มันไม่ได้เพิ่มเต๋าให้ตารางของมอนที่ล่า แต่เป็นการทอยแยกอีกตารางหนึ่ง
 const rewardDiceModifier = computed(() => {
   let mod = 0
   if (betrayalActive.value) mod -= 1
   if (plunderbladeActive.value) mod += 2
+  mod += effectiveManualDiceAdjust.value
   return mod
 })
 
@@ -4624,6 +4640,31 @@ const rollAllDice = () => {
       room.pushMyDice(finalValues)
     }, count * 100 + 700)
   }
+}
+
+const DICE_TOTAL_MAX = 20
+const showDiceAdjust = ref(false)
+const pendingDiceAdjust = ref(0)
+
+// จำนวนเต๋าถ้ายืนยันค่าที่กำลังปรับอยู่ — คิดจากฐาน + ตัวปรับอื่น แล้วค่อยบวกค่าที่ค้างไว้
+// (rewardDiceModifier รวมค่าที่ยืนยันไปแล้วอยู่ ต้องถอดออกก่อนไม่งั้นนับซ้ำ)
+const diceAdjustPreview = computed(() => {
+  const qt = selectedQuest.value?.quest_type
+  const base = diceCountTable[qt]?.[rewardHunterCount.value] ?? 2
+  const others = rewardDiceModifier.value - effectiveManualDiceAdjust.value
+  return Math.max(0, base + others + pendingDiceAdjust.value)
+})
+
+const openDiceAdjust = () => {
+  if (room.inRoom && !room.isHost) return
+  sfx.play(`${SFX_UI}/action_select.mp3`, { key: 'action' })
+  pendingDiceAdjust.value = effectiveManualDiceAdjust.value
+  showDiceAdjust.value = true
+}
+const confirmDiceAdjust = () => {
+  sfx.playRandom(`${SFX_UI}/action_confirm`, 3, { key: 'action' })
+  setDiceAdjustModifier(pendingDiceAdjust.value)
+  showDiceAdjust.value = false
 }
 
 // Time Card modifier เปลี่ยนระหว่างหน้าทอยเต๋า (Host toggle หรือ sync จาก Co-op) → ทอยใหม่ตามจำนวนที่เปลี่ยน
@@ -7322,6 +7363,21 @@ const openPackDrawer = () => {
             <span class="rw-tc-effect rw-tc-effect-plus">+2 🎲</span>
           </label>
         </div>
+
+        <!-- ปรับจำนวนเต๋าด้วยมือ — Guest เห็นค่าแต่กดไม่ได้ เหมือนตัวปรับอื่น -->
+        <button
+          class="rw-adjust-btn"
+          :class="{ 'rw-adjust-on': effectiveManualDiceAdjust !== 0 }"
+          :disabled="room.inRoom && !room.isHost"
+          @click="openDiceAdjust"
+        >
+          <span class="rw-adjust-label">🎲 ปรับจำนวนเต๋า</span>
+          <span v-if="effectiveManualDiceAdjust !== 0" class="rw-adjust-badge">
+            {{ effectiveManualDiceAdjust > 0 ? '+' : '' }}{{ effectiveManualDiceAdjust }} 🎲
+          </span>
+          <span v-else class="rw-adjust-hint">แตะเพื่อเพิ่ม / ลด</span>
+        </button>
+
         <!-- My dice -->
         <p class="rw-section-label">🎲 เต๋าของคุณ</p>
         <div class="rw-dice-row">
@@ -8896,6 +8952,52 @@ const openPackDrawer = () => {
             <div class="mtc-btns">
               <button class="mtc-btn mtc-cancel" @click="showAddHunterTurnConfirm = false">ยกเลิก</button>
               <button class="mtc-btn mtc-confirm" @click="showAddHunterTurnConfirm = false; addHostTurn()">ยืนยัน</button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ REWARD DICE ADJUST ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="showDiceAdjust" class="rwa-overlay" @click.self="showDiceAdjust = false">
+          <div class="rwa-modal">
+            <div class="rwa-header">
+              <div class="rwa-line"></div>
+              <span class="rwa-stamp">Adjust Dice</span>
+              <div class="rwa-line"></div>
+            </div>
+
+            <!-- ผลลัพธ์จริงคือพระเอก ตัวเลขที่ปรับเป็นแค่วิธีไปถึง -->
+            <div class="rwa-preview">
+              <span class="rwa-preview-num">{{ diceAdjustPreview }}</span>
+              <span class="rwa-preview-unit">ลูกเต๋า</span>
+            </div>
+            <p class="rwa-from">
+              เดิม {{ rewardDiceCount }} ลูก
+              <template v-if="diceAdjustPreview !== rewardDiceCount">
+                → <strong :class="diceAdjustPreview > rewardDiceCount ? 'rwa-up' : 'rwa-down'">
+                  {{ diceAdjustPreview > rewardDiceCount ? '+' : '' }}{{ diceAdjustPreview - rewardDiceCount }}
+                </strong>
+              </template>
+            </p>
+
+            <div class="rwa-row">
+              <button class="rwa-step" :disabled="diceAdjustPreview <= 0" @click="pendingDiceAdjust--">−</button>
+              <span class="rwa-value" :class="pendingDiceAdjust > 0 ? 'rwa-up' : pendingDiceAdjust < 0 ? 'rwa-down' : ''">
+                {{ pendingDiceAdjust > 0 ? '+' : '' }}{{ pendingDiceAdjust }}
+              </span>
+              <button class="rwa-step" :disabled="diceAdjustPreview >= DICE_TOTAL_MAX" @click="pendingDiceAdjust++">+</button>
+            </div>
+
+            <p class="rwa-desc">
+              ใช้เมื่อมีกฎบนโต๊ะที่แอปยังไม่รู้จัก — ตัวปรับจากการ์ดคิดให้อยู่แล้ว ไม่ต้องบวกซ้ำ
+            </p>
+
+            <div class="rwa-btns">
+              <button class="rw-btn-secondary" @click="showDiceAdjust = false">ยกเลิก</button>
+              <button class="rw-btn-primary" @click="confirmDiceAdjust">✓ ยืนยัน</button>
             </div>
           </div>
         </div>
@@ -19828,6 +19930,150 @@ const openPackDrawer = () => {
   gap: 6px;
   margin-bottom: 14px;
 }
+
+/* ── ปุ่มปรับจำนวนเต๋า ── */
+/* ใช้สูตรหนังเดียวกับ .rw-tc-toggle ที่อยู่เหนือมัน ต่างแค่ขอบประ
+   เพื่อบอกว่าอันนี้ปรับด้วยมือ ไม่ใช่ผลจากการ์ดเหมือนสวิตช์สามตัวบน */
+.rw-adjust-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  margin-top: -6px;
+  border-radius: 3px;
+  border: 1px dashed rgba(124, 90, 43, 0.55);
+  background: linear-gradient(170deg, #2b1f13, #1c1409);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.05);
+  color: #a88040;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.rw-adjust-btn:hover:not(:disabled) {
+  border-color: #c89b3c;
+  color: #ffd27a;
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.12), 0 0 10px rgba(200,155,60,0.15);
+}
+/* Guest กดไม่ได้แต่ต้องอ่านค่าออก — จางลงพอให้รู้ว่ากดไม่ได้ ไม่ถึงกับอ่านไม่เห็น */
+.rw-adjust-btn:disabled { opacity: 0.55; cursor: default; }
+.rw-adjust-on {
+  border-style: solid;
+  border-color: rgba(200,155,60,0.6);
+  color: #ffd27a;
+}
+.rw-adjust-label { flex: 1; text-align: left; font-size: 12px; }
+.rw-adjust-hint { font-size: 10px; color: rgba(201,162,39,0.45); font-style: italic; }
+/* ป้ายค่าปัจจุบัน — ทรงเดียวกับ .rw-tc-effect ของสวิตช์ข้างบน */
+.rw-adjust-badge {
+  font-size: 12px;
+  font-weight: bold;
+  color: #ffd27a;
+  padding: 2px 8px;
+  border-radius: 2px;
+  background: rgba(200,155,60,0.16);
+  border: 1px solid rgba(200,155,60,0.4);
+}
+
+/* ── หน้าต่างปรับจำนวนเต๋า ── */
+/* ไม่ยืม .mtc-* ของ Monster Turn เพราะชุดนั้นเป็นโทนแดง = อันตราย
+   หน้านี้เป็นการตั้งค่าเฉย ๆ ใช้หนัง+ทองเหลืองตามหน้า Reward ที่มันอยู่ */
+.rwa-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(5,4,2,0.8);
+  backdrop-filter: blur(6px);
+}
+.rwa-modal {
+  width: min(320px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 18px;
+  border-radius: 3px;
+  border: 3px solid #2e2113;
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(0,0,0,0.14) 0px,
+      rgba(0,0,0,0.14) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(170deg, #2b1f13, #1c1409 55%, #241a0e);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.07), 0 10px 34px rgba(0,0,0,0.85);
+  font-family: 'Georgia', serif;
+}
+/* หัวข้อขนาบด้วยเส้นทอง — แบบเดียวกับหัวเฟสอื่นทั้งเว็บ */
+.rwa-header { display: flex; align-items: center; gap: 10px; width: 100%; }
+.rwa-line { flex: 1; height: 1px; background: linear-gradient(to right, transparent, #7c5a2b); }
+.rwa-line:last-child { background: linear-gradient(to left, transparent, #7c5a2b); }
+.rwa-stamp {
+  font-size: 10px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: #c89b3c;
+  white-space: nowrap;
+}
+.rwa-preview { display: flex; align-items: baseline; gap: 6px; }
+.rwa-preview-num {
+  font-size: 40px;
+  font-weight: bold;
+  line-height: 1;
+  color: #ffd27a;
+  text-shadow: 0 0 16px rgba(255,200,80,0.45);
+}
+.rwa-preview-unit { font-size: 12px; color: #a88040; }
+.rwa-from { margin: 0; font-size: 11px; color: rgba(201,162,39,0.6); }
+.rwa-up { color: #7ad17a; }
+.rwa-down { color: #d98b6a; }
+
+.rwa-row { display: flex; align-items: center; gap: 18px; }
+/* ปุ่ม +/- เป็นเหรียญทองเหลืองจม ๆ ให้เข้ากับเบี้ยและเหรียญที่ใช้ทั่วเกม */
+.rwa-step {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 2px solid rgba(124,90,43,0.55);
+  background:
+    repeating-linear-gradient(120deg, rgba(0,0,0,0.12) 0px, rgba(0,0,0,0.12) 1px, transparent 1px, transparent 4px),
+    radial-gradient(circle at 38% 30%, #4a3520, #2b1f13 70%);
+  box-shadow: inset 0 0 8px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.5);
+  color: #c0985a;
+  font-size: 22px;
+  font-family: inherit;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.rwa-step:hover:not(:disabled) { border-color: #c89b3c; color: #ffd27a; }
+.rwa-step:disabled { opacity: 0.3; cursor: not-allowed; }
+.rwa-value {
+  min-width: 54px;
+  text-align: center;
+  font-size: 26px;
+  font-weight: bold;
+  line-height: 1;
+  color: #d8bf8c;
+}
+.rwa-desc {
+  margin: 0;
+  text-align: center;
+  font-size: 10px;
+  line-height: 1.7;
+  color: rgba(201,162,39,0.5);
+}
+.rwa-btns { display: flex; gap: 10px; width: 100%; }
+/* ปุ่มยืนยันใช้ .rw-btn-primary ของหน้า Reward — กว้างเต็มโดยธรรมชาติ
+   จึงต้องดันให้ปุ่มยกเลิกแคบกว่า ไม่ให้สองปุ่มเท่ากันจนไม่รู้ว่าอันไหนคือทางหลัก */
+.rwa-btns .rw-btn-secondary { flex: 0 0 38%; }
 .rw-tc-toggle {
   display: flex;
   align-items: center;
