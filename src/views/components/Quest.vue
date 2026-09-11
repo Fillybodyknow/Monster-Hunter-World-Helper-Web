@@ -2,11 +2,9 @@
 import { h as vh, ref, computed, watch, nextTick, onMounted, onActivated, onDeactivated, onUnmounted, inject } from 'vue'
 
 defineOptions({ name: 'Quest' })
-import ancientData from '@/assets/files/ancient-quest-book.json'
-import wildspireData from '@/assets/files/wildspire_book.json'
 import { showQuestEffects, soundEnabled, soundVolume } from '@/stores/settings'
 import { hunter, loadHunter, saveHunter } from '@/stores/hunter'
-import monsterInfoData from '@/assets/files/monster_info.json'
+import { MONSTER_INFO as monsterInfoData, BOOKS as books, ALL_MONSTERS, bookOfMonster } from '@/composables/useMonsterData'
 import timeCardData from '@/assets/files/time_card_management.json'
 import hunterClassData from '@/assets/files/class_hunter.json'
 import roomNameTemplates from '@/assets/files/room_name_templates.json'
@@ -213,11 +211,10 @@ const onCoopStart = () => {
 
   if (!selectedMonster.value && room.questInfo) {
     const info = room.questInfo
-    const allMonsters = [...ancientData, ...wildspireData]
-    const monster = allMonsters.find((m) => m.monster_id === info.monster_id)
+    const monster = ALL_MONSTERS.find((m) => m.monster_id === info.monster_id)
     if (monster) {
       selectedMonster.value = monster
-      selectedBook.value = ancientData.includes(monster) ? books[0] : books[1]
+      selectedBook.value = bookOfMonster(monster)
       const quest = monster.quest?.find(
         (q) => q.quest_type === info.quest_type && q.difficulty_level === info.difficulty_level,
       )
@@ -539,16 +536,6 @@ watch(() => room.inRoom, (inRoom, wasInRoom) => {
   }
 })
 
-const books = [
-  { id: 'ancient', name: 'Ancient Forest', data: ancientData, color: '#2d5a1b', accent: '#5aab2e' },
-  {
-    id: 'wildspire',
-    name: 'Wildspire Waste',
-    data: wildspireData,
-    color: '#7a5a1b',
-    accent: '#d4a017',
-  },
-]
 
 const selectBook = (book) => {
   selectedBook.value = book
@@ -601,7 +588,6 @@ const attemptsLeft = (quest) => {
 
 // ── สิทธิ์ลงเควสของ "ตัวเรา" อ้างอิงด้วย id ──────────────────
 // ใช้ตอนดูห้องคนอื่นบนบอร์ด ซึ่งยังไม่มี selectedMonster/selectedQuest
-const ALL_MONSTERS = [...ancientData, ...wildspireData]
 const findMonster = (monster_id) => ALL_MONSTERS.find((m) => m.monster_id === monster_id)
 const questTotalAttempts = (monster_id, quest_id) =>
   findMonster(monster_id)?.quest?.find((q) => q.quest_id === quest_id)?.starting_point?.length ?? 0
@@ -976,16 +962,19 @@ const stopDowntimeBgm = () => {
 // กฎ: 2 ตัวแรกของทุกกล่องใช้เพลงเริ่มต้นร่วมกัน ที่เหลือใช้เพลงประจำกล่องนั้น
 // เขียนเป็นกฎแทนที่จะ map ทีละตัว — เพิ่มกล่องใหม่แค่ต่อ 1 บรรทัดใน MONSTER_BOXES
 // ลำดับ monsterIds ต้องเรียงตามลำดับในกล่อง เพราะ 2 ตัวแรกถูกตัดสินจากตำแหน่งในอาร์เรย์
+// beginCount ใส่เฉพาะกล่องที่ไม่ใช้กฎ 2 ตัวแรก — กล่องเสริมที่มี Elder Dragon ตัวเดียว
+// ตั้งเป็น 0 ไม่งั้นมันเป็น "ตัวแรกของกล่อง" แล้วกฎนี้จะกลบเพลงประจำตัวของมันทิ้ง
 const BEGIN_THEME = 'begin_monster_battle_theme.mp3'
 const BEGIN_MONSTER_COUNT = 2
 const MONSTER_BOXES = [
   { theme: 'ancient_forest_battle_theme.mp3', monsterIds: [1, 2, 3, 4, 5] },
   { theme: 'wildspire_waste_battle_theme.mp3', monsterIds: [6, 7, 8, 9, 10] },
+  { theme: 'kushala_daora_battle_theme.mp3', monsterIds: [11], beginCount: 0 },
 ]
 
 const MONSTER_THEME_FILES = Object.fromEntries(
-  MONSTER_BOXES.flatMap(({ theme, monsterIds }) =>
-    monsterIds.map((id, i) => [id, i < BEGIN_MONSTER_COUNT ? BEGIN_THEME : theme]),
+  MONSTER_BOXES.flatMap(({ theme, monsterIds, beginCount = BEGIN_MONSTER_COUNT }) =>
+    monsterIds.map((id, i) => [id, i < beginCount ? BEGIN_THEME : theme]),
   ),
 )
 
@@ -1368,15 +1357,14 @@ const _resolveQuestFromRoom = () => {
     selectedQuest.value?.difficulty_level === info.difficulty_level
   if (sameQuest) return
 
-  const allMonsters = [...ancientData, ...wildspireData]
-  const monster = allMonsters.find((m) => m.monster_id === info.monster_id)
+  const monster = ALL_MONSTERS.find((m) => m.monster_id === info.monster_id)
   if (!monster) return
 
   // เควสในห้องเป็นคนละอันกับที่ถืออยู่ → ล้างของติดมาจากเควสก่อนหน้าให้หมด
   // Guest ไม่เคยเรียก startQuest() (มีแต่ Host เรียก) เลยไม่มีจุดล้างของตัวเอง
   const switchingQuest = !!selectedMonster.value
   selectedMonster.value = monster
-  selectedBook.value = ancientData.includes(monster) ? books[0] : books[1]
+  selectedBook.value = bookOfMonster(monster)
   const quest = monster.quest?.find(
     (q) => q.quest_type === info.quest_type && q.difficulty_level === info.difficulty_level,
   )
@@ -5139,22 +5127,19 @@ const openPackDrawer = () => {
           :style="{ '--book-accent': book.accent, '--book-bg': book.color }"
           @click="selectBook(book)"
         >
+          <span v-if="book.badge" class="book-ribbon">{{ book.badge }}</span>
           <div class="book-spine"></div>
           <div class="book-body">
             <div class="book-seal">
               <img
                 class="seal-inner"
-                :src="
-                  book.id === 'ancient'
-                    ? getImg('assets/img/ancient_forest.webp')
-                    : getImg('assets/img/wildspire_waste.webp')
-                "
+                :src="getImg(book.img)"
                 :alt="book.name"
               />
             </div>
             <h2 class="book-title-text">{{ book.name }}</h2>
             <div class="book-divider"></div>
-            <p class="book-meta">{{ book.data.length }} Monsters Available</p>
+            <p class="book-meta">{{ book.data.length }} {{ book.data.length === 1 ? 'Monster' : 'Monsters' }} Available</p>
             <div class="book-cta">📜 Open Book ▶</div>
           </div>
         </div>
@@ -9664,6 +9649,16 @@ const openPackDrawer = () => {
   width: 100%;
 }
 
+/* กล่องที่เป็นเลขคี่ใบสุดท้าย (ตอนนี้คือ Kushala) ไม่ปล่อยให้ตกไปชิดซ้ายแถวล่างเดี่ยว ๆ
+   แต่วางกลางกว้างเท่าคอลัมน์เดิม — อ่านเป็นกล่องเสริมที่อยู่ใต้สองกล่องหลัก
+   เฉพาะช่วงที่เป็น 2 คอลัมน์ — มือถือ (≤480px) เป็นคอลัมน์เดียวอยู่แล้ว */
+@media (min-width: 481px) {
+  .book-card:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: calc(50% - 10px);
+  }
+}
 .book-card {
   position: relative;
   display: flex;
@@ -9690,6 +9685,31 @@ const openPackDrawer = () => {
     radial-gradient(circle at 22px calc(100% - 16px), rgba(226,196,142,0.3) 0 2px, transparent 2.6px),
     radial-gradient(circle at calc(100% - 16px) calc(100% - 16px), rgba(226,196,142,0.3) 0 2px, transparent 2.6px);
 }
+/* ป้ายคาดมุมขวาบน — .book-card มี overflow:hidden อยู่แล้ว ปลายแถบจึงถูกตัดเป็นมุมเฉียงเอง
+   แดงครั่งแบบตราประทับ ขอบทองเหลืองบนล่างให้เข้ากับหมุดมุมของการ์ด */
+.book-ribbon {
+  position: absolute;
+  top: 20px;
+  right: -36px;
+  z-index: 3;
+  width: 140px;
+  padding: 5px 0;
+  transform: rotate(45deg);
+  text-align: center;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: #ffe6b0;
+  background: linear-gradient(to bottom, #a3372a, #7a2419);
+  border-top: 1px solid rgba(255, 210, 122, 0.55);
+  border-bottom: 1px solid rgba(255, 210, 122, 0.55);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+  /* ป้ายเป็นแค่ข้อความ กดทะลุไปที่การ์ดได้ ไม่งั้นมุมนั้นจะกดเปิดกล่องไม่ติด */
+  pointer-events: none;
+}
+
 .book-wip {
   cursor: not-allowed;
   filter: grayscale(60%) brightness(0.7);
@@ -17990,6 +18010,14 @@ const openPackDrawer = () => {
     width: 40px;
     height: 40px;
     flex-shrink: 0;
+  }
+  .book-ribbon {
+    top: 12px;
+    right: -30px;
+    width: 110px;
+    padding: 3px 0;
+    font-size: 9px;
+    letter-spacing: 3px;
   }
   .seal-inner {
     width: 100%;

@@ -205,6 +205,30 @@
             "card_name": "Time Management",
             "card_img": "assets/img/time_cards/red_time_cards/time_management.webp",
             "copies": 1
+        },
+        {
+            "time_card_id": 35,
+            "card_name": "Ice Storm",
+            "card_img": "assets/img/time_cards/red_time_cards/ice_storm.webp",
+            "copies": 1
+        },
+        {
+            "time_card_id": 36,
+            "card_name": "Eye of the Storm",
+            "card_img": "assets/img/time_cards/red_time_cards/eye_of_the_storm.webp",
+            "copies": 1
+        },
+        {
+            "time_card_id": 37,
+            "card_name": "Wind Storm",
+            "card_img": "assets/img/time_cards/red_time_cards/wind_storm.webp",
+            "copies": 1
+        },
+        {
+            "time_card_id": 38,
+            "card_name": "Rocksteady Mantle",
+            "card_img": "assets/img/time_cards/red_time_cards/rocksteady_mantle.webp",
+            "copies": 1
         }
     ],
     "back_time_card_img": "assets/img/time_cards/back_time_card.webp"
