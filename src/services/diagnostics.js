@@ -1,3 +1,4 @@
+import { APP_BUILD } from './appVersion'
 // เก็บ error ที่เกิดในแอปไว้ให้ผู้ใช้ส่งกลับมาได้
 // ก่อนหน้านี้แอปไม่ได้ดัก error ไว้เลย เวลาผู้ใช้เจอปัญหาบนมือถือจึงไม่มีอะไรให้ดู
 // ต้องเดาจากการไล่โค้ดอย่างเดียว
@@ -61,9 +62,9 @@ const _safe = (fn, fallback = null) => { try { return fn() } catch { return fall
 // ข้อมูลชุดที่ผู้ใช้กดคัดลอกส่งกลับมา — เลือกเฉพาะที่ใช้วิเคราะห์ได้จริง
 // ตั้งใจไม่เอาเนื้อหาตัวละคร/ของในกระเป๋า เพราะยาวและไม่ช่วยหาสาเหตุ
 export const buildDiagnostics = (extra = {}) => {
-  const build = typeof __APP_BUILD__ !== 'undefined' ? __APP_BUILD__ : { sha: 'dev', at: null }
   return {
-    build,
+    // มี version นำหน้า sha — คนที่ส่งรายงานมาอ่านเลขเวอร์ชันได้เอง ส่วน sha ใช้ชี้ commit ที่แน่นอน
+    build: APP_BUILD,
     at: new Date().toISOString(),
     route: _safe(() => location.hash || location.pathname),
     // ตัวชี้ขาดของบั๊ก "กดเข้าตัวละครไม่ได้" — ถ้าค่านี้หายไปคืออาการนั้นเลย

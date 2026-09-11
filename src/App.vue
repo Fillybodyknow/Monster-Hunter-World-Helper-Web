@@ -3,6 +3,7 @@ import { useRoute } from 'vue-router'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { hunter, loadHunter } from '@/stores/hunter'
 import BootLoader from '@/views/components/BootLoader.vue'
+import { APP_VERSION } from '@/services/appVersion'
 import {
   craftNotifications,
   dismissNotification,
@@ -52,6 +53,7 @@ const booting = ref(true)
         <div class="title-ornament">✦ ✦ ✦</div>
         <h1 class="app-title">Monster Hunter World</h1>
         <p class="app-subtitle">Board Game Companion</p>
+        <p class="app-version">v{{ APP_VERSION }}</p>
         <div class="title-ornament">✦ ✦ ✦</div>
       </div>
     </div>
@@ -213,6 +215,16 @@ const booting = ref(true)
   color: #a88040;
   letter-spacing: 5px;
   text-transform: uppercase;
+}
+
+/* เลขเวอร์ชันเป็นข้อมูลรอง — จางกว่าหัวข้อรองอีกขั้น ไม่แย่งสายตาจากชื่อแอป
+   ไม่ใช้ uppercase เหมือนบรรทัดบน เพราะ "V1.0.130" อ่านยากกว่า "v1.0.130" */
+.app-version {
+  margin: 0;
+  font-size: 10px;
+  color: rgba(168, 128, 64, 0.6);
+  letter-spacing: 2px;
+  font-variant-numeric: tabular-nums;
 }
 
 .title-ornament {

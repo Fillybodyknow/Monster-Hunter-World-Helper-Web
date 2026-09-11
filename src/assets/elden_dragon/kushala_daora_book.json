@@ -1,0 +1,1640 @@
+{
+  "monster_id": 11,
+  "monster_name": "Kushala Daora",
+  "thumbnail": "assets/img/Kushala_Daora_Icon.webp",
+  "special_attack_card": [
+    "Wind Bite",
+    "Wind Buffet",
+    "Engulfing Aura"
+  ],
+  "dialog_hunting_phase": [
+    38
+  ],
+  "quest": [
+    {
+      "quest_id": 1,
+      "quest_type": "Assigned Quest",
+      "difficulty_level": 1,
+      "time_limit": 40,
+      "scoutfly_level": [
+        2,
+        5
+      ],
+      "starting_point": [
+        1
+      ],
+      "dialog_resources": [
+        {
+          "resource_type_id": 3,
+          "item_id": 18
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 58
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 60
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 67
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 59
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 66
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 52
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 63
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 65
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 62
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 64
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 61
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 53
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 22
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 21
+        },
+        {
+          "resource_type_id": 2,
+          "item_id": 18
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 50
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 16
+        }
+      ]
+    }
+  ],
+  "quest_dialogs": [
+    {
+      "dialog_id": 1,
+      "title": "หากเริ่มการผจญภัยที่นี่, ได้รับยา 2 ขวด",
+      "subtitle": "การโค่น Elder Dragon ลงได้คือเครื่องหมายของนักล่าตัวจริง ของผู้ที่จะกลายเป็นตำนาน เป็นที่เคารพของเพื่อนร่วมอาชีพ และได้รับการยอมรับจาก Commission และนั่นคือสิ่งที่คุณกำลังจะทำ คุณกำลังจะออกล่า Kushala Daora พายุที่มีชีวิต สิ่งมีชีวิตแห่งน้ำค้างแข็ง แห่งน้ำแข็งและสายลม และพลังอันไม่หยุดยั้งของพายุหิมะ ดังนั้นคุณจึงมุ่งหน้าเข้าป่าอีกครั้ง ฝ่าเข้าไปในเขี้ยวของลมพายุ ภาวนาเถิดว่าคุณจะไม่ติดอยู่ระหว่างเขี้ยวของ Kushala Daora เข้าจริง ๆ",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "เริ่มจากเหยื่อรายล่าสุดของ Kushala Daora",
+          "consequences": "นักล่าทุกคนได้รับ 1 Rathalos Wing ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 2,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Rathalos Wing",
+              "type_id": 3,
+              "item_id": 18
+            },
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "มุ่งหน้าเข้าไปในหิมะ Elder Dragon ต้องอยู่สักแห่งแถวนั้น",
+          "consequences": "ทิ้ง Time card 2 ใบ ได้รับ Track Token 1 อัน",
+          "PathToDialog": 3,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 2
+            },
+            {
+              "type": "gainTrackToken",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 3,
+          "required_dialog": "",
+          "title": "คุณรู้ว่าเจ้าอสูรนั่นจะอยู่ที่ไหน เชื่อสัญชาตญาณของคุณ",
+          "consequences": "ทิ้ง Time card 8 ใบ",
+          "PathToDialog": 8,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 8
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 2,
+      "title": "หากเริ่มการผจญภัยที่นี่, ได้รับยา 3 ขวด",
+      "subtitle": "การมาเยือนของ Kushala Daora เป็นสิ่งที่ผู้คนในละแวกนั้นยากจะมองข้าม กลางฤดูร้อนกลายเป็นกลางฤดูหนาวในพริบตา พืชผลตายเพราะน้ำค้างแข็ง สัตว์แข็งตายเป็นฝูง เจ้าอสูรนี้ต้องถูกกำจัด และคุณคือผู้ที่ถูกเลือกให้เป็นผู้ลงทัณฑ์ แน่นอนว่าคุณต้องฝ่าพายุน้ำแข็งที่ไม่เคยสงบลงไปให้ได้ก่อน แล้วค่อยปราบ Elder Dragon ให้สำเร็จ การผจญภัยที่รออยู่ข้างหน้าช่างไม่ธรรมดาเลย...",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "ฝ่าตรงเข้าไปในพายุหิมะ Elder Dragon ต้องอยู่ที่นั่นแน่",
+          "consequences": "ทิ้ง Time card 1 ใบ สับการ์ด Ice Storm (Time card ที่เป็นนาฬิกาแดง) ลงในกอง Time Card",
+          "PathToDialog": 27,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            },
+            {
+              "type": "shuffleTimeCard",
+              "card": "Ice Storm",
+              "time_card_id": 35
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "ใช้เวลาทำความรู้จักศัตรูของคุณสักหน่อย",
+          "consequences": "ได้รับ Track Token 1 อัน",
+          "PathToDialog": 37,
+          "effects": [
+            {
+              "type": "gainTrackToken",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 3,
+          "required_dialog": "",
+          "title": "คุณรู้ว่าเจ้าอสูรนั่นจะอยู่ที่ไหน เชื่อสัญชาตญาณของคุณ",
+          "consequences": "ทิ้ง Time card 8 ใบ",
+          "PathToDialog": 8,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 8
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 3,
+      "title": "หากเริ่มการผจญภัยที่นี่, ได้รับยา 2 ขวด",
+      "subtitle": "คุณถูกเรียกตัวมาทำงานประเภทที่มีแต่นักล่าชั้นยอดเท่านั้นที่จะได้รับ ในแง่หนึ่งมันคือเกียรติยศ แต่ในอีกแง่หนึ่งมันก็อันตรายไม่แพ้สิ่งใดที่คุณเคยทำมา คุณต้องตามล่าและสังหาร Elder Dragon นามว่า Kushala Daora ไม่มี Elder Dragon ตัวไหนที่ต่อสู้ได้ง่าย แต่ Kushala Daora แข็งแกร่งกว่าตัวอื่นส่วนใหญ่ น้ำแข็งและหิมะที่มันถักทอห่อหุ้มตัวเองทำให้การแกะรอยแทบเป็นไปไม่ได้ คุณกำลังต่อสู้กับฤดูหนาวที่มีตัวตน การทำเช่นนั้นแล้วรอดชีวิตกลับมาได้ ต้องใช้ทุกทักษะที่คุณมี",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "ทำความรู้จักศัตรูให้ดีก่อนออกเดินทาง ไปพูดคุยกับคนที่เคยแกะรอยมันมาก่อน",
+          "consequences": "นักล่าทุกคนได้รับ 1 Daora Webbing ทิ้ง Time card 2 ใบ ได้รับ Track Token 1 อัน",
+          "PathToDialog": 13,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Daora Webbing",
+              "type_id": 3,
+              "item_id": 58
+            },
+            {
+              "type": "discardTimeCard",
+              "n": 2
+            },
+            {
+              "type": "gainTrackToken",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "มุ่งตรงเข้าป่าไปเลย",
+          "consequences": "ได้รับ Track Token 3 อัน",
+          "PathToDialog": 13,
+          "effects": [
+            {
+              "type": "gainTrackToken",
+              "n": 3
+            }
+          ]
+        },
+        {
+          "action_id": 3,
+          "required_dialog": "",
+          "title": "คุณได้ยินเรื่องเล่าลาง ๆ ว่ามีรอยเท้าอยู่แถวนี้ อาจคุ้มค่าที่จะไปตรวจสอบ",
+          "consequences": "นักล่าทุกคนได้รับ 1 Daora Claw ทิ้ง Time card 1 ใบ ได้รับ Track Token 2 อัน",
+          "PathToDialog": 34,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Daora Claw",
+              "type_id": 3,
+              "item_id": 60
+            },
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            },
+            {
+              "type": "gainTrackToken",
+              "n": 2
+            }
+          ]
+        },
+        {
+          "action_id": 4,
+          "required_dialog": "",
+          "title": "คุณรู้ว่าเจ้าอสูรนั่นจะอยู่ที่ไหน เชื่อสัญชาตญาณของคุณ",
+          "consequences": "ทิ้ง Time card 8 ใบ",
+          "PathToDialog": 8,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 8
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 4,
+      "title": "หากเริ่มการผจญภัยที่นี่, ได้รับยา 3 ขวด",
+      "subtitle": "ฤดูหนาวมาเยือนอย่างกะทันหัน ทั้งที่เมื่อไม่กี่วันก่อนยังไม่ใช่เลย เมื่อไม่กี่วันก่อนดวงอาทิตย์ยังลอยสูง วันยังยาวนานและอบอุ่น แต่ตอนนี้หิมะหนาหลายนิ้ว และสายลมแรงพอจะกัดกร่อนซากของ Diablos ให้เหลือแต่กระดูกได้ในไม่กี่นาที เมื่อไม่กี่วันก่อนมีข่าวลือว่า Nergigante กำลังจะอาละวาดทั่วบริเวณ แต่ตอนนี้ผู้คนกลับพูดกันว่า Kushala Daora ครองป่าแห่งนี้แล้ว มันต้องถูกจัดการ ไม่อย่างนั้นฤดูหนาวนี้จะยิ่งเลวร้ายลง แต่ Elder Dragon ตัวนี้เป็นศัตรูที่อันตราย แม้จะวัดกันด้วยมาตรฐานของสัตว์ร้ายโบราณก็ตาม เพราะมีไม่กี่อย่างในโลกที่ล้ม Nergigante ได้",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "คุณสำรวจซากของ Nergigante ก่อนมุ่งหน้าเข้าป่า",
+          "consequences": "นักล่าทุกคนได้รับ 1 Nergigante Carapace ได้รับ Track Token 1 อัน",
+          "PathToDialog": 23,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Nergigante Carapace",
+              "type_id": 3,
+              "item_id": 67
+            },
+            {
+              "type": "gainTrackToken",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "จดจ่ออยู่กับเป้าหมายเพียงอย่างเดียว เริ่มการล่า",
+          "consequences": "นักล่าทุกคนได้รับ 1 Daora Gem ได้รับ Track Token 1 อัน",
+          "PathToDialog": 14,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Daora Gem",
+              "type_id": 3,
+              "item_id": 59
+            },
+            {
+              "type": "gainTrackToken",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 3,
+          "required_dialog": "",
+          "title": "คุณรู้ว่าเจ้าอสูรนั่นจะอยู่ที่ไหน เชื่อสัญชาตญาณของคุณ",
+          "consequences": "ทิ้ง Time card 8 ใบ",
+          "PathToDialog": 8,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 8
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 5,
+      "title": "หากเริ่มการผจญภัยที่นี่, ได้รับยา 2 ขวด",
+      "subtitle": "การโค่น Elder Dragon ลงได้เป็นภารกิจยิ่งใหญ่เสมอ สัตว์เหล่านี้ใหญ่โต ทรงพลัง และอันตรายถึงชีวิต นักล่าที่มีสติจะหลีกเลี่ยงการเผชิญหน้ากับเหยื่อระดับนี้หากทำได้ ใครจะรู้ว่าคุณจะโชคดีได้โจมตีสิ่งมีชีวิตที่ทรงพลังขนาดนี้ได้อีกกี่ครั้ง ก่อนที่มันจะสะบัดหางเร็วเกินกว่าที่คุณจะตอบสนองทัน แล้วหัวกับไหล่ของคุณก็แยกทางกัน แต่ครั้งนี้เป็นหนึ่งในครั้งที่ Elder Dragon ต้องถูกสังหาร Kushala Daora ได้มาถึงป่าแห่งนี้ แม้มันจะไม่ได้เป็นศัตรูกับสัตว์รอบตัวหรือชุมชนใกล้เคียง แต่มันได้เปลี่ยนโลกให้กลายเป็นฤดูหนาว ผู้คนหนาวสั่นและล้มตายในบ้านของตัวเอง ทั้งที่ควรได้อาบแดดฤดูร้อน ดังนั้นแต่งตัวให้อบอุ่น แล้วเตรียมตัวออกล่า",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "ไปยังจุดที่พบเจ้าอสูรครั้งล่าสุด!",
+          "consequences": "ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 2,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "หาข้อมูลเกี่ยวกับเจ้าอสูรให้ได้มากที่สุด ก่อนก้าวเข้าสู่อาณาเขตน้ำแข็งของมัน",
+          "consequences": "นักล่าทุกคนได้รับ 1 Elder Dragon Blood ได้รับ Track Token 1 อัน",
+          "PathToDialog": 3,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Elder Dragon Blood",
+              "type_id": 3,
+              "item_id": 66
+            },
+            {
+              "type": "gainTrackToken",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 3,
+          "required_dialog": "",
+          "title": "คุณรู้ว่าเจ้าอสูรนั่นจะอยู่ที่ไหน เชื่อสัญชาตญาณของคุณ",
+          "consequences": "ทิ้ง Time card 8 ใบ",
+          "PathToDialog": 8,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 8
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 6,
+      "title": "",
+      "subtitle": "การใช้เวลาเรียกความอบอุ่นกลับคืนสู่แขนขาเป็นการตัดสินใจที่ดี แม้จะทำให้การไล่ล่าล่าช้าไปบ้าง ความหนาวรู้สึกกดดันน้อยลง หิมะลุยได้เหนื่อยน้อยลง ราวกับจะให้รางวัลแก่ความหวังที่เพิ่งก่อตัว คุณยังมองเห็นของบางอย่างที่คุ้มค่าจะเก็บ ซุกอยู่ในกองหิมะใกล้ ๆ",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "ไม่สนใจมันแล้วกลับไปล่าต่อ",
+          "consequences": "ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 24,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "ของดีขนาดนี้จะไม่สนใจได้ยังไง?",
+          "consequences": "นักล่าทุกคนได้รับ 1 Diablos Medulla ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 8,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Diablos Medulla",
+              "type_id": 3,
+              "item_id": 52
+            },
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 7,
+      "title": "",
+      "subtitle": "การทำให้ร่างกายอบอุ่นยากเย็นแสนเข็ญ แม้แต่กองไฟเล็ก ๆ ที่คุณก่อขึ้นก็ขับไล่ความหนาวไม่ได้ คุณต้องทำอะไรสักอย่างก่อนที่ภาวะตัวเย็นเกินจะเข้าครอบงำ",
+      "consequences": "นักล่าที่ไม่มีความต้านทานธาตุน้ำแข็ง ได้รับความเสียหาย 1 หน่วย",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "ก่อกองไฟให้ใหญ่ขึ้น",
+          "consequences": "ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 12,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "รีบออกเดินทาง เร็วเข้า",
+          "consequences": "นักล่าทุกคนได้รับ 1 Daora Horn ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 6,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Daora Horn",
+              "type_id": 3,
+              "item_id": 63
+            },
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 8,
+      "title": "",
+      "subtitle": "ซากเหล่านี้เคยเป็น Kushala Daora มาก่อนหรือเปล่า? ยากจะบอกได้ ยากจะบอกด้วยว่าอะไรพาสิ่งมีชีวิตตัวนี้มาที่นี่ตั้งแต่แรก มันดูเป็นแค่ลานโล่งเล็ก ๆ ไม่มีอะไรมากกว่านั้น แต่กระดูกยังคงนอนนิ่งอยู่ตรงนี้ไม่มีใครแตะต้อง มีเพียงหิมะละเอียดราวฝุ่นโปรยทับอยู่ เป็นเครื่องเซ่นไหว้หรือเปล่านะ? ไม่มีเวลาคิดให้ลึกกว่านั้น คุณได้ยินเสียงของบางอย่างขนาดมหึมาเคลื่อนไหวอยู่ข้างหน้า Elder Dragon อยู่ใกล้แล้ว",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "พร้อมสำหรับการต่อสู้หรือยัง? คุณต้องพร้อม",
+          "consequences": "นักล่าทุกคนได้รับ 1 Elder Dragon Bone ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 38,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Elder Dragon Bone",
+              "type_id": 3,
+              "item_id": 65
+            },
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 9,
+      "title": "",
+      "subtitle": "ไม่มีอะไรเลย แถมตอนนี้มือของคุณยังเย็นกว่าเดิมอีก",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "เดินฝ่ากองหิมะต่อไป ลึกเข้าไปในป่า",
+          "consequences": "ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 32,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 10,
+      "title": "",
+      "subtitle": "หิมะที่ปลิวว่อนในลมแรงบดบังทัศนวิสัยจนคุณไม่ทันสังเกตว่าน้ำแข็งที่กำลังเดินข้ามนั้นบางอย่างอันตราย และมีน้ำอยู่ข้างใต้ จนกระทั่งเท้าขวาของคุณทะลุลงไปในน้ำที่เย็นจนคุณต้องกรีดร้องออกมา คุณถึงได้รู้ตัวถึงอันตรายที่รายล้อมอยู่รอบด้าน คุณดึงเท้าขึ้นจากช่องดำมืดที่มันเพิ่งจมหายไปครู่หนึ่ง แล้วไถลตัวไปยังพื้นที่มั่นคงกว่า",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "ไม่มีเวลามากังวลเรื่องหิมะกัด เจ้าอสูรอยู่ใกล้แล้ว ฝืนสู้แล้วฝ่าไปให้ได้",
+          "consequences": "นักล่าที่ไม่มีความต้านทานธาตุน้ำแข็ง ได้รับความเสียหาย 1 หน่วย นักล่าทุกคนได้รับ 1 Daora Carapace สับการ์ด Exhaustion (Time card ที่เป็นนาฬิกาแดง) ลงในกอง Time Card ได้รับ Track Token 1 อัน",
+          "PathToDialog": 32,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Daora Carapace",
+              "type_id": 3,
+              "item_id": 62
+            },
+            {
+              "type": "shuffleTimeCard",
+              "card": "Exhaustion",
+              "time_card_id": 19
+            },
+            {
+              "type": "gainTrackToken",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "ต้องจัดการกับเรื่องนี้ให้ดี และต้องพักผ่อน",
+          "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token 1 อัน",
+          "PathToDialog": 7,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            },
+            {
+              "type": "gainTrackToken",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 11,
+      "title": "",
+      "subtitle": "Elder Dragon ทำตัวสบายอยู่ที่นี่ ไม่ถึงกับเป็นรัง แต่มันได้นอนพักตรงนี้ ดูได้จากรูปทรงของหิมะ ต้นไม้ที่หักโค่น และน้ำแข็งที่แตกกระจาย สิ่งมีชีวิตตัวนี้ใช้เวลารออยู่ที่จุดนี้พักหนึ่ง คุณอาจค้นหาบริเวณที่มันนอน บางทีอาจมีเบาะแสว่ามันตั้งใจจะไปที่ไหนต่อ?",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "สำรวจที่นอนของ Elder Dragon",
+          "consequences": "ทิ้ง Time card 1 ใบ แล้วทำการทอยเต๋า(ทอยครั้งเดียวเต๋าเดียว) \n 1-2 ขุดหิมะจนหนาวสะท้านแต่ไม่พบอะไรเลย นักล่าทุกคนได้รับความเสียหาย 2 หน่วย \n 3-4 พบของมีประโยชน์แม้จะหนาวเหน็บ! เพิ่มยารักษา 1 ขวดลงกลุ่ม \n 5-6 มังกรทิ้งชิ้นส่วนของมันไว้! นักล่าทุกคนได้รับ 1 Daora Tail",
+          "PathToDialog": 36,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            },
+            {
+              "type": "diceRoll",
+              "scope": "once",
+              "table": [
+                {
+                  "min": 1,
+                  "max": 2,
+                  "text": "ขุดหิมะจนหนาวสะท้านแต่ไม่พบอะไรเลย นักล่าทุกคนได้รับความเสียหาย 2 หน่วย",
+                  "effects": [
+                    {
+                      "type": "damage",
+                      "n": 2
+                    }
+                  ]
+                },
+                {
+                  "min": 3,
+                  "max": 4,
+                  "text": "พบของมีประโยชน์แม้จะหนาวเหน็บ! เพิ่มยารักษา 1 ขวดลงกลุ่ม",
+                  "effects": [
+                    {
+                      "type": "gainPotion",
+                      "n": 1
+                    }
+                  ]
+                },
+                {
+                  "min": 5,
+                  "max": 6,
+                  "text": "มังกรทิ้งชิ้นส่วนของมันไว้! นักล่าทุกคนได้รับ 1 Daora Tail",
+                  "effects": [
+                    {
+                      "type": "gainResource",
+                      "n": 1,
+                      "name": "Daora Tail",
+                      "type_id": 3,
+                      "item_id": 64
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "เดินตามรอยที่กำลังตามอยู่ต่อไป",
+          "consequences": "ได้รับ Track Token 2 อัน",
+          "PathToDialog": 12,
+          "effects": [
+            {
+              "type": "gainTrackToken",
+              "n": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 12,
+      "title": "",
+      "subtitle": "สายลมที่โหมกระหน่ำไม่หยุดหย่อนสงบลงครู่หนึ่ง เป็นช่วงเวลาแห่งความสงบอย่างสมบูรณ์ คุณเพิ่งตระหนักว่า นี่แหละ คุณมาถึงตาพายุแล้ว Elder Dragon อยู่ใกล้ และความทรมานของการแกะรอยใกล้จะสิ้นสุด สงครามที่แท้จริงกำลังจะเริ่มขึ้น",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "เตรียมตัวรับสิ่งที่กำลังจะมาถึง",
+          "consequences": "นักล่าทุกคนได้รับ 1 Daora Dragon Scale ทิ้ง Time card 1 ใบ สับการ์ด Eye of the Storm (Time card ที่เป็นนาฬิกาแดง) ลงในกอง Time Card",
+          "PathToDialog": 38,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Daora Dragon Scale",
+              "type_id": 3,
+              "item_id": 61
+            },
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            },
+            {
+              "type": "shuffleTimeCard",
+              "card": "Eye of the Storm",
+              "time_card_id": 36
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 13,
+      "title": "",
+      "subtitle": "ในที่สุด! ในที่สุดก็มีบางอย่างท่ามกลางหิมะและน้ำแข็งที่ไม่ยอมหยุด ที่บอกว่าเจ้าอสูรอยู่ที่นี่จริง และอย่างน้อยคุณก็มาถูกป่า! รอยเท้าเหล่านี้เป็นของ Kushala Daora คุณศึกษามาดีแล้ว และ... มีบางอย่างเปล่งประกายอยู่ท่ามกลางหิมะ มีอะไรมากกว่านี้อีกหรือเปล่า?",
+      "consequences": "ทำการทอยเต๋า(ทอยครั้งเดียวเต๋าเดียว)",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "ถ้าได้ 1-3 มีบางอย่างเปล่งประกายอยู่ในหิมะจริง ๆ",
+          "consequences": "นักล่าทุกคนได้รับ 1 Daora Carapace ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 17,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Daora Carapace",
+              "type_id": 3,
+              "item_id": 62
+            },
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "ถ้าได้ 4-6 มีแค่รอยเท้าเท่านั้น",
+          "consequences": "ได้รับ Track Token 1 อัน",
+          "PathToDialog": 9,
+          "effects": [
+            {
+              "type": "gainTrackToken",
+              "n": 1
+            }
+          ]
+        }
+      ],
+      "effects": [
+        {
+          "type": "diceRollManual"
+        }
+      ]
+    },
+    {
+      "dialog_id": 14,
+      "title": "",
+      "subtitle": "น้ำแข็งใต้เท้าทำให้ความคืบหน้าช้าและยากลำบาก แม้จะมีตะปูกันลื่นติดรองเท้า ก็ยังยากที่จะไม่ลื่นล้ม และความระมัดระวังในทุกย่างก้าวทำให้การไล่ล่าเชื่องช้าอย่างน่าอึดอัด",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "อย่างน้อยก็เจอของมีประโยชน์",
+          "consequences": "นักล่าทุกคนได้รับ 1 Daora Claw ทิ้ง Time card 2 ใบ",
+          "PathToDialog": 10,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Daora Claw",
+              "type_id": 3,
+              "item_id": 60
+            },
+            {
+              "type": "discardTimeCard",
+              "n": 2
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "อย่างน้อยก็เจอร่องรอยของ Daora",
+          "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token 1 อัน",
+          "PathToDialog": 10,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            },
+            {
+              "type": "gainTrackToken",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 15,
+      "title": "",
+      "subtitle": "ไม่ว่าพังผืดนั่นจะห้อยอยู่บนต้นไม้นานกว่าที่คุณคิดมาก หรือ Kushala Daora แค่หายลับไปในพายุก็ตาม จู่ ๆ คุณก็ถูกลมที่ดูแรงกว่าที่เคยพัดกระหน่ำ และไม่มีวี่แววของ Elder Dragon เลย",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "อย่าเพิ่งท้อ",
+          "consequences": "ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 11,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 16,
+      "title": "",
+      "subtitle": "น้ำแข็ง หิมะ ลูกเห็บ ฝนเยือกแข็ง การมาเยือนของ Kushala Daora ถาโถมทุกอย่างใส่คุณ เทลงมาบนหัวไม่หยุดหย่อน การเดินทางครั้งนี้ช่างทรมาน",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "เบิกตาให้กว้างไว้ อาจมีบางอย่างซ่อนอยู่ในพุ่มไม้รอบ ๆ",
+          "consequences": "ได้รับ Track Token 1 อัน",
+          "PathToDialog": 24,
+          "effects": [
+            {
+              "type": "gainTrackToken",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "ใช้เวลาทำให้ร่างกายอบอุ่นสักพัก",
+          "consequences": "ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 6,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 17,
+      "title": "",
+      "subtitle": "คุณสบถ กัดริมฝีปากไว้ไม่ให้เสียงร้องด้วยความเจ็บปวดเล็ดลอดออกมา สายลมที่พัดผ่านหมู่ไม้กำลังซัดเศษน้ำแข็งเข้าใส่หน้าคุณ มันเจ็บ และคุณยังไล่ตาม Kushala Daora ได้ช้ากว่าที่ควรจะเป็นมาก อันที่จริง นอกจากสภาพอากาศที่ทุบตีคุณอยู่ตอนนี้แล้ว สิ่งมีชีวิตตัวนั้นอาจไม่ได้อยู่ที่นี่เลยด้วยซ้ำ",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "ซุกตัวเข้าไปในขนสัตว์ แล้วเดินต่อ",
+          "consequences": "นักล่าที่ไม่มีความต้านทานธาตุน้ำแข็ง ได้รับความเสียหาย 1 หน่วย ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 28,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "นั่นเสียงคำรามของ Elder Dragon ที่แผดก้องเหนือสายลมหรือเปล่า?",
+          "consequences": "ได้รับ Track Token 1 อัน สับการ์ด Wind Storm (Time card ที่เป็นนาฬิกาแดง) ลงในกอง Time Card",
+          "PathToDialog": 20,
+          "effects": [
+            {
+              "type": "gainTrackToken",
+              "n": 1
+            },
+            {
+              "type": "shuffleTimeCard",
+              "card": "Wind Storm",
+              "time_card_id": 37
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 18,
+      "title": "",
+      "subtitle": "หิมะให้อะไรมากกว่าที่คุณคาดไว้ แต่พอค้นหาเสร็จ คุณก็ต้องการการพักผ่อนอย่างแท้จริง พอฟื้นตัวแล้วคุณจะทำอะไรต่อ?",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "หิมะซ่อนเบาะแสเกี่ยวกับการเคลื่อนไหวครั้งต่อไปของ Kushala Daora ไว้อีก",
+          "consequences": "นักล่าทุกคนได้รับ 1 Daora Horn ได้รับ Track Token 2 อัน",
+          "PathToDialog": 20,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Daora Horn",
+              "type_id": 3,
+              "item_id": 63
+            },
+            {
+              "type": "gainTrackToken",
+              "n": 2
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "คุณใช้เวลาที่นี่นานเกินไปแล้ว ถึงเวลากลับไปแกะรอยเจ้าอสูรต่อ",
+          "consequences": "ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 12,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 19,
+      "title": "",
+      "subtitle": "พอก้าวออกมาจากวงแท่งน้ำแข็งที่เกือบเสียบคุณทะลุ คุณก็ได้เห็นหลักฐานที่ชัดเจนที่สุดว่า Kushala Daora อยู่ใกล้ นั่นคือพังผืดของมันที่เกี่ยวติดอยู่บนกิ่งไม้บิดเบี้ยวต้นหนึ่ง เกล็ดน้ำแข็งที่ก่อตัวบนพังผืดบอกว่ามันน่าจะถูกทิ้งไว้สักพักแล้ว แต่ก็ยังดีกว่าไม่มีอะไรเลย",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "รีบไปข้างหน้า พยายามลดระยะห่างกับเหยื่อ",
+          "consequences": "ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 25,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "หยุดเก็บพังผืดไว้ อาจมีประโยชน์",
+          "consequences": "นักล่าทุกคนได้รับ 1 Daora Webbing ได้รับ Track Token 1 อัน",
+          "PathToDialog": 15,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Daora Webbing",
+              "type_id": 3,
+              "item_id": 58
+            },
+            {
+              "type": "gainTrackToken",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 20,
+      "title": "",
+      "subtitle": "การสับซาก Diablos ที่แข็งเป็นน้ำแข็งออกเป็นชิ้น ๆ ไม่ใช่งานที่คุณคิดว่าจะได้ทำในการล่าครั้งนี้เลย คุณเฉือนซากออกมาได้เยอะแล้ว แต่ยังมีเหลือให้เก็บอีก ถ้าคุณต้องการ?",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "พอแค่นี้แหละ กลับไปตามรอยมังกรต่อ",
+          "consequences": "ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 24,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "เสบียงยิ่งมีมากยิ่งดี",
+          "consequences": "นักล่าทุกคนได้รับ 1 Diablos Ridge ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 6,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Diablos Ridge",
+              "type_id": 3,
+              "item_id": 53
+            },
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 21,
+      "title": "",
+      "subtitle": "หิมะใหม่กำลังโปรยลงมาจากท้องฟ้า กลบร่องรอยการต่อสู้อันดุเดือดระหว่าง Rathalos กับสิ่งที่ทำให้มันโกรธเกรี้ยว ถึงเวลาต้องเคลื่อนไหวแล้ว การอยู่ที่ใดที่หนึ่งนานเกินไปในอุณหภูมิขนาดนี้เป็นเรื่องอันตราย คุณปัดหิมะออกจากใบหน้า แล้วตัดสินใจเดินหน้าต่อ",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "ตามรอยเลือดของ Rathalos ไป",
+          "consequences": "ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 36,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "มุ่งลึกเข้าไปในป่า พยายามหลบพายุช่วงที่หนักที่สุด",
+          "consequences": "ทิ้ง Time card 2 ใบ ได้รับ Track Token 2 อัน",
+          "PathToDialog": 28,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 2
+            },
+            {
+              "type": "gainTrackToken",
+              "n": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 22,
+      "title": "",
+      "subtitle": "คุณพบหลักฐานว่า Kushala Daora เพิ่งมาอยู่ที่นี่ไม่นาน แต่ไม่ช้ามือของคุณก็ไร้ความรู้สึกอีกครั้ง และคุณรู้สึกได้ถึงอาการชาที่เริ่มลามไปถึงเท้าและขา",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "คุณเหนื่อยล้า ชาไปทั้งตัว และกำลังดิ้นรน แต่คุณไม่ยอมแพ้ง่าย ๆ หรอก",
+          "consequences": "นักล่าที่ไม่มีความต้านทานธาตุน้ำแข็ง ได้รับความเสียหาย 1 หน่วย ได้รับ Track Token 1 อัน",
+          "PathToDialog": 18,
+          "effects": [
+            {
+              "type": "gainTrackToken",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 23,
+      "title": "",
+      "subtitle": "การมาถูกทางไม่ได้ช่วยกันความหนาวให้คุณ และไม่ได้ปกป้องคุณจากแท่งน้ำแข็งที่ห้อยอยู่แทบทุกกิ่งไม้ แท่งน้ำแข็งที่กำลังร่วงลงมาใส่คุณอยู่ตอนนี้ หลบเร็ว!",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "ตั้งสติ ตรวจดูว่ายังครบสามสิบสอง แล้วเดินหน้าต่อ",
+          "consequences": "นักล่าที่ไม่มีความต้านทานธาตุน้ำแข็ง ได้รับความเสียหาย 1 หน่วย ได้รับ Track Token 1 อัน",
+          "PathToDialog": 19,
+          "effects": [
+            {
+              "type": "gainTrackToken",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 24,
+      "title": "",
+      "subtitle": "Elder Dragon หยุดพักตรงนี้ ใช้เวลาครู่หนึ่งฟื้นตัว ไม่ต่างจากที่คุณกำลังทำอยู่ ดูได้จากลวดลายน้ำค้างแข็งที่วาดไว้บนพื้นดินและต้นไม้รอบ ๆ มังกรรออยู่ครู่หนึ่งก่อนจะไปที่อื่นต่อ บางทีคุณอาจทำแบบเดียวกันได้?",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "ไม่มีเวลาแล้ว เอาเท่าที่เอาได้แล้วรีบไป!",
+          "consequences": "นักล่าทุกคนได้รับ 1 Daora Dragon Scale ทิ้ง Time card 2 ใบ",
+          "PathToDialog": 12,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Daora Dragon Scale",
+              "type_id": 3,
+              "item_id": 61
+            },
+            {
+              "type": "discardTimeCard",
+              "n": 2
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "ลองดูว่า Elder Dragon เจออะไรที่นี่",
+          "consequences": "ทิ้ง Time card 1 ใบ เพิ่มยารักษา 1 ขวดลงกลุ่ม",
+          "PathToDialog": 8,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            },
+            {
+              "type": "gainPotion",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 25,
+      "title": "",
+      "subtitle": "Rathalos บาดเจ็บสาหัสจากการต่อสู้ ไม่ถึงตาย ดูจากปริมาณเลือดที่เปื้อนหิมะ แต่มากพอที่จะบังคับให้มันลากตัวเองไปยังที่ปลอดภัย คุณสงสัยว่าการต่อสู้นี้อาจเกิดจากสัตว์สองตัวที่ขวางทางกันขณะหนี Kushala Daora อาจคุ้มที่จะย้อนรอยกลับไปดูว่าสัตว์ทั้งสองวิ่งหนีมาจากทางไหน",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "เก็บเท่าที่เก็บได้",
+          "consequences": "นักล่าทุกคนได้รับ 1 Rathalos Scale ทิ้ง Time card 1 ใบ ได้รับ Track Token 1 อัน",
+          "PathToDialog": 36,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Rathalos Scale",
+              "type_id": 3,
+              "item_id": 22
+            },
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            },
+            {
+              "type": "gainTrackToken",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 26,
+      "title": "",
+      "subtitle": "การทำให้ร่างกายกลับมาอบอุ่นต้องใช้เวลา และคุณไม่ได้มีเวลาเหลือมากนัก พายุกำลังรุนแรงขึ้น หิมะก็ยิ่งตกหนัก ทำให้การแกะรอยเจ้าอสูรยากขึ้น และเร่งให้ถึงจุดที่คุณจะต้องถอยกลับเร็วขึ้น",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "เดินต่อไปเรื่อย ๆ อีกเดี๋ยวหิมะก็ซาลง",
+          "consequences": "ได้รับ Track Token 1 อัน",
+          "PathToDialog": 29,
+          "effects": [
+            {
+              "type": "gainTrackToken",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "ขุดค้นแถวนี้ดู อาจมีเบาะแสเกี่ยวกับความเคลื่อนไหวของ Elder Dragon",
+          "consequences": "นักล่าทุกคนได้รับ 1 Elder Dragon Blood ได้รับ Track Token 1 อัน",
+          "PathToDialog": 22,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Elder Dragon Blood",
+              "type_id": 3,
+              "item_id": 66
+            },
+            {
+              "type": "gainTrackToken",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 27,
+      "title": "",
+      "subtitle": "ลมแรงเกินบรรยาย พัดทะลุเสื้อผ้ากันหนาวจนคุณรู้สึกเจ็บแสบไปทั้งตัว แต่ไม่นานคุณก็มั่นใจว่ากำลังตามรอยของ Kushala Daora อยู่",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "เก็บหลักฐานว่ามาถูกทางไว้ เป็นแรงใจให้ฝ่าความหนาวต่อไป",
+          "consequences": "นักล่าทุกคนได้รับ 1 Elder Dragon Bone ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 29,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Elder Dragon Bone",
+              "type_id": 3,
+              "item_id": 65
+            },
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "ช่างมันไปก่อน",
+          "consequences": "ได้รับ Track Token 1 อัน",
+          "PathToDialog": 23,
+          "effects": [
+            {
+              "type": "gainTrackToken",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 28,
+      "title": "",
+      "subtitle": "การเข้าป่าไปอย่างรวดเร็วพิสูจน์แล้วว่าเป็นทางเลือกที่ฉลาด ที่กำบังลมและหิมะทำให้คุณได้ตั้งสติ ได้หายใจ ได้ความรู้สึกกลับคืนสู่มือและเท้า มันยังสอนให้คุณรับมือกับสภาพอากาศแบบนี้ ความรู้ที่คุณตั้งใจจะใช้ไปตลอดการล่าที่เหลือ",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "ฟื้นตัวได้พอสมควร คุณเดินหน้าต่อ",
+          "consequences": "ทิ้ง Time card 1 ใบ สับการ์ด Rocksteady Mantle (Time card ที่เป็นนาฬิกาแดง) ลงในกอง Time Card",
+          "PathToDialog": 36,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            },
+            {
+              "type": "shuffleTimeCard",
+              "card": "Rocksteady Mantle",
+              "time_card_id": 38
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 29,
+      "title": "",
+      "subtitle": "หิมะที่นี่บางลง เป็นสิ่งที่คุณรู้สึกขอบคุณ เพราะแรงที่ต้องใช้ลุยหิมะสูงถึงเข่ากำลังสูบพลังของคุณไปเรื่อย ๆ สิ่งที่กวาดหิมะออกไปคือการต่อสู้อีกครั้ง คราวนี้ระหว่าง Rathalos กับ... คุณไม่แน่ใจว่าอะไร แต่มันมีเขาขนาดใหญ่",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "",
+          "consequences": "นักล่าทุกคนได้รับ 1 Rathalos Carapace ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 25,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Rathalos Carapace",
+              "type_id": 3,
+              "item_id": 21
+            },
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "ขุดหาอย่างอื่นดู",
+          "consequences": "นักล่าทุกคนได้รับ 1 Majestic Horn ทิ้ง Time card 2 ใบ",
+          "PathToDialog": 21,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Majestic Horn",
+              "type_id": 2,
+              "item_id": 18
+            },
+            {
+              "type": "discardTimeCard",
+              "n": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 30,
+      "title": "",
+      "subtitle": "ทางถูกหิมะกองสูงปิดกั้น และการฝืนฝ่าไปกำลังเผาผลาญพลังงานมากกว่าที่คุณจะแบกรับไหว ความหนาวกัดทะลุถุงมือจนคุณไม่รู้สึกถึงมือที่ปวดร้าวอีกต่อไป มันกลายเป็นแค่ก้อนตะกั่วที่ห้อยอยู่ปลายแขน นั่นไม่ใช่สัญญาณที่ดีเลย",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "พยายามเรียกชีวิตกลับคืนสู่แขนขา!",
+          "consequences": "นักล่าที่ไม่มีความต้านทานธาตุน้ำแข็ง ได้รับความเสียหาย 1 หน่วย ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 26,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 31,
+      "title": "",
+      "subtitle": "ความทรหดของคุณกำลังได้ผล คุณรู้ดี หิมะยังไม่ซาลง ลมอาจยังเฉือนแก้มคุณอยู่ แต่คุณยังคงเดินหน้า และคุณหวังว่า Kushala Daora จะอยู่ใกล้แล้ว และหวังว่าสถานการณ์จะไม่เลวร้ายลงอย่างกะทันหัน...",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "ไปตามเส้นทางนี้ต่อ",
+          "consequences": "ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 16,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "มีบางอย่างอยู่ตรงนั้น บางอย่างที่แปลกไปในการหมุนวนของหิมะกลางอากาศ...",
+          "consequences": "นักล่าทุกคนได้รับ 1 Elder Dragon Blood ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 38,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Elder Dragon Blood",
+              "type_id": 3,
+              "item_id": 66
+            },
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 32,
+      "title": "",
+      "subtitle": "การเข้าป่าลึกขึ้นเป็นทางเลือกที่ดี Kushala Daora เคยอยู่ที่นี่แน่นอน และดูจากลักษณะของหิมะแล้ว มี Diablos ตัวหนึ่งเดินเข้าไปในอาณาเขตของ Elder Dragon ผิดตัว สิ่งที่เหลืออยู่ของ Diablos แทบจะแข็งเป็นน้ำแข็งทั้งตัว กลายเป็นรูปปั้นน้ำแข็งน่าเกลียด ใบหน้าบิดเบี้ยวด้วยความเจ็บปวด",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "Diablos ไม่ได้ล้มลงโดยไม่สู้",
+          "consequences": "นักล่าทุกคนได้รับ 1 Daora Carapace ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 29,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Daora Carapace",
+              "type_id": 3,
+              "item_id": 62
+            },
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "มีของให้เก็บจาก Diablos เยอะเลย ถึงมันจะแข็งเป็นน้ำแข็งก็ตาม",
+          "consequences": "นักล่าทุกคนได้รับ 1 Diablos Carapace ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 20,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Diablos Carapace",
+              "type_id": 3,
+              "item_id": 50
+            },
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 33,
+      "title": "",
+      "subtitle": "คุณยังเดินทางมาได้ไม่นาน แต่ความหนาวก็เริ่มฝังกรงเล็บอันโหดร้ายลงในกระดูกคุณแล้ว คุณรู้สึกได้ว่าอาการปวดตื้อที่น่องและเท้ากำลังกลายเป็นความเจ็บแปลบ นี่เป็นการเริ่มต้นที่น่ากังวล คุณคิดจะถอยกลับ แต่คุณเคยผ่านเรื่องเลวร้ายกว่านี้มาแล้ว คุณยังเสี่ยงเดินต่อไปอีกหน่อยได้ และยังมีของดีที่คาดไม่ถึงให้พบในหิมะอีกด้วย",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "",
+          "consequences": "นักล่าที่ไม่มีความต้านทานธาตุน้ำแข็ง ได้รับความเสียหาย 1 หน่วย นักล่าทุกคนได้รับ 1 Daora Tail ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 13,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Daora Tail",
+              "type_id": 3,
+              "item_id": 64
+            },
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 34,
+      "title": "",
+      "subtitle": "ปัญหาของป่าคือต้นไม้ต้นหนึ่งดูเหมือนอีกต้นแทบทุกประการ ยิ่งถ้าต้นไม้ถูกหิมะปกคลุม พื้นดินก็เต็มไปด้วยหิมะ และท้องฟ้าก็มีแต่หิมะ การจะรู้ว่าตัวเองอยู่ตรงไหนแทบเป็นไปไม่ได้ คุณหลงทางแล้ว",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "หลงทาง แต่โชคดี!",
+          "consequences": "นักล่าทุกคนได้รับ 1 Daora Gem สับการ์ด Aimlessly Wandering (Time card ที่เป็นนาฬิกาแดง) ลงในกอง Time Card",
+          "PathToDialog": 9,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Daora Gem",
+              "type_id": 3,
+              "item_id": 59
+            },
+            {
+              "type": "shuffleTimeCard",
+              "card": "Aimless Wandering",
+              "time_card_id": 17
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "อย่าเพิ่งเปลี่ยนเส้นทาง",
+          "consequences": "ทิ้ง Time card 2 ใบ",
+          "PathToDialog": 30,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 35,
+      "title": "",
+      "subtitle": "คุณเดินต่อไป เพราะนั่นคือสิ่งที่นักล่าทำ ไม่ว่าภูมิประเทศจะยากลำบากแค่ไหน ศัตรูจะอันตรายเพียงใด คุณต้องท่องคาถาสั้น ๆ นี้กับตัวเองบ่อยมากในการล่าครั้งนี้ รองเท้าที่เปียกโชก ความปวดร้าวที่กัดกินมือและแขนไม่หยุด น้ำหนักที่หิมะเพิ่มเข้ามาในกระเป๋าไม่ว่าจะปัดออกแค่ไหน แต่คุณไม่ยอมแพ้",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "กลุ่มสามารถเลือกตัวเลือกนี้ได้ก็ต่อเมื่อมีนักล่าคนใดคนหนึ่งมี Daora Claw อย่างน้อย 1 ชิ้นในคลัง",
+          "title": "ลมดูจะเบาลงในทิศทางนี้",
+          "consequences": "ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 12,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "ชะลอฝีเท้าลงหน่อย พักบ้าง แต่เดินต่อไป",
+          "consequences": "ทิ้ง Time card 2 ใบ ได้รับ Track Token 1 อัน",
+          "PathToDialog": 31,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 2
+            },
+            {
+              "type": "gainTrackToken",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 36,
+      "title": "",
+      "subtitle": "ซากของ Rathalos แหลกเหลวจากสิ่งมีชีวิตที่ใหญ่โตและทรงพลังกว่ามันมาก คุณแทบรู้สึกสงสารเจ้าตัวนี้ มันไม่มีโอกาสเลย คุณยื่นมือไปแตะมัน แล้วก็เสียใจทันทีเมื่อมือที่สวมถุงมือติดแน่นกับหนังที่แข็งเป็นน้ำแข็งของมัน การดึงตัวเองออกมาทิ้งถุงมือไว้เป็นชิ้นใหญ่ พร้อมผิวหนังไปอีกไม่น้อย",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "เอาอะไรสักอย่างจากเจ้าตัวโชคร้ายนี่",
+          "consequences": "นักล่าที่ไม่มีความต้านทานธาตุน้ำแข็ง ได้รับความเสียหาย 1 หน่วย นักล่าทุกคนได้รับ 1 Rathalos Medulla ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 35,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Rathalos Medulla",
+              "type_id": 3,
+              "item_id": 16
+            },
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 37,
+      "title": "",
+      "subtitle": "Kushala Daora ไม่ใช่ Elder Dragon ที่ดุร้ายที่สุด แต่เมื่อถูกยั่วจนเดือดดาล มันก็หยุดไม่อยู่ราวกับการหมุนของโลก คุณเห็นซากของ Rathalos ที่โง่พอจะท้าทายอำนาจของมันเหนือป่าแห่งนี้มาแล้ว และตอนนี้ ที่ฝังอยู่ในชั้นน้ำค้างแข็งหนาทั่วพื้นป่า คุณพบอย่างอื่นอีก เศษเปลือกแข็งที่แตกร้าวของ Nergigante คุณแทบเสียดายที่พลาดการต่อสู้ครั้งนั้น",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "งัดสมบัติออกมาจากน้ำแข็ง",
+          "consequences": "นักล่าทุกคนได้รับ 1 Nergigante Carapace ทิ้ง Time card 1 ใบ",
+          "PathToDialog": 29,
+          "effects": [
+            {
+              "type": "gainResource",
+              "n": 1,
+              "name": "Nergigante Carapace",
+              "type_id": 3,
+              "item_id": 67
+            },
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            }
+          ]
+        },
+        {
+          "action_id": 2,
+          "required_dialog": "",
+          "title": "ช่างมันเถอะ เสียเวลาเปล่า",
+          "consequences": "ทิ้ง Time card 1 ใบ ได้รับ Track Token 1 อัน",
+          "PathToDialog": 21,
+          "effects": [
+            {
+              "type": "discardTimeCard",
+              "n": 1
+            },
+            {
+              "type": "gainTrackToken",
+              "n": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dialog_id": 38,
+      "title": "",
+      "subtitle": "พายุไม่ไร้รูปร่างอีกต่อไป บัดนี้มันคือยักษ์ที่คำรามด้วยกล้ามเนื้อ เกล็ด และเขี้ยว มันเอียงหัวอย่างสงสัยเมื่อเห็นคุณเดินเข้ามา ไม่มีความโกรธ ไม่มีเสียงคำรามแห่งความเดือดดาล แต่แล้วมันก็เห็นอาวุธในมือของคุณ มันสะบัดน้ำแข็งที่ท่วมตัวออกจากสีข้าง แล้วกางปีกออก สิ่งมีชีวิตตัวนี้ใหญ่โตมหึมา มันอ้าปาก เขี้ยวสะท้อนแสงอาทิตย์ที่กำลังลับฟ้า การต่อสู้เริ่มขึ้นแล้ว!",
+      "consequences": "",
+      "actions": [
+        {
+          "action_id": 1,
+          "required_dialog": "",
+          "title": "",
+          "consequences": "เปิดเผย Track Token ทั้งหมด ตรวจสอบ Scoutfly level, และเริ่มต้น hunting phase.",
+          "PathToDialog": 0,
+          "effects": [
+            {
+              "type": "revealTrackToken",
+              "n": "all"
+            },
+            {
+              "type": "startHunting"
+            },
+            {
+              "type": "checkScoutfly"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

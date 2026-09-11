@@ -35,6 +35,9 @@ const SYMBOL = {
   sleep: 'status_effect/sleep',
   stun: 'status_effect/stun',
   blastblight: 'status_effect/blastblight',
+  // token เฉพาะมอนสเตอร์ — อยู่ในโฟลเดอร์ของมอนตัวนั้น ไม่ใช่ UI/symbol เพราะไม่ได้ใช้ร่วมกับตัวอื่น
+  wind_token: 'elden_dragon/kushala_daora/wind_token',
+  tornado_token: 'elden_dragon/kushala_daora/tornado_token',
 }
 
 const LABEL = {
@@ -42,6 +45,7 @@ const LABEL = {
   move: 'การเคลื่อนที่', break: 'Break Token', track: 'Track Token', armor: 'เกราะ',
   hturn: 'เทิร์น Hunter', hcard: 'Attack Card',
   closest: 'เป้าหมายใกล้สุด', furthest: 'เป้าหมายไกลสุด',
+  wind_token: 'Wind Token', tornado_token: 'Tornado Token',
 }
 
 const parts = computed(() =>
@@ -69,6 +73,10 @@ const parts = computed(() =>
 .rt {
   /* ตัวสัญลักษณ์สูงกว่าบรรทัดปกติ — ต้องคุม line-height เองไม่งั้นบรรทัดกระโดดไม่เท่ากัน */
   line-height: inherit;
+  /* เคารพ \n ที่คนเขียนกฎใส่ไว้แยกย่อหน้า (เช่น WIND EFFECT / TORNADO EFFECT ของ Kushala)
+     pre-line ไม่ใช่ pre-wrap — เก็บแค่การขึ้นบรรทัด ช่องว่างซ้อนยังยุบตามปกติ
+     ข้อความเดิมจะได้ไม่มีช่องว่างแปลก ๆ โผล่มา */
+  white-space: pre-line;
 }
 
 .rt-sym {

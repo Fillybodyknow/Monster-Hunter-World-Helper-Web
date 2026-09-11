@@ -1,0 +1,280 @@
+{
+    "monster_id": 11,
+    "monster_name": "Kushala Daora",
+    "thumbnail": "assets/img/Kushala_Daora_Icon.webp",
+    "difficulty": [
+        {
+        "difficulty_id": 1,
+        "level": 1,
+        "health": 85,
+        "map_image": "assets/img/maps/kushala_daora/kushala_daora_1_star_map.webp",
+        "special_rule": {
+          "title": "Fiece Winds",
+          "description": "WIND EFFECT: เมื่อเริ่มเทิร์นของ Kushala Daora, วาง 1 {wind_token} ลงบนพิ้นที่บอร์ดของมัน. ถ้ามี 2 {wind_token} อยู่แล้วให้นำออกทั้งสองแล้ววาง 1 {wind_token} แทน, เมื่อ Hunter ทำการเคลื่อนที่เข้าใกล้ Kushala Daora ในระยะ 1 node, Hunter คนนั้นจำเป็นจะต้องทิ้ง Attack Card บนมือรวมกันให้มีค่า {agility} เท่ากับหรือมากกว่าจำนวน {wind_token} บนบอร์ดของ Kushala Daora, หาก Hunter ไม่สามารถทิ้งได้จะไม่ได้เคลื่อนที่เข้าใกล้มัน, Attack Cards บนมือของ Hunter จะมี -1{range} ต่อจำนวน {wind_token} บนบอร์ดของ Kushala Daora แต่จะไม่ต่ำกว่า 1\n\nTORNADO EFFECT: เมื่อจั่วการ์ดพฤติกรรมที่มี {tornado_token}, ให้วาง 1 {tornado_token} ลงบน node ของ Kushala Daora, ใน 1 node สามารถวางได้เพียง 1 {tornado_token} เท่านั้น, เมื่อมี 5 {tornado_token} บน Game Board อยู่แล้ว, ให้ทิ้งทั้งหมดแล้ววาง 1 {tornado_token} แทน, ในระหว่างเทิร์น Hunter, เมื่อ Hunter เคลื่อนที่ไปใน node เดียวกับ {tornado_token} จำเป็นจะต้องทิ้ง Attack Card บนมือรวมกันให้มีค่า {agility} เท่ากับหรือมากกว่าจำนวน {wind_token} บนบอร์ดของ Kushala Daora, หาก Hunter ไม่สามารถทิ้งได้จะไม่ได้เคลื่อนที่เข้าไปยัง node นั้นได้"
+        },
+        "monster_parts": {
+          "front": {
+            "part_id": 1,
+            "connect_part_position": null,
+            "part_break_threshold": 6,
+            "armor": 3,
+            "part_break_rule": "นำการ์ด Double Bite ออกจากกองการ์ดพฤติกรรม, จากนั้นนำกองทิ้งสับเข้ากับกองการ์ดพฤติกรรม"
+          },
+          "back": {
+            "part_id": 6,
+            "connect_part_position": null,
+            "part_break_threshold": 7,
+            "armor": 4,
+            "part_break_rule": "นำ 2{wind_token} ออกจากบอร์ดของ Kushala Daora"
+          },
+          "left": {
+            "part_id": 4,
+            "connect_part_position": ["right"],
+            "part_break_threshold": 6,
+            "armor": 4,
+            "part_break_rule": "นำ 5{tornado_token} ออกจาก Game Board"
+          },
+          "right": {
+            "part_id": 5,
+            "connect_part_position": ["left"],
+            "part_break_threshold": 7,
+            "armor": 4,
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {head}, -1{move}"
+          }
+        },
+        "element_resistance": [
+          { "element_id": 1, "level": 2, "immune": false },
+          { "element_id": 2, "level": 0, "immune": true },
+          { "element_id": 3, "level": 1, "immune": false },
+          { "element_id": 4, "level": 0, "immune": true },
+          { "element_id": 5, "level": 2, "immune": false }
+        ],
+        "status_resistance": [
+          { "status_id": 1, "level": 2, "immune": false },
+          { "status_id": 2, "level": 1, "immune": false },
+          { "status_id": 3, "level": 0, "immune": true },
+          { "status_id": 4, "level": 0, "immune": true },
+          { "status_id": 5, "level": 1, "immune": false }
+        ],
+        "reward_table": [
+          {
+            "rolled_number": 1,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 58
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 2,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 59
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 3,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 60
+            },
+            "part_break_reward": {
+              "part_id": 4,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 4,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 61
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 5,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 62
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 6,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 63
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 7,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 64
+            },
+            "part_break_reward": {
+              "part_id": 6,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 8,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 65
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 9,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 66
+            },
+            "part_break_reward": {}
+          },
+          {
+            "rolled_number": 10,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 63
+            },
+            "part_break_reward": {
+              "part_id": 1,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 11,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 62
+            },
+            "part_break_reward": {
+              "part_id": 5,
+              "gain_additional": 1
+            }
+          },
+          {
+            "rolled_number": 12,
+            "reward": {
+              "resource_type_id": 3,
+              "item_id": 65
+            },
+            "part_break_reward": {}
+          }
+        ]
+      }
+    ],
+    "behavior_deck": [
+      {
+        "behavior_id": 1,
+        "behavior_name": "Wind Wave",
+        "front_card_img": "assets/img/behavior_deck/kushala_daora/wind_wave_front.webp",
+        "back_card_img": "assets/img/behavior_deck/kushala_daora/wind_wave_back.webp",
+        "activations": 2,
+        "attack_cards": 2
+      },
+      {
+        "behavior_id": 2,
+        "behavior_name": "Swooping Dive",
+        "front_card_img": "assets/img/behavior_deck/kushala_daora/swooping_dive_front.webp",
+        "back_card_img": "assets/img/behavior_deck/kushala_daora/swooping_dive_back.webp",
+        "activations": 2,
+        "attack_cards": 2
+      },
+      {
+        "behavior_id": 3,
+        "behavior_name": "Wind Blast",
+        "front_card_img": "assets/img/behavior_deck/kushala_daora/wind_blast_front.webp",
+        "back_card_img": "assets/img/behavior_deck/kushala_daora/wind_blast_back.webp",
+        "activations": 2,
+        "attack_cards": 2
+      },
+      {
+        "behavior_id": 4,
+        "behavior_name": "Flying Press",
+        "front_card_img": "assets/img/behavior_deck/kushala_daora/flying_press_front.webp",
+        "back_card_img": "assets/img/behavior_deck/kushala_daora/flying_press_back.webp",
+        "activations": 2,
+        "attack_cards": 3
+      },
+      {
+        "behavior_id": 5,
+        "behavior_name": "Air Blast",
+        "front_card_img": "assets/img/behavior_deck/kushala_daora/air_blast_front.webp",
+        "back_card_img": "assets/img/behavior_deck/kushala_daora/air_blast_back.webp",
+        "activations": 1,
+        "attack_cards": 2
+      },
+      {
+        "behavior_id": 6,
+        "behavior_name": "Unearth",
+        "front_card_img": "assets/img/behavior_deck/kushala_daora/unearth_front.webp",
+        "back_card_img": "assets/img/behavior_deck/kushala_daora/unearth_back.webp",
+        "activations": 1,
+        "attack_cards": 4
+      },
+      {
+        "behavior_id": 7,
+        "behavior_name": "Air Cannon",
+        "front_card_img": "assets/img/behavior_deck/kushala_daora/air_cannon_front.webp",
+        "back_card_img": "assets/img/behavior_deck/kushala_daora/air_cannon_back.webp",
+        "activations": 1,
+        "attack_cards": 4
+      },
+      {
+        "behavior_id": 8,
+        "behavior_name": "Double Bite",
+        "front_card_img": "assets/img/behavior_deck/kushala_daora/double_bite_front.webp",
+        "back_card_img": "assets/img/behavior_deck/kushala_daora/double_bite_back.webp",
+        "activations": 1,
+        "attack_cards": 2
+      },
+      {
+        "behavior_id": 9,
+        "behavior_name": "Wind Aura",
+        "front_card_img": "assets/img/behavior_deck/kushala_daora/wind_aura_front.webp",
+        "back_card_img": "assets/img/behavior_deck/kushala_daora/wind_aura_back.webp",
+        "activations": 1,
+        "attack_cards": 3
+      },
+      {
+        "behavior_id": 10,
+        "behavior_name": "Wind Pressure",
+        "front_card_img": "assets/img/behavior_deck/kushala_daora/wind_pressure_front.webp",
+        "back_card_img": "assets/img/behavior_deck/kushala_daora/wind_pressure_back.webp",
+        "activations": 3,
+        "attack_cards": 3
+      }
+    ],
+    "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2],
+    "behavior_special_card": [
+      {
+        "behavior_id": 11,
+        "behavior_name": "Wind Bite",
+        "front_card_img": "assets/img/behavior_deck/kushala_daora/wind_bite_front.webp",
+        "back_card_img": "assets/img/behavior_deck/kushala_daora/wind_bite_back.webp",
+        "activations": 1,
+        "attack_cards": 3
+      },
+      {
+        "behavior_id": 12,
+        "behavior_name": "Wind Buffet",
+        "front_card_img": "assets/img/behavior_deck/kushala_daora/wind_buffet_front.webp",
+        "back_card_img": "assets/img/behavior_deck/kushala_daora/wind_buffet_back.webp",
+        "activations": 2,
+        "attack_cards": 2
+      },
+      {
+        "behavior_id": 13,
+        "behavior_name": "Engulfing Aura",
+        "front_card_img": "assets/img/behavior_deck/kushala_daora/engulfing_aura_front.webp",
+        "back_card_img": "assets/img/behavior_deck/kushala_daora/engulfing_aura_back.webp",
+        "activations": 3,
+        "attack_cards": 2
+      }
+    ]
+}

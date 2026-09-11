@@ -5,6 +5,7 @@ import { showQuestEffects, soundEnabled, soundVolume } from '@/stores/settings'
 import classHunterData from '@/assets/files/class_hunter.json'
 import { hunter } from '@/stores/hunter'
 import DiagnosticPanel from './DiagnosticPanel.vue'
+import { APP_VERSION } from '@/services/appVersion'
 
 const router = useRouter()
 
@@ -188,7 +189,7 @@ const doExport = (hunter) => {
 
     <div class="setting-footer">
       <span class="footer-ornament">— ✦ —</span>
-      <p class="footer-ver">MHW Board Game Companion · ช่วงทดสอบ</p>
+      <p class="footer-ver">MHW Board Game Companion · v{{ APP_VERSION }} · ช่วงทดสอบ</p>
       <span class="footer-ornament">— ✦ —</span>
     </div>
 

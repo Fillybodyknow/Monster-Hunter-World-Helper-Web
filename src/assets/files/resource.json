@@ -464,6 +464,56 @@
                 "item_id": 57,
                 "item": "Black Diablos Ridge",
                 "thumbnail": "assets/img/monster_parts/black_diablos_ridge.webp"
+            },
+            {
+                "item_id": 58,
+                "item": "Daora Webbing",
+                "thumbnail": "assets/img/monster_parts/daora_webbing.webp"
+            },
+            {
+                "item_id": 59,
+                "item": "Daora Gem",
+                "thumbnail": "assets/img/monster_parts/daora_gem.webp"
+            },
+            {
+                "item_id": 60,
+                "item": "Daora Claw",
+                "thumbnail": "assets/img/monster_parts/daora_claw.webp"
+            },
+            {
+                "item_id": 61,
+                "item": "Daora Dragon Scale",
+                "thumbnail": "assets/img/monster_parts/daora_dragon_scale.webp"
+            },
+            {
+                "item_id": 62,
+                "item": "Daora Carapace",
+                "thumbnail": "assets/img/monster_parts/daora_carapace.webp"
+            },
+            {
+                "item_id": 63,
+                "item": "Daora Horn",
+                "thumbnail": "assets/img/monster_parts/daora_horn.webp"
+            },
+            {
+                "item_id": 64,
+                "item": "Daora Tail",
+                "thumbnail": "assets/img/monster_parts/daora_tail.webp"
+            },
+            {
+                "item_id": 65,
+                "item": "Elder Dragon Bone",
+                "thumbnail": "assets/img/monster_parts/elder_dragon_bone.webp"
+            },
+            {
+                "item_id": 66,
+                "item": "Elder Dragon Blood",
+                "thumbnail": "assets/img/monster_parts/elder_dragon_blood.webp"
+            },
+            {
+                "item_id": 67,
+                "item": "Nergigante Carapace",
+                "thumbnail": "assets/img/monster_parts/nergigante_carapace.webp"
             }
         ]
     }
