@@ -3600,6 +3600,23 @@ let _useAnimTimer = null
 const canUsePotion = computed(() => potionCount.value > 0)
 const canFaint = computed(() => faintCount.value < 3)
 
+// ล้ม = ทิ้ง Time Card จากบนกอง 2 ใบ
+// ใบที่ทิ้งแบบนี้ไม่ได้ถูกอ่าน จึงไม่ติดธง drawn — ความสามารถบนการ์ดไม่ทำงาน
+const FAINT_TIME_CARD_DISCARD = 2
+// แอนิเมชันใช้ยา/ล้มค้างนานเท่านี้ — ใช้ร่วมกับการหน่วงทิ้งการ์ดตอนล้ม
+const USE_ANIM_MS = 2600
+let _faintDiscardTimer = null
+
+const _discardForFaint = () => {
+  const count = Math.min(FAINT_TIME_CARD_DISCARD, timeCardDeck.value.length)
+  if (!count) return
+  const discarded = timeCardDeck.value.slice(0, count)
+  timeCardDeck.value = timeCardDeck.value.slice(count)
+  timeCardDiscard.value = [...discarded, ...timeCardDiscard.value]
+  _showDiscardFlash(discarded)
+  _pushTimeCardState()
+}
+
 const _applyUse = (kind) => {
   if (kind === 'potion') {
     if (potionCount.value <= 0) return
@@ -3607,6 +3624,14 @@ const _applyUse = (kind) => {
   } else {
     if (faintCount.value >= 3) return
     faintCount.value = faintCount.value + 1
+    // ทิ้งการ์ดหลังแอนิเมชันล้มจบ ไม่ใช่พร้อมกัน — เด้งซ้อนกันแล้วดูไม่ทันว่าใครล้ม
+    // แฟลชทิ้งการ์ด sync ผ่าน timeCards อยู่แล้ว หน่วงที่ Host ทีเดียวทุกเครื่องก็เห็นตามลำดับ
+    clearTimeout(_faintDiscardTimer)
+    _faintDiscardTimer = setTimeout(() => {
+      // ล้มครบ 3 แล้วเควสจบไประหว่างรอ — ไม่ต้องทิ้งการ์ดทับหน้าผลเควส
+      if (phase.value !== 'huntingPanel') return
+      _discardForFaint()
+    }, USE_ANIM_MS)
   }
   _pushHuntState()
 }
@@ -3614,7 +3639,7 @@ const _applyUse = (kind) => {
 const _showUseAnim = (sig) => {
   clearTimeout(_useAnimTimer)
   useAnim.value = sig
-  _useAnimTimer = setTimeout(() => { useAnim.value = null }, 2600)
+  _useAnimTimer = setTimeout(() => { useAnim.value = null }, USE_ANIM_MS)
 }
 
 const confirmUse = () => {
@@ -8675,7 +8700,7 @@ const openPackDrawer = () => {
             <p class="uc-sub">
               {{ pendingUse === 'potion'
                 ? `ยาในกลุ่มจะลดจาก ${potionCount} เหลือ ${potionCount - 1} ขวด`
-                : `ล้มจะเพิ่มจาก ${faintCount} เป็น ${faintCount + 1} จาก 3` }}
+                : `ล้มจะเพิ่มจาก ${faintCount} เป็น ${faintCount + 1} จาก 3 · ทิ้ง Time Card ${Math.min(FAINT_TIME_CARD_DISCARD, timeCardDeck.length)} ใบ` }}
             </p>
             <p v-if="pendingUse === 'faint' && faintCount + 1 >= 3" class="uc-warn">
               ⚠ ครบ 3 แล้วเควสจะล้มเหลว
