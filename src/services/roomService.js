@@ -244,6 +244,22 @@ export const registerDisconnect = (code, hunterId, isHost) => {
   }
 }
 
+// ── ยกเลิก onDisconnect ที่ฝากไว้ ─────────────────────────
+// คำสั่ง onDisconnect ถูกเก็บไว้ที่ server ไม่ใช่ที่เครื่อง — ลบห้องทิ้งแล้วมันยังรออยู่
+// พอปิดแท็บทีหลัง server จะเขียน hostConnected/connected = false กลับเข้าไป
+// สร้าง node ห้องที่ลบไปแล้วขึ้นมาใหม่เป็นซากเปล่า ๆ ต้องยกเลิกทุกครั้งที่ออกจากห้อง
+// ไม่คืน promise ให้ await — ถ้าเน็ตหลุดอยู่ผลลัพธ์จาก server จะไม่มา แล้วจะค้างคาการออกห้องไว้
+// คำสั่งวิ่งไปตามคอนเนกชันเดียวกันตามลำดับ ยิงก่อนลบห้องก็ถึง server ก่อนเสมอ
+// role: 'host' | 'guest' | 'all' (รวม lobby) — ตอนโอนหัวห้องใช้ยกเลิกเฉพาะบทบาทที่เสียไป
+export const cancelDisconnect = (code, hunterId, role = 'all') => {
+  if (!code) return
+  const paths = []
+  if (role !== 'guest') paths.push(`rooms/${code}/hostConnected`)
+  if (role !== 'host' && hunterId != null) paths.push(`rooms/${code}/hunters/${hunterId}/connected`)
+  if (role === 'all') paths.push(`lobbies/${code}`)
+  paths.forEach((p) => onDisconnect(ref(db, p)).cancel().catch(() => {}))
+}
+
 export const setConnected = (code, hunterId, connected) =>
   set(ref(db, `rooms/${code}/hunters/${hunterId}/connected`), connected)
 
