@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { isFirebaseConnected } from '@/services/firebase'
-import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushSlayerDie, clearSlayerDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, pushHunterToken, pushAllHunterTokens, clearHunterTokens, pushHunterTokenConfirm, clearHunterTokenConfirms, pushAbilityUsed, clearAbilityUsed, pushTokenSwapRequest, clearTokenSwapRequest, pushUseSignal, setRoomHost, pushDialogDice, clearDialogDice, pushDiceResult, clearDiceResults, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds, pushShuffleSignal, pushActivationCount, pushOutcomeSignal, pushManualOutcome, pushRewardDiceModifiers, pushHqVote, clearHqVotes, pushHqCurrent, pushHqDoneList, pushHqReady, clearHqState, pushHunterPalico, pushPalicoOffer, pushPalicoHire, clearPalicoOffer, pushPalicoDraft, pushPalicoDraftPick, clearPalicoDraft, updateHunterProfile, publishLobby, updateLobby, removeLobby, listenLobbies, setRoomPassword, getRoomPassword } from '@/services/roomService'
+import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, cancelDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushSlayerDie, clearSlayerDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, pushHunterToken, pushAllHunterTokens, clearHunterTokens, pushHunterTokenConfirm, clearHunterTokenConfirms, pushAbilityUsed, clearAbilityUsed, pushTokenSwapRequest, clearTokenSwapRequest, pushUseSignal, setRoomHost, pushDialogDice, clearDialogDice, pushDiceResult, clearDiceResults, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds, pushShuffleSignal, pushActivationCount, pushOutcomeSignal, pushManualOutcome, pushRewardDiceModifiers, pushHqVote, clearHqVotes, pushHqCurrent, pushHqDoneList, pushHqReady, clearHqState, pushHunterPalico, pushPalicoOffer, pushPalicoHire, clearPalicoOffer, pushPalicoDraft, pushPalicoDraftPick, clearPalicoDraft, updateHunterProfile, publishLobby, updateLobby, removeLobby, listenLobbies, setRoomPassword, getRoomPassword } from '@/services/roomService'
 
 export const useRoomStore = defineStore('room', () => {
   const roomCode = ref(null)
@@ -173,7 +173,15 @@ export const useRoomStore = defineStore('room', () => {
   const _listen = (code) => {
     if (_unsub) _unsub()
     _unsub = listenRoom(code, (data) => {
-      if (!data) { reset(); return }
+      // ห้องถูกยุบ หรือเราถูกเตะออกจากตี้ — สองกรณีนี้เราไม่ได้อยู่ในห้องนี้แล้ว
+      // ต้องยกเลิก onDisconnect ก่อนล้างค่า ไม่งั้นตอนปิดแท็บทีหลัง server จะเขียน
+      // connected = false กลับเข้าไป ปลุกห้องที่ลบไปแล้วขึ้นมาเป็นซากค้างใน Firebase
+      const kicked = !!data && !isHost.value && !!myHunterId.value && !data.hunters?.[myHunterId.value]
+      if (!data || kicked) {
+        cancelDisconnect(code, myHunterId.value)
+        reset()
+        return
+      }
       roomData.value = data
     })
   }
@@ -186,6 +194,8 @@ export const useRoomStore = defineStore('room', () => {
     if (nowHost === isHost.value) return
     isHost.value = nowHost
     // ต้องย้าย onDisconnect ตามด้วย ไม่งั้นห้องยังผูกความเป็นความตายไว้กับหัวห้องคนเดิม
+    // หัวห้องคนเก่าต้องปลดของตัวเองด้วย ไม่งั้นพอปิดแท็บ หัวห้องคนใหม่จะถูกหมายว่าหลุด
+    if (!nowHost) cancelDisconnect(roomCode.value, myHunterId.value, 'host')
     registerDisconnect(roomCode.value, myHunterId.value, nowHost)
     if (nowHost) setHostConnected(roomCode.value, true)
   })
@@ -280,6 +290,9 @@ export const useRoomStore = defineStore('room', () => {
   const leave = async () => {
     if (!roomCode.value) return
     if (_unsub) _unsub()
+    // ปลด onDisconnect ก่อนลบห้อง — ถ้าปล่อยค้างไว้ server จะเขียนค่ากลับตอนปิดแท็บ
+    // แล้วห้องที่เพิ่งลบจะโผล่กลับมาเป็นซาก (มีแค่ hostConnected/hunters ไม่มีข้อมูลเกม)
+    cancelDisconnect(roomCode.value, myHunterId.value)
     // Host ออก = ห้องหาย ต้องถอดประกาศออกจากบอร์ดด้วย
     if (isHost.value) await removeLobby(roomCode.value).catch(() => {})
     await leaveRoom(roomCode.value, myHunterId.value, isHost.value)
@@ -673,6 +686,8 @@ export const useRoomStore = defineStore('room', () => {
   }
 
   const reset = () => {
+    // ปิด listener จริง ๆ ไม่ใช่แค่ลืมตัวแปรทิ้ง ไม่งั้นห้องที่ออกไปแล้วยังยิง callback กลับมา
+    if (_unsub) _unsub()
     roomCode.value = null
     roomData.value = null
     isHost.value = false
