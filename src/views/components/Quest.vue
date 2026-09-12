@@ -31,7 +31,7 @@ const SFX_COMBAT = `${SFX_UI}/combat`
 // ไฟล์คำรามดังกว่าเสียงอื่นมาก ต้องหรี่ลงไม่ให้กลบเพลง theme ที่เริ่มพร้อมกัน
 // ปรับที่นี่ที่เดียว — 1 = ดังเท่าเสียงอื่น
 // อย่าลดต่ำกว่า ~0.3: ฐาน soundVolume คือ 0.1 อยู่แล้ว ลดมากไปจะเงียบจนไม่ได้ยิน
-const MONSTER_ROAR_GAIN = 0.7
+const MONSTER_ROAR_GAIN = 0.6
 // หน่วงให้ไปลงพร้อม impact flash สีขาวของ modal (CSS: bi-impact-anim 0.25s 0.45s)
 // ถ้าดังทันทีตอน modal เพิ่งเด้งจะสะดุ้ง เพราะเสียงมาก่อนภาพ
 const MONSTER_ROAR_DELAY_MS = 450
@@ -6451,7 +6451,7 @@ const openPackDrawer = () => {
     </div>
 
     <!-- ═══════════ HUNTING PANEL ═══════════ -->
-    <div v-if="phase === 'huntingPanel' && monsterHuntingData" class="phase-hunting-panel" :class="{ 'php-bar-open': floatBarVisible && !floatBarCollapsed }">
+    <div v-if="phase === 'huntingPanel' && monsterHuntingData" class="phase-hunting-panel" :class="{ 'php-bar-open': floatBarVisible && !floatBarCollapsed, 'php-party-strip': partyStripVisible }">
       <!-- Header -->
       <div class="hpanel-header">
         <img :src="getImg(selectedMonster.thumbnail)" class="hpanel-monster-img" />
@@ -16719,10 +16719,20 @@ const openPackDrawer = () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  transition: padding-bottom 0.25s ease;
+  transition: padding-bottom 0.25s ease, padding-right 0.25s ease;
+  /* แถบยา/ล้มเป็น position: fixed เกาะขอบจอซ้าย ลอยทับเนื้อหาอยู่ตลอดหน้าการล่า
+     กว้างจริง 47px (ไอคอน 24 + padding ปุ่ม 12 + เส้นขอบ 2 + padding แถบ 8 + ขอบขวา 1)
+     หักส่วนที่ .content-panel เว้นให้อยู่แล้ว 14px เหลือที่ต้องกันเองราว 33px — เผื่อเป็น 36px
+     ตัวแถบไม่ได้ย่อตามจอ ระยะนี้เลยต้องเท่ากันทุกขนาดจอ */
+  padding-left: 36px;
 }
 .php-bar-open {
   padding-bottom: 120px;
+}
+/* แถบปาร์ตี้โผล่เฉพาะตอนเล่นเป็นตี้ (กว้าง 37px + เลขโทเค็นล้นซ้ายอีก 3px)
+   เล่นคนเดียวไม่มีแถบนี้ ก็ไม่ต้องเสียความกว้างฝั่งขวาไปเปล่า ๆ */
+.php-party-strip {
+  padding-right: 28px;
 }
 
 /* — Header — */

@@ -13,6 +13,9 @@ import {
 
 const route = useRoute()
 const isHomePage = computed(() => route.path === '/')
+// /home คือตัวแอปจริง ไม่ใช่หน้าปก — คืนพื้นที่แนวตั้งให้เนื้อหาทั้งหมด
+// หัวแอปกับกรอบนอกมีไว้ให้หน้าเลือกนักล่า (/) ที่ต้องการโลโก้และชื่อเกม
+const isFullPage = computed(() => route.path === '/home')
 const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 
 let craftabilityReady = false
@@ -43,9 +46,9 @@ const booting = ref(true)
 <template>
   <BootLoader v-if="booting" @done="booting = false" />
 
-  <div class="app-wrapper">
+  <div class="app-wrapper" :class="{ full: isFullPage }">
     <!-- LOGO + TITLE HEADER -->
-    <div class="app-header" :class="{ compact: !isHomePage }">
+    <div v-if="!isFullPage" class="app-header" :class="{ compact: !isHomePage }">
       <div class="logo-frame">
         <img :src="logo" id="logo" :class="{ small: !isHomePage }" />
       </div>
@@ -262,6 +265,29 @@ const booting = ref(true)
 }
 .content-panel::before { top: 8px; left: 10px; }
 .content-panel::after  { bottom: 8px; right: 10px; }
+
+/* ── โหมดเต็มจอ (/home) ────────────────────────────────
+   ไม่มีหัวแอปและไม่มีขอบรอบนอก แผงเนื้อหากินทั้งจอแทน
+   100dvh ไม่ใช่ 100vh — บนมือถือแถบ URL ยุบ/ขยายได้ 100vh จะเกินจอจนมีที่ว่างเลื่อนเปล่า ๆ
+   เว้น safe-area ไว้ ไม่งั้นแถบเมนูบนสุดมุดเข้าไปใต้รอยบาก/แถบสถานะ */
+.app-wrapper.full {
+  padding: 0;
+}
+
+.app-wrapper.full .content-panel {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  border: none;
+  border-radius: 0;
+  padding: calc(16px + env(safe-area-inset-top)) 14px calc(16px + env(safe-area-inset-bottom));
+}
+
+/* เครื่องหมายมุมเป็นของคู่กับกรอบ พอไม่มีกรอบก็ไม่มีมุมให้ประดับ */
+.app-wrapper.full .content-panel::before,
+.app-wrapper.full .content-panel::after {
+  display: none;
+}
 
 /* ══════════════════════════════════════════
    FOOTER
