@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted, inject } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, inject } from 'vue'
 import { hunter, loadHunter, saveHunter } from '@/stores/hunter'
 import { useRoomStore } from '@/stores/room'
 import resourceData from '@/assets/files/resource.json'
@@ -113,7 +113,7 @@ const resetActivityState = (id) => {
   if (id === 'resource') rcReset()
   if (id === 'provisions') { provisionsTraded.value = false; tradeOpen.value = false }
   if (id === 'chef') { chefChosenElement.value = null; chefDone.value = false }
-  if (id === 'lodge') { lodgeHireOpen.value = false; hireTarget.value = null }
+  if (id === 'lodge') { _cancelPendingHire(); lodgeHireOpen.value = false; hireTarget.value = null }
   if (id === 'poogie') poogiePatted.value = false
 }
 
@@ -438,8 +438,38 @@ const filteredLodgeHireItems = computed(() => {
 const hireTarget = ref(null)
 
 // เลือกใบจากในหน้าต่างการ์ด แล้วเปิดเป็นหน้าจ่ายของ ไม่ใช่หน้าต่างซ้อนหน้าต่าง
-const startHirePalico = (palico) => {
-  if (totalInventory.value < PALICO_COST || isPalicoTaken(palico.id)) return
+const startHirePalico = async (palico) => {
+  if (totalInventory.value < PALICO_COST || isPalicoTaken(palico.id) || palicoLockedBy(palico.id) || hireClaiming.value) return
+
+  // จองตั้งแต่เข้าหน้าจ่าย — ระหว่างเลือกของจ่ายคนอื่นเห็นว่ามีคนกำลังจ้าง และเข้ามาจ้างซ้อนไม่ได้
+  // (ยังเปิดดูรายละเอียดการ์ดได้ตามปกติ) ออกจากหน้าจ่ายเมื่อไหร่ _cancelPendingHire ปล่อยให้
+  if (room.inRoom) {
+    const token = ++_hireToken
+    hireClaiming.value = true
+    let ok = false
+    let failed = null
+    try {
+      ok = await room.reservePalico(palico.id)
+    } catch (e) {
+      failed = e ?? new Error('unknown')
+      console.error('[Palico] จองการ์ดตอนเข้าหน้าจ่ายไม่สำเร็จ', e)
+    }
+    // ปิดหน้าต่าง/ออกจาก Lodge ไประหว่างรอ — ไม่เปิดหน้าจ่าย และคืนการจองถ้าได้มา
+    if (token !== _hireToken) {
+      if (ok) room.releasePalico?.(palico.id)
+      return
+    }
+    hireClaiming.value = false
+    if (failed) {
+      addNotif(`🐱 จองไม่สำเร็จ — ${failed.message || 'ตรวจการเชื่อมต่อแล้วลองใหม่'}`, 'error')
+      return
+    }
+    if (!ok) {
+      addNotif(`🔒 มีคนกำลังจ้าง ${palico.shortName} อยู่ — ดูรายละเอียดได้ แต่ยังจ้างไม่ได้`, 'warn')
+      return
+    }
+  }
+
   sfx.playRandom(`${SFX_UI}/menu_change`, 4, { key: 'menu' })
   selectedPalico.value = null
   hireTarget.value = palico
@@ -448,9 +478,25 @@ const startHirePalico = (palico) => {
   lodgeHireOpen.value = true
 }
 
+// การจองกับ Firebase ที่ยังไม่ตอบกลับ — ถอยออกจากหน้าจ่าย/ออกจาก Lodge/ออกจากหน้านี้ระหว่างรอ
+// ต้องทิ้งผลของครั้งนั้น ถ้าจองสำเร็จทีหลังจะคืนการจองทันทีโดยไม่หักของ
+// (เน็ตหลุด transaction จะรอจนต่อกลับ — ไม่งั้นใบนั้นค้างว่ามีคนจองทั้งที่ไม่มีใครจ่าย)
+const hireClaiming = ref(false)
+let _hireToken = 0
+const _cancelPendingHire = () => {
+  _hireToken++
+  hireClaiming.value = false
+  // ปล่อยใบที่จองไว้ตอนเข้าหน้าจ่าย — ยกเว้นใบที่ถืออยู่แล้ว
+  // (จ้างสำเร็จ confirmLodgeHire ล้าง hireTarget ก่อนเรียก completeLocation จึงไม่โดนปล่อยทิ้ง)
+  const t = hireTarget.value
+  if (room.inRoom && t && t.id !== myPalicoId.value) room.releasePalico?.(t.id)
+}
+onUnmounted(_cancelPendingHire)
+
 // ถอยจากหน้าจ่ายกลับมาหน้า Lodge — คู่กับ closeTrade ของ Provisions
 const closeLodgeHire = () => {
   sfx.playRandom(`${SFX_UI}/menu_change`, 4, { key: 'menu' })
+  _cancelPendingHire()
   lodgeHireOpen.value = false
   hireTarget.value = null
 }
@@ -461,7 +507,7 @@ const canHireSelected = computed(() => {
   const p = selectedPalico.value
   if (!p || activeLocation.value !== 'lodge') return false
   if (!lodgeChoices.value.some((c) => c.id === p.id)) return false
-  return !isPalicoTaken(p.id)
+  return !isPalicoTaken(p.id) && !palicoLockedBy(p.id)
 })
 
 // เขียนทั้งเซฟและห้อง — เซฟไว้ให้ข้ามเควสต์ได้ ห้องไว้ให้เพื่อนเห็นว่าเราถือใบไหน
@@ -489,27 +535,64 @@ const adjustLodgeHire = (item, delta) => {
   lodgeHireSelection.value = updated
 }
 
-const confirmLodgeHire = () => {
-  if (!lodgeHireReady.value || !hunter.value || !hireTarget.value) return
-  // ระหว่างเลือกของจ่ายกินเวลาหลายวินาที เพื่อนอาจชิงจ้างใบนี้ไปแล้ว — ตรวจอีกรอบก่อนหักของ
-  if (!isSmallParty.value && isPalicoTaken(hireTarget.value.id)) {
-    addNotif(`🐱 ${hireTarget.value.shortName} ถูกจ้างไปแล้ว — เลือกใบอื่น`, 'warn')
+const confirmLodgeHire = async () => {
+  if (!lodgeHireReady.value || !hunter.value || !hireTarget.value || hireClaiming.value) return
+  const target = hireTarget.value
+  // จำของที่เลือกจ่าย ณ ตอนกดยืนยัน — ระหว่างรอจองยังกด +/- ได้ ต้องหักตามที่ยืนยันจริง
+  const payment = { ...lodgeHireSelection.value }
+  const prevId = myPalicoId.value
+  const rejectTaken = () => {
+    addNotif(`🐱 ${target.shortName} ถูกจ้างไปแล้ว — เลือกใบอื่น`, 'warn')
     hireTarget.value = null
     lodgeHireOpen.value = false
-    return
   }
+
+  if (room.inRoom) {
+    // เช็คจากข้อมูลที่ sync มาก่อน — ใครเห็นอยู่แล้วว่ามีคนถือจะรู้ทันทีโดยไม่ต้องรอ server
+    // ตี้เล็กดูจาก palico_id ของคนในห้อง ตี้ใหญ่ดูกองที่จ้างไปแล้วด้วย — ตัวตัดสินจริงคือการจองข้างล่าง
+    const heldByOther = room.hunters.some(
+      (h) => String(h.hunter_id) !== String(room.myHunterId) && Number(h.palico_id) === target.id,
+    )
+    if (heldByOther || (!isSmallParty.value && isPalicoTaken(target.id))) return rejectTaken()
+
+    // จองกับ server ก่อนหักของเสมอ — กดพร้อมกัน server ให้ได้คนเดียว คนแพ้ไม่เสีย Resource
+    const token = ++_hireToken
+    hireClaiming.value = true
+    let ok = false
+    // เก็บ error ตัวจริงไว้ — เดิมกลืนเงียบ ผู้เล่นเห็นแค่ "จองไม่สำเร็จ" โดยไม่มีใครรู้ว่าติดอะไร
+    let failed = null
+    try {
+      ok = await room.claimPalico(target.id)
+    } catch (e) {
+      failed = e ?? new Error('unknown')
+      console.error('[Palico] จองการ์ดที่ Lodge ไม่สำเร็จ', e)
+    }
+    // ถอยออกไประหว่างรอ — ไม่จ้าง และคืนการจองถ้าได้มา
+    if (token !== _hireToken) {
+      if (ok) room.releasePalico?.(target.id)
+      return
+    }
+    hireClaiming.value = false
+    if (failed) {
+      addNotif(`🐱 จองไม่สำเร็จ — ${failed.message || 'ตรวจการเชื่อมต่อแล้วลองใหม่'}`, 'error')
+      return
+    }
+    if (!ok) return rejectTaken()
+  }
+
   const inv = hunter.value.inventory
-  Object.entries(lodgeHireSelection.value).forEach(([key, qty]) => {
+  Object.entries(payment).forEach(([key, qty]) => {
     const [typeId, itemId] = key.split('-').map(Number)
     const it = inv.find(i => i.resource_type_id === typeId && i.item_id === itemId)
     if (it) it.quantity -= qty
   })
   hunter.value.inventory = inv.filter(i => i.quantity > 0)
   saveHunter(hunter.value)
-  // จองใบในกองก่อนเสมอ (ตี้ใหญ่) — ถ้าเขียน palico_id ก่อนแล้วเน็ตหลุด
-  // ใบนั้นจะยังว่างในสายตาคนอื่น กลายเป็นจ้างซ้ำกันได้
-  if (room.inRoom && !isSmallParty.value) room.hirePalico?.(hireTarget.value.id)
-  assignPalico(hireTarget.value.id)
+  // ตี้ใหญ่ยังเขียนลงกองที่จ้างไปแล้วด้วย — การ์ดใน Lodge ใช้โชว์ว่าใครจ้างใบไหน
+  if (room.inRoom && !isSmallParty.value) room.hirePalico?.(target.id)
+  assignPalico(target.id)
+  // เปลี่ยนใบ — คืนการจองใบเดิมให้คนอื่นจ้างต่อได้
+  if (room.inRoom && prevId != null && prevId !== target.id) room.releasePalico?.(prevId)
   hireTarget.value = null
   lodgeHireOpen.value = false
   completeLocation()
@@ -552,6 +635,19 @@ const palicoHiredBy = (palicoId) => {
   return entry ? _hunterById(entry[0]) : null
 }
 const isPalicoTaken = (palicoId) => !!palicoHiredBy(palicoId)
+
+// ใครกำลังจ้างใบนี้อยู่ (อยู่ในหน้าจ่ายของ) — คืน hunter ไว้โชว์ไอคอนคลาส
+// ไม่นับตัวเอง / ไม่นับคนที่ถือใบนี้อยู่แล้ว (นั่นคือ "จ้างแล้ว") / ไม่นับคนที่ออกจากห้องไปแล้ว (จองทับได้)
+const palicoLockedBy = (palicoId) => {
+  if (!room.inRoom) return null
+  const by = room.palicoClaims?.[palicoId]
+  if (by == null || String(by) === String(room.myHunterId)) return null
+  const h = _hunterById(by)
+  if (!h) return null
+  if (Number(h.palico_id) === palicoId) return null
+  if (!isSmallParty.value && Number(room.palicoHired?.[h.hunter_id]) === palicoId) return null
+  return h
+}
 
 // Host สุ่มกองให้ตี้ใหญ่ทันทีที่เข้า Downtime — สุ่มครั้งเดียวต่อรอบ ไม่งั้นกองจะเปลี่ยนกลางคัน
 // เลี่ยงใบที่มีคนถืออยู่แล้ว เพราะจ้างซ้ำใบเดิมไม่มีความหมาย
@@ -937,28 +1033,39 @@ const moteStyle = (m) => ({
 
         <div v-if="lodgeChoices.length" class="palico-grid">
           <!-- กดทั้งใบเปิดหน้าต่างการ์ด แล้วค่อยตัดสินใจในนั้นว่าจะจ้างไหม -->
+          <!-- ใบที่มีคนกำลังจ้างยังกดเปิดดูได้ — แค่ปุ่มจ้างในหน้าต่างการ์ดจะไม่โผล่ -->
           <button
             v-for="p in lodgeChoices"
             :key="p.id"
             class="palico-cell palico-cell-offer"
-            :class="{ 'palico-taken': isPalicoTaken(p.id), 'palico-mine': p.id === myPalicoId }"
+            :class="{
+              'palico-taken': isPalicoTaken(p.id),
+              'palico-locked': !!palicoLockedBy(p.id),
+              'palico-mine': p.id === myPalicoId,
+            }"
             :title="p.type"
             @click="openPalico(p)"
           >
             <img :src="getImg(p.card_img)" class="palico-thumb" :alt="p.type" />
             <span class="palico-name">{{ p.shortName }}</span>
 
-            <!-- ใครจ้างไปแล้ว — ไอคอนคลาสอ่านง่ายกว่าชื่อยาว ๆ ในช่อง 92px -->
-            <div v-if="palicoHiredBy(p.id)" class="palico-owner" :title="`${palicoHiredBy(p.id).hunter_name} จ้างไปแล้ว`">
+            <!-- ใครจ้างไปแล้ว / ใครกำลังจ้าง — ไอคอนคลาสอ่านง่ายกว่าชื่อยาว ๆ ในช่อง 92px -->
+            <div
+              v-if="palicoHiredBy(p.id) || palicoLockedBy(p.id)"
+              class="palico-owner"
+              :title="palicoHiredBy(p.id)
+                ? `${palicoHiredBy(p.id).hunter_name} จ้างไปแล้ว`
+                : `${palicoLockedBy(p.id).hunter_name} กำลังจ้าง`"
+            >
               <img
-                v-if="getHunterClass(palicoHiredBy(p.id).hunter_class_id)?.thumbnail"
-                :src="getImg(getHunterClass(palicoHiredBy(p.id).hunter_class_id).thumbnail)"
+                v-if="getHunterClass((palicoHiredBy(p.id) || palicoLockedBy(p.id)).hunter_class_id)?.thumbnail"
+                :src="getImg(getHunterClass((palicoHiredBy(p.id) || palicoLockedBy(p.id)).hunter_class_id).thumbnail)"
                 class="palico-owner-icon"
               />
             </div>
 
             <span class="palico-cell-state">
-              {{ isPalicoTaken(p.id) ? 'จ้างแล้ว' : `${PALICO_COST} Resource` }}
+              {{ isPalicoTaken(p.id) ? 'จ้างแล้ว' : palicoLockedBy(p.id) ? '🔒 กำลังจ้าง' : `${PALICO_COST} Resource` }}
             </span>
           </button>
         </div>
@@ -1046,7 +1153,9 @@ const moteStyle = (m) => ({
             <span class="trade-bar-name">{{ hireTarget.shortName }}</span>
           </template>
         </span>
-        <button class="hq-btn-confirm trade-bar-btn" :disabled="!lodgeHireReady" @click="confirmLodgeHire">🐱 ยืนยันจ้าง</button>
+        <button class="hq-btn-confirm trade-bar-btn" :disabled="!lodgeHireReady || hireClaiming" @click="confirmLodgeHire">
+          {{ hireClaiming ? '⏳ กำลังจอง…' : '🐱 ยืนยันจ้าง' }}
+        </button>
       </div>
     </teleport>
 
@@ -1063,16 +1172,22 @@ const moteStyle = (m) => ({
           <p v-if="canHireSelected && myPalico" class="palico-replace-warn">
             จะแทนที่ {{ myPalico.shortName }} ที่ถืออยู่
           </p>
+          <!-- มีคนอยู่ในหน้าจ่ายของใบนี้ — ยังอ่านความสามารถได้ แต่ไม่มีปุ่มจ้างให้กด -->
+          <p v-if="activeLocation === 'lodge' && palicoLockedBy(selectedPalico.id)" class="palico-locked-note">
+            🔒 {{ palicoLockedBy(selectedPalico.id).hunter_name }} กำลังจ้างใบนี้อยู่ — จ้างได้อีกครั้งเมื่อเขาออกจากหน้าจ่าย
+          </p>
           <div class="hq-confirm-btns">
             <button
               v-if="canHireSelected"
               class="hq-btn-confirm lodge-hire-confirm-btn"
-              :disabled="totalInventory < PALICO_COST"
+              :disabled="totalInventory < PALICO_COST || hireClaiming"
               @click="startHirePalico(selectedPalico)"
             >
-              {{ totalInventory < PALICO_COST
-                ? `Resource ไม่พอ (${totalInventory}/${PALICO_COST})`
-                : `🐱 จ้าง · ${PALICO_COST} Resource` }}
+              {{ hireClaiming
+                ? '⏳ กำลังจอง…'
+                : totalInventory < PALICO_COST
+                  ? `Resource ไม่พอ (${totalInventory}/${PALICO_COST})`
+                  : `🐱 จ้าง · ${PALICO_COST} Resource` }}
             </button>
             <button class="hq-btn-cancel" @click="selectedPalico = null">← ปิด</button>
           </div>
@@ -1605,6 +1720,15 @@ const moteStyle = (m) => ({
 .palico-taken { opacity: 0.5; }
 .palico-taken .palico-thumb { filter: grayscale(0.7); }
 .palico-mine { border-color: #c89b3c; box-shadow: 0 0 10px rgba(200,155,60,0.3); }
+/* มีคนอยู่ในหน้าจ่ายของใบนี้ — หรี่น้อยกว่า "จ้างแล้ว" เพราะอาจกลับมาว่างได้ ยังกดเปิดดูได้ตามปกติ */
+.palico-locked { opacity: 0.75; }
+.palico-locked .palico-thumb { filter: grayscale(0.4); }
+.palico-locked .palico-owner { border-color: #d98b6a; }
+.palico-locked .palico-cell-state {
+  background: rgba(217,139,106,0.12);
+  border-color: rgba(217,139,106,0.45);
+  color: #d98b6a;
+}
 .palico-owner {
   position: absolute;
   top: 5px; right: 5px;
@@ -1631,6 +1755,17 @@ const moteStyle = (m) => ({
 .hire-target-name { font-size: 13px; color: #ffd27a; }
 .hire-target-replace { font-size: 10px; color: #d98b6a; }
 .palico-replace-warn { margin: 0; text-align: center; font-size: 11px; color: #d98b6a; }
+.palico-locked-note {
+  margin: 0;
+  padding: 6px 10px;
+  border: 1px dashed rgba(217,139,106,0.45);
+  border-radius: 3px;
+  background: rgba(217,139,106,0.08);
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #d98b6a;
+}
 
 /* ── หน้าต่างรายละเอียดการ์ด ── */
 .palico-modal {

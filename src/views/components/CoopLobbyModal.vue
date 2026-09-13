@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
 import { useRoomStore } from '@/stores/room'
+import { useSfx } from '@/composables/useSfx'
 import hunterClassData from '@/assets/files/class_hunter.json'
 
 const emit = defineEmits(['start', 'leave'])
@@ -10,6 +11,14 @@ defineProps({ attemptNote: { type: Object, default: null } })
 const room = useRoomStore()
 const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 const getClass = (id) => hunterClassData.find((c) => c.hunter_class_id === id)
+
+// เสียงล็อบบี้ — ชุดเดียวกับหน้า Quest Board / Downtime
+// ประกาศไว้บนสุดก่อน watcher ทุกตัว (watcher เพื่อนเข้าห้องเป็น immediate จะเรียกใช้ตั้งแต่ตอน setup)
+const sfx = useSfx()
+const SFX_UI = 'assets/sounds/ui'
+const _sfxMenu = () => sfx.playRandom(`${SFX_UI}/menu_change`, 4, { key: 'menu' })
+const _sfxSelect = () => sfx.play(`${SFX_UI}/action_select.mp3`, { key: 'action' })
+const _sfxConfirm = () => sfx.playRandom(`${SFX_UI}/action_confirm`, 3, { key: 'action' })
 
 // สีป้ายตามชนิดเควส — ชุดเดียวกับหน้า Room Board
 // Tempered ต้องเช็คก่อน เพราะชื่อเต็มคือ "Tempered Investigation Quest"
@@ -25,13 +34,31 @@ const questTypeTone = (type) => {
 const hostPickOpen = ref(false)
 const pendingHostTransfer = ref(null)
 
+// ปิดเงียบ ๆ — confirmHostTransfer เรียกตัวนี้ด้วย ถ้าใส่เสียงไว้ในนี้จะดังซ้อนกับเสียงยืนยัน
 const closeHostPicker = () => {
   hostPickOpen.value = false
+  pendingHostTransfer.value = null
+}
+const openHostPicker = () => {
+  _sfxSelect()
+  hostPickOpen.value = true
+}
+const cancelHostPicker = () => {
+  _sfxMenu()
+  closeHostPicker()
+}
+const pickHostTarget = (h) => {
+  _sfxSelect()
+  pendingHostTransfer.value = h
+}
+const backHostPicker = () => {
+  _sfxMenu()
   pendingHostTransfer.value = null
 }
 
 const confirmHostTransfer = async () => {
   const target = pendingHostTransfer.value
+  if (target) _sfxConfirm()
   closeHostPicker()
   if (target) await room.transferHost?.(target.hunter_id)
 }
@@ -52,11 +79,15 @@ const startCountdown = () => {
   counting.value = true
   let i = 0
   countdownMsg.value = countdownText[0]
+  // ฝีเท้าตามจังหวะข้อความที่เปลี่ยน — ทั้งตี้กำลังเดินออกล่า
+  const _march = () => sfx.playRandom(`${SFX_UI}/footstep`, 3, { key: 'march' })
+  _march()
 
   _countdownTimer = setInterval(() => {
     i++
     if (i < countdownText.length) {
       countdownMsg.value = countdownText[i]
+      _march()
     }
   }, 1200)
 
@@ -80,9 +111,37 @@ watch(() => room.questStartAt, (val) => {
   if (val && !counting.value) startCountdown()
 })
 
-const handleReady = () => room.setReady(!room.amReady)
+// เสียงเพื่อนในห้อง — เทียบกับรอบก่อน
+// null = ยังไม่มีรายชื่อให้เทียบ (ข้อมูลห้องยังมาไม่ถึง) ข้ามรอบแรกเสมอ
+// ไม่งั้นเข้าห้องทีไรทุกคนที่อยู่ก่อนจะนับเป็น "เพิ่งเข้า" ดังรัวเท่าจำนวนคน
+// นับเฉพาะคนอื่น — ของตัวเองมีเสียงจากปุ่มที่กดอยู่แล้ว
+let _prevParty = null // { [hunterId]: ready }
+watch(
+  () => room.hunters.map((h) => [String(h.hunter_id), !!h.ready]),
+  (list) => {
+    if (!list.length) return
+    const cur = Object.fromEntries(list)
+    if (_prevParty) {
+      const me = String(room.myHunterId)
+      const joined = Object.keys(cur).some((id) => id !== me && !(id in _prevParty))
+      const readied = Object.entries(cur).some(([id, r]) => id !== me && r && _prevParty[id] === false)
+      if (joined) sfx.playRandom(`${SFX_UI}/footstep`, 3, { key: 'party' })
+      else if (readied) sfx.playRandom(`${SFX_UI}/vote_cast`, 3, { key: 'party' })
+    }
+    _prevParty = cur
+  },
+  { immediate: true },
+)
+
+const handleReady = () => {
+  // กดพร้อม = ยืนยัน · ยกเลิกพร้อม = ถอยกลับ
+  if (room.amReady) _sfxMenu()
+  else _sfxConfirm()
+  room.setReady(!room.amReady)
+}
 
 const handleLeave = async () => {
+  _sfxMenu()
   clearInterval(_countdownTimer)
   await room.leave()
   emit('leave')
@@ -90,6 +149,7 @@ const handleLeave = async () => {
 
 const copyCode = async () => {
   await navigator.clipboard.writeText(room.roomCode)
+  sfx.playRandom(`${SFX_UI}/item_pickup`, 3, { key: 'item' })
   copied.value = true
   setTimeout(() => (copied.value = false), 1500)
 }
@@ -262,7 +322,7 @@ const starColor = computed(() => {
           class="cl-btn-host"
           title="โอนหัวห้อง"
           :disabled="counting"
-          @click="hostPickOpen = true"
+          @click="openHostPicker"
         >👑</button>
         <button class="cl-btn-leave" @click="handleLeave" :disabled="counting">
           {{ room.isHost ? '🗑 ยุบ Room' : '🚪 ออก' }}
@@ -274,7 +334,7 @@ const starColor = computed(() => {
 
     <!-- โอนหัวห้อง — เลือกสมาชิกก่อน แล้วค่อยยืนยัน -->
     <teleport to="body">
-      <div v-if="hostPickOpen" class="clht-overlay" @click.self="closeHostPicker">
+      <div v-if="hostPickOpen" class="clht-overlay" @click.self="cancelHostPicker">
         <div class="clht-modal">
           <span class="clht-crown">👑</span>
 
@@ -286,7 +346,7 @@ const starColor = computed(() => {
                 v-for="h in room.hunters.filter(x => x.hunter_id !== room.myHunterId)"
                 :key="h.hunter_id"
                 class="clht-row"
-                @click="pendingHostTransfer = h"
+                @click="pickHostTarget(h)"
               >
                 <img
                   v-if="getClass(h.hunter_class_id)?.thumbnail"
@@ -300,7 +360,7 @@ const starColor = computed(() => {
                 <span class="clht-row-arrow">›</span>
               </button>
             </div>
-            <button class="clht-cancel clht-wide" @click="closeHostPicker">ยกเลิก</button>
+            <button class="clht-cancel clht-wide" @click="cancelHostPicker">ยกเลิก</button>
           </template>
 
           <template v-else>
@@ -311,7 +371,7 @@ const starColor = computed(() => {
             </p>
             <p class="clht-warn">⚠ คุณจะกลายเป็นลูกทีม เอาคืนเองไม่ได้</p>
             <div class="clht-btns">
-              <button class="clht-cancel" @click="pendingHostTransfer = null">‹ เลือกใหม่</button>
+              <button class="clht-cancel" @click="backHostPicker">‹ เลือกใหม่</button>
               <button class="clht-confirm" @click="confirmHostTransfer">✓ โอน</button>
             </div>
           </template>

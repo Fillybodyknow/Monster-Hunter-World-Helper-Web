@@ -151,6 +151,8 @@ export const ALL_SFX = [
   ...sfxTakes(`${UI}/card_shuffle`, 3),
   ...sfxTakes(`${UI}/draw_card`, 3),
   ...sfxTakes(`${UI}/monster_roar`, 4),
+  // เสียงประกาศตอนโพสต์เควสต์ — ยาว 3-4 วินาที ยังถือเป็น SFX (ถอดรหัสเก็บ RAM ราว 4MB ทั้งชุด)
+  ...sfxTakes(`${UI}/post_quest`, 3),
   `${UI}/action_select.mp3`,
   `${UI}/dice_roll.mp3`,
   `${UI}/dice_land.mp3`,
