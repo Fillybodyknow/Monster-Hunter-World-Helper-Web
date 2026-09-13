@@ -23,6 +23,7 @@ import { openCraftLookup } from '@/composables/useCraftLookup'
 import { useSfx, preloadSfx, preloadMedia, playMedia, cancelPendingMedia, onUserGesture } from '@/composables/useSfx'
 import { preloadImages } from '@/services/assetPreload'
 import RuleText from './RuleText.vue'
+import { requestTour, cancelTourRequest } from '@/composables/useTour'
 
 const room = useRoomStore()
 const sfx = useSfx()
@@ -5226,6 +5227,54 @@ const openPackDrawer = () => {
   packSelectedItems.value = []
   showPackDrawer.value = true
 }
+
+// ── ทัวร์สอนใช้งาน ───────────────────────────────────────
+// ขอทัวร์ของช่วงที่เพิ่งขึ้นจอ (ขึ้นครั้งแรกเท่านั้น) และยกเลิกคำขอของช่วงที่เพิ่งออก
+// วางไว้ท้าย script เพราะ watch แบบ immediate อ่าน ref ที่ประกาศกระจายทั้งไฟล์ — วางไว้ก่อนจะเจอ TDZ
+const PHASE_TOURS = {
+  book: 'questBoard',
+  quest: 'questList',
+  detail: 'questDetail',
+  rooms: 'roomBoard',
+  lobby: 'lobby',
+  palicoDraft: 'palicoDraft',
+  hqVote: 'hqVote',
+  hq: 'downtime',
+  dialog: 'dialog',
+}
+const REWARD_TOURS = { diceRoll: 'rewardRoll', assign: 'rewardAssign', trade: 'rewardTrade' }
+const currentTourId = computed(() => {
+  if (phase.value === 'reward') return REWARD_TOURS[rewardPhase.value] ?? null
+  if (phase.value === 'huntingPanel') {
+    // ช่วงเปิดฉากการล่ายาวหลายวินาที (เจอมอน → เปิด Track Token → การ์ดพิเศษ → เลือก Hunter Token)
+    // ต้องรอให้จบก่อน ไม่งั้นทัวร์ไปชี้ปุ่มที่ overlay พวกนั้นบังอยู่
+    const busy =
+      showBattleIntro.value ||
+      showTokenReveal.value ||
+      showSpecialCardOverlay.value ||
+      needHunterTokenPick.value ||
+      showTcReveal.value ||
+      showMonsterAttack.value ||
+      showResultAnim.value
+    return busy ? null : 'hunting'
+  }
+  return PHASE_TOURS[phase.value] ?? null
+})
+watch(
+  currentTourId,
+  (id, prev) => {
+    if (prev) cancelTourRequest(prev)
+    if (id) requestTour(id)
+  },
+  { immediate: true },
+)
+// Quest อยู่ใน keep-alive — สลับแท็บไปแล้วกลับมา ขอทัวร์ของหน้าปัจจุบันอีกรอบ (ถ้ายังไม่เคยดู)
+onActivated(() => {
+  if (currentTourId.value) requestTour(currentTourId.value)
+})
+onDeactivated(() => {
+  if (currentTourId.value) cancelTourRequest(currentTourId.value)
+})
 </script>
 
 <template>
@@ -5254,7 +5303,7 @@ const openPackDrawer = () => {
       </div>
       <p class="board-subtitle">Commission Quest Board</p>
 
-      <div class="cal-months-row">
+      <div data-tour="quest-calendar" class="cal-months-row">
         <div v-for="(_, mi) in calMonths" :key="mi" class="campaign-calendar">
           <div class="cal-header">
             <span class="cal-title">MONTH {{ mi + 1 }}</span>
@@ -5272,7 +5321,7 @@ const openPackDrawer = () => {
       </div>
 
       <!-- Co-op -->
-      <div class="join-quest-bar">
+      <div data-tour="quest-coop" class="join-quest-bar">
         <div v-if="room.inRoom" class="join-quest-inroom">
           <span class="join-quest-icon">⚔</span>
           <span>Co-op Room: <strong>{{ room.roomCode }}</strong></span>
@@ -5289,7 +5338,7 @@ const openPackDrawer = () => {
         </button>
       </div>
 
-      <div class="book-grid">
+      <div data-tour="quest-books" class="book-grid">
         <div
           v-for="book in books"
           :key="book.id"
@@ -5360,7 +5409,7 @@ const openPackDrawer = () => {
         </div>
       </div>
 
-      <div class="quest-scroll-list">
+      <div data-tour="quest-list" class="quest-scroll-list">
         <div
           v-for="quest in selectedMonster.quest"
           :key="quest.quest_id"
@@ -5477,7 +5526,7 @@ const openPackDrawer = () => {
       </div>
 
       <!-- STATS PARCHMENT -->
-      <div class="parchment-stats">
+      <div data-tour="detail-stats" class="parchment-stats">
         <div class="pstat">
           <span class="pstat-label">⏳ Time Limit</span>
           <div class="pstat-val">
@@ -5515,7 +5564,7 @@ const openPackDrawer = () => {
       </div>
 
       <!-- STARTING POINT SCROLL -->
-      <div v-if="startingDialog && !isQuestExhausted(selectedQuest)" class="starting-scroll">
+      <div v-if="startingDialog && !isQuestExhausted(selectedQuest)" data-tour="detail-start" class="starting-scroll">
         <div class="scroll-tab">Starting Point</div>
         <p class="scroll-flavor-title">{{ startingDialog.title }}</p>
         <p class="scroll-flavor-body">{{ startingDialog.subtitle }}</p>
@@ -5527,7 +5576,7 @@ const openPackDrawer = () => {
       </div>
 
       <div class="embark-mode-row">
-        <button class="btn-embark btn-coop" @click="openPostQuest">
+        <button data-tour="detail-post" class="btn-embark btn-coop" @click="openPostQuest">
           <img :src="getImg('assets/img/menu_topbar_icon/quest.webp')" class="embark-icon" />
           Post Quest
         </button>
@@ -5559,7 +5608,7 @@ const openPackDrawer = () => {
         </div>
       </div>
 
-      <div v-if="myPalico" class="hqv-palico" @click="palicoDetail = myPalico">
+      <div v-if="myPalico" data-tour="hqvote-palico" class="hqv-palico" @click="palicoDetail = myPalico">
         <img :src="getImg(myPalico.card_img)" class="hqv-palico-img" />
         <div class="hqv-palico-info">
           <p class="hqv-target-label">Palico</p>
@@ -5580,7 +5629,7 @@ const openPackDrawer = () => {
         </div>
       </div>
 
-      <div v-if="!myHqVote" class="hqv-choices">
+      <div v-if="!myHqVote" data-tour="hqvote-choices" class="hqv-choices">
         <button class="hqv-banner hqv-banner-hq" @click="pickHqVote('hq')">
           <span class="hqv-rod"></span>
           <span class="hqv-cloth">
@@ -5701,7 +5750,7 @@ const openPackDrawer = () => {
       </div>
       <p class="pd-sub">สุ่มมาให้ {{ PALICO_DRAFT_SIZE }} ใบ — เลือกได้ 1 ใบ ติดตัวไปตลอดเควสต์นี้</p>
 
-      <div v-if="myPalicoOffer.length" class="pd-cards">
+      <div v-if="myPalicoOffer.length" data-tour="draft-cards" class="pd-cards">
         <div
           v-for="p in myPalicoOffer"
           :key="p.id"
@@ -5724,14 +5773,14 @@ const openPackDrawer = () => {
 
       <button
         v-if="!myPalicoPicked"
-        class="pd-confirm"
+        data-tour="draft-confirm" class="pd-confirm"
         :disabled="!palicoPick || palicoClaiming"
         @click="confirmPalicoDraft"
       >{{ palicoClaiming ? '⏳ กำลังจอง…' : palicoPick ? `✓ เอา ${palicoPick.shortName}` : 'เลือกการ์ดก่อน' }}</button>
       <p v-else class="pd-locked-note">เลือกแล้ว: <strong>{{ myPalicoPicked.shortName }}</strong></p>
 
       <!-- ใครเลือกแล้วบ้าง — คนที่รออยู่จะได้รู้ว่ารอใคร -->
-      <div v-if="room.inRoom" class="pd-party">
+      <div v-if="room.inRoom" data-tour="draft-party" class="pd-party">
         <div v-for="h in room.hunters" :key="h.hunter_id" class="pd-party-row">
           <img
             v-if="getHunterClass(h.hunter_class_id)?.thumbnail"
@@ -5799,10 +5848,10 @@ const openPackDrawer = () => {
       <p class="board-subtitle">Join a Hunting Party</p>
 
       <div class="rb-content">
-      <button class="rb-back" @click="closeRoomBoard">← กลับหน้า Quest Board</button>
+      <button data-tour="rooms-back" class="rb-back" @click="closeRoomBoard">← กลับหน้า Quest Board</button>
 
       <!-- เข้าด้วย Room Code / Reconnect -->
-      <div class="rb-code-panel">
+      <div data-tour="rooms-code" class="rb-code-panel">
         <div v-if="room.savedRoomCode" class="reconnect-bar">
           <span class="reconnect-label">🔌 ห้องล่าสุด</span>
           <span class="reconnect-code">{{ room.savedRoomCode }}</span>
@@ -5838,7 +5887,7 @@ const openPackDrawer = () => {
         <div class="rb-list-line"></div>
       </div>
 
-      <div class="rb-board">
+      <div data-tour="rooms-list" class="rb-board">
         <div v-if="!room.lobbyList.length" class="rb-empty">
           <span class="rb-empty-icon">🏕</span>
           <p class="rb-empty-text">ยังไม่มีห้องเปิดอยู่ตอนนี้</p>
@@ -6023,7 +6072,7 @@ const openPackDrawer = () => {
           <span class="dialog-tag-quest">{{ selectedQuest.quest_type }}</span>
         </div>
         <!-- Potion tracker (compact) -->
-        <div class="dialog-potion-tracker">
+        <div data-tour="dialog-potion" class="dialog-potion-tracker">
           <div
             v-for="i in 3"
             :key="i"
@@ -6037,7 +6086,7 @@ const openPackDrawer = () => {
             <span v-if="i > potionCount" class="dialog-potion-x">✕</span>
           </div>
         </div>
-        <button class="pack-toggle-btn" @click="openPackDrawer">🎒 Inventory</button>
+        <button data-tour="dialog-pack" class="pack-toggle-btn" @click="openPackDrawer">🎒 Inventory</button>
       </div>
 
       <!-- Dialog Resource Quick-Add -->
@@ -6146,7 +6195,7 @@ const openPackDrawer = () => {
       </div>
 
       <!-- Time Card Panel -->
-      <div class="tc-panel">
+      <div data-tour="dialog-timecard" class="tc-panel">
         <div class="tc-header">
           <span class="tc-label">⏳ Time Cards</span>
           <div class="tc-deck-display">
@@ -6257,7 +6306,7 @@ const openPackDrawer = () => {
       </div>
 
       <Transition name="parch" mode="out-in" :duration="{ enter: 760, leave: 170 }">
-      <div class="dialog-parchment" :key="currentDialogId">
+      <div data-tour="dialog-story" class="dialog-parchment" :key="currentDialogId">
         <div class="parchment-notch top"></div>
         <span v-for="n in 5" :key="'dust' + n" class="pin-dust" :style="`--i:${n}`"></span>
 
@@ -6269,7 +6318,7 @@ const openPackDrawer = () => {
           {{ currentDialog.consequences }}
         </div>
 
-        <div v-if="currentDialogEffects.length" class="fx-panel fx-panel-parchment">
+        <div v-if="currentDialogEffects.length" data-tour="dialog-effects" class="fx-panel fx-panel-parchment">
           <div class="fx-list">
             <span
               v-for="(e, i) in currentDialogEffects"
@@ -6290,7 +6339,7 @@ const openPackDrawer = () => {
       </div>
       </Transition>
 
-      <div class="dialog-choices" :key="'choices-' + currentDialogId">
+      <div data-tour="dialog-choices" class="dialog-choices" :key="'choices-' + currentDialogId">
         <p class="choices-label">
           <span class="choices-rule"></span>
           {{ room.inRoom ? 'Vote Your Action' : 'Choose Your Action' }}
@@ -6656,7 +6705,7 @@ const openPackDrawer = () => {
         </div>
         <button
           v-if="monsterHuntingData.map_image"
-          class="hpanel-map-btn"
+          data-tour="hunt-map" class="hpanel-map-btn"
           @click="showMapModal = true"
         >🗺 Map</button>
       </div>
@@ -6733,7 +6782,7 @@ const openPackDrawer = () => {
       </div>
 
       <!-- Monster Turn (after map) -->
-      <div v-if="behaviorDeck.length > 0 || currentBehaviorCard" class="monster-turn-section">
+      <div v-if="behaviorDeck.length > 0 || currentBehaviorCard" data-tour="hunt-behavior" class="monster-turn-section">
         <p class="hunt-result-label">— Monster Turn —</p>
 
         <div class="mt-cards">
@@ -6996,7 +7045,7 @@ const openPackDrawer = () => {
           </div>
 
           <!-- ── Resistance / Marking Row ── -->
-          <div class="resist-row">
+          <div data-tour="hunt-resist" class="resist-row">
             <!-- Element Resistance (interactive) -->
             <div class="resist-col">
               <p class="resist-col-label">Element</p>
@@ -7122,7 +7171,7 @@ const openPackDrawer = () => {
             :style="{ width: hpPercent + '%', background: hpBarColor }"
           ></div>
         </div>
-        <div class="hp-controls">
+        <div data-tour="hunt-hp" class="hp-controls">
           <button class="hp-btn hp-minus" @click="adjustHp(-10)">−10</button>
           <button class="hp-btn hp-minus" @click="adjustHp(-5)">−5</button>
           <button class="hp-btn hp-minus" @click="adjustHp(-1)">−1</button>
@@ -7135,7 +7184,7 @@ const openPackDrawer = () => {
 
           <!-- Part cards -->
           <div class="parts-layout">
-            <div class="parts-list">
+            <div data-tour="hunt-parts" class="parts-list">
               <div
                 v-for="(partData, position) in activeParts"
                 :key="position"
@@ -7278,7 +7327,7 @@ const openPackDrawer = () => {
       <!-- end info-parts-row -->
 
       <!-- Time Card Turn -->
-      <div v-if="timeCardDeck.length > 0 || timeCardDiscard.length > 0" class="tct-section">
+      <div v-if="timeCardDeck.length > 0 || timeCardDiscard.length > 0" data-tour="hunt-timecard" class="tct-section">
         <p class="hunt-result-label">— Time Card —</p>
         <div class="tct-card-group">
           <div class="tct-deck-row">
@@ -7563,7 +7612,7 @@ const openPackDrawer = () => {
 
         <!-- ปรับจำนวนเต๋าด้วยมือ — Guest เห็นค่าแต่กดไม่ได้ เหมือนตัวปรับอื่น -->
         <button
-          class="rw-adjust-btn"
+          data-tour="reward-adjust" class="rw-adjust-btn"
           :class="{ 'rw-adjust-on': effectiveManualDiceAdjust !== 0 }"
           :disabled="room.inRoom && !room.isHost"
           @click="openDiceAdjust"
@@ -7577,7 +7626,7 @@ const openPackDrawer = () => {
 
         <!-- My dice -->
         <p class="rw-section-label">🎲 เต๋าของคุณ</p>
-        <div class="rw-dice-row">
+        <div data-tour="reward-dice" class="rw-dice-row">
           <div
             v-for="die in rolledDice"
             :key="die.id"
@@ -7626,7 +7675,7 @@ const openPackDrawer = () => {
         </div>
 
         <!-- Reward table reference -->
-        <div v-if="monsterHuntingData.reward_table?.length" class="rw-peek">
+        <div v-if="monsterHuntingData.reward_table?.length" data-tour="reward-peek" class="rw-peek">
           <button class="rw-peek-head" @click="showRollRewardTable = !showRollRewardTable">
             <span class="rw-peek-caret" :class="{ open: showRollRewardTable }">▶</span>
             <span class="rw-peek-title">ตาราง Reward</span>
@@ -7704,7 +7753,7 @@ const openPackDrawer = () => {
       <!-- ── Assign Dice → Claim Rewards ── -->
       <div v-else-if="rewardPhase === 'assign'" class="rw-assign">
         <!-- Dice chips -->
-        <div class="rw-dice-chips-wrap">
+        <div data-tour="reward-chips" class="rw-dice-chips-wrap">
           <p class="rw-section-label">เต๋าที่ทอยได้ — เลือกเพื่อรวมค่า</p>
           <div class="rw-dice-chips">
             <div
@@ -7728,7 +7777,7 @@ const openPackDrawer = () => {
 
         <!-- Reward table -->
         <p class="rw-section-label">ตาราง Reward</p>
-        <div class="rw-table">
+        <div data-tour="reward-table" class="rw-table">
           <div
             v-for="row in monsterHuntingData.reward_table"
             :key="row.rolled_number"
@@ -7856,7 +7905,7 @@ const openPackDrawer = () => {
         <p class="board-subtitle">แลกของกันในตี้</p>
 
         <!-- โต๊ะกลางวง — อยู่บนสุดเพราะต้องคอยดูว่ามีอะไรใหม่ -->
-        <div class="trade-section trade-table">
+        <div data-tour="trade-table" class="trade-section trade-table">
           <div class="trade-head">
             <p class="rw-section-label">🔄 ของบนโต๊ะ</p>
             <span class="trade-tally">
@@ -8808,7 +8857,7 @@ const openPackDrawer = () => {
     <teleport to="body">
       <div
         v-if="floatBarVisible"
-        class="float-turn-bar"
+        data-tour="hunt-endturn" class="float-turn-bar"
         :class="{ 'float-turn-bar-collapsed': floatBarCollapsed }"
       >
         <!-- ถ่านคุคร่อมขอบบนของแถบ + สะเก็ดไฟลอยขึ้น (แนวเดียวกับเตาเผาหน้า Crafting) -->
@@ -8936,7 +8985,7 @@ const openPackDrawer = () => {
       <Transition name="slain-fade">
         <div
           v-if="useStripVisible"
-          class="use-strip"
+          data-tour="hunt-use" class="use-strip"
           :class="{ 'use-strip-lifted': floatBarVisible && !floatBarCollapsed, 'use-strip-tab': floatBarVisible && floatBarCollapsed }"
         >
           <button
@@ -9056,7 +9105,7 @@ const openPackDrawer = () => {
       <Transition name="slain-fade">
         <div
           v-if="partyStripVisible"
-          class="party-strip"
+          data-tour="hunt-party" class="party-strip"
           :class="{
             'party-strip-lifted': floatBarVisible && !floatBarCollapsed,
             'party-strip-tab': floatBarVisible && floatBarCollapsed

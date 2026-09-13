@@ -223,7 +223,7 @@ const handleCreate = () => {
     </div>
 
     <!-- HUNTER LIST -->
-    <div class="hunter-list">
+    <div data-tour="registry-list" class="hunter-list">
       <!-- EXISTING HUNTERS -->
       <div v-for="h in hunters" :key="h.hunter_id" class="guild-card" @click="openHunter(h)">
         <div class="gc-left">
@@ -253,7 +253,7 @@ const handleCreate = () => {
       </div>
 
       <!-- CREATE NEW HUNTER CARD -->
-      <div class="guild-card new-hunter-card" @click="showModal = true">
+      <div data-tour="registry-new" class="guild-card new-hunter-card" @click="showModal = true">
         <div class="gc-left">
           <div class="gc-icon-wrap new-icon-wrap">
             <span class="new-plus">+</span>
@@ -271,7 +271,7 @@ const handleCreate = () => {
       </div>
 
       <!-- IMPORT HUNTER CARD -->
-      <label class="guild-card import-hunter-card">
+      <label data-tour="registry-import" class="guild-card import-hunter-card">
         <div class="gc-left">
           <div class="gc-icon-wrap import-icon-wrap">
             <span class="import-icon">📥</span>

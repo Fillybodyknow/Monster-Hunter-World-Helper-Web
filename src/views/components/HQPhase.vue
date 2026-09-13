@@ -709,7 +709,7 @@ const moteStyle = (m) => ({
     </div>
 
     <!-- ─── แถบเดินทาง — ค้างไว้ตลอด รวมถึงตอนอยู่ในสถานที่ ─── -->
-    <div class="hqp-steps">
+    <div data-tour="dt-steps" class="hqp-steps">
       <div
         v-for="(slot, i) in visitSlots" :key="i"
         class="hqp-step"
@@ -724,7 +724,7 @@ const moteStyle = (m) => ({
     </div>
 
     <!-- ─── PARTY PROGRESS BAR ─── -->
-    <div v-if="room.inRoom" class="hqp-party-bar">
+    <div v-if="room.inRoom" data-tour="dt-party" class="hqp-party-bar">
       <div
         v-for="h in room.hunters" :key="h.hunter_id"
         class="hqp-hunter-pill"
@@ -749,7 +749,7 @@ const moteStyle = (m) => ({
 
     <!-- ─── LOCATION GRID (no active location) ─── -->
     <template v-if="!activeLocation">
-      <div v-if="openLocations.length" class="hqp-loc-grid">
+      <div v-if="openLocations.length" data-tour="dt-locations" class="hqp-loc-grid">
         <div
           v-for="loc in openLocations" :key="loc.id"
           class="hqp-loc-card loc-available"
@@ -802,7 +802,7 @@ const moteStyle = (m) => ({
       </div>
 
       <!-- Ready button -->
-      <div class="hqp-ready-wrap">
+      <div data-tour="dt-ready" class="hqp-ready-wrap">
         <div v-if="!isReady && myVisitCount >= MAX_VISITS">
           <button class="hqp-btn-ready" @click="voteReady">⚔ พร้อมลุย Quest</button>
         </div>

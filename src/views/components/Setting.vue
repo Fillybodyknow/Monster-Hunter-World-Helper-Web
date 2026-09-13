@@ -6,6 +6,19 @@ import classHunterData from '@/assets/files/class_hunter.json'
 import { hunter } from '@/stores/hunter'
 import DiagnosticPanel from './DiagnosticPanel.vue'
 import { APP_VERSION } from '@/services/appVersion'
+import { tourEnabled, setTourEnabled, resetTours, startTour } from '@/composables/useTour'
+
+// ─── ทัวร์สอนใช้งาน ─────────────────────────────────────────
+const tourMsg = ref('')
+let _tourMsgTimer = null
+const replayAllTours = () => {
+  resetTours()
+  tourMsg.value = '✓ รีเซ็ตแล้ว — ทัวร์ของแต่ละหน้าจะขึ้นอีกครั้งเมื่อเข้าหน้านั้น'
+  clearTimeout(_tourMsgTimer)
+  _tourMsgTimer = setTimeout(() => (tourMsg.value = ''), 4000)
+}
+// ทัวร์เมนูหลักชี้แถบเมนูด้านบน ซึ่งอยู่บนจอแม้กำลังอยู่หน้า Setting — เริ่มได้ทันที
+const startHomeTourNow = () => startTour('home')
 
 const router = useRouter()
 
@@ -121,6 +134,35 @@ const doExport = (hunter) => {
               class="volume-slider"
             />
           </div>
+        </div>
+      </div>
+
+      <!-- ทัวร์สอนใช้งาน — เปิด/ปิดการเด้งอัตโนมัติ และเริ่มดูใหม่ -->
+      <div class="setting-section">
+        <div class="ss-header">
+          <span class="ss-icon">🧭</span>
+          <span class="ss-title">ทัวร์สอนใช้งาน</span>
+        </div>
+        <div class="ss-body">
+          <div class="setting-row">
+            <div class="setting-row-info">
+              <span class="setting-row-label">แสดงทัวร์อัตโนมัติ</span>
+              <span class="setting-row-desc">ชี้ปุ่มสำคัญเมื่อเข้าหน้าใหม่ครั้งแรก</span>
+            </div>
+            <button
+              class="toggle-btn"
+              :class="{ active: tourEnabled }"
+              @click="setTourEnabled(!tourEnabled)"
+            >
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">{{ tourEnabled ? 'ON' : 'OFF' }}</span>
+            </button>
+          </div>
+          <div class="tour-actions">
+            <button class="tour-btn" @click="startHomeTourNow">▶ ดูทัวร์เมนูหลักตอนนี้</button>
+            <button class="tour-btn" @click="replayAllTours">↺ ดูทัวร์ทุกหน้าใหม่</button>
+          </div>
+          <p v-if="tourMsg" class="tour-msg">{{ tourMsg }}</p>
         </div>
       </div>
 
@@ -320,6 +362,35 @@ const doExport = (hunter) => {
 /* ══════════════════════════════════════════
    SETTING SECTIONS
 ══════════════════════════════════════════ */
+/* ── ทัวร์สอนใช้งาน ── */
+.tour-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.tour-btn {
+  flex: 1 1 160px;
+  padding: 9px 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(200, 155, 60, 0.45);
+  background: linear-gradient(to bottom, #2a1e10, #17120c);
+  color: #ffd27a;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.tour-btn:hover {
+  border-color: #c89b3c;
+  box-shadow: 0 0 10px rgba(200, 155, 60, 0.3);
+}
+.tour-msg {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: #90d890;
+}
+
 .setting-sections {
   display: flex;
   flex-direction: column;
