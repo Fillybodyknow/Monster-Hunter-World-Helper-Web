@@ -18,7 +18,7 @@ const stored = load()
 
 export const showQuestEffects = ref(stored.showQuestEffects !== false)
 export const soundEnabled = ref(stored.soundEnabled !== false)
-export const soundVolume = ref(stored.soundVolume ?? 0.1)
+export const soundVolume = ref(stored.soundVolume ?? 0.75)
 
 watch(showQuestEffects, (val) => { save({ ...load(), showQuestEffects: val }) })
 watch(soundEnabled, (val) => { save({ ...load(), soundEnabled: val }) })
