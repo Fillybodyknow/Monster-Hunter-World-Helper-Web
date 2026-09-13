@@ -3,6 +3,8 @@ import { useRoute } from 'vue-router'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { hunter, loadHunter } from '@/stores/hunter'
 import BootLoader from '@/views/components/BootLoader.vue'
+import TourOverlay from '@/views/components/TourOverlay.vue'
+import { setTourReady, requestTour, cancelTourRequest } from '@/composables/useTour'
 import { APP_VERSION } from '@/services/appVersion'
 import {
   craftNotifications,
@@ -41,10 +43,26 @@ watch(hunter, (val) => {
 const logo = `${import.meta.env.BASE_URL}assets/img/UI/icon.webp`
 
 const booting = ref(true)
+
+// ทัวร์รอหน้าโหลดเสร็จก่อน — ถ้าเริ่มระหว่าง BootLoader ปุ่มที่จะชี้ยังไม่อยู่บนจอ
+watch(booting, (b) => setTourReady(!b), { immediate: true })
+
+// ทัวร์ระดับ route — หน้าเลือกนักล่า (/) กับเมนูหลัก (/home)
+// ทัวร์ของแต่ละช่วงในหน้า Quest ขอจาก Quest.vue เองตาม phase
+const ROUTE_TOURS = { '/': 'registry', '/home': 'home' }
+watch(
+  () => route.path,
+  (path, prev) => {
+    if (prev && ROUTE_TOURS[prev]) cancelTourRequest(ROUTE_TOURS[prev])
+    if (ROUTE_TOURS[path]) requestTour(ROUTE_TOURS[path])
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
   <BootLoader v-if="booting" @done="booting = false" />
+  <TourOverlay />
 
   <div class="app-wrapper" :class="{ full: isFullPage }">
     <!-- LOGO + TITLE HEADER -->

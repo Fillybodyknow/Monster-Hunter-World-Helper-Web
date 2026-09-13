@@ -157,7 +157,7 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
         <div
           v-for="item in menus"
           :key="item.menu"
-          class="nav-item"
+          :data-tour="'tab-' + item.menu" class="nav-item"
           :class="{ active: activeMenu === item.menu }"
           @click="activeMenu = item.menu"
           :aria-label="item.menu"
@@ -177,7 +177,7 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
       </nav>
 
       <!-- ปุ่มตี้ — ห้อยใต้เมนู Quest ซึ่งเป็นปุ่มซ้ายสุด -->
-      <button v-if="room.inRoom" class="party-fab" @click="showPartyPanel = true">
+      <button v-if="room.inRoom" data-tour="party-fab" class="party-fab" @click="showPartyPanel = true">
         <span class="party-fab-badge">
           <img :src="getImg('assets/img/UI/symbol/hunter_turn_symbol.webp')" class="party-fab-icon" alt="" />
           <span class="party-fab-count">{{ room.hunterCount }}</span>

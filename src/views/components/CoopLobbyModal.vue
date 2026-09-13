@@ -208,7 +208,7 @@ const starColor = computed(() => {
     <div class="cl-inner">
 
       <!-- Room Code — เด่นสุดในหน้า เพราะเป็นสิ่งที่ต้องบอกเพื่อน -->
-      <button class="cl-code-banner" :class="{ copied }" @click="copyCode">
+      <button data-tour="lobby-code" class="cl-code-banner" :class="{ copied }" @click="copyCode">
         <span class="cl-code-label">{{ copied ? '✓ คัดลอกแล้ว' : 'ROOM CODE — แตะเพื่อคัดลอก' }}</span>
         <span class="cl-code">
           <span v-for="(ch, i) in room.roomCode" :key="i" class="cl-code-char">{{ ch }}</span>
@@ -216,7 +216,7 @@ const starColor = computed(() => {
       </button>
 
       <!-- ใบประกาศที่ทีมนี้รับไว้ ปักอยู่บนกระดาน -->
-      <div class="cl-notice">
+      <div data-tour="lobby-quest" class="cl-notice">
 
       <div v-if="room.questInfo" class="cl-quest">
         <img
@@ -255,7 +255,7 @@ const starColor = computed(() => {
         <div class="cl-line"></div>
       </div>
 
-      <div class="cl-hunter-grid">
+      <div data-tour="lobby-party" class="cl-hunter-grid">
         <div
           v-for="h in room.hunters"
           :key="h.hunter_id"
@@ -310,7 +310,7 @@ const starColor = computed(() => {
 
       <div class="cl-actions">
         <button
-          class="cl-btn-ready"
+          data-tour="lobby-ready" class="cl-btn-ready"
           :class="{ active: room.amReady }"
           @click="handleReady"
           :disabled="counting"
@@ -319,12 +319,12 @@ const starColor = computed(() => {
         </button>
         <button
           v-if="room.isHost && room.hunterCount > 1"
-          class="cl-btn-host"
+          data-tour="lobby-host" class="cl-btn-host"
           title="โอนหัวห้อง"
           :disabled="counting"
           @click="openHostPicker"
         >👑</button>
-        <button class="cl-btn-leave" @click="handleLeave" :disabled="counting">
+        <button data-tour="lobby-leave" class="cl-btn-leave" @click="handleLeave" :disabled="counting">
           {{ room.isHost ? '🗑 ยุบ Room' : '🚪 ออก' }}
         </button>
       </div>
