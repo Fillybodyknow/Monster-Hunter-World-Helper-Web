@@ -4604,15 +4604,39 @@ watch(currentDialogId, () => {
   if (dialogDice.value?.value != null) dialogDice.value = null
 })
 
+// "หากเริ่มการผจญภัยที่นี่, ได้รับยา x ขวด" — ได้ยาเฉพาะตอนที่บทนี้เป็นบทแรกของเควสต์
+// อ่านจาก title ตรง ๆ ไม่เขียนลง effects[] ในไฟล์เล่ม เพราะ parse-dialog-effects.mjs --write
+// เขียน effects ของบทที่มี consequences ทับทั้งก้อน (ของที่เติมเองจะหาย) และสคริปต์ไม่ได้ครอบเล่ม Kushala
+// สะกดได้ทั้ง "ที่นี้" (Ancient Forest / Wildspire Waste) และ "ที่นี่" (Kushala Daora)
+const START_POTION_RE = /หากเริ่มการผจญภัยที่นี[่้]\s*,?\s*ได้รับยา\s*(\d+)\s*ขวด/
+
+// effect ของบทปัจจุบัน + ยาเริ่มต้น — ต่อท้ายเสมอ เพราะ key ที่ apply ไปแล้วผูกกับ index (dialog#i)
+// "บทแรก" = visitedDialogIds มีบทนี้บทเดียว ถูกล้างทุกครั้งที่เริ่ม/จบเควสต์ ใช้ได้ทั้ง Host, Guest
+// และตอนเริ่มจากบทของ Handler — บทเดียวกันที่เดินวนกลับมากลางเควสต์จะมีบทอื่นในรายการแล้ว เลยไม่ได้ซ้ำ
+// ยาเป็น state กลางของตี้ canApplyEffect ให้ Host เพิ่มคนเดียวแล้ว sync ผ่าน huntState — Guest ไม่นับซ้ำ
+const currentDialogEffects = computed(() => {
+  const d = currentDialog.value
+  if (!d) return []
+  const base = d.effects ?? []
+  const m = d.title?.match(START_POTION_RE)
+  const visited = visitedDialogIds.value
+  if (!m || visited.length !== 1 || visited[0] !== d.dialog_id) return base
+  return [...base, { type: 'gainPotion', n: Number(m[1]) }]
+})
+
 // เข้าบทสนทนาที่มี effects → จัดการให้ทันที (ทั้ง Host และ Guest ต่างทำส่วนของตัวเอง)
 // ข้ามตอน reconnect เพราะ state ที่ apply ไปแล้วถูก restore มาจาก Firebase อยู่แล้ว
 watch(
   [() => currentDialog.value, () => phase.value],
   ([dialog, p]) => {
-    if (p !== 'dialog' || !dialog?.effects?.length || _isReconnecting) return
+    if (p !== 'dialog' || !dialog || _isReconnecting) return
     nextTick(() => {
-      if (_isReconnecting) return
-      applyEffects(dialog.effects, 'dialog')
+      // บทเปลี่ยนไปแล้วระหว่างรอ — ปล่อยให้รอบของบทใหม่จัดการเอง
+      if (_isReconnecting || currentDialog.value !== dialog) return
+      // อ่านตอน nextTick ไม่ใช่ตอน watcher ยิง — ถึงตอนนี้บทถูกบันทึกลง visitedDialogIds แล้ว
+      // ยาเริ่มต้นถึงจะตัดสินได้ถูกว่าเป็นบทแรกหรือไม่
+      const effects = currentDialogEffects.value
+      if (effects.length) applyEffects(effects, 'dialog')
     })
   },
   { immediate: true },
@@ -6083,10 +6107,10 @@ const openPackDrawer = () => {
           {{ currentDialog.consequences }}
         </div>
 
-        <div v-if="currentDialog.effects?.length" class="fx-panel fx-panel-parchment">
+        <div v-if="currentDialogEffects.length" class="fx-panel fx-panel-parchment">
           <div class="fx-list">
             <span
-              v-for="(e, i) in currentDialog.effects"
+              v-for="(e, i) in currentDialogEffects"
               :key="i"
               class="fx-chip"
               :class="{
