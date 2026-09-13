@@ -1,5 +1,5 @@
 import { db, authReady } from './firebase'
-import { ref, set, get, update, onValue, remove, onDisconnect, push } from 'firebase/database'
+import { ref, set, get, update, onValue, remove, onDisconnect, push, runTransaction } from 'firebase/database'
 import { getWeapons } from './equipService'
 
 // สรุปอาวุธที่ถืออยู่ให้เพื่อนร่วมตี้เห็น (ชื่อ + rarity + ไอคอน)
@@ -427,6 +427,43 @@ export const pushPalicoHire = (code, hunterId, palicoId) =>
   set(ref(db, `rooms/${code}/palicoOffer/hired/${hunterId}`), palicoId)
 export const clearPalicoOffer = (code) =>
   remove(ref(db, `rooms/${code}/palicoOffer`))
+
+// ── จองใบ Palico ──────────────────────────────────────────
+// ทุกทางที่ได้ Palico มา (ดราฟต์, จ้างที่ Lodge ทั้งตี้เล็กและตี้ใหญ่) ต้องจองที่นี่ก่อนผูกใบ
+// set() ธรรมดาเขียนคนละ path ของใครของมัน server รับหมด สองคนกดพร้อมกันเลยได้ใบเดียวกันทั้งคู่
+// transaction บน path เดียวต่อใบ ให้ server ตัดสินตามลำดับที่รับจริง คนแพ้รู้ก่อนเสียของ
+// liveHunterIds = คนที่ยังอยู่ในห้อง — การจองของคนที่ออกไปแล้วยึดทับได้ ไม่ปล่อยให้ใบค้างทั้งเควสต์
+// temporary = จองชั่วคราวตอนเข้าหน้าจ่ายของ — ผูก onDisconnect ให้ server ลบเองถ้าปิดแท็บ/หลุดค้างอยู่
+// ไม่งั้นใบนั้นล็อกค้างทั้ง Downtime เพราะคนหลุดยังนับว่าอยู่ในห้อง (hunters ไม่ถูกลบตอนหลุด)
+// ถาวร (ดราฟต์ / กดยืนยันจ้าง) = ยกเลิก onDisconnect ทิ้ง การจองอยู่ต่อแม้หลุด
+// ผูก onDisconnect "หลัง" จองสำเร็จเท่านั้น — ผูกก่อนแล้วจองไม่ได้ ตอนเราหลุดจะไปลบการจองของคนอื่น
+export const claimPalicoSlot = async (code, palicoId, hunterId, liveHunterIds = [], { temporary = false } = {}) => {
+  const me = String(hunterId)
+  const live = new Set(liveHunterIds.map(String))
+  const slot = ref(db, `rooms/${code}/palicoClaims/${palicoId}`)
+  const res = await runTransaction(slot, (cur) => {
+    if (cur == null || String(cur) === me || !live.has(String(cur))) return me
+    return undefined // คนในห้องจองไว้แล้ว — คืน undefined คือยกเลิก transaction
+  })
+  const ok = res.committed && String(res.snapshot.val()) === me
+  if (ok) {
+    if (temporary) await onDisconnect(slot).remove()
+    else await onDisconnect(slot).cancel()
+  }
+  return ok
+}
+
+// ปล่อยเฉพาะการจองที่ยังเป็นของเราจริง — ไม่ไปลบของคนที่ยึดทับไปแล้ว
+export const releasePalicoSlot = async (code, palicoId, hunterId) => {
+  const me = String(hunterId)
+  const slot = ref(db, `rooms/${code}/palicoClaims/${palicoId}`)
+  // ถอด onDisconnect ก่อน — ถ้าปล่อยค้าง พอเราหลุดทีหลังจะไปลบการจองของคนที่มาจองใบนี้ต่อ
+  await onDisconnect(slot).cancel()
+  await runTransaction(slot, (cur) => (String(cur) === me ? null : undefined))
+}
+
+export const clearPalicoClaims = (code) =>
+  remove(ref(db, `rooms/${code}/palicoClaims`))
 
 // ดราฟต์ก่อนเริ่มเควสต์ (ตี้ 1-2 คน) — Host แจกให้ทุกคนทีเดียวจากกองเดียว
 // ถ้าให้ต่างคนต่างสุ่มเองจะมีทางได้ใบซ้ำกัน

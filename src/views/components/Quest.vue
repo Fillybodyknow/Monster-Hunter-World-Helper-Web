@@ -74,7 +74,15 @@ const passwordInput = ref('')
 const joiningCode = ref('')
 const browserError = ref('')
 
+// เสียงหน้า Quest Board — ใช้ชุดเดียวกับหน้า Downtime ให้ทั้งแอปพูดภาษาเดียวกัน
+// menu_change = ย้ายหน้า/ถอยกลับ · action_select = เลือกสิ่งที่ยังไม่ผูกมัด · action_confirm = ยืนยัน
+// key เดียวกันต่อกลุ่ม กดรัวแล้วเสียงใหม่ตัดเสียงเก่า ไม่ซ้อนกันจนแตก
+const _sfxMenu = () => sfx.playRandom(`${SFX_UI}/menu_change`, 4, { key: 'menu' })
+const _sfxSelect = () => sfx.play(`${SFX_UI}/action_select.mp3`, { key: 'action' })
+const _sfxConfirm = () => sfx.playRandom(`${SFX_UI}/action_confirm`, 3, { key: 'action' })
+
 const openRoomBoard = () => {
+  _sfxMenu()
   browserError.value = ''
   passwordFor.value = null
   joinError.value = ''
@@ -83,10 +91,49 @@ const openRoomBoard = () => {
 }
 
 const closeRoomBoard = () => {
+  _sfxMenu()
   room.stopLobbyBrowse?.()
   passwordFor.value = null
   browserError.value = ''
   phase.value = 'book'
+}
+
+// ── ตัวจัดการปุ่มที่เดิมเขียนเป็นนิพจน์ใน template — แยกออกมาเพื่อใส่เสียงได้ ──
+const leaveRoomFromBoard = () => {
+  _sfxMenu()
+  room.leave()
+}
+const cancelLobbyPassword = () => {
+  _sfxMenu()
+  passwordFor.value = null
+  browserError.value = ''
+}
+const forgetSavedRoom = () => {
+  sfx.playRandom(`${SFX_UI}/item_remove`, 3, { key: 'item' })
+  room.clearSavedRoom()
+}
+const openPostQuest = () => {
+  _sfxSelect()
+  showCoopModeSelect.value = true
+}
+const closePostQuest = () => {
+  _sfxMenu()
+  showCoopModeSelect.value = false
+}
+// เสียงประกาศเล่นตอนเควสต์ขึ้นบอร์ดสำเร็จจริง ไม่ใช่ตอนกดปุ่ม
+// สร้างห้องพลาด (เน็ตหลุด / ไม่มีเซฟนักล่า) จะไม่มีเสียงประกาศหลอกว่าโพสต์แล้ว
+// ไม่มีเสียงคลิกยืนยันนำหน้า — ดังซ้อนกับเสียงประกาศ 3-4 วินาทีแล้วรก หน้าต่างปิดทันทีก็รู้แล้วว่ากดติด
+// เล่นจาก Quest.vue ซึ่งยังเปิดอยู่ตอนย้ายเข้าล็อบบี้ เสียงจึงไม่ถูกตัดกลางคัน
+const confirmPostQuest = async () => {
+  showCoopModeSelect.value = false
+  await startCoopQuest()
+  if (room.inRoom && phase.value === 'lobby') {
+    sfx.playRandom(`${SFX_UI}/post_quest`, 3, { key: 'post' })
+  }
+}
+const rerollRoomName = () => {
+  sfx.play(`${SFX_UI}/dice_roll.mp3`, { key: 'dice' })
+  roomName.value = randomRoomName()
 }
 
 const _enterLobby = async (code) => {
@@ -110,17 +157,21 @@ const _enterLobby = async (code) => {
 const handleJoinLobby = async (lobby) => {
   if (!hunter.value || joiningCode.value) return
   if (lobby.hasPassword) {
+    // ห้องมีรหัส = ยังไม่ได้เข้า แค่เปิดช่องใส่รหัส
+    _sfxSelect()
     passwordFor.value = lobby
     passwordInput.value = ''
     browserError.value = ''
     return
   }
+  _sfxConfirm()
   await _enterLobby(lobby.code)
 }
 
 const submitLobbyPassword = async () => {
   const lobby = passwordFor.value
   if (!lobby || joiningCode.value) return
+  _sfxConfirm()
   joiningCode.value = lobby.code
   const ok = await room.verifyLobbyPassword?.(lobby.code, passwordInput.value.trim())
   joiningCode.value = ''
@@ -290,6 +341,7 @@ const onCoopLeave = () => {
 
 const handleJoinQuest = async () => {
   if (!hunter.value || !joinCode.value.trim()) return
+  _sfxConfirm()
   joinLoading.value = true
   joinError.value = ''
   try {
@@ -536,6 +588,7 @@ watch(() => room.inRoom, (inRoom, wasInRoom) => {
 
 
 const selectBook = (book) => {
+  _sfxMenu()
   selectedBook.value = book
   phase.value = 'monster'
 }
@@ -550,6 +603,7 @@ const isMonsterEnabled = (monster_id) => {
 }
 
 const selectMonster = (monster) => {
+  _sfxMenu()
   selectedMonster.value = monster
   phase.value = 'quest'
 }
@@ -649,6 +703,8 @@ const myAttemptNote = computed(() => {
 const selectQuest = (quest) => {
   if (!isQuestUnlocked(selectedMonster.value.monster_id, quest.quest_id)) return
   if (quest.quest_id === 1 && isQuestExhausted(quest)) return
+  // เล่นหลังผ่านเงื่อนไข — เควสต์ที่ยังล็อกกดแล้วเงียบ ไม่หลอกว่าเข้าได้
+  _sfxMenu()
   selectedQuest.value = quest
   phase.value = 'detail'
 }
@@ -751,12 +807,16 @@ const afterPalicoDraft = () => {
 // และถ้าไม่ล้าง ตี้ 3-4 จะจ้างครั้งเดียวถือยาวข้ามเควสต์ ค่าจ้าง 4 Resource ก็ไม่มีความหมาย
 // อีกทั้งใบที่ค้างจะถูกนับเป็น "มีคนถือ" แล้วไปตัดกองที่สุ่มรอบใหม่ให้แคบลงเรื่อย ๆ
 const _resetPalicoForNewQuest = () => {
+  // จำใบเดิมไว้ก่อนล้าง — ต้องรู้ว่าจะปล่อยการจองใบไหน
+  const prevId = (room.inRoom ? room.myPalicoId : null) ?? hunter.value?.palico_id ?? null
   if (hunter.value?.palico_id != null) {
     hunter.value.palico_id = null
     saveHunter(hunter.value)
   }
   if (!room.inRoom) return
   room.setMyPalico?.(null)
+  // Host ล้างการจองทั้งห้องอยู่แล้ว ปล่อยของตัวเองด้วยเผื่อ Host เน็ตช้า ใบเดิมจะไม่ค้างว่ามีคนจอง
+  if (prevId != null) room.releasePalico?.(prevId)
   if (room.isHost) room.clearAllPalicos?.()
 }
 
@@ -787,16 +847,51 @@ const pickPalico = (palico) => {
   palicoPick.value = palico
 }
 
-const confirmPalicoDraft = () => {
-  if (!palicoPick.value || myPalicoPicked.value) return
+// กำลังจองใบกับ Firebase — กันกดซ้ำ และบอกผู้เล่นว่ารออยู่ ไม่ใช่ปุ่มค้าง
+const palicoClaiming = ref(false)
+
+const confirmPalicoDraft = async () => {
+  if (!palicoPick.value || myPalicoPicked.value || palicoClaiming.value) return
+  const pick = palicoPick.value
   sfx.playRandom(`${SFX_UI}/action_confirm`, 3, { key: 'action' })
-  _assignPalico(palicoPick.value.id)
-  if (room.inRoom) {
-    room.pickPalicoDraft?.(palicoPick.value.id)
-  } else {
-    soloPalicoPick.value = palicoPick.value.id
+  if (!room.inRoom) {
+    _assignPalico(pick.id)
+    soloPalicoPick.value = pick.id
     afterPalicoDraft()
+    return
   }
+
+  // Host แจกการ์ดไม่ซ้ำกันอยู่แล้ว แต่ยังต้องจอง — ใบที่ดราฟต์ได้จะได้นับว่ามีคนถือ
+  // ตอนคนอื่นไปจ้างที่ Lodge ด้วยกฎเดียวกัน ถ้าช่องจองว่าง transaction จะปล่อยให้จ้างซ้ำได้
+  palicoClaiming.value = true
+  let ok = false
+  // เก็บ error ตัวจริงไว้ — เดิมกลืนเงียบ ผู้เล่นเห็นแค่ "จองไม่สำเร็จ" โดยไม่มีใครรู้ว่าติดอะไร
+  let failed = null
+  try {
+    ok = await room.claimPalico(pick.id)
+  } catch (e) {
+    failed = e ?? new Error('unknown')
+    console.error('[Palico] จองการ์ดดราฟต์ไม่สำเร็จ', e)
+  } finally {
+    palicoClaiming.value = false
+  }
+
+  // ระหว่างรอ เฟสอาจเดินไปแล้วหรือหลุดจากห้อง — ไม่ผูกใบนี้ และคืนการจองถ้าได้มา
+  if (phase.value !== 'palicoDraft' || !room.inRoom || myPalicoPicked.value) {
+    if (ok) room.releasePalico?.(pick.id)
+    return
+  }
+  if (failed) {
+    addNotif(`🐱 จองการ์ดไม่สำเร็จ — ${failed.message || 'ตรวจการเชื่อมต่อแล้วลองใหม่'}`, 'error')
+    return
+  }
+  if (!ok) {
+    addNotif(`🐱 ${pick.shortName} มีคนเลือกไปแล้ว — เลือกใบอื่น`, 'warn')
+    palicoPick.value = null
+    return
+  }
+  _assignPalico(pick.id)
+  room.pickPalicoDraft?.(pick.id)
 }
 
 // ครบทุกคนแล้วค่อยไปต่อ — Host คนเดียวเป็นคนสั่ง guest ตามผ่าน currentDialog เหมือนเดิม
@@ -2054,7 +2149,7 @@ const resetToBookPhase = () => {
   timeCardDeck.value = []
   timeCardDiscard.value = []
   showTimeCardManage.value = false
-  redCardCounts.value = {}
+  tcZoomCard.value = null
   _soloTurnEnded.value = false
   tcRevealQueue.value = []
   showTcReveal.value = false
@@ -2133,6 +2228,7 @@ const onFail = () => {
 
 
 const goBack = () => {
+  _sfxMenu()
   const map = {
     rooms: () => closeRoomBoard(),
     huntingPanel: () => { phase.value = 'hunting' },
@@ -2363,7 +2459,9 @@ watch([() => room.trackTokenState, () => room.joinSignal], ([state]) => {
 const timeCardDeck = ref([])
 const timeCardDiscard = ref([])
 const showTimeCardManage = ref(false)
-const redCardCounts = ref({})
+// การ์ดแดงที่กำลังซูมดูในหน้าจัดการ Deck — แตะการ์ดในตาราง → อ่านชัด ๆ → ตัดสินใจเพิ่มในหน้าต่างเดียวกัน
+// เดิมต้องติ๊กเลือกแล้วลงไปกดปุ่มท้ายหน้าต่าง รูปในตารางเล็กเกินจะอ่านความสามารถบนการ์ดออก
+const tcZoomCard = ref(null)
 const showLastDiscard = ref(false)
 const showConfirmTurn = ref(false)
 const showMonsterTurnConfirm = ref(false)
@@ -2405,6 +2503,9 @@ const floatToggleLabel = computed(() => {
   if (myTurnEnded.value) return '✓ รอคนอื่น'
   return '🃏 จบเทิร์น'
 })
+// เทียบกับข้อความของ floatToggleLabel ตรง ๆ แทนการเขียนเงื่อนไขซ้ำ
+// ลำดับเงื่อนไขข้างบน (ผลเควสต์ → รอ Monster Turn → รอคนอื่น) จะได้มีที่เดียว แก้ที่นั่นแท็บก็ตามเอง
+const floatWaitingOthers = computed(() => floatToggleLabel.value === '✓ รอคนอื่น')
 const showDiscardCount = ref(false)
 const discardCountInput = ref(1)
 
@@ -2437,18 +2538,21 @@ const discardTimeCard = () => {
   _pushTimeCardState()
 }
 
-const addRedCardsAndShuffle = () => {
-  const toAdd = []
-  timeCardData.red_time_cards.forEach((card) => {
-    if (redCardCounts.value[card.time_card_id]) {
-      toAdd.push({ ...card, uid: `rc_${card.time_card_id}_${Date.now()}` })
-    }
-  })
-  timeCardDeck.value = _shuffle([...timeCardDeck.value, ...toAdd])
-  redCardCounts.value = {}
+const closeTimeCardManage = () => {
+  tcZoomCard.value = null
   showTimeCardManage.value = false
+}
+
+// template ส่ง tcZoomCard ณ ตอนกดเข้ามา — กดรัวครั้งที่สองจะได้ null เพราะครั้งแรกล้างไปแล้ว การ์ดเลยไม่เข้า Deck ซ้ำ
+const addRedCardAndShuffle = (card) => {
+  if (!card) return
+  timeCardDeck.value = _shuffle([
+    ...timeCardDeck.value,
+    { ...card, uid: `rc_${card.time_card_id}_${Date.now()}` },
+  ])
+  closeTimeCardManage()
   _pushTimeCardState()
-  if (toAdd.length) _triggerShuffleAnim('time')
+  _triggerShuffleAnim('time')
 }
 
 
@@ -2541,6 +2645,41 @@ const applyNitrotoadBreak = (pos) => {
   nitrotoadRoll.value = null
   nitrotoadDrawerId.value = null
   _pushTimeCardState()
+}
+
+// Part ที่คนจั่วกดดูรายละเอียดอยู่ — อยู่ในเครื่องคนจั่วเท่านั้น คนอื่นเห็นแค่ "รอเลือก Part" ไม่ต้อง sync
+const ntPartDetail = ref(null) // position | null
+
+// เปลี่ยน step เมื่อไหร่ (วางแล้ว / ปิด / รีเซ็ตเควสต์ / sync จากห้อง) ต้องปิดหน้ารายละเอียดด้วย
+// ไม่งั้นค่าค้างไว้ จั่ว Nitrotoad รอบหน้าหน้ารายละเอียดจะเด้งขึ้นมาเองก่อนได้เลือก
+watch(nitrotoadStep, () => { ntPartDetail.value = null })
+
+const ntDetail = computed(() => {
+  const pos = ntPartDetail.value
+  const data = pos ? activeParts.value[pos] : null
+  if (!data) return null
+  const max = data.part_break_threshold ?? 0
+  const current = partDamage.value[pos] ?? 0
+  const broken = !!brokenParts.value[pos]
+  return {
+    position: pos,
+    data,
+    meta: getPartMeta(data.part_id),
+    max,
+    current,
+    next: Math.min(max, current + 1),
+    broken,
+    // Token ใบนี้ทำให้แตกพอดี — เตือนก่อนกด ผลตอนแตกบางใบไปแก้กองการ์ดพฤติกรรม
+    breaksNow: !broken && max > 0 && current + 1 >= max,
+    // ตัวเลขเดียวกับการ์ด Part ในหน้าล่า — Blastblight หักเกราะ 1
+    armor: blastblightActive.value ? Math.max(0, data.armor - 1) : data.armor,
+  }
+})
+
+const confirmNitrotoadBreak = () => {
+  const d = ntDetail.value
+  if (!d || d.broken) return
+  applyNitrotoadBreak(d.position)
 }
 
 // ── Paratoad Time Card ────────────────────────────────────
@@ -3418,6 +3557,8 @@ const attackCardLimit = computed(() => currentBehaviorCard.value?.attack_cards ?
 const monsterTurnReady = computed(() =>
   activationLimit.value === 0 || activationRoundsCompleted.value >= activationLimit.value
 )
+// Hunter Turn ที่ยังเหลือในรอบของการ์ดพฤติกรรมใบนี้ — โชว์ตอนจบเทิร์นแล้วรอคนอื่น
+const hunterTurnsLeft = computed(() => Math.max(0, activationLimit.value - activationRoundsCompleted.value))
 
 const canComplete = computed(() => huntingHp.value === 0)
 const canFail = computed(() => faintCount.value >= 3)
@@ -3778,6 +3919,10 @@ watch(faintCount, (now, before) => {
 // ใช้ยา — นับเฉพาะตอนลดลง ตอนเพิ่มคือได้ยามาไม่ใช่ดื่ม
 watch(potionCount, (now, before) => {
   if (before == null || now >= before || _suppressAnimations) return
+  // จบเควสต์แล้ว resetToBookPhase ล้างยาเป็น 0 — ตัวเลขลดแต่ไม่มีใครดื่ม
+  // มันตั้ง phase = 'book' ในรอบเดียวกัน (ไม่มี await คั่น) ถึงตอน watcher ทำงานจึงเห็น 'book' แล้วเสมอ
+  // หน้า book ไม่มีทางดื่มยาได้อยู่แล้ว กันตรงนี้เลยไม่ทำให้เสียงดื่มจริงหาย
+  if (phase.value === 'book') return
   sfx.play(`${SFX_COMBAT}/potion_drink/3.mp3`, { gain: 0.8, key: 'potion' })
 })
 
@@ -5132,7 +5277,7 @@ const openPackDrawer = () => {
           <span class="join-quest-icon">⚔</span>
           <span>Co-op Room: <strong>{{ room.roomCode }}</strong></span>
           <span class="join-room-count">{{ room.hunterCount }}/4 Hunters</span>
-          <button class="join-leave-btn" @click="room.leave()">ออก</button>
+          <button class="join-leave-btn" @click="leaveRoomFromBoard">ออก</button>
         </div>
         <button v-else class="coop-board-entry" @click="openRoomBoard">
           <span class="cbe-icon">📜</span>
@@ -5382,7 +5527,7 @@ const openPackDrawer = () => {
       </div>
 
       <div class="embark-mode-row">
-        <button class="btn-embark btn-coop" @click="showCoopModeSelect = true">
+        <button class="btn-embark btn-coop" @click="openPostQuest">
           <img :src="getImg('assets/img/menu_topbar_icon/quest.webp')" class="embark-icon" />
           Post Quest
         </button>
@@ -5580,9 +5725,9 @@ const openPackDrawer = () => {
       <button
         v-if="!myPalicoPicked"
         class="pd-confirm"
-        :disabled="!palicoPick"
+        :disabled="!palicoPick || palicoClaiming"
         @click="confirmPalicoDraft"
-      >{{ palicoPick ? `✓ เอา ${palicoPick.shortName}` : 'เลือกการ์ดก่อน' }}</button>
+      >{{ palicoClaiming ? '⏳ กำลังจอง…' : palicoPick ? `✓ เอา ${palicoPick.shortName}` : 'เลือกการ์ดก่อน' }}</button>
       <p v-else class="pd-locked-note">เลือกแล้ว: <strong>{{ myPalicoPicked.shortName }}</strong></p>
 
       <!-- ใครเลือกแล้วบ้าง — คนที่รออยู่จะได้รู้ว่ารอใคร -->
@@ -5666,7 +5811,7 @@ const openPackDrawer = () => {
             @click="joinCode = room.savedRoomCode; handleJoinQuest()"
             :disabled="joinLoading"
           >{{ joinLoading ? '...' : 'Reconnect' }}</button>
-          <button class="reconnect-clear" @click="room.clearSavedRoom()">✕</button>
+          <button class="reconnect-clear" @click="forgetSavedRoom">✕</button>
         </div>
 
         <div class="rb-code-row">
@@ -5788,7 +5933,7 @@ const openPackDrawer = () => {
       <!-- Password prompt -->
       <Teleport to="body">
         <Transition name="slain-fade">
-          <div v-if="passwordFor" class="rb-pass-overlay" @click.self="passwordFor = null">
+          <div v-if="passwordFor" class="rb-pass-overlay" @click.self="cancelLobbyPassword">
             <div class="rb-pass-box">
               <p class="rb-pass-title">🔒 ห้องนี้ต้องใช้รหัส</p>
               <p class="rb-pass-room">{{ passwordFor.roomName }}</p>
@@ -5801,7 +5946,7 @@ const openPackDrawer = () => {
               />
               <p v-if="browserError" class="rb-error">{{ browserError }}</p>
               <div class="rb-pass-actions">
-                <button class="rb-pass-cancel" @click="passwordFor = null; browserError = ''">ยกเลิก</button>
+                <button class="rb-pass-cancel" @click="cancelLobbyPassword">ยกเลิก</button>
                 <button
                   class="rb-pass-ok"
                   :disabled="!passwordInput.trim() || !!joiningCode"
@@ -5817,7 +5962,7 @@ const openPackDrawer = () => {
     <!-- ═══════════ CO-OP QUEST MODE MODAL ═══════════ -->
     <Teleport to="body">
       <Transition name="slain-fade">
-        <div v-if="showCoopModeSelect" class="cqm-overlay" @click.self="showCoopModeSelect = false">
+        <div v-if="showCoopModeSelect" class="cqm-overlay" @click.self="closePostQuest">
           <div class="cqm-modal">
             <p class="cqm-title">ตั้งค่าห้อง</p>
             <div class="rn-section">
@@ -5830,7 +5975,7 @@ const openPackDrawer = () => {
                   maxlength="60"
                   placeholder="ตั้งชื่อห้องของคุณ"
                 />
-                <button class="rn-dice-btn" title="สุ่มชื่อใหม่" @click="roomName = randomRoomName()">🎲</button>
+                <button class="rn-dice-btn" title="สุ่มชื่อใหม่" @click="rerollRoomName">🎲</button>
               </div>
 
               <label class="rn-lock-toggle" :class="{ 'rn-lock-on': useRoomPassword }">
@@ -5849,11 +5994,11 @@ const openPackDrawer = () => {
             </div>
 
             <div class="cqm-actions">
-              <button class="coop-mode-cancel" @click="showCoopModeSelect = false">ยกเลิก</button>
+              <button class="coop-mode-cancel" @click="closePostQuest">ยกเลิก</button>
               <button
                 class="coop-mode-confirm"
                 :disabled="useRoomPassword && !roomPassword.trim()"
-                @click="showCoopModeSelect = false; startCoopQuest()"
+                @click="confirmPostQuest"
               >สร้าง Lobby</button>
             </div>
           </div>
@@ -6038,29 +6183,46 @@ const openPackDrawer = () => {
       <!-- Time Card Manage Modal (Host only) -->
       <Teleport to="body">
         <Transition name="slain-fade">
-          <div v-if="showTimeCardManage" class="tc-modal-overlay" @click.self="showTimeCardManage = false">
+          <div v-if="showTimeCardManage" class="tc-modal-overlay" @click.self="closeTimeCardManage">
             <div class="tc-modal">
               <p class="tc-modal-title">⚙ จัดการ Time Card Deck</p>
               <p class="tc-modal-sub">Deck ปัจจุบัน: <strong>{{ timeCardDeck.length }}</strong> ใบ</p>
-              <p class="tc-modal-section">เลือก Red Time Card เพื่อเพิ่มเข้า Deck</p>
+              <p class="tc-modal-section">แตะ Red Time Card เพื่อดูรายละเอียดและเพิ่มเข้า Deck</p>
               <div class="tc-red-grid">
-                <div
+                <button
                   v-for="card in timeCardData.red_time_cards"
                   :key="card.time_card_id"
+                  type="button"
                   class="tc-red-card"
-                  :class="{ selected: redCardCounts[card.time_card_id] }"
-                  @click="redCardCounts = redCardCounts[card.time_card_id] ? {} : { [card.time_card_id]: 1 }"
+                  :title="`ดู ${card.card_name}`"
+                  @click="tcZoomCard = card"
                 >
-                  <div class="tc-red-check">✓</div>
-                  <img :src="getImg(card.card_img)" class="tc-red-img" />
+                  <img :src="getImg(card.card_img)" class="tc-red-img" alt="" />
                   <span class="tc-red-name">{{ card.card_name }}</span>
-                </div>
+                </button>
               </div>
               <div class="tc-modal-btns">
-                <button class="tc-modal-btn tc-modal-add" @click="addRedCardsAndShuffle">
-                  🔀 เพิ่มและสับ Deck
-                </button>
-                <button class="tc-modal-btn tc-modal-cancel" @click="showTimeCardManage = false">ยกเลิก</button>
+                <button class="tc-modal-btn tc-modal-cancel" @click="closeTimeCardManage">ปิด</button>
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </Teleport>
+
+      <!-- ซูม Red Time Card — อ่านความสามารถบนการ์ดให้ชัดก่อนตัดสินใจเพิ่ม
+           Teleport แยกและ z-index สูงกว่า .tc-modal-overlay ไม่งั้นจะโผล่อยู่ใต้หน้าต่างจัดการ Deck -->
+      <Teleport to="body">
+        <Transition name="slain-fade">
+          <div v-if="tcZoomCard" class="tcz-overlay" @click.self="tcZoomCard = null">
+            <div class="tcz-panel" role="dialog" :aria-label="tcZoomCard.card_name">
+              <p class="tc-modal-title">{{ tcZoomCard.card_name }}</p>
+              <img :src="getImg(tcZoomCard.card_img)" class="tcz-img" :alt="tcZoomCard.card_name" />
+              <p class="tc-modal-sub">
+                เพิ่มแล้ว Deck จะมี <strong>{{ timeCardDeck.length + 1 }}</strong> ใบ แล้วสับใหม่ทั้งกอง
+              </p>
+              <div class="tc-modal-btns tcz-btns">
+                <button class="tc-modal-btn tc-modal-cancel" @click="tcZoomCard = null">กลับ</button>
+                <button class="tc-modal-btn tc-modal-add" @click="addRedCardAndShuffle(tcZoomCard)">🔀 เพิ่มเข้า Deck และสับ</button>
               </div>
             </div>
           </div>
@@ -7971,57 +8133,130 @@ const openPackDrawer = () => {
             <template v-else-if="nitrotoadStep === 'part-select'">
               <p class="nt-roll-result">ได้ <strong>{{ nitrotoadRoll }}</strong> — กดที่ Part เพื่อวาง Break Token</p>
               <template v-if="isNitrotoadDrawer">
-                <div class="nt-parts-grid">
-                  <div
+                <!-- เหลือแค่รูป Part — รายละเอียดย้ายไปอยู่ในหน้าต่างที่เด้งตอนกด
+                     ได้อ่านเกราะ ความคืบหน้า และผลตอนแตกให้ครบก่อนตัดสินใจวาง ไม่ใช่กดแล้ววางทันทีแบบเดิม -->
+                <div class="nt-parts-grid nt-icon-grid">
+                  <button
                     v-for="(partData, position) in activeParts"
                     :key="position"
-                    class="part-card nt-part-card"
-                    :class="{ 'part-card-broken': brokenParts[position], 'nt-part-selectable': !brokenParts[position] }"
-                    @click="!brokenParts[position] && applyNitrotoadBreak(position)"
+                    type="button"
+                    class="nt-icon-tile"
+                    :class="{ 'nt-icon-tile-broken': brokenParts[position] }"
+                    :title="getPartMeta(partData.part_id)?.part ?? position"
+                    @click="ntPartDetail = position"
                   >
-                    <div class="part-card-head">
-                      <div class="part-icon-wrap">
-                        <img v-if="getPartMeta(partData.part_id)" :src="getImg(getPartMeta(partData.part_id).thumbnail)" class="part-icon-img" :class="{ 'part-icon-broken': brokenParts[position] }" />
-                      </div>
-                      <div class="part-card-armor-wrap">
-                        <div class="armor-element-card" :class="{ 'armor-blastblight': blastblightActive && partData.armor > 0 }">
-                          <img :src="getImg('assets/img/bonus_armor.webp')" class="armor-base" />
-                          <span class="element-value">{{ blastblightActive ? Math.max(0, partData.armor - 1) : partData.armor }}</span>
+                    <img
+                      v-if="getPartMeta(partData.part_id)"
+                      :src="getImg(getPartMeta(partData.part_id).thumbnail)"
+                      class="nt-icon-img"
+                      :alt="getPartMeta(partData.part_id).part"
+                    />
+                    <span v-if="brokenParts[position]" class="nt-icon-broken">BROKEN</span>
+                  </button>
+                </div>
+
+                <!-- รายละเอียด Part — ซ้อนบนหน้าต่าง Nitrotoad (ในเครื่องคนจั่วเท่านั้น) -->
+                <Transition name="slain-fade">
+                  <div v-if="ntDetail" class="ntd-overlay" @click.self="ntPartDetail = null">
+                    <div class="ntd-panel" role="dialog" :aria-label="ntDetail.meta?.part ?? ntDetail.position">
+                      <div class="ntd-head">
+                        <div class="part-icon-wrap ntd-icon-wrap">
+                          <img
+                            v-if="ntDetail.meta"
+                            :src="getImg(ntDetail.meta.thumbnail)"
+                            class="part-icon-img ntd-icon-img"
+                            :class="{ 'part-icon-broken': ntDetail.broken }"
+                            alt=""
+                          />
+                        </div>
+                        <div class="ntd-title-block">
+                          <p class="ntd-name">{{ ntDetail.meta?.part ?? ntDetail.position }}</p>
+                          <span v-if="ntDetail.broken" class="ntd-broken-tag">BROKEN</span>
+                        </div>
+                        <div
+                          class="armor-element-card"
+                          :class="{ 'armor-blastblight': blastblightActive && ntDetail.data.armor > 0 }"
+                          title="เกราะ"
+                        >
+                          <img :src="getImg('assets/img/bonus_armor.webp')" class="armor-base" alt="เกราะ" />
+                          <span class="element-value">{{ ntDetail.armor }}</span>
+                        </div>
+                        <!-- ตำแหน่ง Part บนตัวมอน — มอนบางตัวมี Part รูปเดียวกันสองฝั่ง (ครีบซ้าย/ขวา) ดูตรงนี้แยก -->
+                        <div class="part-mini-diagram" title="ตำแหน่งของ Part">
+                          <svg viewBox="0 0 100 100" class="part-mini-svg">
+                            <circle cx="50" cy="50" r="46" fill="#0f0b05" stroke="#5a3d1f" stroke-width="2" />
+                            <line x1="4" y1="4" x2="96" y2="96" stroke="#3a2810" stroke-width="2" />
+                            <line x1="96" y1="4" x2="4" y2="96" stroke="#3a2810" stroke-width="2" />
+                            <circle
+                              v-if="posDotCoords[ntDetail.position]"
+                              :cx="posDotCoords[ntDetail.position].x"
+                              :cy="posDotCoords[ntDetail.position].y"
+                              r="12"
+                              :fill="ntDetail.broken ? 'rgba(220,60,40,0.9)' : 'rgba(200,155,60,0.9)'"
+                            />
+                            <template v-for="connPos in (ntDetail.data.connect_part_position ?? [])" :key="connPos">
+                              <circle
+                                v-if="posDotCoords[connPos]"
+                                :cx="posDotCoords[connPos].x"
+                                :cy="posDotCoords[connPos].y"
+                                r="12"
+                                :fill="ntDetail.broken ? 'rgba(220,60,40,0.9)' : 'rgba(200,155,60,0.9)'"
+                              />
+                            </template>
+                          </svg>
                         </div>
                       </div>
-                      <div class="part-mini-diagram">
-                        <svg viewBox="0 0 100 100" class="part-mini-svg">
-                          <circle cx="50" cy="50" r="46" fill="#0f0b05" stroke="#5a3d1f" stroke-width="2" />
-                          <line x1="4" y1="4" x2="96" y2="96" stroke="#3a2810" stroke-width="2" />
-                          <line x1="96" y1="4" x2="4" y2="96" stroke="#3a2810" stroke-width="2" />
-                          <circle v-if="posDotCoords[position]" :cx="posDotCoords[position].x" :cy="posDotCoords[position].y" r="12"
-                            :fill="brokenParts[position] ? 'rgba(220,60,40,0.9)' : 'rgba(200,155,60,0.9)'"
-                            :filter="brokenParts[position] ? 'url(#glow-red)' : 'url(#glow-gold)'" />
-                          <template v-for="connPos in (partData.connect_part_position ?? [])" :key="connPos">
-                            <circle v-if="posDotCoords[connPos]" :cx="posDotCoords[connPos].x" :cy="posDotCoords[connPos].y" r="12"
-                              :fill="brokenParts[position] ? 'rgba(220,60,40,0.9)' : 'rgba(200,155,60,0.9)'"
-                              :filter="brokenParts[position] ? 'url(#glow-red)' : 'url(#glow-gold)'" />
-                          </template>
-                          <defs>
-                            <filter id="glow-gold" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-                            <filter id="glow-red" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-                          </defs>
-                        </svg>
+
+                      <div class="part-break-wrap ntd-break">
+                        <div class="part-break-row">
+                          <span class="part-break-label">Break</span>
+                          <span class="part-break-nums">
+                            <template v-if="ntDetail.broken">{{ ntDetail.current }} / {{ ntDetail.max }}</template>
+                            <template v-else>{{ ntDetail.current }} → <strong class="ntd-next">{{ ntDetail.next }}</strong> / {{ ntDetail.max }}</template>
+                          </span>
+                        </div>
+                        <div class="part-break-track ntd-track">
+                          <!-- แถบจาง = ค่าหลังวาง Token ใบนี้ แถบเข้ม = ตอนนี้ -->
+                          <div
+                            v-if="!ntDetail.broken && ntDetail.max"
+                            class="ntd-fill-preview"
+                            :style="{ width: Math.min(100, (ntDetail.next / ntDetail.max) * 100) + '%' }"
+                          ></div>
+                          <div
+                            class="part-break-fill"
+                            :class="{ 'break-fill-broken': ntDetail.broken }"
+                            :style="{ width: (ntDetail.max ? Math.min(100, (ntDetail.current / ntDetail.max) * 100) : 0) + '%' }"
+                          ></div>
+                        </div>
+                        <p v-if="ntDetail.breaksNow" class="ntd-warn">⚡ Break Token นี้จะทำให้ Part แตก</p>
                       </div>
-                      <div v-if="brokenParts[position]" class="part-broken-stamp">BROKEN</div>
-                    </div>
-                    <div class="part-break-wrap">
-                      <div class="part-break-row">
-                        <span class="part-break-label">Break</span>
-                        <span class="part-break-nums">{{ partDamage[position] ?? 0 }} / {{ partData.part_break_threshold }}</span>
+
+                      <div
+                        v-if="ntDetail.data.part_break_rule"
+                        class="part-break-rule"
+                        :class="ntDetail.broken ? 'pbr-broken' : 'pbr-tip'"
+                      >
+                        <span class="pbr-icon">{{ ntDetail.broken ? '⚡' : '💡' }}</span>
+                        <div class="pbr-body">
+                          <span class="pbr-label">{{ ntDetail.broken ? 'BREAK EFFECT' : 'TIP ON BREAK' }}</span>
+                          <p class="pbr-text"><RuleText :text="ntDetail.data.part_break_rule" /></p>
+                        </div>
                       </div>
-                      <div class="part-break-track">
-                        <div class="part-break-fill" :class="{ 'break-fill-broken': brokenParts[position] }"
-                          :style="{ width: Math.min(100, ((partDamage[position] ?? 0) / partData.part_break_threshold) * 100) + '%' }" />
+
+                      <p v-if="ntDetail.broken" class="ntd-note">Part นี้แตกแล้ว — วาง Break Token เพิ่มไม่ได้</p>
+
+                      <div class="ntd-btns">
+                        <button type="button" class="nt-close-btn" @click="ntPartDetail = null">กลับ</button>
+                        <button
+                          type="button"
+                          class="nt-roll-btn ntd-confirm"
+                          :disabled="ntDetail.broken"
+                          @click="confirmNitrotoadBreak"
+                        >💥 วาง Break Token</button>
                       </div>
                     </div>
                   </div>
-                </div>
+                </Transition>
               </template>
               <p v-else class="nt-waiting">รอ <ClassMedal :hunter-id="nitrotoadDrawerId" /> เลือก Part...</p>
             </template>
@@ -8585,7 +8820,23 @@ const openPackDrawer = () => {
           :style="huntEmberStyle(em)"
         ></span>
 
-        <div v-if="floatBarCollapsed" class="float-status-label">{{ floatToggleLabel }}</div>
+        <div v-if="floatBarCollapsed" class="float-status-label">
+          {{ floatToggleLabel }}
+          <!-- พับแถบแล้วยังต้องรู้ว่าเหลือกี่เทิร์นและเล่นได้กี่ใบ — ไม่งั้นต้องกางแถบกลับมาดูทุกครั้ง -->
+          <template v-if="floatWaitingOthers">
+            <span class="inline-sep" aria-hidden="true"></span>
+            <span class="float-wait-counts">
+              <span class="float-atk-badge">
+                <img :src="getImg('assets/img/UI/symbol/hunter_turn_symbol.webp')" class="float-atk-img" alt="Hunter Turn ที่เหลือ" />
+                <span class="float-atk-num">{{ hunterTurnsLeft }}</span>
+              </span>
+              <span v-if="attackCardLimit" class="float-atk-badge">
+                <img :src="getImg('assets/img/UI/symbol/hunter_attack_card_symbol.webp')" class="float-atk-img" alt="Attack Card ต่อรอบ" />
+                <span class="float-atk-num">{{ attackCardLimit }}</span>
+              </span>
+            </span>
+          </template>
+        </div>
 
         <!-- Content (hidden when collapsed) -->
         <div v-show="!floatBarCollapsed">
@@ -8660,7 +8911,20 @@ const openPackDrawer = () => {
           >
             <span v-if="!currentBehaviorCard || monsterTurnReady">⚔ รอ Monster Turn</span>
             <span v-else-if="!myTurnEnded">🃏 จบเทิร์น</span>
-            <span v-else>✓ รอคนอื่น</span>
+            <span v-else class="float-wait">
+              ✓ รอคนอื่น
+              <span class="inline-sep" aria-hidden="true"></span>
+              <span class="float-wait-counts">
+                <span class="float-atk-badge" :title="`Hunter Turn ที่เหลือ ${hunterTurnsLeft} ครั้ง`">
+                  <img :src="getImg('assets/img/UI/symbol/hunter_turn_symbol.webp')" class="float-atk-img" alt="Hunter Turn ที่เหลือ" />
+                  <span class="float-atk-num">{{ hunterTurnsLeft }}</span>
+                </span>
+                <span v-if="attackCardLimit" class="float-atk-badge" :title="`Attack Card ที่เล่นได้ต่อรอบ ${attackCardLimit} ใบ`">
+                  <img :src="getImg('assets/img/UI/symbol/hunter_attack_card_symbol.webp')" class="float-atk-img" alt="Attack Card ต่อรอบ" />
+                  <span class="float-atk-num">{{ attackCardLimit }}</span>
+                </span>
+              </span>
+            </span>
           </button>
         </template>
         </div>
@@ -12377,15 +12641,176 @@ const openPackDrawer = () => {
   display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
   max-width: 360px; max-height: 340px; overflow-y: auto;
 }
-.nt-part-card { width: 100px; transition: 0.15s; }
-.nt-part-selectable {
-  cursor: pointer;
-  border-color: rgba(200,155,60,0.6) !important;
+
+
+/* ── Nitrotoad: ตาราง Part แบบรูปอย่างเดียว ── */
+.nt-icon-grid {
+  gap: 12px;
 }
-.nt-part-selectable:hover {
-  border-color: #c89b3c !important;
+.nt-icon-tile {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(200,155,60,0.6);
+  background: linear-gradient(135deg, #1e1810, #17120c);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.nt-icon-tile:hover,
+.nt-icon-tile:focus-visible {
+  border-color: #c89b3c;
   box-shadow: 0 0 14px rgba(200,155,60,0.4);
   transform: translateY(-2px);
+  outline: none;
+}
+.nt-icon-img {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 3px rgba(200,155,60,0.4));
+}
+/* แตกแล้ววาง Token ไม่ได้ แต่ยังกดดูรายละเอียดได้ — หรี่ให้เห็นว่าต่างจากใบที่เลือกได้ */
+.nt-icon-tile-broken {
+  border-color: rgba(220,60,40,0.5);
+  background: linear-gradient(135deg, #1e1010, #140c0c);
+}
+.nt-icon-tile-broken .nt-icon-img {
+  filter: grayscale(0.7) brightness(0.6);
+}
+.nt-icon-broken {
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-6deg);
+  padding: 0 4px;
+  border: 1px solid #ff5533;
+  border-radius: 2px;
+  background: rgba(30,5,5,0.85);
+  color: #ff5533;
+  font-size: 8px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+/* ── Nitrotoad: หน้าต่างรายละเอียด Part ──
+   กฎของการ์ด Part (.part-icon-wrap / .part-break-wrap ฯลฯ) อยู่ถัดลงไปในไฟล์
+   ความเฉพาะเท่ากันตัวหลังจะชนะ — ตัวที่ต้องทับเลยขึ้นต้นด้วย .ntd-panel ทุกตัว */
+.ntd-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0,0,0,0.7);
+}
+.ntd-panel {
+  width: min(380px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 16px 16px;
+  text-align: left;
+  border-radius: 3px;
+  border: 3px solid #2e2113;
+  background:
+    repeating-linear-gradient(100deg, rgba(0,0,0,0.14) 0px, rgba(0,0,0,0.14) 1px, transparent 1px, transparent 5px),
+    linear-gradient(170deg, #2b1f13, #1c1409 55%, #241a0e);
+  box-shadow: inset 0 1px 0 rgba(255,220,160,0.07), 0 10px 34px rgba(0,0,0,0.8);
+}
+.ntd-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ntd-panel .ntd-icon-wrap {
+  width: 64px;
+  height: 64px;
+}
+.ntd-panel .ntd-icon-img {
+  width: 56px;
+  height: 56px;
+}
+.ntd-title-block {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.ntd-name {
+  margin: 0;
+  font-size: 17px;
+  font-weight: bold;
+  color: #ffd27a;
+  letter-spacing: 1px;
+}
+.ntd-broken-tag {
+  padding: 1px 6px;
+  border: 1px solid #ff5533;
+  border-radius: 2px;
+  color: #ff5533;
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+.ntd-panel .ntd-break {
+  padding: 0;
+}
+.ntd-panel .ntd-break .part-break-track {
+  margin-bottom: 0;
+}
+.ntd-next {
+  color: #ffd27a;
+}
+.ntd-panel .ntd-track {
+  position: relative;
+}
+.ntd-fill-preview {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(255,210,122,0.28);
+}
+.ntd-panel .ntd-track .part-break-fill {
+  position: relative;
+}
+.ntd-warn {
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: bold;
+  color: #ff9a6a;
+}
+.ntd-panel .part-break-rule {
+  margin: 0;
+}
+.ntd-note {
+  margin: 0;
+  font-size: 12px;
+  color: #cc6644;
+  text-align: center;
+}
+.ntd-btns {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 8px;
+}
+.ntd-panel .ntd-btns .nt-close-btn,
+.ntd-panel .ntd-btns .nt-roll-btn {
+  width: 100%;
+  padding: 10px 8px;
+  font-family: inherit;
 }
 
 .nt-overlay {
@@ -14079,6 +14504,31 @@ const openPackDrawer = () => {
 }
 .float-end-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .float-ended { opacity: 0.5; }
+
+/* ── ตัวนับตอนรอคนอื่นจบเทิร์น ──
+   ใช้ป้ายตัวเลขแบบเดียวกับ Attack Card ในแถบนับด้านบน ให้อ่านเป็นภาษาเดียวกันทั้งแถบ */
+.float-wait-counts {
+  display: inline-flex;
+  align-items: center;
+  /* เลขกลมล้นขวาของรูปอยู่ 5px — เว้นพอไม่ให้เลขของใบแรกไปทับรูปใบถัดไป */
+  gap: 14px;
+  vertical-align: middle;
+}
+/* ปุ่มตอนรอเป็น disabled — opacity ทั้งปุ่มจะหรี่ตัวนับไปด้วยจนอ่านไม่ออก
+   หรี่เฉพาะตัวอักษรกับขอบแทน ปุ่มยังดูว่ากดไม่ได้ แต่ตัวเลขสว่างเท่าเดิม
+   จำกัดด้วย :has(.float-wait) — ปุ่ม "รอ Monster Turn" ที่ disabled เหมือนกันไม่โดนไปด้วย */
+.float-end-btn:disabled:has(.float-wait) {
+  opacity: 1;
+  color: rgba(200, 155, 60, 0.5);
+  border-color: rgba(124, 90, 43, 0.45);
+}
+/* แท็บตอนพับแถบวางด้วย top: -36px ตายตัว — ย่อรูปลงไม่ให้แท็บสูงเกินที่ที่มันมี */
+.float-status-label .float-wait-counts {
+  gap: 12px;
+}
+.float-status-label .float-atk-img {
+  height: 18px;
+}
 .float-outcome-complete {
   border-color: #3cb83c;
   color: #6fcf97;
@@ -14845,31 +15295,19 @@ const openPackDrawer = () => {
   background: rgba(150,120,70,0.08);
   transition: border-color 0.15s, background 0.15s;
   user-select: none;
-}
-.tc-red-grid:has(.selected) .tc-red-card:not(.selected) {
-  opacity: 0.35;
+  /* เป็น <button> แล้ว (กดด้วยคีย์บอร์ดได้) — ไม่ตั้งเองจะได้ฟอนต์กับสีของปุ่มระบบ */
+  font-family: inherit;
+  color: inherit;
 }
 .tc-red-card:hover { border-color: rgba(120,95,55,0.55); background: rgba(150,120,70,0.18); }
-.tc-red-card.selected {
-  border-color: #8c2f22;
-  background: rgba(170,60,35,0.14);
-}
-.tc-red-check {
-  position: absolute;
-  top: 4px;
-  right: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #8c2f22;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-.tc-red-card.selected .tc-red-check { opacity: 1; }
+.tc-red-card:hover .tc-red-img { transform: scale(1.06); }
+.tc-red-card:focus-visible { outline: 2px solid #8c2f22; outline-offset: 2px; }
 .tc-red-img {
   width: 54px;
   height: 74px;
   object-fit: cover;
   border-radius: 4px;
+  transition: transform 0.15s;
 }
 .tc-red-name {
   font-size: 10px;
@@ -14905,6 +15343,55 @@ const openPackDrawer = () => {
   border: 1px solid rgba(120,95,55,0.4);
 }
 .tc-modal-cancel:hover { background: rgba(120,95,55,0.22); color: #3a2c18; }
+
+/* ── ซูม Red Time Card ──
+   กระดาษแผ่นเดียวกับหน้าต่างจัดการ Deck — ยังอยู่ในเรื่องเดิม แค่ยกการ์ดขึ้นมาดูใกล้ ๆ */
+.tcz-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0,0,0,0.8);
+}
+.tcz-panel {
+  width: min(420px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 18px 16px;
+  border: 3px solid #5a4222;
+  border-radius: 3px;
+  color: #3a2c18;
+  background:
+    radial-gradient(circle at 12% 6%, rgba(140,110,60,0.13), transparent 42%),
+    radial-gradient(circle at 88% 94%, rgba(120,95,50,0.15), transparent 45%),
+    linear-gradient(168deg, #efe4c8 0%, #e6d9b8 45%, #dccba6 100%);
+  box-shadow: 0 10px 34px rgba(0,0,0,0.75), inset 0 0 26px rgba(150,120,70,0.14);
+}
+/* สูงไม่เกิน 60% ของจอ — คิดความกว้างย้อนจากสัดส่วนการ์ด (กว้าง:สูง ≈ 0.695 ทุกใบ)
+   ตั้งจากความกว้างแทนความสูง ใบที่ไฟล์เล็ก (Time Management 313px) จะถูกขยายเท่าใบอื่น
+   บนมือถือแคบ ๆ min() ปล่อยให้ความกว้างหน้าต่างเป็นตัวคุมแทน */
+.tcz-img {
+  display: block;
+  width: min(100%, calc(60vh * 0.695));
+  max-width: 100%;
+  aspect-ratio: 0.695;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+}
+.tcz-btns {
+  width: 100%;
+}
+.tcz-btns .tc-modal-btn {
+  flex: 1;
+}
 
 .dr-panel {
   border-radius: 4px;

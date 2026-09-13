@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { isFirebaseConnected } from '@/services/firebase'
-import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, cancelDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushSlayerDie, clearSlayerDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, pushHunterToken, pushAllHunterTokens, clearHunterTokens, pushHunterTokenConfirm, clearHunterTokenConfirms, pushAbilityUsed, clearAbilityUsed, pushTokenSwapRequest, clearTokenSwapRequest, pushUseSignal, setRoomHost, pushDialogDice, clearDialogDice, pushDiceResult, clearDiceResults, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds, pushShuffleSignal, pushActivationCount, pushOutcomeSignal, pushManualOutcome, pushRewardDiceModifiers, pushHqVote, clearHqVotes, pushHqCurrent, pushHqDoneList, pushHqReady, clearHqState, pushHunterPalico, pushPalicoOffer, pushPalicoHire, clearPalicoOffer, pushPalicoDraft, pushPalicoDraftPick, clearPalicoDraft, updateHunterProfile, publishLobby, updateLobby, removeLobby, listenLobbies, setRoomPassword, getRoomPassword } from '@/services/roomService'
+import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, cancelDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushSlayerDie, clearSlayerDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, pushHunterToken, pushAllHunterTokens, clearHunterTokens, pushHunterTokenConfirm, clearHunterTokenConfirms, pushAbilityUsed, clearAbilityUsed, pushTokenSwapRequest, clearTokenSwapRequest, pushUseSignal, setRoomHost, pushDialogDice, clearDialogDice, pushDiceResult, clearDiceResults, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds, pushShuffleSignal, pushActivationCount, pushOutcomeSignal, pushManualOutcome, pushRewardDiceModifiers, pushHqVote, clearHqVotes, pushHqCurrent, pushHqDoneList, pushHqReady, clearHqState, pushHunterPalico, pushPalicoOffer, pushPalicoHire, clearPalicoOffer, claimPalicoSlot, releasePalicoSlot, clearPalicoClaims, pushPalicoDraft, pushPalicoDraftPick, clearPalicoDraft, updateHunterProfile, publishLobby, updateLobby, removeLobby, listenLobbies, setRoomPassword, getRoomPassword } from '@/services/roomService'
 
 export const useRoomStore = defineStore('room', () => {
   const roomCode = ref(null)
@@ -154,6 +154,8 @@ export const useRoomStore = defineStore('room', () => {
   const palicoOfferIds = computed(() => _idList(palicoOffer.value?.ids))
   const palicoHired = computed(() => palicoOffer.value?.hired ?? {})
   const palicoHiredIds = computed(() => Object.values(palicoHired.value).filter(Boolean))
+  // { [palicoId]: hunterId } — ใครจองใบไหนอยู่ (ทั้งจ้างแล้วและกำลังอยู่ในหน้าจ่าย)
+  const palicoClaims = computed(() => roomData.value?.palicoClaims ?? {})
 
   const palicoDraft = computed(() => roomData.value?.palicoDraft ?? null)
   const myPalicoOffer = computed(() => _idList(palicoDraft.value?.offers?.[myHunterId.value]))
@@ -656,9 +658,36 @@ export const useRoomStore = defineStore('room', () => {
   // ถ้าปล่อยค้างไว้ ใบนั้นจะยังนับเป็น "มีคนถือ" แล้วไปตัดกองที่สุ่มรอบใหม่
   const clearAllPalicos = () => {
     if (!roomCode.value) return
-    return Promise.all(
-      hunters.value.map((h) => pushHunterPalico(roomCode.value, h.hunter_id, null)),
+    // ล้างการจองไปพร้อมกัน — ถ้าจองค้างจากเควสต์ก่อน ดราฟต์/จ้างรอบใหม่จะจองใบนั้นไม่ได้
+    return Promise.all([
+      ...hunters.value.map((h) => pushHunterPalico(roomCode.value, h.hunter_id, null)),
+      clearPalicoClaims(roomCode.value),
+    ])
+  }
+  // จองก่อนผูกใบเสมอ — true = ได้ใบนี้ (หรือเป็นของเราอยู่แล้ว), false = คนในห้องจองไปแล้ว
+  const claimPalico = (palicoId) => {
+    if (!roomCode.value || !myHunterId.value || palicoId == null) return Promise.resolve(false)
+    return claimPalicoSlot(
+      roomCode.value,
+      palicoId,
+      myHunterId.value,
+      hunters.value.map((h) => h.hunter_id),
     )
+  }
+  // จองชั่วคราวตอนเข้าหน้าจ่ายของ — คนอื่นเข้ามาจ้างซ้อนไม่ได้ ถ้าหลุด/ปิดแท็บค้าง server ลบให้เอง
+  const reservePalico = (palicoId) => {
+    if (!roomCode.value || !myHunterId.value || palicoId == null) return Promise.resolve(false)
+    return claimPalicoSlot(
+      roomCode.value,
+      palicoId,
+      myHunterId.value,
+      hunters.value.map((h) => h.hunter_id),
+      { temporary: true },
+    )
+  }
+  const releasePalico = (palicoId) => {
+    if (!roomCode.value || !myHunterId.value || palicoId == null) return Promise.resolve()
+    return releasePalicoSlot(roomCode.value, palicoId, myHunterId.value)
   }
   const setPalicoOffer = (offer) => {
     if (!roomCode.value) return
@@ -748,10 +777,20 @@ export const useRoomStore = defineStore('room', () => {
     voteAction, clearActionVote, kick, reset,
     hqVotes, hqState, hqVoteResult, hqVoteTied, allHqReady,
     voteHq, clearHqVotesAll, setHqCurrent, setHqDoneList, setHqReady, clearHqStateAll,
-    palicoOffer, palicoOfferIds, palicoHired, palicoHiredIds,
+    palicoOffer, palicoOfferIds, palicoHired, palicoHiredIds, palicoClaims,
     palicoDraft, myPalicoOffer, palicoDraftPicks, myPalicoDraftPick, allPalicoDrafted,
     takenPalicoIds, myPalicoId,
-    setMyPalico, clearAllPalicos, setPalicoOffer, hirePalico, clearPalicoOfferAll,
+    setMyPalico, clearAllPalicos, claimPalico, reservePalico, releasePalico, setPalicoOffer, hirePalico, clearPalicoOfferAll,
     setPalicoDraft, pickPalicoDraft, clearPalicoDraftAll,
   }
 })
+
+// dev เท่านั้น — แก้ไฟล์นี้เมื่อไหร่ให้โหลดหน้าใหม่ทั้งหน้า ไม่ใช่สลับโมดูลแบบ hot reload
+// Pinia คืน store ตัวเดิมที่สร้างไปแล้วเสมอ ฟังก์ชันที่เพิ่มใหม่จึงไม่มีอยู่จริงจนกว่าจะรีเฟรช
+// (เคยเจอ "room.claimPalico is not a function" ทั้งที่โค้ดถูก)
+// ไม่ใช้ acceptHMRUpdate ของ Pinia เพราะมันรัน setup ซ้ำ — listener ของ Firebase และ
+// visibilitychange ใน setup จะถูกผูกซ้ำ ทำให้ sync ห้องเพี้ยนระหว่างทดสอบ
+// ตอน build Vite แทน import.meta.hot เป็น undefined บล็อกนี้จึงถูกตัดทิ้ง
+if (import.meta.hot) {
+  import.meta.hot.accept(() => window.location.reload())
+}
