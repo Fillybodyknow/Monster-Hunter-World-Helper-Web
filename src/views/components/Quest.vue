@@ -525,15 +525,13 @@ const onHQAllReady = () => {
   }
 }
 
+// หลุดออกจากห้องด้วยทางไหนก็ตาม (Host ยุบตี้กลางเควสต์, โดนเตะ, กดออกเอง) ต้องล้างให้ครบ
+// เหมือนจบเควสต์ปกติ — เดิมล้างแค่ตัวที่เลือกไว้ Behavior Deck, Time Card และ Set ที่จำว่า
+// ใครจบเทิร์นไปแล้ว (key เป็น hunter_id ซึ่งตี้เดิมใช้ซ้ำ) เลยค้างข้ามไปเควสต์ถัดไป
+// ตอนจบเควสต์ปกติ onComplete/onFail เรียกไปแล้วรอบหนึ่ง เรียกซ้ำตรงนี้ได้ เพราะแค่ตั้งค่ากลับเป็นค่าว่าง
+// ส่วนที่ต้อง sync ขึ้นห้องใน resetToBookPhase มีเงื่อนไข room.inRoom กันไว้ ตอนนี้ออกจากห้องแล้วเลยไม่ยิง
 watch(() => room.inRoom, (inRoom, wasInRoom) => {
-  if (wasInRoom && !inRoom) {
-    phase.value = 'book'
-    selectedBook.value = null
-    selectedMonster.value = null
-    selectedQuest.value = null
-    currentDialogId.value = null
-    _clearPerQuestLocalState()
-  }
+  if (wasInRoom && !inRoom) resetToBookPhase()
 })
 
 
@@ -3821,10 +3819,12 @@ watch([() => room.huntState, () => room.joinSignal], ([state]) => {
     if (!_suppressAnimations && diff > 0) _showDamageIndicator(diff, 'heal')
     huntingHp.value = state.huntingHp
   }
-  if (state.partDamage) {
-    partDamage.value = state.partDamage
-  }
-  if (state.statusMarks) statusMarks.value = state.statusMarks
+  // Firebase ไม่เก็บ object ว่าง — ตอนเริ่มล่าใหม่ Host ส่ง statusMarks: {} ไป key นั้นจะหายจาก node
+  // เดิมเช็ค if (state.statusMarks) เลยข้ามไป guest ถือเครื่องหมายของเควสก่อนค้างไว้จนกว่าจะรีเฟรช
+  // ตีความ "ไม่มี key" = ว่าง ได้ตรง ๆ เพราะ _pushHuntState ส่งครบทุก field ทุกครั้ง
+  // และ update() แทนที่ child ทั้งก้อน node จึงเท่ากับก้อนล่าสุดที่ Host ส่งเสมอ
+  partDamage.value = state.partDamage ?? {}
+  statusMarks.value = state.statusMarks ?? {}
 
   // appliedStatuses: handle empty sentinel
   if (state.appliedStatuses) {
@@ -3834,7 +3834,7 @@ watch([() => room.huntState, () => room.joinSignal], ([state]) => {
     appliedStatuses.value = ids
   }
 
-  if (state.elementMarks) elementMarks.value = state.elementMarks
+  elementMarks.value = state.elementMarks ?? {}
   if (state.faintCount !== undefined) faintCount.value = state.faintCount
   if (state.potionCount !== undefined) potionCount.value = state.potionCount
 
@@ -3895,14 +3895,15 @@ const _applyCurrentHuntState = () => {
   const state = room.huntState
   if (!state) return
   if (state.huntingHp !== undefined) huntingHp.value = state.huntingHp
-  if (state.partDamage) partDamage.value = state.partDamage
-  if (state.statusMarks) statusMarks.value = state.statusMarks
+  // key ที่หายไป = object ว่างที่ Firebase ไม่เก็บ — ดูเหตุผลที่ watcher huntState
+  partDamage.value = state.partDamage ?? {}
+  statusMarks.value = state.statusMarks ?? {}
   if (state.appliedStatuses) {
     appliedStatuses.value = Object.keys(state.appliedStatuses)
       .filter((k) => k !== '_empty')
       .map(Number)
   }
-  if (state.elementMarks) elementMarks.value = state.elementMarks
+  elementMarks.value = state.elementMarks ?? {}
   if (state.faintCount !== undefined) faintCount.value = state.faintCount
   if (state.potionCount !== undefined) potionCount.value = state.potionCount
 }
