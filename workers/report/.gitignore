@@ -1,0 +1,4 @@
+node_modules/
+.wrangler/
+# ค่าลับสำหรับรันในเครื่อง — ห้าม commit
+.dev.vars

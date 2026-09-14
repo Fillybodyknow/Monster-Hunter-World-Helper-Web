@@ -1,0 +1,32 @@
+name = "mhw-report"
+main = "src/index.js"
+compatibility_date = "2026-06-01"
+
+[vars]
+# เว็บที่อนุญาตให้ส่งรายงานเข้ามา คั่นด้วย , — localhost:5173 คือ dev server ของ vite
+ALLOWED_ORIGINS = "https://fillybodyknow.github.io,http://localhost:5173"
+# ช่วงตั้งค่า: ทักบอทแล้วบอทตอบ User ID / Group ID กลับมา — ได้ ID แล้วเปลี่ยนเป็น "off" แล้ว deploy ใหม่
+LINE_ID_HELPER = "off"
+
+# Secrets — ห้ามใส่ค่าในไฟล์นี้ ตั้งด้วยคำสั่ง (ดู README.md):
+#   npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN
+#   npx wrangler secret put LINE_CHANNEL_SECRET
+#   npx wrangler secret put LINE_TO
+
+# กันสแปม: คนละ IP ส่งได้ 3 ครั้ง/นาที และรวมทุกคนไม่เกิน 10 ครั้ง/นาที
+# ถ้า deploy แล้ว error เรื่อง ratelimits ให้ลบสองบล็อกนี้ออก Worker ยังทำงานได้ แค่ไม่มีตัวกันสแปม
+[[ratelimits]]
+name = "REPORT_LIMITER"
+namespace_id = "7301"
+
+  [ratelimits.simple]
+  limit = 3
+  period = 60
+
+[[ratelimits]]
+name = "REPORT_LIMITER_ALL"
+namespace_id = "7302"
+
+  [ratelimits.simple]
+  limit = 10
+  period = 60
