@@ -6,6 +6,8 @@ import BootLoader from '@/views/components/BootLoader.vue'
 import TourOverlay from '@/views/components/TourOverlay.vue'
 import { setTourReady, requestTour, cancelTourRequest } from '@/composables/useTour'
 import { APP_VERSION } from '@/services/appVersion'
+import { startVersionCheck, stopVersionCheck } from '@/services/versionCheck'
+import UpdateBanner from '@/views/components/UpdateBanner.vue'
 import {
   craftNotifications,
   dismissNotification,
@@ -23,6 +25,8 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 let craftabilityReady = false
 
 onMounted(() => {
+  // เตือนผู้ใช้ที่ค้าง build เก่า — ข้ามเองบน dev server
+  startVersionCheck()
   loadHunter()
   if (hunter.value) {
     initCraftability(hunter.value)
@@ -39,6 +43,9 @@ watch(hunter, (val) => {
   }
   checkCraftability(val)
 })
+
+// App ไม่ถูก unmount ตอนใช้งานจริง แต่ HMR ทำได้ — ไม่ปลดจะได้ interval ซ้อนกันทุกครั้งที่แก้ไฟล์
+onUnmounted(stopVersionCheck)
 
 const logo = `${import.meta.env.BASE_URL}assets/img/UI/icon.webp`
 
@@ -63,6 +70,7 @@ watch(
 <template>
   <BootLoader v-if="booting" @done="booting = false" />
   <TourOverlay />
+  <UpdateBanner />
 
   <div class="app-wrapper" :class="{ full: isFullPage }">
     <!-- LOGO + TITLE HEADER -->
