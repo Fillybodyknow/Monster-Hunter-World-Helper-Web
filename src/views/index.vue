@@ -5,7 +5,7 @@ import { createHunter, getHunters, deleteHunter, saveHunters } from '@/services/
 import { getHunterClasses, getHunterClassById } from '@/services/hunterService'
 import { getArmors, getWeapons } from '@/services/equipService'
 import { useRouter } from 'vue-router'
-import DiagnosticPanel from './components/DiagnosticPanel.vue'
+import ReportButton from './components/ReportButton.vue'
 
 const router = useRouter()
 
@@ -442,14 +442,14 @@ const handleCreate = () => {
   </teleport>
 
   <!-- อยู่หน้านี้ด้วยเพราะหน้า Setting อยู่หลัง route guard ที่ต้องมี hunterId
-       ถ้าเข้าตัวละครไม่ได้ ผู้ใช้จะติดอยู่หน้านี้และเข้าไปหยิบข้อมูลจากที่นั่นไม่ได้ -->
-  <div class="registry-diag">
-    <DiagnosticPanel />
+       ถ้าเข้าตัวละครไม่ได้ ผู้ใช้จะติดอยู่หน้านี้และเข้าไปกดรายงานจากที่นั่นไม่ได้ -->
+  <div class="registry-report">
+    <ReportButton />
   </div>
 </template>
 
 <style scoped>
-.registry-diag {
+.registry-report {
   max-width: 560px;
   margin: 0 auto 24px;
   padding: 0 14px;

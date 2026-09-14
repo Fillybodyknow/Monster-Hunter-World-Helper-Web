@@ -38,11 +38,6 @@ export const recordError = (source, err, extra = {}) => {
   }
 }
 
-export const clearDiagLog = () => {
-  try { localStorage.removeItem(LOG_KEY) } catch { /* ไม่เป็นไร */ }
-  diagLog.value = []
-}
-
 // ติดตั้งครั้งเดียวตอนแอปเริ่ม ครอบทั้ง error ปกติ, promise ที่ reject ทิ้ง และ error ในคอมโพเนนต์ Vue
 export const installErrorCapture = (app) => {
   if (typeof window !== 'undefined') {
@@ -59,7 +54,7 @@ export const installErrorCapture = (app) => {
 
 const _safe = (fn, fallback = null) => { try { return fn() } catch { return fallback } }
 
-// ข้อมูลชุดที่ผู้ใช้กดคัดลอกส่งกลับมา — เลือกเฉพาะที่ใช้วิเคราะห์ได้จริง
+// ข้อมูลระบบที่แนบไปกับปุ่มรายงาน (reportService ย่ออีกชั้นก่อนส่ง) — เลือกเฉพาะที่ใช้วิเคราะห์ได้จริง
 // ตั้งใจไม่เอาเนื้อหาตัวละคร/ของในกระเป๋า เพราะยาวและไม่ช่วยหาสาเหตุ
 export const buildDiagnostics = (extra = {}) => {
   return {
@@ -83,5 +78,3 @@ export const buildDiagnostics = (extra = {}) => {
     errors: diagLog.value,
   }
 }
-
-export const diagnosticsText = (extra) => JSON.stringify(buildDiagnostics(extra), null, 2)

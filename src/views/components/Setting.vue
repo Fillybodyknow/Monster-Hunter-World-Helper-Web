@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { showQuestEffects, soundEnabled, soundVolume } from '@/stores/settings'
 import classHunterData from '@/assets/files/class_hunter.json'
 import { hunter } from '@/stores/hunter'
-import DiagnosticPanel from './DiagnosticPanel.vue'
+import ReportButton from './ReportButton.vue'
 import { APP_VERSION } from '@/services/appVersion'
 import { tourEnabled, setTourEnabled, resetTours, startTour } from '@/composables/useTour'
 
@@ -226,8 +226,8 @@ const doExport = (hunter) => {
       เปลี่ยน Hunter
     </button>
 
-    <!-- VERSION FOOTER -->
-    <DiagnosticPanel />
+    <!-- REPORT -->
+    <ReportButton />
 
     <div class="setting-footer">
       <span class="footer-ornament">— ✦ —</span>
