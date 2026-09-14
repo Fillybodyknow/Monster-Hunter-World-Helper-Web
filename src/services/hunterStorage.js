@@ -22,6 +22,30 @@ export const repairHunter = (h) => {
   return changed
 }
 
+/* ================= MIGRATE ITEMS =================
+   ไอเทมที่ถูกลบออกจาก resource.json แต่อาจค้างอยู่ในเซฟ — รวมเข้าไอเทมที่ถูกต้องแทน
+   Black Diablos Horn [3,56] ไม่มีอยู่จริงในเกม การ์ดชุด Diablos Nero ใช้ Black Spiral Horn [2,21]
+   เดิมสูตรคราฟอ้าง [3,56] ซึ่งไม่มีมอนสเตอร์ตัวไหนดรอป ใครเคยเพิ่มเองจากหน้า Inventory จะได้ไม่ค้างของที่ใช้ไม่ได้ */
+const RENAMED_ITEMS = [{ from: [3, 56], to: [2, 21] }]
+
+export const migrateHunterItems = (h) => {
+  if (!Array.isArray(h?.inventory)) return false
+  let changed = false
+  for (const { from, to } of RENAMED_ITEMS) {
+    const isFrom = (i) => i?.resource_type_id === from[0] && i?.item_id === from[1]
+    const old = h.inventory.filter(isFrom)
+    if (!old.length) continue
+    const qty = old.reduce((sum, i) => sum + (i.quantity ?? 0), 0)
+    const kept = h.inventory.filter((i) => !isFrom(i))
+    const target = kept.find((i) => i?.resource_type_id === to[0] && i?.item_id === to[1])
+    if (target) target.quantity = (target.quantity ?? 0) + qty
+    else if (qty > 0) kept.push({ resource_type_id: to[0], item_id: to[1], quantity: qty })
+    h.inventory = kept
+    changed = true
+  }
+  return changed
+}
+
 /* ================= GET ALL ================= */
 export const getHunters = () => {
   try {
@@ -30,7 +54,13 @@ export const getHunters = () => {
 
     const hunters = Array.isArray(parsed) ? parsed : []
     // ซ่อมตอนอ่านเสมอ แล้วเขียนกลับถ้ามีอะไรเปลี่ยน — ผู้ใช้ที่ข้อมูลพังอยู่แล้วจะกลับมาใช้ได้เอง
-    if (hunters.map(repairHunter).some(Boolean)) {
+    // เรียกทั้งสองตัวกับทุกคนเสมอ — ห้าม short-circuit ไม่งั้นบางคนจะไม่ถูกซ่อม
+    const changed = hunters.map((h) => {
+      const repaired = repairHunter(h)
+      const migrated = migrateHunterItems(h)
+      return repaired || migrated
+    })
+    if (changed.some(Boolean)) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(hunters))
     }
     return hunters
