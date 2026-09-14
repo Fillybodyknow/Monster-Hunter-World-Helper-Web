@@ -27,8 +27,25 @@ const generateRoomCode = () => {
 }
 
 // ── Cleanup ห้องเก่าที่ค้างอยู่ (Host ปิดไปโดยไม่ได้กด "ออก") ──────
-// เรียกแบบ best-effort ตอนสร้างห้องใหม่ — ลบห้องที่ไม่มีความเคลื่อนไหวนานเกิน STALE_ROOM_MS
+// เรียกแบบ best-effort ตอนสร้างห้องใหม่
+// createdAt เขียนครั้งเดียวตอนสร้างห้อง บอกไม่ได้ว่ายังเล่นกันอยู่ไหม — เดิมดูแค่ค่านี้
+// ตี้ที่เล่นยาวเกิน 5 ชม. เลยโดนลบห้องกลางเกมทันทีที่ใครสักคนสร้างห้องใหม่
+// ตอนนี้ดู presence ด้วย: ยังมีคนออนไลน์ = ห้องยังไม่ร้าง
+// (onDisconnect ฝั่ง server พลิก flag เป็น false ให้เองแม้เบราว์เซอร์ crash)
 const STALE_ROOM_MS = 5 * 60 * 60 * 1000 // 5 ชั่วโมง
+// กันไว้เผื่อ flag presence ค้างเป็น true — เปิดมานานขนาดนี้ถือว่าร้างแน่นอน ห้องจะได้ไม่ค้างถาวร
+const MAX_ROOM_AGE_MS = 24 * 60 * 60 * 1000
+
+// Host เก็บ presence ที่ hostConnected ส่วน Guest เก็บที่ hunters/{id}/connected
+const hasOnlineMember = (r) =>
+  r?.hostConnected === true ||
+  Object.values(r?.hunters ?? {}).some((h) => h?.connected === true)
+
+const isStaleRoom = (r, now) => {
+  const age = now - (r?.createdAt ?? 0)
+  if (age > MAX_ROOM_AGE_MS) return true
+  return age > STALE_ROOM_MS && !hasOnlineMember(r)
+}
 
 const cleanupStaleRooms = async () => {
   try {
@@ -37,9 +54,7 @@ const cleanupStaleRooms = async () => {
     const now = Date.now()
     const updates = {}
     snap.forEach((child) => {
-      const r = child.val()
-      const lastActive = r?.createdAt ?? 0
-      if (now - lastActive > STALE_ROOM_MS) {
+      if (isStaleRoom(child.val(), now)) {
         updates[child.key] = null
       }
     })
