@@ -3535,7 +3535,7 @@
           { "rolled_number": 7,  "reward": { "resource_type_id": 1, "item_id": 8  }, "part_break_reward": {} },
           { "rolled_number": 8,  "reward": { "resource_type_id": 3, "item_id": 35 }, "part_break_reward": {} },
           { "rolled_number": 9,  "reward": { "resource_type_id": 3, "item_id": 34 }, "part_break_reward": { "part_id": 2, "gain_additional": 1 } },
-          { "rolled_number": 10, "reward": { "resource_type_id": 3, "item_id": 37 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
+          { "rolled_number": 10, "reward": { "resource_type_id": 3, "item_id": 38 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
           { "rolled_number": 11, "reward": { "resource_type_id": 3, "item_id": 36 }, "part_break_reward": { "part_id": 1, "gain_additional": 1 } },
           { "rolled_number": 12, "reward": { "resource_type_id": 3, "item_id": 35 }, "part_break_reward": { "part_id": 3, "gain_additional": 1 } }
         ]
@@ -3643,7 +3643,7 @@
           { "rolled_number": 7,  "reward": { "resource_type_id": 1, "item_id": 8  }, "part_break_reward": {} },
           { "rolled_number": 8,  "reward": { "resource_type_id": 3, "item_id": 35 }, "part_break_reward": {} },
           { "rolled_number": 9,  "reward": { "resource_type_id": 3, "item_id": 34 }, "part_break_reward": { "part_id": 2, "gain_additional": 1 } },
-          { "rolled_number": 10, "reward": { "resource_type_id": 3, "item_id": 37 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
+          { "rolled_number": 10, "reward": { "resource_type_id": 3, "item_id": 38 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
           { "rolled_number": 11, "reward": { "resource_type_id": 3, "item_id": 36 }, "part_break_reward": { "part_id": 1, "gain_additional": 1 } },
           { "rolled_number": 12, "reward": { "resource_type_id": 3, "item_id": 35 }, "part_break_reward": { "part_id": 3, "gain_additional": 1 } }
         ]
@@ -3751,7 +3751,7 @@
           { "rolled_number": 7,  "reward": { "resource_type_id": 1, "item_id": 8  }, "part_break_reward": {} },
           { "rolled_number": 8,  "reward": { "resource_type_id": 3, "item_id": 35 }, "part_break_reward": {} },
           { "rolled_number": 9,  "reward": { "resource_type_id": 3, "item_id": 34 }, "part_break_reward": { "part_id": 2, "gain_additional": 1 } },
-          { "rolled_number": 10, "reward": { "resource_type_id": 3, "item_id": 37 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
+          { "rolled_number": 10, "reward": { "resource_type_id": 3, "item_id": 38 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
           { "rolled_number": 11, "reward": { "resource_type_id": 3, "item_id": 36 }, "part_break_reward": { "part_id": 1, "gain_additional": 1 } },
           { "rolled_number": 12, "reward": { "resource_type_id": 3, "item_id": 35 }, "part_break_reward": { "part_id": 3, "gain_additional": 1 } }
         ]
@@ -3848,7 +3848,7 @@
           { "rolled_number": 4,  "reward": { "resource_type_id": 3, "item_id": 40 }, "part_break_reward": {} },
           { "rolled_number": 5,  "reward": { "resource_type_id": 3, "item_id": 39 }, "part_break_reward": {} },
           { "rolled_number": 6,  "reward": { "resource_type_id": 2, "item_id": 11 }, "part_break_reward": { "part_id": 1, "gain_additional": 1 } },
-          { "rolled_number": 7,  "reward": { "resource_type_id": 3, "item_id": 43 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
+          { "rolled_number": 7,  "reward": { "resource_type_id": 3, "item_id": 42 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
           { "rolled_number": 8,  "reward": { "resource_type_id": 2, "item_id": 12 }, "part_break_reward": {} },
           { "rolled_number": 9,  "reward": { "resource_type_id": 3, "item_id": 43 }, "part_break_reward": { "part_id": 3, "gain_additional": 1 } },
           { "rolled_number": 10, "reward": { "resource_type_id": 3, "item_id": 41 }, "part_break_reward": {} },
@@ -3910,7 +3910,7 @@
           { "rolled_number": 4,  "reward": { "resource_type_id": 3, "item_id": 40 }, "part_break_reward": {} },
           { "rolled_number": 5,  "reward": { "resource_type_id": 3, "item_id": 39 }, "part_break_reward": {} },
           { "rolled_number": 6,  "reward": { "resource_type_id": 2, "item_id": 11 }, "part_break_reward": { "part_id": 1, "gain_additional": 1 } },
-          { "rolled_number": 7,  "reward": { "resource_type_id": 3, "item_id": 43 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
+          { "rolled_number": 7,  "reward": { "resource_type_id": 3, "item_id": 42 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
           { "rolled_number": 8,  "reward": { "resource_type_id": 2, "item_id": 12 }, "part_break_reward": {} },
           { "rolled_number": 9,  "reward": { "resource_type_id": 3, "item_id": 43 }, "part_break_reward": { "part_id": 3, "gain_additional": 1 } },
           { "rolled_number": 10, "reward": { "resource_type_id": 3, "item_id": 41 }, "part_break_reward": {} },
@@ -3972,7 +3972,7 @@
           { "rolled_number": 4,  "reward": { "resource_type_id": 3, "item_id": 40 }, "part_break_reward": {} },
           { "rolled_number": 5,  "reward": { "resource_type_id": 3, "item_id": 39 }, "part_break_reward": {} },
           { "rolled_number": 6,  "reward": { "resource_type_id": 2, "item_id": 11 }, "part_break_reward": { "part_id": 1, "gain_additional": 1 } },
-          { "rolled_number": 7,  "reward": { "resource_type_id": 3, "item_id": 43 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
+          { "rolled_number": 7,  "reward": { "resource_type_id": 3, "item_id": 42 }, "part_break_reward": { "part_id": 6, "gain_additional": 1 } },
           { "rolled_number": 8,  "reward": { "resource_type_id": 2, "item_id": 12 }, "part_break_reward": {} },
           { "rolled_number": 9,  "reward": { "resource_type_id": 3, "item_id": 43 }, "part_break_reward": { "part_id": 3, "gain_additional": 1 } },
           { "rolled_number": 10, "reward": { "resource_type_id": 3, "item_id": 41 }, "part_break_reward": {} },

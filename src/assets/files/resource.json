@@ -182,7 +182,7 @@
             {
                 "item_id": 21,
                 "item": "Black Spiral Horn",
-                "thumbnail": "assets/img/other_materials/piercing-claw.webp"
+                "thumbnail": "assets/img/monster_parts/black_diablos_horn.webp"
             }
         ]
     },
@@ -454,11 +454,6 @@
                 "item_id": 55,
                 "item": "Black Diablos Carapace",
                 "thumbnail": "assets/img/monster_parts/black_diablos_carapace.webp"
-            },
-            {
-                "item_id": 56,
-                "item": "Black Diablos Horn",
-                "thumbnail": "assets/img/monster_parts/black_diablos_horn.webp"
             },
             {
                 "item_id": 57,
