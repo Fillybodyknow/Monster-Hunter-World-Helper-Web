@@ -25,25 +25,40 @@ if (isShallow) console.warn('[version] repo เป็น shallow clone — เ�
 const commitCount = git('git rev-list --count HEAD', '0')
 const appVersion = `${major}.${minor}.${commitCount}${isShallow ? '-shallow' : ''}`
 
+// ปล่อย version.json ไว้คู่กับ build — แอปที่เปิดค้างไว้ดึงไฟล์นี้มาเทียบว่ายังเป็น build ล่าสุดไหม
+// (services/versionCheck.js) ต้องเป็นก้อนเดียวกับที่ฝังใน __APP_BUILD__ ไม่งั้น sha/at ไม่ตรงกันแล้วเตือนผิด
+const emitVersionJson = (build) => ({
+  name: 'emit-version-json',
+  apply: 'build',
+  generateBundle() {
+    this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify(build) })
+  },
+})
+
 // https://vite.dev/config/
-export default defineConfig(({ command }) => ({
-  base: '/Monster-Hunter-World-Helper-Web/',
-  plugins: [
-    vue(),
-    vueJsx(),
-    vueDevTools(),
-  ],
-  define: {
-    __APP_BUILD__: JSON.stringify({
-      // เครื่อง dev นับ commit บน branch ตัวเอง ได้เลขคนละชุดกับ production — ติด -dev ไว้กันเทียบผิด
-      version: command === 'serve' ? `${appVersion}-dev` : appVersion,
-      sha: gitSha,
-      at: new Date().toISOString(),
-    }),
-  },
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+export default defineConfig(({ command }) => {
+  const appBuild = {
+    // เครื่อง dev นับ commit บน branch ตัวเอง ได้เลขคนละชุดกับ production — ติด -dev ไว้กันเทียบผิด
+    version: command === 'serve' ? `${appVersion}-dev` : appVersion,
+    sha: gitSha,
+    at: new Date().toISOString(),
+  }
+
+  return {
+    base: '/Monster-Hunter-World-Helper-Web/',
+    plugins: [
+      vue(),
+      vueJsx(),
+      vueDevTools(),
+      emitVersionJson(appBuild),
+    ],
+    define: {
+      __APP_BUILD__: JSON.stringify(appBuild),
     },
-  },
-}))
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url))
+      },
+    },
+  }
+})
