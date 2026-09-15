@@ -9,6 +9,7 @@ import { APP_VERSION } from '@/services/appVersion'
 import { startVersionCheck, stopVersionCheck } from '@/services/versionCheck'
 import UpdateBanner from '@/views/components/UpdateBanner.vue'
 import WhatsNewDialog from '@/views/components/WhatsNewDialog.vue'
+import { whatsNew } from '@/services/changelog'
 import {
   craftNotifications,
   dismissNotification,
@@ -53,7 +54,14 @@ const logo = `${import.meta.env.BASE_URL}assets/img/UI/icon.webp`
 const booting = ref(true)
 
 // ทัวร์รอหน้าโหลดเสร็จก่อน — ถ้าเริ่มระหว่าง BootLoader ปุ่มที่จะชี้ยังไม่อยู่บนจอ
-watch(booting, (b) => setTourReady(!b), { immediate: true })
+// และรอหน้าต่าง "มีอะไรใหม่" ถูกปิดก่อนด้วย — หน้าต่างนั้นอยู่ใต้ทัวร์ (10450 < 11000)
+// ถ้าเริ่มพร้อมกัน ฉากมืดกับตัวบังคลิกของทัวร์จะคลุมปุ่ม "เข้าใจแล้ว" จนปิดหน้าต่างไม่ได้
+// ไม่ต้องกลัวทัวร์ชิงเริ่มก่อนหน้าต่างเช็คเสร็จ: ทัวร์หน่วง 450ms ส่วน checkWhatsNew รันตอน mount ทันที
+watch(
+  [booting, () => whatsNew.value.length],
+  ([isBooting, pendingWhatsNew]) => setTourReady(!isBooting && pendingWhatsNew === 0),
+  { immediate: true },
+)
 
 // ทัวร์ระดับ route — หน้าเลือกนักล่า (/) กับเมนูหลัก (/home)
 // ทัวร์ของแต่ละช่วงในหน้า Quest ขอจาก Quest.vue เองตาม phase
