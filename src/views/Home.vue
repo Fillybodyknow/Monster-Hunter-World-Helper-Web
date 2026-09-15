@@ -1,12 +1,24 @@
 <script setup>
 import { ref, computed, watch, provide } from 'vue'
 import { useRoomStore } from '@/stores/room'
+import { requestTour, cancelTourRequest } from '@/composables/useTour'
 import CraftLookupModal from './components/CraftLookupModal.vue'
 import { isFirebaseConnected } from '@/services/firebase'
 import { hunter } from '@/stores/hunter'
 import { useSfx, preloadAllSfx } from '@/composables/useSfx'
 
 const room = useRoomStore()
+
+// ทัวร์ปุ่มปาร์ตี้ — ปุ่มโผล่เฉพาะตอนอยู่ในห้อง จึงขอทัวร์ครั้งแรกที่เข้าห้องจริง (ขึ้นครั้งเดียว)
+// ออกจากห้องก่อนทัวร์เริ่มก็ยกเลิกคำขอ ไม่งั้นทัวร์จะไปหาปุ่มที่หายไปแล้ว
+watch(
+  () => room.inRoom,
+  (inRoom) => {
+    if (inRoom) requestTour('partyFab')
+    else cancelTourRequest('partyFab')
+  },
+  { immediate: true },
+)
 const sfx = useSfx()
 
 // โหลด SFX ไว้ล่วงหน้าตอนแอปว่าง — ไม่งั้นเสียงแต่ละตัวจะหน่วงในครั้งแรกที่ใช้
