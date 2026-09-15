@@ -8,6 +8,7 @@ import { setTourReady, requestTour, cancelTourRequest } from '@/composables/useT
 import { APP_VERSION } from '@/services/appVersion'
 import { startVersionCheck, stopVersionCheck } from '@/services/versionCheck'
 import UpdateBanner from '@/views/components/UpdateBanner.vue'
+import WhatsNewDialog from '@/views/components/WhatsNewDialog.vue'
 import {
   craftNotifications,
   dismissNotification,
@@ -71,6 +72,8 @@ watch(
   <BootLoader v-if="booting" @done="booting = false" />
   <TourOverlay />
   <UpdateBanner />
+  <!-- หลังจอโหลดหายไปเท่านั้น — เช็คตอน mount ครั้งเดียว ไม่ให้เด้งทับ BootLoader -->
+  <WhatsNewDialog v-if="!booting" />
 
   <div class="app-wrapper" :class="{ full: isFullPage }">
     <!-- LOGO + TITLE HEADER -->

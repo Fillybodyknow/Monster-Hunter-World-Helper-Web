@@ -121,6 +121,15 @@ const showImportConfirm = ref(false)
 const importPending     = ref(null)
 const importError       = ref('')
 
+// ข้อมูลสำรองมาได้สองทาง (ไฟล์ / วางข้อความ) — ตรวจแบบเดียวกันแล้วเข้าหน้ายืนยันเดิม
+const isBackupData = (data) => !!data?.version && !!data.hunter?.hunter_id
+
+const openImportConfirm = (data) => {
+  importPending.value = data
+  showImportConfirm.value = true
+  importError.value = ''
+}
+
 const onImportFile = (e) => {
   const file = e.target.files[0]
   e.target.value = ''
@@ -129,18 +138,43 @@ const onImportFile = (e) => {
   reader.onload = (ev) => {
     try {
       const data = JSON.parse(ev.target.result)
-      if (!data.version || !data.hunter?.hunter_id) {
+      if (!isBackupData(data)) {
         importError.value = 'ไฟล์ไม่ถูกต้อง — ใช้ได้เฉพาะไฟล์ที่ Export จากแอปนี้เท่านั้น'
         return
       }
-      importPending.value = data
-      showImportConfirm.value = true
-      importError.value = ''
+      openImportConfirm(data)
     } catch {
       importError.value = 'ไม่สามารถอ่านไฟล์ได้'
     }
   }
   reader.readAsText(file)
+}
+
+// วางข้อมูลสำรอง — สำหรับคนที่ Export จากเบราว์เซอร์ในแอปอื่น (Google / Facebook / LINE) ซึ่งบันทึกไฟล์ไม่ได้
+// หน้า Setting จะให้คัดลอกข้อความแทน แล้วมาวางที่นี่ในเบราว์เซอร์ปกติ
+const showPasteImport = ref(false)
+const pasteText = ref('')
+const pasteError = ref('')
+
+const openPasteImport = () => {
+  pasteText.value = ''
+  pasteError.value = ''
+  showPasteImport.value = true
+}
+
+const submitPasteImport = () => {
+  let data = null
+  try {
+    data = JSON.parse(pasteText.value.trim())
+  } catch {
+    data = null
+  }
+  if (!isBackupData(data)) {
+    pasteError.value = 'ข้อความนี้ไม่ใช่ข้อมูลสำรองจากแอปนี้ — ลองกดคัดลอกจากหน้า Setting ใหม่อีกครั้ง'
+    return
+  }
+  showPasteImport.value = false
+  openImportConfirm(data)
 }
 
 const confirmHunterImport = () => {
@@ -290,6 +324,10 @@ const handleCreate = () => {
         <input type="file" accept=".json" @change="onImportFile" style="display:none" />
       </label>
     </div>
+    <!-- อยู่นอกการ์ด Import — การ์ดนั้นเป็น label ครอบช่องเลือกไฟล์ กดตรงไหนข้างในก็เปิดหน้าเลือกไฟล์ -->
+    <button type="button" class="paste-import-btn" @click="openPasteImport">
+      📋 วางข้อมูลสำรอง <span class="paste-import-sub">— ย้าย Hunter จากเบราว์เซอร์ในแอปอื่น</span>
+    </button>
   </div>
 
   <!-- Import Confirm Modal -->
@@ -297,7 +335,7 @@ const handleCreate = () => {
     <div v-if="showImportConfirm" class="modal-overlay">
       <div class="modal-parchment import-confirm-parchment">
         <div class="modal-stamp-header">
-          <div class="modal-stamp">⚠ ยืนยันการนำเข้า</div>
+          <div class="modal-stamp modal-stamp-th">⚠ ยืนยันการนำเข้า</div>
         </div>
         <p class="ic-body">จะ<strong>เพิ่มหรืออัปเดต</strong> Hunter นี้ในรายชื่อ</p>
         <div v-if="importPending?.hunter" class="ic-info">
@@ -309,6 +347,33 @@ const handleCreate = () => {
         <div class="ic-btns">
           <button class="modal-btn modal-btn-confirm" @click="confirmHunterImport">✓ ยืนยัน</button>
           <button class="modal-btn modal-btn-cancel"  @click="cancelHunterImport">← ยกเลิก</button>
+        </div>
+      </div>
+    </div>
+  </teleport>
+
+  <!-- Paste Backup Modal -->
+  <teleport to="body">
+    <div v-if="showPasteImport" class="modal-overlay" @click.self="showPasteImport = false">
+      <div class="modal-parchment import-confirm-parchment">
+        <div class="modal-stamp-header">
+          <div class="modal-stamp modal-stamp-th">📋 วางข้อมูลสำรอง</div>
+        </div>
+        <p class="ic-body">วางข้อความที่คัดลอกจากปุ่ม <strong>คัดลอกข้อมูลสำรอง</strong> ในหน้า Setting</p>
+        <textarea
+          v-model="pasteText"
+          class="paste-textarea"
+          @input="pasteError = ''"
+          rows="6"
+          placeholder="กดค้างแล้วเลือก วาง"
+          autocapitalize="off"
+          autocorrect="off"
+          spellcheck="false"
+        />
+        <p v-if="pasteError" class="import-error-text">⚠ {{ pasteError }}</p>
+        <div class="ic-btns">
+          <button class="modal-btn modal-btn-confirm" :disabled="!pasteText.trim()" @click="submitPasteImport">✓ ถัดไป</button>
+          <button class="modal-btn modal-btn-cancel" @click="showPasteImport = false">← ยกเลิก</button>
         </div>
       </div>
     </div>
@@ -453,6 +518,41 @@ const handleCreate = () => {
   max-width: 560px;
   margin: 0 auto 24px;
   padding: 0 14px;
+}
+
+/* ปุ่มวางข้อมูลสำรอง — ทางรองจากการ์ด Import จึงเป็นแค่ปุ่มเส้นประ */
+.paste-import-btn {
+  display: block;
+  width: 100%;
+  /* กว้างเท่าการ์ดใน .hunter-list ข้างบน */
+  max-width: 500px;
+  margin: 10px auto 0;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px dashed rgba(60, 160, 220, 0.45);
+  background: rgba(60, 160, 220, 0.05);
+  color: #5ab4e0;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.paste-import-btn:hover { background: rgba(60, 160, 220, 0.12); color: #90d0f8; }
+.paste-import-sub { color: rgba(90, 180, 224, 0.7); font-size: 12px; }
+.paste-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 4px 0;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(92, 66, 32, 0.45);
+  background: rgba(255, 250, 235, 0.75);
+  color: #2a1d0c;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  /* ต่ำกว่า 16px แล้ว iPhone/iPad ซูมจอทุกครั้งที่แตะช่องกรอก */
+  font-size: 16px;
+  resize: vertical;
 }
 /* ══════════════════════════════════════════
    BASE
@@ -829,6 +929,12 @@ const handleCreate = () => {
   padding: 4px 14px;
   background: rgba(200, 155, 60, 0.08);
   text-shadow: 0 0 8px rgba(200, 155, 60, 0.4);
+}
+
+/* หัวข้อภาษาไทย — ระยะห่างตัวอักษรกว้างแบบภาษาอังกฤษทำให้สระหลุดจากพยัญชนะ */
+.modal-stamp-th {
+  letter-spacing: 1px;
+  font-size: 12px;
 }
 
 .modal-stamp-header.danger .modal-stamp {

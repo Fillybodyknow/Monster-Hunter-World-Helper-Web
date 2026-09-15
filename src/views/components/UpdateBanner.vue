@@ -1,7 +1,10 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { APP_VERSION } from '@/services/appVersion'
 import { newerBuild, dismissedSha, reloadToLatest } from '@/services/versionCheck'
+import { CHANGELOG } from '@/services/changelog'
+import { entriesNotIn } from '@/services/changelogLogic'
+import ChangelogList from './ChangelogList.vue'
 
 const show = computed(() => !!newerBuild.value && newerBuild.value.sha !== dismissedSha.value)
 
@@ -20,6 +23,10 @@ const inCoopRoom = computed(() => {
 const later = () => {
   dismissedSha.value = newerBuild.value?.sha ?? null
 }
+
+// build ใหม่ส่ง changelog มากับ version.json — แสดงเฉพาะรายการที่ build ที่รันอยู่ยังไม่มี
+const newEntries = computed(() => entriesNotIn(newerBuild.value?.changelog, CHANGELOG.map((e) => e.id)))
+const showChanges = ref(false)
 </script>
 
 <template>
@@ -36,11 +43,18 @@ const later = () => {
         </p>
         <!-- โหลดใหม่กลางเควสอาจทำให้ตี้สะดุด — เตือนไว้ แต่ไม่บังคับ -->
         <p v-if="inCoopRoom" class="ub-note">อยู่ในห้อง Co-op — แนะนำให้จบเควสนี้ก่อนค่อยโหลดใหม่</p>
+        <button v-if="newEntries.length" type="button" class="ub-changes-toggle" @click="showChanges = !showChanges">
+          {{ showChanges ? 'ซ่อนรายการอัปเดต' : `ดูว่ามีอะไรใหม่ (${newEntries.length})` }}
+        </button>
       </div>
 
       <div class="ub-actions">
         <button class="ub-later" @click="later">ภายหลัง</button>
         <button class="ub-reload" @click="reloadToLatest">โหลดใหม่</button>
+      </div>
+
+      <div v-if="showChanges && newEntries.length" class="ub-changes">
+        <ChangelogList :entries="newEntries" tone="dark" />
       </div>
     </div>
   </Transition>
@@ -160,6 +174,29 @@ const later = () => {
 }
 .ub-reload:hover {
   background: linear-gradient(to bottom, #c99f42 0%, #9d7a29 48%, #7a5c1f 100%);
+}
+
+/* รายการอัปเดตกางลงใต้แบนเนอร์ — ยาวเกินก็เลื่อนในกรอบ ไม่ดันแบนเนอร์ล้นจอ */
+.update-banner { flex-wrap: wrap; }
+.ub-changes-toggle {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #e0b862;
+  font-family: inherit;
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.ub-changes {
+  flex-basis: 100%;
+  max-height: min(50vh, 360px);
+  overflow-y: auto;
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(124, 90, 43, 0.4);
 }
 
 /* จอแคบ: ปุ่มลงไปอยู่แถวล่าง ไม่บีบข้อความจนอ่านไม่ออก */

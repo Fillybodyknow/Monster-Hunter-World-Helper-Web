@@ -5,6 +5,8 @@ import { showQuestEffects, soundEnabled, soundVolume } from '@/stores/settings'
 import classHunterData from '@/assets/files/class_hunter.json'
 import { hunter } from '@/stores/hunter'
 import ReportButton from './ReportButton.vue'
+import { copyText } from '@/services/clipboard'
+import { saveJsonFile } from '@/services/saveFile'
 import { APP_VERSION } from '@/services/appVersion'
 import { tourEnabled, setTourEnabled, resetTours, startTour } from '@/composables/useTour'
 
@@ -48,19 +50,37 @@ const exportHunter = () => {
   showExportConfirm.value = true
 }
 
-const doExport = (hunter) => {
+// เบราว์เซอร์ในแอปอื่น (Google / Facebook / LINE) ที่แชร์ไฟล์ไม่ได้ — ให้คัดลอกข้อมูลไปวางในหน้าเลือก Hunter แทน
+// ข้อมูลของเบราว์เซอร์ในแอปแยกจาก Safari บอกให้ไป Export ใน Safari จึงไม่ช่วย เพราะ Hunter ไม่ได้อยู่ที่นั่น
+const exportBlocked = ref(null) // { filename, text }
+const exportCopied = ref(false)
+
+const doExport = async (hunter) => {
   const date = new Date().toISOString().slice(0, 10)
   const name = sanitize(hunter.hunter_name)
   const cls  = sanitize(getClassName(hunter.hunter_class_id))
   const day  = `Day${hunter.campaign_day ?? 1}`
   const payload = { version: '1.1', exportedAt: new Date().toISOString(), hunter }
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-  const url  = URL.createObjectURL(blob)
-  const a    = document.createElement('a')
-  a.href = url
-  a.download = `${date}_${name}_${cls}_${day}.json`
-  a.click()
-  URL.revokeObjectURL(url)
+  const filename = `${date}_${name}_${cls}_${day}.json`
+  const text = JSON.stringify(payload, null, 2)
+  // ห้ามมี await ก่อนบรรทัดนี้ — เมนูแชร์ต้องถูกเรียกในจังหวะที่ผู้ใช้กดปุ่ม
+  const result = await saveJsonFile(filename, text)
+  if (result === 'blocked') {
+    exportCopied.value = false
+    exportCopyFailed.value = false
+    exportBlocked.value = { filename, text }
+  }
+}
+
+// เบราว์เซอร์ในแอปบางตัวคัดลอกให้ไม่ได้ — ต้องบอกตามจริง ไม่งั้นผู้เล่นไปวางใน Safari แล้วได้ข้อความว่าง
+const exportCopyFailed = ref(false)
+
+const copyExportText = async () => {
+  const ok = await copyText(exportBlocked.value?.text ?? '')
+  exportCopyFailed.value = !ok
+  if (!ok) return
+  exportCopied.value = true
+  setTimeout(() => (exportCopied.value = false), 2500)
 }
 </script>
 
@@ -267,6 +287,37 @@ const doExport = (hunter) => {
           <div class="export-confirm-btns">
             <button class="save-btn save-btn-export" @click="confirmExport">✓ ยืนยัน</button>
             <button class="export-cancel-btn" @click="showExportConfirm = false">ยกเลิก</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+
+  <!-- Export ไม่ได้ในเบราว์เซอร์ในแอป — ย้ายข้อมูลด้วยการคัดลอกไปวางแทน -->
+  <Teleport to="body">
+    <Transition name="slain-fade">
+      <div v-if="exportBlocked" class="export-confirm-overlay" @click.self="exportBlocked = null">
+        <div class="export-confirm-modal export-blocked-modal">
+          <p class="export-confirm-title">📤 เบราว์เซอร์นี้บันทึกไฟล์ไม่ได้</p>
+          <p class="export-confirm-desc">
+            คุณเปิดแอปผ่านเบราว์เซอร์ในแอปอื่น (เช่น Google, Facebook, LINE) ซึ่งไม่ยอมให้บันทึกไฟล์
+            และ Hunter ที่อยู่ที่นี่<strong>จะไม่มีใน Safari</strong> ย้ายข้อมูลแบบนี้แทน:
+          </p>
+          <ol class="export-blocked-steps">
+            <li>กด <strong>📋 คัดลอกข้อมูลสำรอง</strong></li>
+            <li>เปิดแอปนี้ใน Safari หรือ Chrome</li>
+            <li>หน้าเลือก Hunter → <strong>วางข้อมูลสำรอง</strong></li>
+          </ol>
+          <!-- ถ้าปุ่มคัดลอกใช้ไม่ได้ กดค้างที่กล่องนี้เพื่อเลือกข้อความทั้งหมดได้ — ใช้ pre ไม่ใช่ textarea เพราะแตะช่องกรอกแล้ว iPhone/iPad ซูมจอ -->
+          <pre class="export-blocked-text">{{ exportBlocked.text }}</pre>
+          <p v-if="exportCopyFailed" class="save-msg save-msg-error">
+            คัดลอกอัตโนมัติไม่ได้ — กดค้างที่กล่องข้อความด้านบน เลือกทั้งหมด แล้วคัดลอกเอง
+          </p>
+          <div class="export-confirm-btns">
+            <button class="save-btn save-btn-export export-blocked-copy" @click="copyExportText">
+              {{ exportCopied ? '✓ คัดลอกแล้ว' : '📋 คัดลอกข้อมูลสำรอง' }}
+            </button>
+            <button class="export-cancel-btn" @click="exportBlocked = null">ปิด</button>
           </div>
         </div>
       </div>
@@ -923,4 +974,33 @@ const doExport = (hunter) => {
   transition: 0.2s;
 }
 .export-cancel-btn:hover { color: #a88040; border-color: #7c5a2b; }
+
+/* ── Export ไม่ได้ในเบราว์เซอร์ในแอป ── */
+.export-blocked-modal { width: min(420px, 100%); }
+.export-blocked-steps {
+  margin: 0;
+  padding-left: 22px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #d4c090;
+}
+.export-blocked-steps strong { color: #ffd27a; }
+.export-blocked-text {
+  margin: 0;
+  max-height: 96px;
+  overflow: auto;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(124, 90, 43, 0.45);
+  background: rgba(0, 0, 0, 0.45);
+  color: #c4a060;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 10px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: all;
+  -webkit-user-select: all;
+}
+.export-blocked-copy { justify-content: center; padding: 12px; font-size: 13px; }
 </style>
