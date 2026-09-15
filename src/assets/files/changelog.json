@@ -1,5 +1,18 @@
 [
   {
+    "id": "2026-09-15-export-in-app-dialog",
+    "date": "2026-09-15",
+    "title": "แก้ Export ในแอป Facebook บน Android",
+    "sections": [
+      {
+        "type": "fix",
+        "items": [
+          "กด Export ในแอป Facebook บน Android แล้วไม่มีอะไรเกิดขึ้น — ตอนนี้ถ้าเปิดแอปผ่านเบราว์เซอร์ในแอปอื่น (Google, Facebook, LINE) จะขึ้นหน้าต่างสำรองข้อมูลให้ทุกครั้ง คัดลอกข้อมูลได้เสมอ และมีปุ่ม “บันทึกเป็นไฟล์ / แชร์” เมื่อเครื่องรองรับ"
+        ]
+      }
+    ]
+  },
+  {
     "id": "2026-09-15-export-whatsnew",
     "date": "2026-09-15",
     "title": "สำรองข้อมูลจากแอป Google / Facebook / LINE ได้แล้ว",

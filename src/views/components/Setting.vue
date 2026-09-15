@@ -6,7 +6,7 @@ import classHunterData from '@/assets/files/class_hunter.json'
 import { hunter } from '@/stores/hunter'
 import ReportButton from './ReportButton.vue'
 import { copyText } from '@/services/clipboard'
-import { saveJsonFile } from '@/services/saveFile'
+import { isInAppBrowser, shareableFile, shareJsonFile, downloadJsonFile } from '@/services/saveFile'
 import { APP_VERSION } from '@/services/appVersion'
 import { tourEnabled, setTourEnabled, resetTours, startTour } from '@/composables/useTour'
 
@@ -50,12 +50,15 @@ const exportHunter = () => {
   showExportConfirm.value = true
 }
 
-// เบราว์เซอร์ในแอปอื่น (Google / Facebook / LINE) ที่แชร์ไฟล์ไม่ได้ — ให้คัดลอกข้อมูลไปวางในหน้าเลือก Hunter แทน
-// ข้อมูลของเบราว์เซอร์ในแอปแยกจาก Safari บอกให้ไป Export ใน Safari จึงไม่ช่วย เพราะ Hunter ไม่ได้อยู่ที่นั่น
-const exportBlocked = ref(null) // { filename, text }
+// เบราว์เซอร์ในแอปอื่น (Google / Facebook / LINE) ดาวน์โหลดไฟล์ตรง ๆ ไม่ได้ และผลของเมนูแชร์ก็เชื่อไม่ได้
+// (Android + Facebook กดแชร์แล้วเงียบ — ตอบกลับเหมือนสำเร็จหรือยกเลิก ทั้งที่ไม่มีหน้าต่างแชร์ขึ้นมา)
+// จึงเปิดหน้าต่างสำรองข้อมูลให้เห็นทุกครั้ง: คัดลอกได้เสมอ ส่วนปุ่มแชร์เป็นทางเสริมเมื่อเบราว์เซอร์บอกว่ารองรับ
+// ข้อมูลของเบราว์เซอร์ในแอปแยกจาก Safari / Chrome — บอกให้ไป Export ที่นั่นไม่ช่วย เพราะ Hunter ไม่ได้อยู่ที่นั่น
+const exportBlocked = ref(null) // { filename, text, canShare }
 const exportCopied = ref(false)
+const exportShareNote = ref('')
 
-const doExport = async (hunter) => {
+const doExport = (hunter) => {
   const date = new Date().toISOString().slice(0, 10)
   const name = sanitize(hunter.hunter_name)
   const cls  = sanitize(getClassName(hunter.hunter_class_id))
@@ -63,13 +66,25 @@ const doExport = async (hunter) => {
   const payload = { version: '1.1', exportedAt: new Date().toISOString(), hunter }
   const filename = `${date}_${name}_${cls}_${day}.json`
   const text = JSON.stringify(payload, null, 2)
-  // ห้ามมี await ก่อนบรรทัดนี้ — เมนูแชร์ต้องถูกเรียกในจังหวะที่ผู้ใช้กดปุ่ม
-  const result = await saveJsonFile(filename, text)
-  if (result === 'blocked') {
-    exportCopied.value = false
-    exportCopyFailed.value = false
-    exportBlocked.value = { filename, text }
+  if (!isInAppBrowser()) {
+    downloadJsonFile(filename, text)
+    return
   }
+  exportCopied.value = false
+  exportCopyFailed.value = false
+  exportShareNote.value = ''
+  exportBlocked.value = { filename, text, canShare: !!shareableFile(filename, text) }
+}
+
+// เรียกจากการกดปุ่มแชร์โดยตรง — ห้ามมี await ก่อน shareJsonFile ไม่งั้นเบราว์เซอร์บล็อกเมนูแชร์
+const shareExport = async () => {
+  const d = exportBlocked.value
+  if (!d) return
+  const result = await shareJsonFile(d.filename, d.text)
+  // หน้าต่างยังเปิดอยู่ไม่ว่าผลจะเป็นอะไร — ถ้าเมนูแชร์ไม่ขึ้นจริง ผู้เล่นยังกดคัดลอกต่อได้ทันที
+  exportShareNote.value = result === 'failed'
+    ? 'แชร์ไม่สำเร็จ — ใช้ปุ่มคัดลอกข้อมูลสำรองแทน'
+    : 'ถ้าไม่มีหน้าต่างบันทึกหรือแชร์ขึ้นมา ให้ใช้ปุ่มคัดลอกข้อมูลสำรองแทน'
 }
 
 // เบราว์เซอร์ในแอปบางตัวคัดลอกให้ไม่ได้ — ต้องบอกตามจริง ไม่งั้นผู้เล่นไปวางใน Safari แล้วได้ข้อความว่าง
@@ -298,10 +313,10 @@ const copyExportText = async () => {
     <Transition name="slain-fade">
       <div v-if="exportBlocked" class="export-confirm-overlay" @click.self="exportBlocked = null">
         <div class="export-confirm-modal export-blocked-modal">
-          <p class="export-confirm-title">📤 เบราว์เซอร์นี้บันทึกไฟล์ไม่ได้</p>
+          <p class="export-confirm-title">📤 สำรองข้อมูล Hunter</p>
           <p class="export-confirm-desc">
-            คุณเปิดแอปผ่านเบราว์เซอร์ในแอปอื่น (เช่น Google, Facebook, LINE) ซึ่งไม่ยอมให้บันทึกไฟล์
-            และ Hunter ที่อยู่ที่นี่<strong>จะไม่มีใน Safari</strong> ย้ายข้อมูลแบบนี้แทน:
+            คุณเปิดแอปผ่านเบราว์เซอร์ในแอปอื่น (เช่น Google, Facebook, LINE) ซึ่งดาวน์โหลดไฟล์ตรง ๆ ไม่ได้
+            และ Hunter ที่อยู่ที่นี่<strong>จะไม่มีใน Safari / Chrome</strong> ย้ายข้อมูลแบบนี้แทน:
           </p>
           <ol class="export-blocked-steps">
             <li>กด <strong>📋 คัดลอกข้อมูลสำรอง</strong></li>
@@ -313,6 +328,11 @@ const copyExportText = async () => {
           <p v-if="exportCopyFailed" class="save-msg save-msg-error">
             คัดลอกอัตโนมัติไม่ได้ — กดค้างที่กล่องข้อความด้านบน เลือกทั้งหมด แล้วคัดลอกเอง
           </p>
+          <!-- ทางเสริม — ขึ้นเมื่อเบราว์เซอร์บอกว่าแชร์ไฟล์ได้ แต่ห้ามแทนปุ่มคัดลอก เพราะบางเครื่องบอกว่าได้ทั้งที่ไม่ขึ้นอะไร -->
+          <button v-if="exportBlocked.canShare" class="export-share-btn" @click="shareExport">
+            📤 บันทึกเป็นไฟล์ / แชร์
+          </button>
+          <p v-if="exportShareNote" class="export-share-note">{{ exportShareNote }}</p>
           <div class="export-confirm-btns">
             <button class="save-btn save-btn-export export-blocked-copy" @click="copyExportText">
               {{ exportCopied ? '✓ คัดลอกแล้ว' : '📋 คัดลอกข้อมูลสำรอง' }}
@@ -1003,4 +1023,23 @@ const copyExportText = async () => {
   -webkit-user-select: all;
 }
 .export-blocked-copy { justify-content: center; padding: 12px; font-size: 13px; }
+.export-share-btn {
+  padding: 11px;
+  border-radius: 8px;
+  border: 1px solid rgba(60, 160, 220, 0.5);
+  background: rgba(60, 160, 220, 0.08);
+  color: #5ab4e0;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.export-share-btn:hover { background: rgba(60, 160, 220, 0.16); color: #90d0f8; }
+.export-share-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #d4c090;
+  text-align: center;
+}
 </style>
