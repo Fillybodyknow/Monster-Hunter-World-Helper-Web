@@ -1821,7 +1821,7 @@ const moteStyle = (m) => ({
 .lodge-hire-confirm-btn { border-color: #3a7a3a !important; background: linear-gradient(to bottom,#1f4520,#0f210f) !important; color: #90d890 !important; }
 .lodge-hire-confirm-btn:hover { box-shadow: 0 0 16px rgba(80,200,80,0.3) !important; }
 
-/* Resource Center (reuse from HeadQuarter styles) */
+/* Resource Center (ยกสไตล์มาจากหน้า HQ เวอร์ชันเก่า ซึ่งถูกลบทิ้งไปแล้ว) */
 .rc-card { gap: 14px; }
 .rc-roll-phase, .rc-claim-phase { display: flex; flex-direction: column; gap: 12px; }
 .rc-sub { font-size: 11px; color: #a88040; margin: 0; }
@@ -1976,7 +1976,7 @@ const moteStyle = (m) => ({
   }
 }
 
-/* Trade modal (shared with HeadQuarter) */
+/* Trade modal (ยกสไตล์มาจากหน้า HQ เวอร์ชันเก่า ซึ่งถูกลบทิ้งไปแล้ว) */
 .hq-confirm-overlay { position: fixed; inset: 0; background: rgba(5,4,2,0.8); backdrop-filter: blur(10px) brightness(0.5); display: flex; justify-content: center; align-items: center; z-index: 300; padding: 16px; }
 .hq-confirm-modal {
   width: min(420px,100%); padding: 24px;

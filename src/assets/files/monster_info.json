@@ -3430,7 +3430,7 @@
   {
     "monster_id": 6,
     "monster_name": "Barroth",
-    "thumbnail": "assets/img/barroth_Icon.webp",
+    "thumbnail": "assets/img/barroth_icon.webp",
     "difficulty": [
       {
         "difficulty_id": 1,
