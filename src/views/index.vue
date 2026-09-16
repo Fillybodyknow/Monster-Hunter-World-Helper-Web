@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import WeaponSelect from '@/views/components/WeaponSelect.vue'
 import { createHunter, getHunters, deleteHunter, saveHunters } from '@/services/hunterStorage'
+import { rankOf } from '@/services/hunterRank'
 import { getHunterClasses, getHunterClassById } from '@/services/hunterService'
 import { getArmors, getWeapons } from '@/services/equipService'
 import { useRouter } from 'vue-router'
@@ -278,6 +279,7 @@ const handleCreate = () => {
           <div class="gc-details">
             <span class="gc-palico">Palico: {{ h.palico_name }}</span>
             <span class="gc-day">Day {{ h.campaign_day }}</span>
+            <span class="gc-day">HR {{ rankOf(h) }}</span>
           </div>
         </div>
 
@@ -342,6 +344,7 @@ const handleCreate = () => {
           <span>Hunter: <strong>{{ importPending.hunter.hunter_name }}</strong></span>
           <span>Class: {{ getClass(importPending.hunter.hunter_class_id)?.hunter_class ?? importPending.hunter.hunter_class_id }}</span>
           <span>Campaign Day: {{ importPending.hunter.campaign_day ?? 1 }}</span>
+          <span>Hunter Rank: HR {{ rankOf(importPending.hunter) }}</span>
           <span>บันทึกเมื่อ: {{ formatDate(importPending.exportedAt) }}</span>
         </div>
         <div class="ic-btns">
@@ -398,6 +401,7 @@ const handleCreate = () => {
         <div class="modal-meta-row">
           <span class="modal-meta-chip">Palico: {{ selectedHunter.palico_name }}</span>
           <span class="modal-meta-chip">Day {{ selectedHunter.campaign_day }}</span>
+          <span class="modal-meta-chip">HR {{ rankOf(selectedHunter) }}</span>
         </div>
 
         <div class="modal-divider">— Equipment —</div>

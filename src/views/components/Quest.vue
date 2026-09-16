@@ -15,6 +15,7 @@ import armorData from '@/assets/files/armors.json'
 import statusEffectData from '@/assets/files/status_effect.json'
 import resourceData from '@/assets/files/resource.json'
 import { getHunters, saveHunters } from '@/services/hunterStorage'
+import { questPoints, rankOf, pointsOf } from '@/services/hunterRank'
 import { useRoomStore } from '@/stores/room'
 import CoopLobbyModal from './CoopLobbyModal.vue'
 import HQPhase from './HQPhase.vue'
@@ -2210,7 +2211,20 @@ const myAttemptCounts = () => {
   return !isQuestExhausted(selectedQuest.value)
 }
 
+// แต้ม HR — ได้ทุกครั้งที่จบเควสต์ ไม่ผูกกับโควตา Attempt
+// ไปช่วยเพื่อนล่าตัวที่ตัวเองผ่านแล้วก็ได้แต้ม เพราะก็คือการออกล่าจริง ๆ หนึ่งครั้ง
+// แพ้ก็ได้แต่น้อยกว่า และเก็บแยกจาก attempted_quest ปุ่มรีเซ็ตเควสต์ใน HQ จึงไม่ทำให้ HR ลด
+const addRankPoints = (won) => {
+  if (!hunter.value) return
+  const before = rankOf(hunter.value)
+  hunter.value.hr_points = pointsOf(hunter.value) + questPoints(selectedQuest.value?.difficulty_level, won)
+  saveHunter(hunter.value)
+  const after = rankOf(hunter.value)
+  if (after > before) addNotif?.(`🏅 Hunter Rank ขึ้นเป็น HR${after}`, 'info')
+}
+
 const onComplete = () => {
+  addRankPoints(true)
   if (myAttemptCounts()) incrementAttempted()
   // ต้องตั้งก่อน resetToBookPhase ไม่งั้นกองทิ้ง Time Card ถูกล้างไปแล้วตรวจไม่เจอ
   // ทุกคนในตี้ตั้งธงของตัวเองจากกองทิ้งที่ sync กันอยู่ — "ทั้งกลุ่ม" เลยได้ครบโดยไม่ต้องส่งอะไรเพิ่ม
@@ -2221,6 +2235,7 @@ const onComplete = () => {
 }
 
 const onFail = () => {
+  addRankPoints(false)
   if (selectedQuest.value.quest_id !== 1 && myAttemptCounts()) incrementAttempted()
   incrementDay()
   if (room.inRoom) room.leave()

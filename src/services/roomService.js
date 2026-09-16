@@ -1,6 +1,7 @@
 import { db, authReady } from './firebase'
 import { ref, set, get, update, onValue, remove, onDisconnect, push, runTransaction } from 'firebase/database'
 import { getWeapons } from './equipService'
+import { rankOf } from './hunterRank'
 
 // สรุปอาวุธที่ถืออยู่ให้เพื่อนร่วมตี้เห็น (ชื่อ + rarity + ไอคอน)
 // Firebase ไม่รับ undefined — คืน null ถ้าหาไม่เจอ
@@ -95,6 +96,7 @@ export const createRoom = async (hunter) => {
         palico_name: hunter.palico_name,
         palico_id: hunter.palico_id ?? null,
         campaign_day: hunter.campaign_day ?? 1,
+        hunter_rank: rankOf(hunter),
         weapon,
         isHost: true,
         joinedAt: Date.now(),
@@ -138,6 +140,7 @@ export const joinRoom = async (code, hunter, validate) => {
     palico_name: hunter.palico_name,
     palico_id: hunter.palico_id ?? null,
     campaign_day: hunter.campaign_day ?? 1,
+    hunter_rank: rankOf(hunter),
     weapon: await buildWeaponSummary(hunter),
     isHost: existing?.isHost ?? false,
     joinedAt: existing?.joinedAt ?? Date.now(),
@@ -152,6 +155,7 @@ export const updateHunterProfile = async (code, hunter) => {
   if (!code || !hunter?.hunter_id) return
   return update(ref(db, `rooms/${code}/hunters/${hunter.hunter_id}`), {
     campaign_day: hunter.campaign_day ?? 1,
+    hunter_rank: rankOf(hunter),
     weapon: await buildWeaponSummary(hunter),
   })
 }
