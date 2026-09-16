@@ -490,6 +490,7 @@ export const useRoomStore = defineStore('room', () => {
     hunter_name: h.hunter_name,
     hunter_class_id: h.hunter_class_id,
     campaign_day: h.campaign_day ?? 1,
+    hunter_rank: h.hunter_rank ?? null,
     weapon: h.weapon ?? null,
   })
 

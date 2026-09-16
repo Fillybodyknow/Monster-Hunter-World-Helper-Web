@@ -1,3 +1,5 @@
+import { seedHrPoints } from './hunterRank'
+
 const STORAGE_KEY = 'hunters'
 
 /* ================= REPAIR =================
@@ -46,6 +48,16 @@ export const migrateHunterItems = (h) => {
   return changed
 }
 
+/* ================= MIGRATE HUNTER RANK =================
+   เซฟที่ยังไม่มีแต้ม HR — คนที่เล่นมาก่อนฟีเจอร์นี้ ต้องไม่เริ่มนับใหม่จากศูนย์
+   เติมให้ครั้งเดียวจากประวัติที่มีอยู่ (ดู seedHrPoints) แล้วหลังจากนั้นบวกตามจริงตอนจบเควสต์
+   เช็ค typeof ไม่ใช่ ?? เพราะ 0 แต้มคือค่าที่ถูกต้องของคนที่เพิ่งสร้างตัว ห้ามเติมซ้ำ */
+export const migrateHunterRank = (h) => {
+  if (!h || typeof h.hr_points === 'number') return false
+  h.hr_points = seedHrPoints(h)
+  return true
+}
+
 /* ================= GET ALL ================= */
 export const getHunters = () => {
   try {
@@ -54,11 +66,12 @@ export const getHunters = () => {
 
     const hunters = Array.isArray(parsed) ? parsed : []
     // ซ่อมตอนอ่านเสมอ แล้วเขียนกลับถ้ามีอะไรเปลี่ยน — ผู้ใช้ที่ข้อมูลพังอยู่แล้วจะกลับมาใช้ได้เอง
-    // เรียกทั้งสองตัวกับทุกคนเสมอ — ห้าม short-circuit ไม่งั้นบางคนจะไม่ถูกซ่อม
+    // เรียกทุกตัวกับทุกคนเสมอ — ห้าม short-circuit ไม่งั้นบางคนจะไม่ถูกซ่อม
     const changed = hunters.map((h) => {
       const repaired = repairHunter(h)
       const migrated = migrateHunterItems(h)
-      return repaired || migrated
+      const ranked = migrateHunterRank(h)
+      return repaired || migrated || ranked
     })
     if (changed.some(Boolean)) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(hunters))

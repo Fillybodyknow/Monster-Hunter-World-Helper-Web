@@ -276,6 +276,8 @@ const starColor = computed(() => {
             <span v-if="h.isHost" class="cl-host-tag">HOST</span>
             <span class="cl-hunter-class">{{ getClass(h.hunter_class_id)?.hunter_class }}</span>
             <span class="cl-day">DAY {{ h.campaign_day ?? 1 }}</span>
+            <!-- ห้องเก่าที่เปิดค้างไว้ก่อนอัปเดตยังไม่มีค่านี้ — ไม่ต้องโชว์ ดีกว่าโชว์ HR1 ที่ผิด -->
+            <span v-if="h.hunter_rank" class="cl-day">HR {{ h.hunter_rank }}</span>
           </div>
 
           <div v-if="h.weapon" class="cl-weapon">

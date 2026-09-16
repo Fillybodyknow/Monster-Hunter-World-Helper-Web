@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 
 import { getHunterById, saveHunter } from '@/services/hunterStorage'
+import { rankOf } from '@/services/hunterRank'
 import { getHunterClassById } from '@/services/hunterService'
 import { getArmors, getWeapons } from '@/services/equipService'
 import elementalData from '@/assets/files/elemental.json'
@@ -100,6 +101,7 @@ const loadState = async () => {
     class: await getHunterClassById(Hunter.hunter_class_id),
     palico: Hunter.palico_name,
     campaign_day: Hunter.campaign_day,
+    hunter_rank: rankOf(Hunter),
     weapon,
     armors: { helm, mail, greaves },
     armor_set_ability:
@@ -204,6 +206,10 @@ const setEquip = async (item) => {
             <div class="ptag">
               <span class="ptag-l">Campaign Day</span>
               <span class="ptag-v day-badge">Day {{ hunter.campaign_day }}</span>
+            </div>
+            <div class="ptag">
+              <span class="ptag-l">Hunter Rank</span>
+              <span class="ptag-v hr-badge">HR {{ hunter.hunter_rank }}</span>
             </div>
           </div>
         </div>
@@ -639,6 +645,18 @@ const setEquip = async (item) => {
   font-size: 12px;
   color: #f0ddb0;
   text-align: right;
+}
+
+/* HR ใช้เหรียญเงิน ไม่ให้ไปแย่งสายตากับเหรียญทองของเลขวัน */
+.hr-badge {
+  color: #1d2733;
+  font-weight: bold;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, #e6eef5, #a8b9c9 60%, #6d7e8f);
+  border: 1px solid rgba(30, 45, 60, 0.55);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
 }
 
 .day-badge {
