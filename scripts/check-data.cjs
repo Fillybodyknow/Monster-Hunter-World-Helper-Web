@@ -198,12 +198,32 @@ for (const entry of changelog) {
 // ── 7. รูปที่อ้างถึงต้องมีอยู่จริง ──────────────────────────
 const IMAGE_KEY = /(thumbnail|_img|map_image|image)$/
 const missingImages = new Set()
+
+/* Windows หาไฟล์แบบไม่สนตัวพิมพ์เล็กใหญ่ แต่ GitHub Pages สน — ชื่อที่พิมพ์ผิดตัวเดียวจะกลายเป็น 404
+   เฉพาะบนเว็บจริงเท่านั้น (เคยเกิดกับ barroth_Icon.webp) จึงต้องเทียบชื่อไฟล์แบบตรงตัวพิมพ์เอง
+   ไม่ใช้ fs.existsSync ตรง ๆ ไม่งั้นบนเครื่องที่พัฒนาจะผ่านหมดแล้วไปโผล่ตอนขึ้นเว็บ */
+const dirCache = new Map()
+const entriesOf = (dir) => {
+  if (!dirCache.has(dir)) {
+    dirCache.set(dir, fs.existsSync(dir) ? new Set(fs.readdirSync(dir)) : new Set())
+  }
+  return dirCache.get(dir)
+}
+const existsExact = (relPath) => {
+  const parts = relPath.split('/')
+  let dir = PUBLIC
+  for (let i = 0; i < parts.length; i++) {
+    if (!entriesOf(dir).has(parts[i])) return false
+    dir = path.join(dir, parts[i])
+  }
+  return true
+}
 const walk = (node, source) => {
   if (Array.isArray(node)) return node.forEach((n) => walk(n, source))
   if (!node || typeof node !== 'object') return
   for (const [key, value] of Object.entries(node)) {
     if (typeof value === 'string' && IMAGE_KEY.test(key) && value.startsWith('assets/')) {
-      if (!fs.existsSync(path.join(PUBLIC, value))) missingImages.add(`${source} → ${value}`)
+      if (!existsExact(value)) missingImages.add(`${source} → ${value}`)
     } else walk(value, source)
   }
 }
