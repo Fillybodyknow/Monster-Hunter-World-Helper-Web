@@ -1,0 +1,228 @@
+#!/usr/bin/env node
+/* ยามเฝ้าข้อมูลเกม — รันด้วย `npm run check` และรันเองทุกครั้งที่ push
+ *
+ * บั๊กที่เจ็บที่สุดของแอปนี้ไม่ใช่บั๊กโค้ด แต่เป็นข้อมูลไม่ตรงกันเงียบ ๆ:
+ * วัตถุดิบในสูตรคราฟต์ที่ไม่มีมอนตัวไหนดรอป (Black Diablos Horn) ทำให้ผู้เล่นคราฟไม่ได้ทั้งชุด
+ * โดยที่หน้าจอไม่ฟ้องอะไรเลย ต้องมีคนเล่นมาถึงจุดนั้นแล้วรายงานเข้ามาถึงจะรู้
+ *
+ * ตัวนี้ตรวจความสอดคล้องระหว่างไฟล์ ไม่ตรวจว่าตรงกับ Rulebook ไหม (แอปนี้ตั้งใจต่างจาก Rulebook บางจุด)
+ */
+const fs = require('fs')
+const path = require('path')
+
+const ROOT = path.join(__dirname, '..')
+const FILES = path.join(ROOT, 'src/assets/files')
+const ELDER = path.join(ROOT, 'src/assets/elden_dragon')
+const PUBLIC = path.join(ROOT, 'public')
+
+const read = (p) => JSON.parse(fs.readFileSync(p, 'utf8'))
+const errors = []
+const warnings = []
+const fail = (where, msg) => errors.push(`${where}: ${msg}`)
+const warn = (where, msg) => warnings.push(`${where}: ${msg}`)
+
+// ── โหลดข้อมูล ──────────────────────────────────────────────
+const resources = read(path.join(FILES, 'resource.json'))
+const crafting = read(path.join(FILES, 'crafting_item.json'))
+const changelog = read(path.join(FILES, 'changelog.json'))
+const elderBooks = fs.readdirSync(ELDER).filter((f) => f.endsWith('_book.json'))
+const elderInfos = fs.readdirSync(ELDER).filter((f) => f.endsWith('_info.json'))
+
+const books = [
+  { name: 'ancient-quest-book.json', data: read(path.join(FILES, 'ancient-quest-book.json')) },
+  { name: 'wildspire_book.json', data: read(path.join(FILES, 'wildspire_book.json')) },
+  ...elderBooks.map((f) => {
+    const j = read(path.join(ELDER, f))
+    return { name: f, data: Array.isArray(j) ? j : [j] }
+  }),
+]
+const monsterInfo = [
+  ...read(path.join(FILES, 'monster_info.json')),
+  ...elderInfos.map((f) => read(path.join(ELDER, f))),
+]
+
+// ── 1. คลังวัตถุดิบ ─────────────────────────────────────────
+const itemKey = (t, i) => `${t}-${i}`
+const itemNames = new Map()
+for (const group of resources) {
+  const seen = new Set()
+  for (const item of group.resources) {
+    const key = itemKey(group.resource_type_id, item.item_id)
+    if (seen.has(item.item_id)) fail('resource.json', `item_id ${item.item_id} ซ้ำในหมวด ${group.resource_type}`)
+    seen.add(item.item_id)
+    itemNames.set(key, item.item)
+  }
+}
+
+/* ── 2. ของที่ "หาได้จริง" ─────────────────────────────────
+   แหล่งที่มาของวัตถุดิบในเกมมีสี่ทาง ต้องนับให้ครบ ไม่งั้นตัวตรวจจะฟ้องผิด:
+   1) ตารางรางวัลของมอน (reward / part_break_reward)
+   2) ของที่เจอระหว่างเควสต์ (dialog_resources)
+   3) ผลของ Dialog ที่แจกของให้ตรง ๆ (effects type: gainResource)
+   4) Trade ที่ HQ — ฝั่ง Common แลกได้ทุกชิ้นเสมอ ส่วนฝั่ง Rare หยิบจากตารางรางวัลซึ่งนับในข้อ 1 แล้ว */
+const obtainable = new Set()
+for (const group of resources) {
+  if (group.resource_type_id !== 1) continue
+  for (const item of group.resources) obtainable.add(itemKey(1, item.item_id))
+}
+const collectGains = (node) => {
+  if (Array.isArray(node)) return node.forEach(collectGains)
+  if (!node || typeof node !== 'object') return
+  if (node.type === 'gainResource' && node.type_id != null && node.item_id != null) {
+    obtainable.add(itemKey(node.type_id, node.item_id))
+  }
+  for (const value of Object.values(node)) collectGains(value)
+}
+for (const info of monsterInfo) {
+  for (const diff of info.difficulty ?? []) {
+    for (const row of diff.reward_table ?? []) {
+      for (const r of [row.reward, row.part_break_reward]) {
+        if (r?.resource_type_id != null && r?.item_id != null) obtainable.add(itemKey(r.resource_type_id, r.item_id))
+      }
+    }
+  }
+}
+for (const book of books) {
+  for (const monster of book.data) {
+    for (const quest of monster.quest ?? []) {
+      for (const r of quest.dialog_resources ?? []) obtainable.add(itemKey(r.resource_type_id, r.item_id))
+    }
+    collectGains(monster.quest_dialogs)
+  }
+}
+
+// ── 3. สูตรคราฟต์ ───────────────────────────────────────────
+for (const group of crafting) {
+  for (const entry of group.craft_list ?? []) {
+    const who = `${group.type} set ${entry.equip_set_id ?? '-'} / id ${entry.equip_id ?? entry.item_id ?? '-'}`
+    for (const row of entry.crafting_table ?? []) {
+      const [typeId, itemId] = row.material ?? []
+      const key = itemKey(typeId, itemId)
+      if (!itemNames.has(key)) {
+        fail('crafting_item.json', `${who} ใช้วัตถุดิบ [${typeId},${itemId}] ที่ไม่มีใน resource.json`)
+        continue
+      }
+      if (!(row.amount > 0)) fail('crafting_item.json', `${who} วัตถุดิบ ${itemNames.get(key)} จำนวนไม่ถูกต้อง (${row.amount})`)
+      if (!obtainable.has(key)) {
+        fail('crafting_item.json', `${who} ต้องใช้ "${itemNames.get(key)}" [${typeId},${itemId}] ซึ่งไม่มีทางหาได้ — ไม่อยู่ในตารางรางวัลของมอนตัวไหนและไม่พบระหว่างเควสต์`)
+      }
+    }
+  }
+}
+
+// ── 4. เล่มเควสต์ ───────────────────────────────────────────
+const QUEST_TYPES = new Set(['Assigned Quest', 'Investigation Quest', 'Tempered Investigation Quest'])
+const monsterIds = new Map()
+for (const book of books) {
+  for (const monster of book.data) {
+    const who = `${book.name} / ${monster.monster_name}`
+    if (monsterIds.has(monster.monster_id)) {
+      fail('books', `monster_id ${monster.monster_id} ซ้ำกันระหว่าง ${monsterIds.get(monster.monster_id)} กับ ${who}`)
+    }
+    monsterIds.set(monster.monster_id, who)
+
+    const info = monsterInfo.find((m) => m.monster_id === monster.monster_id)
+    if (!info) {
+      fail('books', `${who} ไม่มีข้อมูลมอนใน monster_info (เปิดเควสต์ได้แต่จะไม่มีเลือด/ตารางรางวัล)`)
+      continue
+    }
+
+    const dialogIds = new Set((monster.quest_dialogs ?? []).map((d) => d.dialog_id))
+    for (const id of monster.dialog_hunting_phase ?? []) {
+      if (!dialogIds.has(id)) fail('books', `${who} dialog_hunting_phase อ้าง dialog_id ${id} ที่ไม่มีอยู่`)
+    }
+
+    const questIds = new Set()
+    for (const quest of monster.quest ?? []) {
+      const q = `${who} quest_id ${quest.quest_id}`
+      if (questIds.has(quest.quest_id)) fail('books', `${q} ซ้ำกันในมอนตัวเดียวกัน`)
+      questIds.add(quest.quest_id)
+      if (!QUEST_TYPES.has(quest.quest_type)) fail('books', `${q} ประเภทเควสต์ไม่รู้จัก "${quest.quest_type}"`)
+      if (!(quest.difficulty_level >= 1)) fail('books', `${q} difficulty_level ไม่ถูกต้อง (${quest.difficulty_level})`)
+      // เควสต์ชี้ไปที่ระดับความยากที่ไม่มีอยู่ = เข้าเควสต์แล้วไม่มีเลือดมอนและไม่มีตารางรางวัล
+      if (!(info.difficulty ?? []).some((d) => d.difficulty_id === quest.difficulty_level)) {
+        fail('books', `${q} ชี้ไปที่ความยากระดับ ${quest.difficulty_level} ซึ่งไม่มีใน monster_info ของมอนตัวนี้`)
+      }
+      if (!(quest.starting_point ?? []).length) fail('books', `${q} ไม่มี starting_point`)
+      for (const id of quest.starting_point ?? []) {
+        if (!dialogIds.has(id)) fail('books', `${q} starting_point อ้าง dialog_id ${id} ที่ไม่มีอยู่`)
+      }
+      for (const r of quest.dialog_resources ?? []) {
+        if (!itemNames.has(itemKey(r.resource_type_id, r.item_id))) {
+          fail('books', `${q} แจกของ [${r.resource_type_id},${r.item_id}] ที่ไม่มีใน resource.json`)
+        }
+      }
+    }
+  }
+}
+
+// ── 5. ตารางรางวัล ──────────────────────────────────────────
+for (const info of monsterInfo) {
+  for (const diff of info.difficulty ?? []) {
+    const who = `${info.monster_name} ความยาก ${diff.difficulty_id}`
+    const rolls = new Set()
+    for (const row of diff.reward_table ?? []) {
+      if (rolls.has(row.rolled_number)) fail('monster_info', `${who} เลขทอย ${row.rolled_number} ซ้ำ`)
+      rolls.add(row.rolled_number)
+      for (const [label, r] of [['reward', row.reward], ['part_break_reward', row.part_break_reward]]) {
+        if (r?.resource_type_id == null || r?.item_id == null) continue
+        if (!itemNames.has(itemKey(r.resource_type_id, r.item_id))) {
+          fail('monster_info', `${who} เลขทอย ${row.rolled_number} ${label} ให้ของ [${r.resource_type_id},${r.item_id}] ที่ไม่มีใน resource.json`)
+        }
+      }
+    }
+  }
+}
+
+// ── 6. changelog ────────────────────────────────────────────
+const TYPES = new Set(['new', 'fix', 'improve'])
+const seenIds = new Set()
+for (const entry of changelog) {
+  const who = `changelog ${entry.id ?? '(ไม่มี id)'}`
+  if (!entry.id) fail('changelog.json', 'มีรายการที่ไม่มี id')
+  if (seenIds.has(entry.id)) fail('changelog.json', `id ${entry.id} ซ้ำ (ใช้จำว่าผู้เล่นอ่านรายการไหนแล้ว ห้ามซ้ำ)`)
+  seenIds.add(entry.id)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(entry.date ?? '')) fail('changelog.json', `${who} วันที่ไม่ถูกรูปแบบ YYYY-MM-DD`)
+  if (!entry.title) fail('changelog.json', `${who} ไม่มีหัวข้อ`)
+  if (!Array.isArray(entry.sections) || !entry.sections.length) fail('changelog.json', `${who} ไม่มีเนื้อหา`)
+  for (const section of entry.sections ?? []) {
+    if (!TYPES.has(section.type)) fail('changelog.json', `${who} ประเภทไม่รู้จัก "${section.type}"`)
+    if (!Array.isArray(section.items) || !section.items.length) fail('changelog.json', `${who} หมวด ${section.type} ไม่มีรายการ`)
+    for (const item of section.items ?? []) {
+      // เลขเวอร์ชันยังไม่รู้จนกว่าจะ build — เขียนไว้ในข้อความจะผิดเสมอ
+      if (/\bv?\d+\.\d+\.\d+\b/.test(item)) fail('changelog.json', `${who} มีเลขเวอร์ชันอยู่ในข้อความ`)
+    }
+  }
+}
+
+// ── 7. รูปที่อ้างถึงต้องมีอยู่จริง ──────────────────────────
+const IMAGE_KEY = /(thumbnail|_img|map_image|image)$/
+const missingImages = new Set()
+const walk = (node, source) => {
+  if (Array.isArray(node)) return node.forEach((n) => walk(n, source))
+  if (!node || typeof node !== 'object') return
+  for (const [key, value] of Object.entries(node)) {
+    if (typeof value === 'string' && IMAGE_KEY.test(key) && value.startsWith('assets/')) {
+      if (!fs.existsSync(path.join(PUBLIC, value))) missingImages.add(`${source} → ${value}`)
+    } else walk(value, source)
+  }
+}
+for (const f of fs.readdirSync(FILES).filter((f) => f.endsWith('.json') && f !== 'asset-manifest.json')) {
+  walk(read(path.join(FILES, f)), f)
+}
+for (const f of fs.readdirSync(ELDER).filter((f) => f.endsWith('.json'))) {
+  walk(read(path.join(ELDER, f)), f)
+}
+for (const m of missingImages) fail('รูปหาย', m)
+
+// ── สรุป ────────────────────────────────────────────────────
+const monsterCount = monsterIds.size
+console.log(`ตรวจแล้ว: มอน ${monsterCount} ตัว, เล่มเควสต์ ${books.length} เล่ม, วัตถุดิบ ${itemNames.size} ชนิด, changelog ${changelog.length} รายการ`)
+for (const w of warnings) console.log('เตือน  ' + w)
+if (!errors.length) {
+  console.log('ผ่านทั้งหมด')
+  process.exit(0)
+}
+console.log(`\nพบปัญหา ${errors.length} จุด:`)
+for (const e of errors) console.log('  ✗ ' + e)
+process.exit(1)

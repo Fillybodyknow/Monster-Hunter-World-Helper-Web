@@ -8,7 +8,8 @@
     "build": "npm run assets && vite build",
     "preview": "vite preview",
     "format": "prettier --write --experimental-cli src/",
-    "assets": "node scripts/build-asset-manifest.cjs"
+    "assets": "node scripts/build-asset-manifest.cjs",
+    "check": "node scripts/check-data.cjs"
   },
   "dependencies": {
     "bootstrap": "^5.3.8",
