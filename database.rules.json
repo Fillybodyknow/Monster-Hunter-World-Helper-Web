@@ -6,6 +6,12 @@
         ".write": "auth != null"
       }
     },
+    "roomIndex": {
+      ".read": "auth != null",
+      "$roomCode": {
+        ".write": "auth != null"
+      }
+    },
     "lobbies": {
       ".read": "auth != null",
       "$roomCode": {
