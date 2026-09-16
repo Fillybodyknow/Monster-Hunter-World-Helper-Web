@@ -27,41 +27,51 @@ const generateRoomCode = () => {
   return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
 }
 
-// ── Cleanup ห้องเก่าที่ค้างอยู่ (Host ปิดไปโดยไม่ได้กด "ออก") ──────
-// เรียกแบบ best-effort ตอนสร้างห้องใหม่
-// createdAt เขียนครั้งเดียวตอนสร้างห้อง บอกไม่ได้ว่ายังเล่นกันอยู่ไหม — เดิมดูแค่ค่านี้
-// ตี้ที่เล่นยาวเกิน 5 ชม. เลยโดนลบห้องกลางเกมทันทีที่ใครสักคนสร้างห้องใหม่
-// ตอนนี้ดู presence ด้วย: ยังมีคนออนไลน์ = ห้องยังไม่ร้าง
-// (onDisconnect ฝั่ง server พลิก flag เป็น false ให้เองแม้เบราว์เซอร์ crash)
+/* ── Cleanup ห้องเก่าที่ค้างอยู่ (Host ปิดแท็บโดยไม่ได้กด "ออก") ──────
+   Host หลุด = ห้องไม่ถูกลบ (ตั้งใจ ให้กลับเข้าห้องเดิมได้) ห้องที่เจ้าของไม่กลับมาจึงค้างถาวร
+
+   กฎของ Firebase ให้อ่าน rooms/<code> ทีละห้อง ไล่อ่านทั้งกองไม่ได้ (ยืนยันด้วยการยิงจริง 2026-09-16: 401)
+   โค้ดเดิมอ่าน rooms ทั้งกองแล้วโดนปฏิเสธ error ถูก catch กลืน เลยไม่เคยลบอะไรเลยตั้งแต่เขียนมา
+   ตอนนี้จึงเก็บ "สารบัญ" แยกไว้ที่ roomIndex ซึ่งไล่อ่านทั้งกองได้ และเล็กมาก (ห้องละไม่กี่สิบไบต์)
+   ไม่เอาข้อมูลห้องจริงมาไว้ในนี้ — rooms/ มี hash รหัสผ่านอยู่ และการเปิดให้อ่านทั้งกองจะหนักขึ้นเรื่อย ๆ
+
+   roomIndex/<code> = { createdAt, online: { <hunterId>: true } }
+   online เขียนคู่กับ presence ของห้อง และ onDisconnect ฝั่ง server ลบให้เองแม้เบราว์เซอร์ crash */
 const STALE_ROOM_MS = 5 * 60 * 60 * 1000 // 5 ชั่วโมง
-// กันไว้เผื่อ flag presence ค้างเป็น true — เปิดมานานขนาดนี้ถือว่าร้างแน่นอน ห้องจะได้ไม่ค้างถาวร
+// กันไว้เผื่อ presence ค้าง — เปิดมานานขนาดนี้ถือว่าร้างแน่นอน ห้องจะได้ไม่ค้างถาวร
 const MAX_ROOM_AGE_MS = 24 * 60 * 60 * 1000
+// ลบทีละไม่เกินเท่านี้ต่อการสร้างห้องหนึ่งครั้ง — ไม่ให้คนที่กดสร้างห้องต้องรอลบของค้างเป็นกอง
+const MAX_CLEANUP_PER_RUN = 30
 
-// Host เก็บ presence ที่ hostConnected ส่วน Guest เก็บที่ hunters/{id}/connected
-const hasOnlineMember = (r) =>
-  r?.hostConnected === true ||
-  Object.values(r?.hunters ?? {}).some((h) => h?.connected === true)
-
-const isStaleRoom = (r, now) => {
-  const age = now - (r?.createdAt ?? 0)
+const isStaleEntry = (e, now) => {
+  const age = now - (e?.createdAt ?? 0)
   if (age > MAX_ROOM_AGE_MS) return true
-  return age > STALE_ROOM_MS && !hasOnlineMember(r)
+  return age > STALE_ROOM_MS && Object.keys(e?.online ?? {}).length === 0
 }
+
+// เขียนสารบัญแบบ best-effort — ถ้ากฎยังไม่อนุญาต (Console ยังไม่อัปเดต) ห้ามให้การสร้างห้องพัง
+const indexRoom = (code) =>
+  set(ref(db, `roomIndex/${code}`), { createdAt: Date.now() }).catch(() => {})
+
+const unindexRoom = (code) => remove(ref(db, `roomIndex/${code}`)).catch(() => {})
 
 const cleanupStaleRooms = async () => {
   try {
-    const snap = await get(ref(db, 'rooms'))
+    const snap = await get(ref(db, 'roomIndex'))
     if (!snap.exists()) return
     const now = Date.now()
-    const updates = {}
+    const stale = []
     snap.forEach((child) => {
-      if (isStaleRoom(child.val(), now)) {
-        updates[child.key] = null
-      }
+      if (stale.length < MAX_CLEANUP_PER_RUN && isStaleEntry(child.val(), now)) stale.push(child.key)
     })
-    if (Object.keys(updates).length) {
-      await update(ref(db, 'rooms'), updates)
-    }
+    // ลบทีละห้อง ไม่ใช่ update ก้อนเดียวที่ rooms/ — กฎอนุญาตให้เขียนทีละ rooms/<code> เท่านั้น
+    await Promise.all(
+      stale.flatMap((code) => [
+        remove(ref(db, `rooms/${code}`)).catch(() => {}),
+        remove(ref(db, `roomIndex/${code}`)).catch(() => {}),
+        remove(ref(db, `lobbies/${code}`)).catch(() => {}),
+      ]),
+    )
   } catch {
     // best-effort เท่านั้น ไม่ต้อง throw
   }
@@ -105,6 +115,7 @@ export const createRoom = async (hunter) => {
   }
 
   await set(ref(db, `rooms/${code}`), roomData)
+  indexRoom(code)
   return code
 }
 
@@ -174,8 +185,10 @@ export const setRoomHost = (code, newHostId, oldHostId) =>
 export const leaveRoom = async (code, hunterId, isHost) => {
   if (isHost) {
     await remove(ref(db, `rooms/${code}`))
+    unindexRoom(code)
   } else {
     await remove(ref(db, `rooms/${code}/hunters/${hunterId}`))
+    remove(ref(db, `roomIndex/${code}/online/${hunterId}`)).catch(() => {})
   }
 }
 
@@ -261,6 +274,12 @@ export const registerDisconnect = (code, hunterId, isHost) => {
     set(connRef, true)
     onDisconnect(connRef).set(false)
   }
+  // สำเนา presence ลงสารบัญด้วย — ตัวเก็บกวาดอ่านได้เฉพาะสารบัญ ไม่ได้อ่าน rooms/ ทั้งกอง
+  // เก็บแยกตามคน ไม่ใช่ flag เดียว ไม่งั้นลูกทีมคนเดียวหลุดจะทำให้ห้องที่ยังเล่นกันอยู่ดูเหมือนร้าง
+  if (hunterId == null) return
+  const seenRef = ref(db, `roomIndex/${code}/online/${hunterId}`)
+  set(seenRef, true).catch(() => {})
+  onDisconnect(seenRef).remove().catch(() => {})
 }
 
 // ── ยกเลิก onDisconnect ที่ฝากไว้ ─────────────────────────
@@ -276,6 +295,7 @@ export const cancelDisconnect = (code, hunterId, role = 'all') => {
   if (role !== 'guest') paths.push(`rooms/${code}/hostConnected`)
   if (role !== 'host' && hunterId != null) paths.push(`rooms/${code}/hunters/${hunterId}/connected`)
   if (role === 'all') paths.push(`lobbies/${code}`)
+  if (hunterId != null) paths.push(`roomIndex/${code}/online/${hunterId}`)
   paths.forEach((p) => onDisconnect(ref(db, p)).cancel().catch(() => {}))
 }
 
@@ -285,8 +305,12 @@ export const setConnected = (code, hunterId, connected) =>
 export const setHostConnected = (code, val) =>
   set(ref(db, `rooms/${code}/hostConnected`), val)
 
-export const kickHunter = (code, hunterId) =>
-  remove(ref(db, `rooms/${code}/hunters/${hunterId}`))
+// คนถูกเตะจะยกเลิก onDisconnect ของตัวเองทิ้ง (ไม่ให้ไปปลุกห้องที่ออกไปแล้ว)
+// สารบัญจึงต้องให้ Host เป็นคนลบให้ ไม่งั้นค้างเป็น "ยังออนไลน์" จนกว่าจะชนเพดาน 24 ชม.
+export const kickHunter = (code, hunterId) => {
+  remove(ref(db, `roomIndex/${code}/online/${hunterId}`)).catch(() => {})
+  return remove(ref(db, `rooms/${code}/hunters/${hunterId}`))
+}
 
 // ── Behavior Deck Sync ───────────────────────────────────
 export const pushBehaviorDeck = (code, deckState) =>
