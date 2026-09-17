@@ -7793,9 +7793,20 @@ onDeactivated(() => {
                 'chip-selected': selectedDiceIds.includes(die.id),
                 'chip-spent': die.spent,
               }"
+              :title="`เต๋า ${die.value}`"
+              :aria-label="`เต๋า ${die.value}`"
               @click="toggleDie(die.id)"
             >
-              {{ die.value }}
+              <!-- หน้าเต๋าแบบจุด ชุดเดียวกับตอนทอย — ผู้เล่นจำได้ว่าเป็นลูกเดียวกับที่เพิ่งทอยไป -->
+              <div v-if="dotPatterns[die.value]" class="die-face">
+                <span
+                  v-for="pos in 9"
+                  :key="pos"
+                  class="die-dot"
+                  :class="{ visible: dotPatterns[die.value].includes(pos - 1) }"
+                />
+              </div>
+              <span v-else class="rw-die-chip-num">{{ die.value }}</span>
             </div>
             <div v-if="selectedDiceIds.length > 0" class="rw-sum-badge">= {{ selectedSum }}</div>
           </div>
@@ -21453,38 +21464,33 @@ onDeactivated(() => {
   gap: 8px;
   align-items: center;
 }
-/* เบี้ยไม้จารึกเลข — เลือกแล้วกลายเป็นเหรียญทองเหลือง */
+/* ลูกเต๋าจริงแบบจุด ชุดเดียวกับหน้าทอยเต๋า แค่ย่อขนาด — เลือกแล้วยกขึ้นพร้อมกรอบทองเรืองแสง */
 .rw-die-chip {
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
+  padding: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  font-weight: bold;
-  border-radius: 50%;
-  border: 2px solid rgba(124, 90, 43, 0.55);
-  background:
-    repeating-linear-gradient(
-      120deg,
-      rgba(0,0,0,0.12) 0px,
-      rgba(0,0,0,0.12) 1px,
-      transparent 1px,
-      transparent 4px
-    ),
-    radial-gradient(circle at 38% 30%, #4a3520, #2b1f13 70%);
-  box-shadow: inset 0 0 8px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.5);
-  color: #c0985a;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   cursor: pointer;
   transition: all 0.15s;
   user-select: none;
 }
+.rw-die-chip .die-face { gap: 2px; }
+.rw-die-chip .die-dot.visible { box-shadow: none; }
+.rw-die-chip-num {
+  font-size: 16px;
+  font-weight: bold;
+  color: #000;
+}
 .rw-die-chip.chip-selected {
-  border-color: #6b4f1c;
-  color: #2a1d06;
-  text-shadow: 0 1px 0 rgba(255,225,170,0.4);
-  background: radial-gradient(circle at 36% 28%, #e0bc63, #a8802a 62%, #7a5c1c);
-  box-shadow: inset 0 1px 2px rgba(255,230,180,0.45), 0 2px 6px rgba(0,0,0,0.55);
+  border-color: #ffd27a;
+  box-shadow: 0 0 0 2px #7a5c1c, 0 0 14px rgba(255, 210, 122, 0.75);
+  transform: translateY(-3px);
 }
 .rw-die-chip.chip-spent {
   opacity: 0.25;
