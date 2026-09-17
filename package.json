@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "format": "prettier --write --experimental-cli src/",
     "assets": "node scripts/build-asset-manifest.cjs",
-    "check": "node scripts/check-data.cjs"
+    "check": "node scripts/check-data.cjs",
+    "icons": "node scripts/build-icons.cjs"
   },
   "dependencies": {
     "bootstrap": "^5.3.8",
