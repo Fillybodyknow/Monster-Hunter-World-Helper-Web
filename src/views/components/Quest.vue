@@ -18,6 +18,7 @@ import { getHunters, saveHunters } from '@/services/hunterStorage'
 import { questPoints, rankOf, pointsOf } from '@/services/hunterRank'
 import { useRoomStore } from '@/stores/room'
 import CoopLobbyModal from './CoopLobbyModal.vue'
+import PartyReadyRow from './PartyReadyRow.vue'
 import HQPhase from './HQPhase.vue'
 import { getPalico, drawPalicos } from '@/composables/usePalico'
 import { openCraftLookup } from '@/composables/useCraftLookup'
@@ -7736,18 +7737,31 @@ onDeactivated(() => {
         <div v-if="room.inRoom && room.rerollRequest" class="rw-reroll-status">
           <div v-if="room.rerollRequest.requesterId === room.myHunterId" class="rw-reroll-waiting">
             🎲 รอการอนุมัติ Reroll...
-            ({{ Object.values(room.rerollRequest.approvals ?? {}).filter(v => v === true).length }}/{{ room.hunterCount - 1 }})
             <button class="rw-reroll-cancel" @click="room.cancelReroll()">ยกเลิก</button>
           </div>
           <div v-else-if="room.myRerollApproval === null" class="rw-reroll-ask">
-            <span><strong>{{ room.rerollRequest.requesterName }}</strong> ขอ Reroll</span>
+            <span><ClassMedal :hunter-id="room.rerollRequest.requesterId" /> ขอ Reroll</span>
             <div class="rw-reroll-btns">
               <button class="rw-reroll-approve" @click="room.respondReroll(true)">✓ อนุมัติ</button>
-              <button class="rw-reroll-deny" @click="room.respondReroll(false)">✕ ปฏิเชน</button>
+              <button class="rw-reroll-deny" @click="room.respondReroll(false)">✕ ปฏิเสธ</button>
             </div>
           </div>
           <p v-else class="rw-reroll-voted">{{ room.myRerollApproval ? 'คุณอนุมัติแล้ว' : 'คุณปฏิเสธแล้ว' }}</p>
+          <!-- ใครอนุมัติ/ปฏิเสธแล้วบ้าง — คนขอไม่ต้องโหวตเอง จึงไม่อยู่ในแถว -->
+          <PartyReadyRow
+            label="อนุมัติ Reroll"
+            :hunters="room.hunters.filter((h) => String(h.hunter_id) !== String(room.rerollRequest.requesterId))"
+            :status="(h) => room.rerollRequest.approvals?.[h.hunter_id] ?? null"
+          />
         </div>
+
+        <!-- ใครกด "ใช้ผลนี้" แล้วบ้าง -->
+        <PartyReadyRow
+          v-if="room.inRoom && !room.rerollRequest"
+          label="ใช้ผลนี้"
+          :hunters="room.hunters"
+          :status="(h) => room.actionVotes[h.hunter_id] === 'goReward' || null"
+        />
 
         <div class="rw-roll-actions">
           <button v-if="!room.inRoom" class="rw-btn-secondary" @click="rollAllDice()" :disabled="isAnyRolling">🎲 ทอยใหม่ทั้งหมด</button>
@@ -7896,6 +7910,13 @@ onDeactivated(() => {
           <p v-if="!allDiceSpent" class="rw-skip-hint">
             🎲 ใช้เต๋าให้หมดก่อน — ยังเหลืออีก {{ rolledDice.filter((d) => !d.spent).length }} ลูก
           </p>
+          <!-- ใครพร้อมรับรางวัลแล้วบ้าง -->
+          <PartyReadyRow
+            v-if="room.inRoom"
+            label="พร้อมรับรางวัล"
+            :hunters="room.hunters"
+            :status="(h) => room.actionVotes[h.hunter_id] === 'goTrade' || null"
+          />
           <button
             class="rw-btn-primary rw-btn-confirm"
             :disabled="!allDiceSpent || (room.inRoom && room.myActionVote === 'goTrade')"
@@ -8028,24 +8049,11 @@ onDeactivated(() => {
         </Teleport>
 
         <!-- ใครพร้อมปิดแล้วบ้าง — เดิมเห็นแค่ตัวเลข ไม่รู้ว่ารอใคร -->
-        <div class="trade-ready-row">
-          <span class="trade-ready-label">พร้อมปิดเควส</span>
-          <span
-            v-for="h in room.hunters"
-            :key="h.hunter_id"
-            class="trade-ready-chip"
-            :class="{ 'is-ready': room.actionVotes[h.hunter_id] === 'closeTrade' }"
-            :title="h.hunter_name"
-          >
-            <img
-              v-if="getHunterClass(h.hunter_class_id)?.thumbnail"
-              :src="getImg(getHunterClass(h.hunter_class_id).thumbnail)"
-              class="class-medal-icon"
-            />
-            <span v-else class="class-medal-fallback">{{ (h.hunter_name || '?').slice(0, 1) }}</span>
-            <span class="class-medal-tick">{{ room.actionVotes[h.hunter_id] === 'closeTrade' ? '✓' : '…' }}</span>
-          </span>
-        </div>
+        <PartyReadyRow
+          label="พร้อมปิดเควส"
+          :hunters="room.hunters"
+          :status="(h) => room.actionVotes[h.hunter_id] === 'closeTrade' || null"
+        />
 
         <!-- Close trade vote -->
         <div class="trade-close-row">
@@ -8991,6 +8999,15 @@ onDeactivated(() => {
             </span>
           </button>
         </template>
+
+        <!-- ใครยืนยันผลเควสนี้แล้วบ้าง — เดิมเห็นแค่ 2/4 ไม่รู้ว่ารอใคร -->
+        <PartyReadyRow
+          v-if="room.inRoom && floatOutcomeState"
+          class="float-outcome-voters"
+          label="ยืนยันผล"
+          :hunters="room.hunters"
+          :status="(h) => room.outcomeVotes?.[h.hunter_id] === (floatOutcomeState === 'complete' ? 'complete' : 'fail') || null"
+        />
         </div>
       </div>
     </teleport>
@@ -20972,55 +20989,9 @@ onDeactivated(() => {
   color: #7fd99a;
 }
 
-/* ── ใครพร้อมปิดแล้วบ้าง ── */
-.trade-ready-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 8px 12px;
-  border-radius: 3px;
-  border: 1px solid rgba(124, 90, 43, 0.4);
-  background: rgba(0, 0, 0, 0.28);
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45);
-}
-.trade-ready-label {
-  font-size: 9px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: #a88040;
-}
-.trade-ready-chip {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 2px;
-  border: 1px solid rgba(124, 90, 43, 0.45);
-  background: rgba(0, 0, 0, 0.35);
-  opacity: 0.45;
-  transition: 0.2s;
-}
-.trade-ready-chip.is-ready {
-  opacity: 1;
-  border-color: rgba(90, 210, 130, 0.6);
-  background: linear-gradient(170deg, #1e3324, #131f16);
-  box-shadow: 0 0 8px rgba(60, 170, 110, 0.3);
-}
-.trade-ready-chip .class-medal-icon { width: 22px; height: 22px; }
-.trade-ready-chip .class-medal-tick {
-  border-color: rgba(40, 30, 12, 0.6);
-  background: radial-gradient(circle at 35% 30%, #6a5636, #3a2e1a);
-  color: #c0985a;
-}
-.trade-ready-chip.is-ready .class-medal-tick {
-  border-color: rgba(20, 50, 32, 0.6);
-  background: radial-gradient(circle at 35% 30%, #8fd9a8, #3f8f5f 60%, #24603c);
-  color: #0d2417;
-}
+/* แถวไอคอน "ใครกดแล้วบ้าง" อยู่ใน PartyReadyRow.vue — ตรงนี้เหลือแค่ระยะห่างตามจุดที่วาง */
+.rw-reroll-status .party-ready-row { margin-top: 8px; }
+.float-outcome-voters { margin-top: 8px; padding: 6px 10px; }
 .trade-head {
   display: flex;
   align-items: baseline;
