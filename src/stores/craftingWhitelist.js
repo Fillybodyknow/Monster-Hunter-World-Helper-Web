@@ -201,3 +201,45 @@ export const initCraftability = (hunter) => {
     prevMaterialCounts[item.key] = counts
   })
 }
+
+// ─── ของที่ยังขาด (ใช้แนะนำตอนแจกเต๋ารับรางวัล) ───────────────────────────────
+// คืน Map "typeId-itemId" → { short, targets } — short = ยังขาดกี่ชิ้นเทียบกับของในกระเป๋า
+// เป้าหลายชิ้นใช้วัตถุดิบเดียวกัน ต้องรวมจำนวนที่ต้องใช้ เพราะคราฟแล้วของหายไปทีละชิ้น
+// ไม่หักของที่เพิ่งได้รอบนี้ — ตัวแนะนำนับรวมเอง (ของยังไม่เข้ากระเป๋าจนกว่าจะกดยืนยัน)
+export const materialShortfall = (hunter) => {
+  const needs = new Map()
+  if (!hunter) return needs
+  for (const item of whitelist.value) {
+    for (const mat of getItemMaterials(item, hunter)) {
+      const key = `${mat.material[0]}-${mat.material[1]}`
+      const entry = needs.get(key) ?? { required: 0, targets: [] }
+      entry.required += mat.amount
+      if (item.name && !entry.targets.includes(item.name)) entry.targets.push(item.name)
+      needs.set(key, entry)
+    }
+  }
+  const result = new Map()
+  for (const [key, entry] of needs) {
+    const [typeId, itemId] = key.split('-').map(Number)
+    const short = entry.required - getInvCount(hunter, typeId, itemId)
+    if (short > 0) result.set(key, { short, targets: entry.targets })
+  }
+  return result
+}
+
+// วัตถุดิบแต่ละชิ้นใช้คราฟได้กี่สูตร (ชุดเกราะทั้งหมด + อาวุธของคลาสนี้) — ของที่ใช้ได้หลายสูตรมีค่ากว่านิดหน่อย
+export const recipeCountByMaterial = (hunterClassId) => {
+  const counts = new Map()
+  const add = (table) => {
+    for (const mat of table ?? []) {
+      const key = `${mat.material[0]}-${mat.material[1]}`
+      counts.set(key, (counts.get(key) ?? 0) + 1)
+    }
+  }
+  craftingData.find((c) => c.type === 'Armor')?.craft_list.forEach((r) => add(r.crafting_table))
+  craftingData
+    .find((c) => c.type === 'Weapon')
+    ?.craft_list.find((c) => c.hunter_class_id === hunterClassId)
+    ?.weapon_craft_list.forEach((r) => add(r.crafting_table))
+  return counts
+}
