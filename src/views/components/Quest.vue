@@ -16,6 +16,7 @@ import statusEffectData from '@/assets/files/status_effect.json'
 import resourceData from '@/assets/files/resource.json'
 import { getHunters, saveHunters } from '@/services/hunterStorage'
 import { questPoints, rankOf, pointsOf } from '@/services/hunterRank'
+import { reachableRows, pickDiceForRow } from '@/services/rewardPlanner'
 import { useRoomStore } from '@/stores/room'
 import CoopLobbyModal from './CoopLobbyModal.vue'
 import PartyReadyRow from './PartyReadyRow.vue'
@@ -4947,8 +4948,18 @@ const initAssignPhase = () => {
   if (room.inRoom) room.syncPhase?.('assign')
 }
 
+// แถวที่เต๋าที่ยังไม่ใช้รวมกันได้ — ไว้ทำแถวที่ลงไม่ได้ให้จางลง
+const rewardReachableRows = computed(() => reachableRows(rolledDice.value))
+const hasUnspentDice = computed(() => rolledDice.value.some((d) => !d.spent))
+
 const claimReward = (row) => {
-  if (selectedDiceIds.value.length === 0) return
+  // แตะแถวก่อนเลือกเต๋า — หยิบเต๋าให้ (ชุดที่เหลือเต๋าไว้ใช้ต่อได้ดีที่สุด) แตะซ้ำถึงจะรับของ
+  // ไม่รับของทันที ผู้เล่นยังเห็นว่าเต๋าลูกไหนถูกหยิบ และแตะเต๋าเพื่อยกเลิกได้
+  if (selectedDiceIds.value.length === 0) {
+    const ids = pickDiceForRow(rolledDice.value, row.rolled_number)
+    if (ids) selectedDiceIds.value = ids
+    return
+  }
   if (row.rolled_number !== selectedSum.value) return
 
   const { resource_type_id, item_id } = row.reward
@@ -7810,6 +7821,9 @@ onDeactivated(() => {
             </div>
             <div v-if="selectedDiceIds.length > 0" class="rw-sum-badge">= {{ selectedSum }}</div>
           </div>
+          <p v-if="selectedDiceIds.length === 0 && hasUnspentDice" class="rw-sum-hint">
+            เลือกเต๋าเอง หรือแตะแถวในตาราง แล้วระบบจะหยิบเต๋าให้
+          </p>
           <p v-if="selectedDiceIds.length > 0" class="rw-sum-hint">
             เลือก row {{ selectedSum }} เพื่อรับรางวัล
           </p>
@@ -7824,6 +7838,8 @@ onDeactivated(() => {
             class="rw-row"
             :class="{
               'rw-row-claimable': selectedDiceIds.length > 0 && selectedSum === row.rolled_number,
+              'rw-row-reachable': selectedDiceIds.length === 0 && hasUnspentDice && rewardReachableRows.has(row.rolled_number),
+              'rw-row-unreachable': selectedDiceIds.length === 0 && hasUnspentDice && !rewardReachableRows.has(row.rolled_number),
               'rw-row-locked': selectedDiceIds.length > 0 && selectedSum !== row.rolled_number,
             }"
             @click="claimReward(row)"
@@ -21678,6 +21694,16 @@ onDeactivated(() => {
   background: rgba(200, 155, 60, 0.42);
 }
 .rw-row-locked {
+  opacity: 0.35;
+}
+/* ยังไม่ได้เลือกเต๋า: แถวที่เต๋าที่เหลือรวมได้ แตะแล้วระบบหยิบเต๋าให้ / แถวที่รวมไม่ได้จางลง */
+.rw-row-reachable {
+  cursor: pointer;
+}
+.rw-row-reachable:hover {
+  background: rgba(200, 155, 60, 0.16);
+}
+.rw-row-unreachable {
   opacity: 0.35;
 }
 .rw-row-num {
