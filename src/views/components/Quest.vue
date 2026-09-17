@@ -16,6 +16,8 @@ import statusEffectData from '@/assets/files/status_effect.json'
 import resourceData from '@/assets/files/resource.json'
 import { getHunters, saveHunters } from '@/services/hunterStorage'
 import { questPoints, rankOf, pointsOf } from '@/services/hunterRank'
+import { reachableRows, pickDiceForRow, planRewards } from '@/services/rewardPlanner'
+import { whitelist, materialShortfall, recipeCountByMaterial } from '@/stores/craftingWhitelist'
 import { useRoomStore } from '@/stores/room'
 import CoopLobbyModal from './CoopLobbyModal.vue'
 import PartyReadyRow from './PartyReadyRow.vue'
@@ -4947,8 +4949,57 @@ const initAssignPhase = () => {
   if (room.inRoom) room.syncPhase?.('assign')
 }
 
+// แถวที่เต๋าที่ยังไม่ใช้รวมกันได้ — ไว้ทำแถวที่ลงไม่ได้ให้จางลง
+const rewardReachableRows = computed(() => reachableRows(rolledDice.value))
+const hasUnspentDice = computed(() => rolledDice.value.some((d) => !d.spent))
+
+// แผนแนะนำ — คำนวณใหม่เองทุกครั้งที่เต๋า ของที่ได้รอบนี้ กระเป๋า หรือรายการติดตามคราฟต์เปลี่ยน
+// ของที่ได้รอบนี้ (รวม Part Break) ยังไม่เข้ากระเป๋าจนกว่าจะกดยืนยัน ตัววางแผนจึงนับ claimedRewards เพิ่มเอง
+const rewardPlan = computed(() => {
+  if (phase.value !== 'reward' || rewardPhase.value !== 'assign') return null
+  if (!hunter.value || !monsterHuntingData.value?.reward_table?.length) return null
+  return planRewards({
+    dice: rolledDice.value,
+    table: monsterHuntingData.value.reward_table,
+    needs: materialShortfall(hunter.value),
+    usage: recipeCountByMaterial(hunter.value.hunter_class_id),
+    claimed: claimedRewards.value,
+  })
+})
+// ไฮไลต์ทีละกลุ่ม (กลุ่มที่คุ้มที่สุดก่อน) — ซ่อนระหว่างที่ผู้เล่นกำลังเลือกเต๋าเอง
+const suggestedGroup = computed(() =>
+  selectedDiceIds.value.length ? null : rewardPlan.value?.groups[0] ?? null,
+)
+const suggestedItemName = computed(() => {
+  const row = monsterHuntingData.value?.reward_table?.find((r) => r.rolled_number === suggestedGroup.value?.row)
+  return row ? getResourceItem(row.reward.resource_type_id, row.reward.item_id)?.item ?? '' : ''
+})
+const suggestReasonText = computed(() => {
+  const reason = suggestedGroup.value?.reason
+  if (!reason) return ''
+  if (reason.kind === 'need') {
+    const names = reason.targets.length > 2
+      ? `${reason.targets.slice(0, 2).join(', ')} +${reason.targets.length - 2}`
+      : reason.targets.join(', ')
+    return `🎯 ขาดอีก ${reason.short} ชิ้น · ${names}`
+  }
+  if (reason.kind === 'unique') return '💎 หายาก ได้จากช่องนี้ช่องเดียว'
+  if (reason.kind === 'part') return 'ชิ้นส่วนมอนสเตอร์'
+  if (reason.kind === 'other') return 'วัตถุดิบพิเศษ'
+  return 'ใช้เต๋าที่เหลือ'
+})
+
 const claimReward = (row) => {
-  if (selectedDiceIds.value.length === 0) return
+  // แตะแถวก่อนเลือกเต๋า — หยิบเต๋าให้ แตะซ้ำถึงจะรับของ
+  // แถวที่แนะนำอยู่ใช้เต๋าชุดตามแผน แถวอื่นใช้ชุดที่เหลือเต๋าไว้ใช้ต่อได้ดีที่สุด
+  // ไม่รับของทันที ผู้เล่นยังเห็นว่าเต๋าลูกไหนถูกหยิบ และแตะเต๋าเพื่อยกเลิกได้
+  if (selectedDiceIds.value.length === 0) {
+    const ids = suggestedGroup.value?.row === row.rolled_number
+      ? [...suggestedGroup.value.diceIds]
+      : pickDiceForRow(rolledDice.value, row.rolled_number)
+    if (ids) selectedDiceIds.value = ids
+    return
+  }
   if (row.rolled_number !== selectedSum.value) return
 
   const { resource_type_id, item_id } = row.reward
@@ -7792,12 +7843,36 @@ onDeactivated(() => {
               :class="{
                 'chip-selected': selectedDiceIds.includes(die.id),
                 'chip-spent': die.spent,
+                'chip-suggested': !!suggestedGroup?.diceIds.includes(die.id),
               }"
+              :title="`เต๋า ${die.value}`"
+              :aria-label="`เต๋า ${die.value}`"
               @click="toggleDie(die.id)"
             >
-              {{ die.value }}
+              <!-- หน้าเต๋าแบบจุด ชุดเดียวกับตอนทอย — ผู้เล่นจำได้ว่าเป็นลูกเดียวกับที่เพิ่งทอยไป -->
+              <div v-if="dotPatterns[die.value]" class="die-face">
+                <span
+                  v-for="pos in 9"
+                  :key="pos"
+                  class="die-dot"
+                  :class="{ visible: dotPatterns[die.value].includes(pos - 1) }"
+                />
+              </div>
+              <span v-else class="rw-die-chip-num">{{ die.value }}</span>
             </div>
             <div v-if="selectedDiceIds.length > 0" class="rw-sum-badge">= {{ selectedSum }}</div>
+          </div>
+          <!-- แนะนำทีละกลุ่ม — ไฮไลต์เต๋ากับแถวให้ ผู้เล่นกดเอง (ไม่มีปุ่มรับทีเดียวครบ ตั้งใจ) -->
+          <div v-if="suggestedGroup" class="rw-suggest">
+            <p class="rw-suggest-line">
+              <span class="rw-suggest-tag">แนะนำ</span>
+              แถว {{ suggestedGroup.row }} · {{ suggestedItemName }}
+              <span class="rw-suggest-why">{{ suggestReasonText }}</span>
+            </p>
+            <p class="rw-sum-hint">แตะแถวที่ไฮไลต์เพื่อหยิบเต๋า แตะซ้ำเพื่อรับ — หรือเลือกเต๋าเองก็ได้</p>
+            <p v-if="!whitelist.length" class="rw-suggest-note">
+              ตั้งรายการติดตามในหน้า Crafting แล้วจะแนะนำของที่ต้องใช้คราฟจริง
+            </p>
           </div>
           <p v-if="selectedDiceIds.length > 0" class="rw-sum-hint">
             เลือก row {{ selectedSum }} เพื่อรับรางวัล
@@ -7813,6 +7888,9 @@ onDeactivated(() => {
             class="rw-row"
             :class="{
               'rw-row-claimable': selectedDiceIds.length > 0 && selectedSum === row.rolled_number,
+              'rw-row-reachable': selectedDiceIds.length === 0 && hasUnspentDice && rewardReachableRows.has(row.rolled_number),
+              'rw-row-unreachable': selectedDiceIds.length === 0 && hasUnspentDice && !rewardReachableRows.has(row.rolled_number),
+              'rw-row-suggested': suggestedGroup?.row === row.rolled_number,
               'rw-row-locked': selectedDiceIds.length > 0 && selectedSum !== row.rolled_number,
             }"
             @click="claimReward(row)"
@@ -7829,6 +7907,7 @@ onDeactivated(() => {
               <span class="rw-item-name">{{
                 getResourceItem(row.reward.resource_type_id, row.reward.item_id)?.item ?? '?'
               }}</span>
+              <span v-if="suggestedGroup?.row === row.rolled_number" class="rw-suggest-badge">แนะนำ</span>
               <button
                 class="rw-craft-btn"
                 @click.stop="openCraftLookup(row.reward.resource_type_id, row.reward.item_id, getResourceItem(row.reward.resource_type_id, row.reward.item_id)?.item)"
@@ -21453,43 +21532,84 @@ onDeactivated(() => {
   gap: 8px;
   align-items: center;
 }
-/* เบี้ยไม้จารึกเลข — เลือกแล้วกลายเป็นเหรียญทองเหลือง */
+/* ลูกเต๋าจริงแบบจุด ชุดเดียวกับหน้าทอยเต๋า แค่ย่อขนาด — เลือกแล้วยกขึ้นพร้อมกรอบทองเรืองแสง */
 .rw-die-chip {
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
+  padding: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  font-weight: bold;
-  border-radius: 50%;
-  border: 2px solid rgba(124, 90, 43, 0.55);
-  background:
-    repeating-linear-gradient(
-      120deg,
-      rgba(0,0,0,0.12) 0px,
-      rgba(0,0,0,0.12) 1px,
-      transparent 1px,
-      transparent 4px
-    ),
-    radial-gradient(circle at 38% 30%, #4a3520, #2b1f13 70%);
-  box-shadow: inset 0 0 8px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.5);
-  color: #c0985a;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   cursor: pointer;
   transition: all 0.15s;
   user-select: none;
 }
+.rw-die-chip .die-face { gap: 2px; }
+.rw-die-chip .die-dot.visible { box-shadow: none; }
+.rw-die-chip-num {
+  font-size: 16px;
+  font-weight: bold;
+  color: #000;
+}
 .rw-die-chip.chip-selected {
-  border-color: #6b4f1c;
-  color: #2a1d06;
-  text-shadow: 0 1px 0 rgba(255,225,170,0.4);
-  background: radial-gradient(circle at 36% 28%, #e0bc63, #a8802a 62%, #7a5c1c);
-  box-shadow: inset 0 1px 2px rgba(255,230,180,0.45), 0 2px 6px rgba(0,0,0,0.55);
+  border-color: #ffd27a;
+  box-shadow: 0 0 0 2px #7a5c1c, 0 0 14px rgba(255, 210, 122, 0.75);
+  transform: translateY(-3px);
 }
 .rw-die-chip.chip-spent {
   opacity: 0.25;
   cursor: default;
   pointer-events: none;
+}
+/* เต๋ากลุ่มที่แนะนำ — เส้นประทองกะพริบเบา ๆ ต่างจากเต๋าที่เลือกแล้ว (กรอบทึบ + ยกขึ้น) */
+.rw-die-chip.chip-suggested {
+  outline: 2px dashed #ffd27a;
+  outline-offset: 3px;
+  animation: rw-suggest-pulse 1.6s ease-in-out infinite;
+}
+@keyframes rw-suggest-pulse {
+  0%, 100% { outline-color: rgba(255, 210, 122, 0.95); }
+  50% { outline-color: rgba(255, 210, 122, 0.3); }
+}
+.rw-suggest {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 3px;
+  border: 1px dashed rgba(255, 210, 122, 0.45);
+  background: rgba(255, 210, 122, 0.06);
+}
+.rw-suggest .rw-sum-hint { margin-top: 4px; }
+.rw-suggest-line {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 12px;
+  color: #f0dcae;
+}
+.rw-suggest-tag {
+  padding: 1px 7px;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, #b08a34, #7a5c1c);
+  color: #2a1d06;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+.rw-suggest-why {
+  font-size: 11px;
+  color: #ffd27a;
+}
+.rw-suggest-note {
+  margin: 4px 0 0;
+  font-size: 10px;
+  color: #a88040;
+  font-style: italic;
 }
 .rw-sum-badge {
   padding: 4px 12px;
@@ -21673,6 +21793,32 @@ onDeactivated(() => {
 }
 .rw-row-locked {
   opacity: 0.35;
+}
+/* ยังไม่ได้เลือกเต๋า: แถวที่เต๋าที่เหลือรวมได้ แตะแล้วระบบหยิบเต๋าให้ / แถวที่รวมไม่ได้จางลง */
+.rw-row-reachable {
+  cursor: pointer;
+}
+.rw-row-reachable:hover {
+  background: rgba(200, 155, 60, 0.16);
+}
+.rw-row-unreachable {
+  opacity: 0.35;
+}
+/* แถวที่แนะนำ — ทาบทองจาง ๆ พร้อมป้าย "แนะนำ" (แถวที่กดรับได้จริงยังเข้มกว่า) */
+/* เพิ่ม .rw-row ให้ชนะพื้นสลับสีของแถวคู่ (.rw-row:nth-child(even)) */
+.rw-row.rw-row-suggested {
+  background: rgba(200, 155, 60, 0.18);
+  box-shadow: inset 3px 0 0 #c89b3c;
+}
+.rw-suggest-badge {
+  padding: 1px 6px;
+  border-radius: 2px;
+  border: 1px solid rgba(140, 47, 34, 0.5);
+  color: #8c2f22;
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  white-space: nowrap;
 }
 .rw-row-num {
   min-width: 22px;

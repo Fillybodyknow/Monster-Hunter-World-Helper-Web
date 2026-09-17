@@ -10,7 +10,8 @@
     "format": "prettier --write --experimental-cli src/",
     "assets": "node scripts/build-asset-manifest.cjs",
     "check": "node scripts/check-data.cjs",
-    "icons": "node scripts/build-icons.cjs"
+    "icons": "node scripts/build-icons.cjs",
+    "test": "node scripts/test-reward-planner.mjs"
   },
   "dependencies": {
     "bootstrap": "^5.3.8",
