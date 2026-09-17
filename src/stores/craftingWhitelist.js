@@ -1,30 +1,59 @@
-import { ref, watch } from 'vue'
+import { ref, computed } from 'vue'
 import craftingData from '@/assets/files/crafting_item.json'
 import resourceData from '@/assets/files/resource.json'
-import { hunter } from '@/stores/hunter'
+import weaponsData from '@/assets/files/weapons.json'
+import { hunter, saveHunter } from '@/stores/hunter'
 
-const STORAGE_KEY = 'mhw_crafting_whitelist'
+/* รายการติดตามคราฟต์ — แยกของแต่ละ Hunter เก็บในเซฟของตัวละคร (hunter.craft_watch)
+   เดิมเก็บก้อนเดียวที่ localStorage 'mhw_crafting_whitelist' ตัวละครทุกตัวบนเครื่องเห็นชุดเดียวกัน
+   ที่แย่กว่านั้น: key ของอาวุธ (weapon_type_id + item_id) ซ้ำกันข้ามคลาส 169 จาก 182 สูตร
+   Great Sword ติดตามอาวุธไว้ ตัวละคร Bow จะเห็นเป็นอาวุธคนละชิ้นที่บังเอิญเลขตรงกัน
+   เก็บในเซฟแล้วติดไปกับ Export/Import และหายไปพร้อมตัวละครที่ถูกลบ */
+const LEGACY_KEY = 'mhw_crafting_whitelist'
 const MAX_WHITELIST = 5
 
-const loadStored = () => {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [] }
-  catch { return [] }
+export const whitelist = computed(() => hunter.value?.craft_watch ?? [])
+
+const setWatchList = (list) => {
+  if (!hunter.value) return
+  saveHunter({ ...hunter.value, craft_watch: list })
 }
 
-export const whitelist = ref(loadStored())
+// ชื่ออาวุธของคลาสนี้ — ใช้ยืนยันว่ารายการเก่าเป็นอาวุธของคลาสนี้จริง ไม่ใช่แค่เลขบังเอิญตรง
+const weaponName = (hunterClassId, weaponTypeId, itemId) =>
+  weaponsData
+    .find((c) => c.hunter_class_id === hunterClassId)
+    ?.weapons_list.find((w) => w.weapon_type_id === weaponTypeId)
+    ?.items.find((i) => i.item_id === itemId)?.item ?? null
 
-watch(whitelist, (val) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(val))
-}, { deep: true })
+/* ย้ายรายการเดิม (ก้อนรวม) มาเป็นของตัวละคร — ทำครั้งเดียวต่อตัวละคร ตอนโหลดตัวละครครั้งแรกหลังอัปเดต
+   - เกราะ: สูตรไม่ผูกกับคลาส ได้ทุกตัวละคร
+   - อาวุธ: ได้เฉพาะตัวละครที่คลาสมีอาวุธชื่อเดียวกันกับที่บันทึกไว้ (ตัดตัวที่เลขบังเอิญตรงทิ้ง)
+   ไม่ลบก้อนเดิมทิ้ง — ตัวละครอื่นที่ยังไม่ได้เปิดยังต้องใช้ย้ายของตัวเอง */
+export const ensureWatchList = (target) => {
+  if (!target || Array.isArray(target.craft_watch)) return false
+  let legacy = []
+  try { legacy = JSON.parse(localStorage.getItem(LEGACY_KEY)) || [] } catch { legacy = [] }
+  const mine = (Array.isArray(legacy) ? legacy : []).filter((item) => {
+    if (item?.type === 'armor') return true
+    if (item?.type === 'weapon') {
+      return !!item.name && weaponName(target.hunter_class_id, item.weapon_type_id, item.item_id) === item.name
+    }
+    return false
+  }).slice(0, MAX_WHITELIST)
+  saveHunter({ ...target, craft_watch: mine })
+  return true
+}
 
 export const whitelistKey = (type, ...ids) => `${type}_${ids.join('_')}`
 
 export const isWhitelisted = (key) => whitelist.value.some((i) => i.key === key)
 
 export const addToWhitelist = (item) => {
+  if (!hunter.value) return false
   if (whitelist.value.length >= MAX_WHITELIST) return false
   if (isWhitelisted(item.key)) return false
-  whitelist.value = [...whitelist.value, item]
+  setWatchList([...whitelist.value, item])
   // Initialize tracking immediately so the first resource gain fires notification
   if (hunter.value) {
     const materials = getItemMaterials(item, hunter.value)
@@ -41,7 +70,7 @@ export const addToWhitelist = (item) => {
 }
 
 export const removeFromWhitelist = (key) => {
-  whitelist.value = whitelist.value.filter((i) => i.key !== key)
+  setWatchList(whitelist.value.filter((i) => i.key !== key))
   delete prevMaterialCounts[key]
   delete prevCraftable[key]
 }
@@ -143,11 +172,19 @@ const checkArmor = (item, hunter) => {
   )
 }
 
+// ตัวละครที่ค่าเปรียบเทียบด้านล่าง (prevCraftable / prevMaterialCounts) เป็นของ
+// เปลี่ยนตัวละครแล้วต้องเริ่มนับใหม่ ไม่งั้นเอาของในกระเป๋าตัวเก่ามาเทียบ แล้วเด้งแจ้งเตือนผิด
+let trackedHunterId = null
+
 export const checkCraftability = (hunter) => {
   if (!hunter) return
+  if (hunter.hunter_id !== trackedHunterId || !Array.isArray(hunter.craft_watch)) {
+    initCraftability(hunter)
+    return
+  }
   const toRemove = []
 
-  whitelist.value.forEach((item) => {
+  hunter.craft_watch.forEach((item) => {
     const craftable = item.type === 'weapon'
       ? checkWeapon(item, hunter)
       : checkArmor(item, hunter)
@@ -187,7 +224,12 @@ export const checkCraftability = (hunter) => {
 
 export const initCraftability = (hunter) => {
   if (!hunter) return
-  whitelist.value.forEach((item) => {
+  // ย้ายรายการเดิมมาเป็นของตัวละครก่อน — บันทึกเซฟแล้ว watch ใน App.vue จะเรียกเข้ามาใหม่พร้อมรายการที่ย้ายแล้ว
+  if (ensureWatchList(hunter)) return
+  trackedHunterId = hunter.hunter_id
+  for (const key of Object.keys(prevCraftable)) delete prevCraftable[key]
+  for (const key of Object.keys(prevMaterialCounts)) delete prevMaterialCounts[key]
+  hunter.craft_watch.forEach((item) => {
     const craftable = item.type === 'weapon'
       ? checkWeapon(item, hunter)
       : checkArmor(item, hunter)
@@ -209,7 +251,7 @@ export const initCraftability = (hunter) => {
 export const materialShortfall = (hunter) => {
   const needs = new Map()
   if (!hunter) return needs
-  for (const item of whitelist.value) {
+  for (const item of hunter.craft_watch ?? []) {
     for (const mat of getItemMaterials(item, hunter)) {
       const key = `${mat.material[0]}-${mat.material[1]}`
       const entry = needs.get(key) ?? { required: 0, targets: [] }

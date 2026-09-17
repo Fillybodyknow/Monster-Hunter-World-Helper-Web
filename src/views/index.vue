@@ -239,6 +239,9 @@ const handleCreate = () => {
     inventory: [],
 
     attempted_quest: [{ monster_id: 1, quest_id: 2, attempted: 0 }],
+
+    // ตัวละครใหม่เริ่มด้วยรายการติดตามคราฟต์ว่าง — ไม่ให้ไปรับรายการรวมแบบเก่าบนเครื่องมาใช้ (ดู craftingWhitelist.js)
+    craft_watch: [],
   }
 
   createHunter(hunterData)
