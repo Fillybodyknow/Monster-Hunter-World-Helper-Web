@@ -168,6 +168,8 @@ export const ALL_SFX = [
   ...sfxTakes(`${COMBAT}/element_trigger`, 3),
   ...sfxTakes(`${COMBAT}/faint`, 3),
   ...sfxTakes(`${COMBAT}/card_sweep`, 1),
+  // ประกาศใช้ความสามารถ Palico — จำนวนต้องตรงกับ PALICO_SFX_TAKES ใน Quest.vue
+  ...sfxTakes(`${COMBAT}/palico_use`, 2),
   ...sfxTakes(`${CRAFT}/hammer_strike`, 4),
   ...sfxTakes(`${CRAFT}/igniting`, 4),
   ...sfxTakes(`${CRAFT}/quenching`, 4),
