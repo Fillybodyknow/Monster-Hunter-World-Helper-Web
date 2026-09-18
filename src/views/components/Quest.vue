@@ -3786,6 +3786,10 @@ const _showUseAnim = (sig) => {
   clearTimeout(_useAnimTimer)
   useAnim.value = sig
   _useAnimTimer = setTimeout(() => { useAnim.value = null }, USE_ANIM_MS)
+  // ยา/ล้มมีเสียงผูกกับตัวนับอยู่แล้ว (watch potionCount / faintCount) — Palico ไม่มีตัวนับกลาง เลยเล่นตรงนี้
+  if (sig.kind === 'palico' && !_suppressAnimations) {
+    sfx.playRandom(`${SFX_COMBAT}/palico_use`, PALICO_SFX_TAKES, { gain: 0.9, key: 'palico' })
+  }
 }
 
 const confirmUse = () => {
@@ -3818,8 +3822,49 @@ watch(_useSignalAt, (at) => {
   const sig = room.useSignal
   if (!sig) return
   _showUseAnim(sig)
-  if (room.isHost) _applyUse(sig.kind)
+  // Palico เป็นแค่การประกาศ — ไม่แตะตัวนับยา/ล้มของกลุ่ม (_applyUse ถือว่าอย่างอื่นที่ไม่ใช่ยาคือล้ม)
+  if (room.isHost && (sig.kind === 'potion' || sig.kind === 'faint')) _applyUse(sig.kind)
 })
+
+// ── ใช้ความสามารถ Palico ────────────────────────────────
+// แอปแค่จดว่าใช้แล้ว + ประกาศให้ทั้งตี้เห็น ตัวผลของความสามารถเล่นบนโต๊ะจริง
+// ปกติเควสละครั้ง ใส่เกราะที่มี Palico Rally ได้ 2 ครั้ง
+const ABILITY_PALICO_RALLY = 4
+// เสียงประกาศใช้ Palico: public/assets/sounds/ui/combat/palico_use/1.mp3, 2.mp3 (ทำจาก ElevenLabs) สุ่มเล่น
+// เพิ่มไฟล์แล้วต้องแก้เลขนี้และ ALL_SFX ใน useSfx.js ให้ตรงกัน ไม่งั้นบางครั้งสุ่มโดนไฟล์ที่ไม่มีแล้วเงียบ
+const PALICO_SFX_TAKES = 2
+const palicoUseLimit = computed(() => (myArmorAbilityIds.value.includes(ABILITY_PALICO_RALLY) ? 2 : 1))
+// Co-op เก็บใน abilityUsed ของห้อง (Host ล้างให้ทุกคนตอนเริ่มล่า) เพื่อให้หลุดแล้วกลับเข้ามานับถูก
+// ใช้ key 'palico_1' / 'palico_2' แยกจาก id ความสามารถเกราะที่เป็นตัวเลข
+// เล่นคนเดียวนับในเครื่อง รีเซ็ตใน initHuntingData
+const palicoUsesSolo = ref(0)
+const palicoUsed = computed(() =>
+  room.inRoom
+    ? Object.keys(room.myAbilityUsed ?? {}).filter((k) => k.startsWith('palico_')).length
+    : palicoUsesSolo.value,
+)
+const palicoUsesLeft = computed(() => Math.max(0, palicoUseLimit.value - palicoUsed.value))
+const canUsePalico = computed(() => !!myPalico.value && palicoUsesLeft.value > 0)
+
+const confirmPalicoUse = () => {
+  if (!canUsePalico.value) return
+  const me = room.inRoom ? room.myHunter : hunter.value
+  const sig = {
+    kind: 'palico',
+    hunterName: me?.hunter_name ?? 'Hunter',
+    classId: me?.hunter_class_id ?? null,
+    palicoId: myPalico.value.id,
+    left: palicoUsesLeft.value - 1,
+  }
+  if (!room.inRoom) {
+    palicoUsesSolo.value += 1
+    _showUseAnim(sig)
+    return
+  }
+  // จดสิทธิ์ก่อนประกาศ — ถ้าเน็ตสะดุดตรงกลาง อย่างน้อยสิทธิ์ถูกหักแล้ว ไม่ได้ใช้ฟรีซ้ำ
+  room.markAbilityUsed?.(`palico_${palicoUsed.value + 1}`)
+  room.triggerUseSignal?.(sig)
+}
 
 const initHuntingData = () => {
   if (!monsterHuntingData.value) return
@@ -3827,6 +3872,8 @@ const initHuntingData = () => {
   huntingHp.value = Math.max(0, monsterHuntingData.value.health - (pendingMonsterDiceDamage.value ?? 0))
   pendingMonsterDiceDamage.value = 0
   faintCount.value = 0
+  // สิทธิ์ใช้ Palico คืนทุกเควส (ใน Co-op Host ล้าง abilityUsed ให้ด้านล่าง)
+  palicoUsesSolo.value = 0
   // potionCount ไม่ reset เพราะยาที่ได้จาก Dialog Phase ควรพกมาด้วย
   const parts = {}
   Object.keys(activeParts.value).forEach((pos) => {
@@ -9117,6 +9164,17 @@ onDeactivated(() => {
             <img :src="getImg('assets/img/UI/faint_icon.webp')" class="use-btn-img" />
             <span class="use-btn-count">{{ faintCount }}/3</span>
           </button>
+          <!-- ใช้ความสามารถ Palico — เควสละครั้ง (Palico Rally ได้ 2) · ไม่มี Palico ไม่ต้องโชว์ -->
+          <button
+            v-if="myPalico"
+            class="use-btn use-btn-palico"
+            :disabled="!canUsePalico"
+            :title="canUsePalico ? `ใช้ความสามารถ ${myPalico.shortName}` : 'ใช้ Palico ครบแล้วในเควสนี้'"
+            @click="pendingUse = 'palico'"
+          >
+            <img :src="getImg(myPalico.card_img)" class="use-btn-img use-btn-palico-img" />
+            <span class="use-btn-count">{{ palicoUsesLeft }}/{{ palicoUseLimit }}</span>
+          </button>
         </div>
       </Transition>
     </teleport>
@@ -9124,7 +9182,23 @@ onDeactivated(() => {
     <!-- ยืนยันก่อนใช้ — ย้อนเองไม่ได้ถ้าไม่ใช่ Host -->
     <teleport to="body">
       <Transition name="slain-fade">
-        <div v-if="pendingUse" class="uc-overlay" @click.self="pendingUse = null">
+        <div v-if="pendingUse === 'palico' && myPalico" class="uc-overlay" @click.self="pendingUse = null">
+          <div class="uc-modal uc-palico">
+            <img :src="getImg(myPalico.card_img)" class="uc-palico-card" />
+            <p class="uc-title">ใช้ความสามารถ Palico?</p>
+            <p class="uc-palico-name">{{ myPalico.shortName }}</p>
+            <p class="uc-palico-ability">{{ myPalico.ability }}</p>
+            <p class="uc-sub">
+              สิทธิ์ในเควสนี้จะลดจาก {{ palicoUsesLeft }} เหลือ {{ palicoUsesLeft - 1 }} ครั้ง
+              <template v-if="palicoUseLimit > 1"> · Palico Rally ใช้ได้ {{ palicoUseLimit }} ครั้ง</template>
+            </p>
+            <div class="uc-btns">
+              <button class="uc-cancel" @click="pendingUse = null">ยกเลิก</button>
+              <button class="uc-confirm" @click="pendingUse = null; confirmPalicoUse()">🐾 ใช้เลย</button>
+            </div>
+          </div>
+        </div>
+        <div v-else-if="pendingUse && pendingUse !== 'palico'" class="uc-overlay" @click.self="pendingUse = null">
           <div class="uc-modal">
             <img
               :src="getImg(pendingUse === 'potion' ? 'assets/img/UI/potion_icon.webp' : 'assets/img/UI/faint_icon.webp')"
@@ -9154,7 +9228,7 @@ onDeactivated(() => {
         <div
           v-if="useAnim"
           class="ua-overlay"
-          :class="[useAnim.kind === 'potion' ? 'ua-potion' : 'ua-faint', { 'ua-fatal': useAnim.kind === 'faint' && useAnim.left >= 3 }]"
+          :class="[useAnim.kind === 'potion' ? 'ua-potion' : useAnim.kind === 'palico' ? 'ua-palico' : 'ua-faint', { 'ua-fatal': useAnim.kind === 'faint' && useAnim.left >= 3 }]"
         >
           <div class="ua-card">
             <span class="ua-burst"></span>
@@ -9170,8 +9244,19 @@ onDeactivated(() => {
                 <span class="ua-fill"></span>
               </div>
 
+              <!-- Palico: การ์ดหมุนบินเข้ามาเกาะข้างนักล่า แล้วรอยเท้าแมวประทับรอบ ๆ -->
+              <template v-if="useAnim.kind === 'palico'">
+                <img
+                  v-if="getPalico(useAnim.palicoId)"
+                  :src="getImg(getPalico(useAnim.palicoId).card_img)"
+                  class="ua-item ua-item-palico"
+                />
+                <span v-for="n in 3" :key="'paw' + n" class="ua-paw" :style="{ '--i': n }">🐾</span>
+              </template>
+
               <!-- ยา: ขวดเอียงรินลงมา · ล้ม: ตัวมอนสเตอร์กระแทกลงใส่นักล่า -->
               <img
+                v-else
                 :src="getImg(useAnim.kind === 'potion'
                   ? 'assets/img/UI/potion_icon.webp'
                   : (selectedMonster?.thumbnail ?? 'assets/img/UI/faint_icon.webp'))"
@@ -9197,10 +9282,14 @@ onDeactivated(() => {
             </div>
 
             <p class="ua-name">{{ useAnim.hunterName }}</p>
-            <p class="ua-action">{{ useAnim.kind === 'potion' ? 'ใช้ Potion' : 'ล้มลง' }}</p>
+            <p class="ua-action">{{ useAnim.kind === 'potion' ? 'ใช้ Potion' : useAnim.kind === 'palico' ? 'ใช้ Palico' : 'ล้มลง' }}</p>
             <p class="ua-detail">
               <template v-if="useAnim.kind === 'potion'">
                 {{ useAnim.left > 0 ? `เหลืออีก ${useAnim.left} ขวด` : 'ยาหมดแล้ว' }}
+              </template>
+              <template v-else-if="useAnim.kind === 'palico'">
+                {{ getPalico(useAnim.palicoId)?.shortName ?? 'Palico' }} ·
+                {{ useAnim.left > 0 ? `ใช้ได้อีก ${useAnim.left} ครั้งในเควสนี้` : 'ใช้สิทธิ์ครบแล้วในเควสนี้' }}
               </template>
               <template v-else>
                 {{ useAnim.left >= 3 ? 'ล้มครบ 3 — เควสล้มเหลว' : `ล้มครั้งที่ ${useAnim.left} จาก 3` }}
@@ -14149,6 +14238,15 @@ onDeactivated(() => {
 .use-btn-img { width: 24px; height: 24px; object-fit: contain; }
 .use-btn-count { font-size: 9px; font-weight: bold; color: #ffd27a; letter-spacing: 0.5px; }
 .use-btn-faint .use-btn-count { color: #ff9090; }
+/* ปุ่ม Palico — ใช้รูปการ์ดของตัวเอง ครอบให้เป็นหน้า Palico ไม่ใช่ทั้งใบ */
+.use-btn-palico .use-btn-img.use-btn-palico-img { width: 26px; height: 26px; object-fit: cover; object-position: center 42%; border-radius: 50%; border: 1px solid rgba(255, 170, 80, 0.6); }
+.use-btn-palico .use-btn-count { color: #ffb070; }
+
+/* ยืนยันใช้ Palico — โชว์การ์ดพร้อมข้อความความสามารถ เผื่อลืมว่าใบนี้ทำอะไร */
+.uc-palico { max-width: 320px; }
+.uc-palico-card { width: 108px; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.7), 0 0 14px rgba(255,160,70,0.35); }
+.uc-palico-name { margin: 0; font-size: 13px; font-weight: bold; color: #ffb070; }
+.uc-palico-ability { margin: 0; font-size: 11px; color: #d8c49a; line-height: 1.6; text-align: left; max-height: 120px; overflow-y: auto; }
 
 /* ตัวนับที่ guest แก้ไม่ได้ — ยังอ่านได้ชัดแต่ไม่ชวนให้กด */
 .qs-slot-locked { cursor: default; opacity: 0.85; }
@@ -14431,6 +14529,67 @@ onDeactivated(() => {
 .ua-potion .ua-action { color: #8fe0aa; }
 .ua-faint  .ua-action { color: #ff9090; }
 .ua-detail { margin: 2px 0 0; font-size: 11px; color: #c0a870; font-style: italic; text-shadow: 0 2px 8px rgba(0,0,0,0.95); }
+
+/* ══ ใช้ Palico — โทนส้มทองอบอุ่น การ์ดหมุนบินเข้าเกาะข้างนักล่า แล้วรอยเท้าแมวประทับทีละรอย ══ */
+/* มืดกว่ายา/ล้มนิดหนึ่ง — หน้าล่ามีกล่อง PALICO อยู่ตรงกลางจอพอดี ถ้าโปร่งเท่ากันข้อความจะซ้อนกันอ่านไม่ออก */
+.ua-palico {
+  background: radial-gradient(circle at center, rgba(40,20,4,0.85), rgba(0,0,0,0.72) 55%, rgba(0,0,0,0.45));
+  backdrop-filter: blur(3px);
+}
+.ua-palico .ua-card { animation: uaPop 0.45s cubic-bezier(0.22, 1.4, 0.5, 1); }
+.ua-palico .ua-burst { background: radial-gradient(circle, rgba(255,170,70,0.55), transparent 65%); }
+.ua-palico .ua-action { color: #ffb070; }
+.ua-palico .ua-hunter { animation: uaRally 1.6s ease-out 0.5s both; }
+@keyframes uaRally {
+  0%   { border-color: rgba(200,155,60,0.55); box-shadow: none; }
+  30%  { border-color: rgba(255,190,110,0.95); box-shadow: 0 0 24px rgba(255,150,60,0.8); }
+  100% { border-color: rgba(255,190,110,0.5); box-shadow: 0 0 10px rgba(255,150,60,0.3); }
+}
+/* การ์ดบินหมุนมาจากขวา มาเกาะมุมบนขวาของไอคอนนักล่า แล้วค่อยจางตอนท้าย */
+.ua-item.ua-item-palico {
+  width: 50px;
+  height: auto;
+  margin-left: 6px;
+  top: -18px;
+  border-radius: 4px;
+  z-index: 3;
+  box-shadow: 0 6px 14px rgba(0,0,0,0.85), 0 0 12px rgba(255,160,70,0.6);
+  animation: uaPalicoCard 2.4s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+@keyframes uaPalicoCard {
+  0%   { opacity: 0; transform: translate(90px, -30px) rotate(40deg) scale(0.6); }
+  22%  { opacity: 1; transform: translate(0, 0) rotate(8deg) scale(1.08); }
+  32%  { transform: translate(0, 0) rotate(8deg) scale(1); }
+  82%  { opacity: 1; transform: translate(0, 0) rotate(8deg) scale(1); }
+  100% { opacity: 0; transform: translate(0, -8px) rotate(8deg) scale(0.95); }
+}
+/* รอยเท้าแมว 3 รอย ประทับไล่กันรอบตัวนักล่า */
+.ua-paw {
+  position: absolute;
+  z-index: 4;
+  font-size: 24px;
+  opacity: 0;
+  /* สีอีโมจิต่างกันแต่ละเครื่อง — ยกความสว่างแล้วครอบแสงส้มให้เห็นชัดทุกที่ */
+  filter: brightness(1.5) drop-shadow(0 0 3px rgba(255,190,110,0.95)) drop-shadow(0 0 8px rgba(255,140,50,0.8));
+  animation: uaPaw 1.3s ease-out both;
+  animation-delay: calc(0.45s + var(--i) * 0.18s);
+}
+.ua-paw:nth-of-type(1) { left: -22px; top: 30px; transform: rotate(-20deg); }
+.ua-paw:nth-of-type(2) { left: -8px; top: 70px; transform: rotate(10deg); }
+.ua-paw:nth-of-type(3) { right: -24px; top: 66px; transform: rotate(24deg); }
+@keyframes uaPaw {
+  0%   { opacity: 0; scale: 1.8; }
+  18%  { opacity: 1; scale: 1; }
+  70%  { opacity: 1; scale: 1; }
+  100% { opacity: 0; scale: 0.9; }
+}
+/* ประกายส้มทองลอยขึ้น ใช้ .ua-mote ชุดเดียวกับยา */
+.ua-palico .ua-mote {
+  background: radial-gradient(circle, #fff1d6, #ffa24a);
+  animation: uaMote 1.5s ease-out both;
+  animation-delay: calc(0.6s + var(--i) * 0.12s);
+  margin-left: calc(-2.5px + (var(--i) - 3.5) * 9px);
+}
 .ua-fatal .ua-detail { color: #ff9090; font-style: normal; font-weight: bold; letter-spacing: 1px; }
 
 @media (prefers-reduced-motion: reduce) {
