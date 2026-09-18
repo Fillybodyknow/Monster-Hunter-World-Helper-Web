@@ -16,6 +16,7 @@ import {
   removeFromWhitelist,
 } from '@/stores/craftingWhitelist'
 import { useSfx } from '@/composables/useSfx'
+import { requestTour, cancelTourRequest } from '@/composables/useTour'
 
 const sfx = useSfx()
 const SFX_DIR = 'assets/sounds/crafting'
@@ -26,6 +27,9 @@ const activeTab = ref('weapon')
 const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 
 onMounted(loadHunter)
+// ทัวร์ของหน้านี้ — ขึ้นครั้งแรกที่เปิดแท็บ Crafting (ข้อความอยู่ใน src/tours/tours.js)
+onMounted(() => requestTour('crafting'))
+onUnmounted(() => cancelTourRequest('crafting'))
 
 // ─── Item Modal ───────────────────────────────────────────────────────────────
 const showItemModal = ref(false)
@@ -692,7 +696,7 @@ watch(forgeState, async (state, prev) => {
     <p class="ch-subtitle">โรงตีเหล็ก</p>
 
     <!-- TABS -->
-    <div class="tabs">
+    <div data-tour="craft-tabs" class="tabs">
       <button class="tab-btn" :class="{ active: activeTab === 'weapon' }" @click="activeTab = 'weapon'">
         <img v-if="weaponTabIcon" :src="weaponTabIcon" class="tab-icon-img" alt="" />
         <span v-else class="tab-icon">⚔</span>
@@ -706,7 +710,7 @@ watch(forgeState, async (state, prev) => {
     </div>
 
     <!-- ================= WHITELIST STATUS ================= -->
-    <div class="wl-status-bar" v-if="whitelist.length > 0">
+    <div data-tour="craft-watch" class="wl-status-bar" v-if="whitelist.length > 0">
       <span class="wl-status-label">🔔 Craft Watchlist</span>
       <div class="wl-status-items">
         <div
@@ -725,6 +729,7 @@ watch(forgeState, async (state, prev) => {
 
     <!-- ================= ชั้นวางแม่พิมพ์ — เลือกหมวดก่อน ================= -->
     <div
+      data-tour="craft-rack"
       class="forge-rack"
       :class="{
         igniting: forgeState === 'igniting',

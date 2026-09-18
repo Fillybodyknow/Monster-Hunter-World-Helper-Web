@@ -1,5 +1,6 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { requestTour, cancelTourRequest } from '@/composables/useTour'
 
 import { getHunterById, saveHunter } from '@/services/hunterStorage'
 import { rankOf } from '@/services/hunterRank'
@@ -111,6 +112,9 @@ const loadState = async () => {
 }
 
 onMounted(loadState)
+// ทัวร์ของหน้านี้ — ขึ้นครั้งแรกที่เปิดแท็บ State (ข้อความอยู่ใน src/tours/tours.js)
+onMounted(() => requestTour('state'))
+onUnmounted(() => cancelTourRequest('state'))
 
 // ─── Swap Equipment ───────────────────────────────────────────────────────────
 const equipType    = ref('weapon')
@@ -188,7 +192,7 @@ const setEquip = async (item) => {
     <div class="state-grid">
 
       <!-- ══════════ LEFT PANEL — PROFILE ══════════ -->
-      <div class="panel">
+      <div data-tour="state-profile" class="panel">
         <div class="panel-header">
           <span class="ph-label">Hunter Profile</span>
         </div>
@@ -221,7 +225,7 @@ const setEquip = async (item) => {
           <span class="ph-label">Equipment</span>
         </div>
 
-        <div class="equip-grid">
+        <div data-tour="state-equipment" class="equip-grid">
           <!-- WEAPON -->
           <div class="equip-card" @click="openSwapModal('weapon')">
             <span class="equip-slot-badge">Weapon</span>
@@ -318,7 +322,7 @@ const setEquip = async (item) => {
         </div>
 
         <!-- BONUS ABILITY -->
-        <div class="panel-section-header">Bonus Abilities</div>
+        <div data-tour="state-abilities" class="panel-section-header">Bonus Abilities</div>
 
         <div v-if="bonusAbilities.length > 0" class="ability-list">
           <div v-for="ab in bonusAbilities" :key="ab.ability_id" class="ability-card">
@@ -330,7 +334,7 @@ const setEquip = async (item) => {
       </div>
 
       <!-- ══════════ RIGHT PANEL — STATS ══════════ -->
-      <div class="panel">
+      <div data-tour="state-combat" class="panel">
         <div class="panel-header">
           <span class="ph-label">Combat Stats</span>
         </div>
