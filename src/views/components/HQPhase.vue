@@ -10,9 +10,11 @@ import hunterClassData from '@/assets/files/class_hunter.json'
 import { openCraftLookup } from '@/composables/useCraftLookup'
 import { useSfx } from '@/composables/useSfx'
 import { requestTour, cancelTourRequest } from '@/composables/useTour'
+import { soundEnabled, soundVolume } from '@/stores/settings'
 
 const props = defineProps({ maxActions: { type: Number, default: 3 } })
-const emit = defineEmits(['allReady'])
+// cutscene: true/false — Quest.vue พักเพลง Downtime ระหว่างเล่นคัตซีนที่มีเสียงของมันเอง
+const emit = defineEmits(['allReady', 'cutscene'])
 const room = useRoomStore()
 const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 const sfx = useSfx()
@@ -113,7 +115,7 @@ const completeLocation = () => {
 const resetActivityState = (id) => {
   if (id === 'resource') rcReset()
   if (id === 'provisions') { provisionsTraded.value = false; tradeOpen.value = false }
-  if (id === 'chef') { chefChosenElement.value = null; chefDone.value = false }
+  if (id === 'chef') { _endChefCutscene(); chefChosenElement.value = null; chefDone.value = false }
   if (id === 'lodge') { _cancelPendingHire(); lodgeHireOpen.value = false; hireTarget.value = null }
   if (id === 'poogie') poogiePatted.value = false
 }
@@ -410,14 +412,78 @@ const confirmTrade = () => {
   tradeChosenItem.value = null
 }
 
-// ─── Meowscular Chef ─────────────────────────────────────────────────────────
+// ─── Meowscular Chef (Canteen) ───────────────────────────────────────────────
 const chefChosenElement = ref(null)
 const chefDone          = ref(false)
-const chefConfirm = () => {
-  if (!chefChosenElement.value) return
+
+// เมนูประจำธาตุ — ได้ Token ธาตุเดียวกับจาน (id ตาม elemental.json)
+const CHEF_DISHES = {
+  1: { dish: 'เนื้อย่างลาวา', desc: 'เนื้อชิ้นโตย่างบนหินภูเขาไฟ ร้อนจนไฟลุกท่วมจาน', color: '#ff6a2a' },
+  2: { dish: 'ปลาย่างธารน้ำใส', desc: 'ปลาแม่น้ำตัวอ้วนย่างเกลือ ห่อใบไม้ให้ชุ่มฉ่ำ', color: '#3aa8ff' },
+  3: { dish: 'ไก่ทอดสายฟ้า', desc: 'กรอบซ่าทุกคำ กินแล้วขนลุกเหมือนโดนฟ้าผ่า', color: '#ffd23a' },
+  4: { dish: 'ซุปเห็ดหิมะ', desc: 'ซุปเย็นเจี๊ยบจากเห็ดยอดเขา ชื่นใจจนตัวสั่น', color: '#9be8ff' },
+  5: { dish: 'สตูว์เขี้ยวมังกร', desc: 'ตำรับลับที่เชฟหวงที่สุด เคี่ยวข้ามคืนจนเข้มข้น', color: '#c46bff' },
+}
+const chefDish = (el) => CHEF_DISHES[el?.elemental_id] ?? { dish: el?.elemental ?? '', desc: '', color: '#ffb050' }
+
+// คัตซีนเชฟปรุงอาหาร — สุ่ม 1 ใน 3 ตอนเข้า Canteen
+// ต้องมี <video> พร้อม src ก่อนกดสั่ง แล้วเรียก play() ในจังหวะที่กดเลย
+// ไม่งั้น iOS Safari ไม่ถือว่าเป็นการกดของผู้ใช้ แล้วบล็อกเสียง/ไม่ยอมเล่น
+const CANTEEN_SCENES = [1, 2, 3].map((n) => `assets/video/canteen_cutscene/scene${n}.mp4`)
+const chefScene = ref(null)
+const chefVideo = ref(null)
+const chefCutscene = ref(false)
+const chefVideoWaiting = ref(false)
+let _chefStartTimer = null
+
+watch(() => activeLocation.value === 'chef', (inChef) => {
+  if (inChef) chefScene.value = CANTEEN_SCENES[Math.floor(Math.random() * CANTEEN_SCENES.length)]
+}, { immediate: true })
+
+const _endChefCutscene = () => {
+  clearTimeout(_chefStartTimer)
+  chefVideo.value?.pause()
+  if (!chefCutscene.value) return false
+  chefCutscene.value = false
+  chefVideoWaiting.value = false
+  emit('cutscene', false)
+  return true
+}
+
+// จบคัตซีน (ดูจนจบ / กดข้าม / โหลดวิดีโอไม่ได้) → เสิร์ฟจาน
+const finishChefCutscene = () => {
+  if (!_endChefCutscene()) return
   sfx.playRandom(`${SFX_UI}/item_pickup`, 3, { key: 'item' })
   chefDone.value = true
 }
+
+const chefConfirm = () => {
+  if (!chefChosenElement.value || chefCutscene.value) return
+  const v = chefVideo.value
+  if (!v) {
+    sfx.playRandom(`${SFX_UI}/item_pickup`, 3, { key: 'item' })
+    chefDone.value = true
+    return
+  }
+  chefCutscene.value = true
+  chefVideoWaiting.value = true
+  emit('cutscene', true)
+  v.currentTime = 0
+  v.volume = Math.min(1, soundVolume.value)
+  v.muted = !soundEnabled.value
+  const p = v.play()
+  // เล่นพร้อมเสียงไม่ได้ (นโยบาย autoplay) → เล่นแบบปิดเสียงแทน ถ้ายังไม่ได้อีกก็ข้ามไปเสิร์ฟเลย
+  p?.catch(() => {
+    if (!chefCutscene.value) return
+    v.muted = true
+    v.play().catch(() => finishChefCutscene())
+  })
+  // เน็ตช้าจนวิดีโอไม่เริ่มสักที — ไม่ปล่อยให้จอดำค้าง
+  clearTimeout(_chefStartTimer)
+  _chefStartTimer = setTimeout(() => { if (chefVideoWaiting.value && v.currentTime === 0) finishChefCutscene() }, 12000)
+}
+
+onUnmounted(_endChefCutscene)
 
 // เลือกไว้ก่อน ยังไม่ผูกมัดจนกว่าจะกดยืนยัน — เสียงเบาแบบเดียวกับเลือก action
 const pickTradeItem = (item) => {
@@ -993,26 +1059,80 @@ const moteStyle = (m) => ({
 
       </div>
 
-      <!-- Meowscular Chef -->
-      <div v-else-if="activeLocation === 'chef'" class="hqp-activity hqa-flavor">
-        <p class="hqa-desc">เชฟผู้เชี่ยวชาญจะปรุงเมนูพิเศษสำหรับการล่าครั้งถัดไป</p>
-        <div v-if="!chefDone">
-          <p class="hqa-flavor-sub">เลือก Element ที่ต้องการเพิ่มความต้านทาน:</p>
-          <div class="hqa-elem-row">
-            <div v-for="el in elementalData" :key="el.elemental_id" class="hqa-elem-chip"
-              :class="{ chosen: chefChosenElement?.elemental_id === el.elemental_id }"
-              @click="pickChefElement(el)">
-              <img :src="getImg(el.thumbnail)" class="hqa-elem-icon" />
-              <span>{{ el.elemental }}</span>
-            </div>
+      <!-- Meowscular Chef — Canteen -->
+      <div v-else-if="activeLocation === 'chef'" class="hqp-activity canteen">
+        <div class="cnt-hero" :style="{ backgroundImage: `url(${getImg('assets/img/canteen/canteen_hero.webp')})` }">
+          <span class="cnt-sign">CANTEEN</span>
+          <div class="cnt-bubble">
+            <span class="cnt-bubble-name">เชฟเหมี่ยว</span>
+            <span v-if="!chefDone">วันนี้จะเอาจานไหนเมี๊ยว? เลือกมาได้เลย เดี๋ยวจัดให้เต็มที่!</span>
+            <span v-else>เสิร์ฟแล้วเมี๊ยว! กินให้อิ่มแล้วออกไปล่าให้สุดฝีมือ!</span>
           </div>
-          <button v-if="chefChosenElement" class="hqa-btn hqa-btn-claim" @click="chefConfirm">🍖 รับ Token</button>
         </div>
-        <div v-else class="hqa-flavor-result">
-          <img :src="getImg(chefChosenElement.thumbnail)" class="hqa-elem-icon" />
-          <p>วาง <strong>{{ chefChosenElement.elemental }} Token</strong> บนอาวุธของคุณ</p>
-          <button class="hqa-btn hqa-btn-claim" @click="completeLocation">✦ เสร็จสิ้น</button>
+
+        <div v-if="!chefDone" class="cnt-body">
+          <div class="cnt-menu">
+            <p class="cnt-menu-title">— เมนูวันนี้ —</p>
+            <button
+              v-for="el in elementalData"
+              :key="el.elemental_id"
+              class="cnt-dish"
+              :class="{ chosen: chefChosenElement?.elemental_id === el.elemental_id }"
+              :style="{ '--dish': chefDish(el).color }"
+              @click="pickChefElement(el)"
+            >
+              <img :src="getImg(el.thumbnail)" class="cnt-dish-icon" alt="" />
+              <span class="cnt-dish-text">
+                <span class="cnt-dish-name">{{ chefDish(el).dish }}</span>
+                <span class="cnt-dish-elem">{{ el.elemental }} Token</span>
+              </span>
+              <span class="cnt-dish-check">{{ chefChosenElement?.elemental_id === el.elemental_id ? '✔' : '' }}</span>
+            </button>
+          </div>
+
+          <div class="cnt-preview" :style="chefChosenElement ? { '--dish': chefDish(chefChosenElement).color } : null">
+            <template v-if="chefChosenElement">
+              <div class="cnt-plate">
+                <img :src="getImg(chefChosenElement.thumbnail)" class="cnt-plate-icon" alt="" />
+              </div>
+              <p class="cnt-preview-name">{{ chefDish(chefChosenElement).dish }}</p>
+              <p class="cnt-preview-desc">{{ chefDish(chefChosenElement).desc }}</p>
+              <p class="cnt-preview-effect">ได้ <strong>{{ chefChosenElement.elemental }} Token</strong> — วางบนอาวุธของคุณ</p>
+              <button class="cnt-order" @click="chefConfirm">🍖 สั่งจานนี้!</button>
+            </template>
+            <p v-else class="cnt-preview-empty">เลือกเมนูจากกระดาน<br />แล้วเชฟจะลงมือปรุงให้</p>
+          </div>
         </div>
+
+        <div v-else class="cnt-done" :style="{ '--dish': chefDish(chefChosenElement).color }">
+          <div class="cnt-plate">
+            <img :src="getImg(chefChosenElement.thumbnail)" class="cnt-plate-icon" alt="" />
+          </div>
+          <p class="cnt-preview-name">{{ chefDish(chefChosenElement).dish }}</p>
+          <p class="cnt-preview-effect">วาง <strong>{{ chefChosenElement.elemental }} Token</strong> บนอาวุธของคุณ</p>
+          <button class="cnt-order" @click="completeLocation">✦ เสร็จสิ้น</button>
+        </div>
+
+        <!-- คัตซีนเชฟปรุงอาหาร — วิดีโออยู่ใน DOM ตลอดที่อยู่ใน Canteen (ซ่อนไว้) กดสั่งแล้วเล่นได้ทันที -->
+        <Teleport to="body">
+          <div v-show="chefCutscene" class="cnt-cut">
+            <video
+              ref="chefVideo"
+              class="cnt-cut-video"
+              :src="chefScene ? getImg(chefScene) : undefined"
+              :preload="chefChosenElement ? 'auto' : 'metadata'"
+              playsinline
+              webkit-playsinline
+              @playing="chefVideoWaiting = false"
+              @waiting="chefVideoWaiting = true"
+              @ended="finishChefCutscene"
+              @error="chefCutscene && finishChefCutscene()"
+            ></video>
+            <div v-if="chefVideoWaiting" class="cnt-cut-loading">กำลังปรุง...</div>
+            <p v-if="chefChosenElement" class="cnt-cut-caption">🍖 {{ chefDish(chefChosenElement).dish }}</p>
+            <button class="cnt-cut-skip" @click="finishChefCutscene">ข้าม ›</button>
+          </div>
+        </Teleport>
       </div>
 
       <!-- Hunter's Lodge -->
@@ -1619,6 +1739,140 @@ const moteStyle = (m) => ({
   font-weight: bold;
 }
 .hqa-elem-icon { width: 22px; height: 22px; object-fit: contain; }
+
+/* ── Canteen (Meowscular Chef) — แบบโรงอาหารในเกม: ภาพเชฟด้านบน กระดานเมนูไม้ จานที่เลือกทางขวา ── */
+.canteen {
+  padding: 0; gap: 0; overflow: hidden;
+  border: 1px solid #7a5328; border-radius: 6px;
+  background: #1a120a;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55);
+}
+.cnt-hero {
+  position: relative; height: 170px;
+  background-size: cover; background-position: center 38%;
+}
+.cnt-hero::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(20, 12, 5, 0.1) 30%, rgba(26, 18, 10, 0.95) 100%);
+}
+.cnt-sign {
+  position: absolute; top: 10px; left: 12px; z-index: 1;
+  padding: 3px 12px; border: 1px solid #c89b3c; border-radius: 2px;
+  background: rgba(30, 18, 6, 0.8);
+  font-family: Georgia, serif; font-size: 12px; font-weight: bold; letter-spacing: 3px; color: #ffd27a;
+}
+.cnt-bubble {
+  position: absolute; left: 12px; right: 12px; bottom: 10px; z-index: 1;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 8px 12px; border-radius: 10px 10px 10px 2px;
+  background: rgba(250, 238, 210, 0.95); color: #3a2a14;
+  font-size: 13px; line-height: 1.5;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+}
+.cnt-bubble-name { font-size: 11px; font-weight: bold; color: #9c4a15; }
+
+.cnt-body { display: grid; grid-template-columns: 1fr; gap: 12px; padding: 12px; }
+.cnt-menu {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 10px; border: 2px solid #7a5328; border-radius: 4px;
+  background:
+    repeating-linear-gradient(180deg, rgba(0, 0, 0, 0) 0 38px, rgba(0, 0, 0, 0.18) 38px 40px),
+    linear-gradient(170deg, #4a3019, #2e1d0e);
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.5);
+}
+.cnt-menu-title { margin: 0 0 2px; text-align: center; font-family: Georgia, serif; font-size: 12px; letter-spacing: 2px; color: #d8b070; }
+.cnt-dish {
+  --dish: #ffb050;
+  display: grid; grid-template-columns: 34px 1fr 18px; align-items: center; gap: 10px;
+  width: 100%; padding: 8px 10px; text-align: left;
+  border: 1px solid rgba(200, 155, 60, 0.25); border-left: 3px solid transparent; border-radius: 3px;
+  background: rgba(20, 12, 5, 0.45); color: #e8d4a8; font-family: inherit;
+  cursor: pointer; transition: background 0.15s, border-color 0.15s;
+}
+.cnt-dish:hover { background: rgba(255, 200, 110, 0.08); border-color: rgba(200, 155, 60, 0.5); }
+.cnt-dish.chosen {
+  border-color: var(--dish); border-left-color: var(--dish);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--dish) 22%, transparent), rgba(20, 12, 5, 0.5));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--dish) 35%, transparent);
+}
+.cnt-dish-icon { width: 34px; height: 34px; object-fit: contain; filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7)); }
+.cnt-dish-text { display: flex; flex-direction: column; min-width: 0; }
+.cnt-dish-name { font-size: 14px; font-weight: bold; color: #ffd98a; }
+.cnt-dish-elem { font-size: 11px; color: #b89a68; }
+.cnt-dish-check { font-size: 14px; color: var(--dish); text-align: center; }
+
+.cnt-preview, .cnt-done {
+  --dish: #c89b3c;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  min-height: 220px; padding: 16px; text-align: center;
+  border: 1px solid rgba(200, 155, 60, 0.35); border-radius: 4px;
+  background: radial-gradient(ellipse at 50% 30%, color-mix(in srgb, var(--dish) 16%, #2a1c0e) 0%, #1c130a 75%);
+}
+.cnt-done { margin: 12px; }
+.cnt-plate {
+  display: flex; align-items: center; justify-content: center;
+  width: 96px; height: 96px; border-radius: 50%;
+  background: radial-gradient(circle, #f4ead2 0 52%, #d8c8a0 53% 60%, #a89468 61% 64%, transparent 65%);
+  box-shadow: 0 0 26px color-mix(in srgb, var(--dish) 55%, transparent);
+  animation: cnt-plate-in 0.35s ease-out;
+}
+.cnt-plate-icon { width: 48px; height: 48px; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5)); }
+@keyframes cnt-plate-in { from { transform: scale(0.7); opacity: 0; } to { transform: none; opacity: 1; } }
+.cnt-preview-name { margin: 4px 0 0; font-size: 19px; font-weight: bold; color: #ffe0a0; }
+.cnt-preview-desc { margin: 0; font-size: 13px; font-style: italic; line-height: 1.6; color: #c8ae80; }
+.cnt-preview-effect { margin: 0; font-size: 13px; color: #e8d4a8; }
+.cnt-preview-effect strong { color: var(--dish); }
+.cnt-preview-empty { margin: 0; font-size: 13px; line-height: 1.7; color: #9a8058; font-style: italic; }
+.cnt-order {
+  margin-top: 6px; padding: 11px 26px; border: 1px solid #ffc060; border-radius: 4px;
+  background: linear-gradient(180deg, #e0802a, #a84a12); color: #fff4e0;
+  font-family: inherit; font-size: 15px; font-weight: bold; letter-spacing: 0.5px; cursor: pointer;
+  box-shadow: 0 3px 12px rgba(224, 128, 42, 0.4);
+  transition: transform 0.1s, box-shadow 0.15s;
+}
+.cnt-order:hover { box-shadow: 0 3px 18px rgba(255, 160, 60, 0.6); }
+.cnt-order:active { transform: scale(0.97); }
+
+@media (min-width: 720px) {
+  /* จอกว้างครอปภาพเหลือแถบบาง — สูงขึ้นและเลื่อนกรอบขึ้นให้เห็นหน้าเชฟ */
+  .cnt-hero { height: 300px; background-position: center 0%; }
+  .cnt-bubble { right: auto; max-width: 440px; font-size: 14px; }
+  .cnt-body { grid-template-columns: 1.1fr 1fr; padding: 14px; }
+  .cnt-preview { min-height: 100%; }
+}
+
+/* จอกว้างมาก ภาพถูกขยายจนหน้าเชฟ (ช่วงบน 5–40% ของภาพ) ยาวเกินแถบ — สูงขึ้นอีกให้เห็นทั้งหน้า */
+@media (min-width: 1280px) {
+  .cnt-hero { height: 400px; }
+}
+
+/* คัตซีน — เต็มจอ ดำสนิท ปุ่มข้ามมุมขวาบน */
+.cnt-cut {
+  position: fixed; inset: 0; z-index: 10300;
+  display: flex; align-items: center; justify-content: center;
+  background: #000;
+}
+.cnt-cut-video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+.cnt-cut-loading {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  font-family: Georgia, serif; font-size: 15px; letter-spacing: 2px; color: #d8b070;
+  animation: cnt-pulse 1.2s ease-in-out infinite;
+}
+@keyframes cnt-pulse { 50% { opacity: 0.4; } }
+.cnt-cut-caption {
+  position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 22px); margin: 0;
+  text-align: center; font-size: 16px; font-weight: bold; color: #ffe0a0;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+  animation: cnt-caption-in 1s ease-out 0.6s both;
+}
+@keyframes cnt-caption-in { from { opacity: 0; transform: translateY(8px); } }
+.cnt-cut-skip {
+  position: absolute; top: calc(env(safe-area-inset-top, 0px) + 14px); right: 16px;
+  padding: 7px 16px; border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 18px;
+  background: rgba(0, 0, 0, 0.55); color: #f0e6d0;
+  font-family: inherit; font-size: 13px; cursor: pointer;
+}
+.cnt-cut-skip:hover { background: rgba(0, 0, 0, 0.8); border-color: rgba(255, 255, 255, 0.6); }
 
 /* Provisions */
 .hqa-trade-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

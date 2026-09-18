@@ -1049,6 +1049,12 @@ const playDowntimeBgm = () => {
   downtimeBgm.value = audio
 }
 
+// คัตซีน Canteen มีเสียงของมันเอง — พักเพลง Downtime ไว้ จบแล้วเล่นต่อจากเดิม
+const onHqCutscene = (playing) => {
+  if (playing) downtimeBgm.value?.pause()
+  else if (_intendedBgm === 'downtime') _resumeIfPaused(downtimeBgm)
+}
+
 const stopDowntimeBgm = () => {
   if (_intendedBgm === 'downtime') _intendedBgm = null
   if (!downtimeBgm.value) return
@@ -6241,7 +6247,7 @@ onDeactivated(() => {
 
     <!-- ═══════════ HQ PHASE ═══════════ -->
     <div v-if="phase === 'hq'" class="phase-hq">
-      <HQPhase :maxActions="hqMaxActions" @allReady="onHQAllReady" />
+      <HQPhase :maxActions="hqMaxActions" @allReady="onHQAllReady" @cutscene="onHqCutscene" />
     </div>
 
     <!-- ═══════════ HANDLER START — HOST PICKS DIALOG ═══════════ -->
