@@ -5626,6 +5626,8 @@ const PHASE_TOURS = {
 }
 const REWARD_TOURS = { diceRoll: 'rewardRoll', assign: 'rewardAssign', trade: 'rewardTrade' }
 const currentTourId = computed(() => {
+  // การ์ดสรุปการล่าขึ้นพร้อมกับที่ phase เปลี่ยนเป็น reward — รอปิดสรุปก่อน ไม่งั้นทัวร์ซ้อนทับ
+  if (showHuntRecap.value) return null
   if (phase.value === 'reward') return REWARD_TOURS[rewardPhase.value] ?? null
   if (phase.value === 'huntingPanel') {
     // ช่วงเปิดฉากการล่ายาวหลายวินาที (เจอมอน → เปิด Track Token → การ์ดพิเศษ → เลือก Hunter Token)
@@ -7088,8 +7090,9 @@ onDeactivated(() => {
         <button
           v-if="monsterHuntingData.map_image"
           data-tour="hunt-map" class="hpanel-map-btn"
+          aria-label="แผนที่"
           @click="showMapModal = true"
-        >🗺 Map</button>
+        >🗺<span class="hpanel-map-label"> Map</span></button>
       </div>
 
       <!-- Quick Status Strip: Faint + Potion + Hunter Status -->
@@ -19476,6 +19479,51 @@ onDeactivated(() => {
     padding: 6px 8px;
     font-size: 12px;
   }
+}
+/* ── Hunting Phase บนมือถือจอแคบ ─────────────────────────
+   หน้านี้เสียความกว้างให้แถบยา/ล้มที่ลอยฝั่งซ้าย 36px (+ แถบปาร์ตี้ฝั่งขวาตอนเล่นเป็นตี้)
+   ของที่กำหนดขนาดตาม vw เลยคำนวณจากจอทั้งจอ ทั้งที่พื้นที่จริงแคบกว่านั้น → ล้นขอบ
+   ที่นี่ให้ขนาดยึดความกว้างของกล่องที่อยู่จริงแทน */
+@media (max-width: 480px) {
+  /* ป้าย HUNTING PHASE ห่างตัวอักษรมากจนแตกเป็น 2 บรรทัด */
+  .hpanel-header { gap: 10px; padding: 12px; }
+  .hpanel-monster-img { width: 60px; height: 60px; }
+  /* ปุ่มแผนที่เหลือแค่ไอคอน — เอาที่ให้ชื่อมอนกับป้ายหัวเรื่อง */
+  .hpanel-map-label { display: none; }
+  .hpanel-map-btn { padding: 7px 10px; font-size: 16px; }
+  .hpanel-header-info { min-width: 0; }
+  .hpanel-phase-tag { letter-spacing: 2px; white-space: nowrap; }
+  .hpanel-monster-name { font-size: 19px; }
+
+  /* ช่อง Faint / Potion: ย่อให้พอดีกล่อง ไม่ล้นขวา */
+  .qs-tracker { min-width: 0; }
+  .qs-tracker-slots { width: 100%; gap: 5px; }
+  .qs-slot {
+    width: auto;
+    height: auto;
+    flex: 0 1 52px;
+    min-width: 0;
+    aspect-ratio: 1;
+  }
+  .qs-slot-img { width: 62%; height: 62%; }
+
+  /* การ์ด Monster Turn: เต็มความกว้างกล่อง คงสัดส่วนการ์ด */
+  .mt-card {
+    width: 100%;
+    max-width: 340px;
+    height: auto;
+    aspect-ratio: 17 / 12;
+  }
+
+  /* ปุ่ม HP 6 ปุ่มอยู่แถวเดียว — แบ่งความกว้างเท่า ๆ กันแทนการตกบรรทัด */
+  .hp-controls { flex-wrap: nowrap; gap: 4px; padding: 10px 10px 14px; }
+  .hp-ctrl-sep { flex: 0 0 6px; min-width: 6px; }
+  .hp-btn { flex: 1 1 0; min-width: 0; padding: 6px 2px; }
+}
+/* จอเล็กมาก (iPhone SE รุ่นแรก ~320px) — ย่อรูปมอนในป้ายหัวเรื่องให้ข้อความพอ */
+@media (max-width: 340px) {
+  .hpanel-monster-img { width: 52px; height: 52px; }
+  .hpanel-phase-tag { font-size: 8px; letter-spacing: 1px; }
 }
 </style>
 
