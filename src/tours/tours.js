@@ -304,6 +304,11 @@ export const TOURS = {
         body: 'หมดกองคือหมดเวลา เควสต์ล้มเหลว',
       },
       {
+        target: 'hunt-log',
+        title: 'บันทึกการล่า',
+        body: 'จดว่าใครกดอะไร — ลด HP, ใส่ Break, ลง Mark, ใช้ยา\nกดผิดก็กด "⟲ ย้อน" ได้ ทั้งตี้เห็นตรงกัน',
+      },
+      {
         target: 'hunt-endturn',
         optional: true,
         title: 'จบเทิร์น',
