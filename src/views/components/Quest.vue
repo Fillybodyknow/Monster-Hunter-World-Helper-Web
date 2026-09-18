@@ -16,6 +16,7 @@ import statusEffectData from '@/assets/files/status_effect.json'
 import resourceData from '@/assets/files/resource.json'
 import { getHunters, saveHunters } from '@/services/hunterStorage'
 import { questPoints, rankOf, pointsOf } from '@/services/hunterRank'
+import { buildHuntHighlights, buildTeamTitle } from '@/services/huntTitles'
 import { reachableRows, pickDiceForRow, planRewards } from '@/services/rewardPlanner'
 import { whitelist, materialShortfall, recipeCountByMaterial } from '@/stores/craftingWhitelist'
 import { useRoomStore } from '@/stores/room'
@@ -1812,8 +1813,8 @@ const _doDismissResult = () => {
     resultAnimType.value = null
     resultMonsterName.value = ''
     isDismissing.value = false
-    // สรุปการล่าขึ้นทับหน้าถัดไป ปิดแล้วเล่นต่อได้เลย
-    if (huntRecap.value) showHuntRecap.value = true
+    // ฉายา (Hunter Highlights) → สรุปการล่า ขึ้นทับหน้าถัดไป ปิดแล้วเล่นต่อได้เลย
+    if (huntRecap.value) _openHuntHighlights()
     if (pendingRewardAfterAnim.value) {
       pendingRewardAfterAnim.value = false
       goToRewardPhase()
@@ -2339,7 +2340,8 @@ let _elemAnimTimer = null
 
 const markStatus = (statusId) => {
   const res = monsterHuntingData.value?.status_resistance?.find((s) => s.status_id === statusId)
-  if (!res) return
+  // Immune เก็บเป็น level 0 — ถ้าไม่กันไว้ กดครั้งเดียวก็ถือว่าถึงเกณฑ์ แล้วติดสถานะทันที
+  if (!res || res.immune || res.level <= 0) return
   const cur = statusMarks.value[statusId] ?? 0
   const next = cur + 1
   if (next >= res.level) {
@@ -3732,6 +3734,14 @@ const potionCount = ref(0)
 // แถบตัวนับเป็นของ Host — guest ปรับเลขเองไม่ได้ ต้องผ่านปุ่มลอยที่ยิงสัญญาณไปให้ Host ทำ
 const canEditTrackers = computed(() => !room.inRoom || room.isHost)
 
+// เทิร์น Monster (Hunter Turn ของการ์ดพฤติกรรมใบนี้หมดแล้ว รอ Host จั่วใบใหม่) — ปุ่มแก้ HP / ชิ้นส่วน / สถานะ / ธาตุ / ย้อน
+// เป็นของ Host คนเดียว กันเผลอกดตอนวางมือถือดูกระดาน และบังคับให้กดดาเมจก่อนจบเทิร์น (บันทึกการล่านับเครดิตให้ถูกคน)
+// ปุ่มล้มกับ Palico ยังกดได้ทุกคน — ล้มเกิดตอนโดนมอนตี, Palico ใช้ได้ทุกเมื่อตามกติกา
+const monsterEditLocked = computed(() => room.inRoom && !room.isHost && monsterTurnReady.value)
+// ยาใช้ได้เฉพาะในเทิร์นของตัวเอง — จบเทิร์นไปแล้ว หรืออยู่ในเทิร์น Monster ใช้ไม่ได้ (ทุกคนรวม Host)
+// Host ยังแก้ตัวนับยาตรง ๆ ได้ที่แถบตัวนับ เผื่อต้องแก้เลขผิด
+const potionTurnLocked = computed(() => monsterTurnReady.value || myTurnEnded.value)
+
 const toggleFaint = (index) => {
   if (!canEditTrackers.value) return
   faintCount.value = faintCount.value === index ? index - 1 : index
@@ -3803,6 +3813,7 @@ const confirmUse = () => {
   const kind = pendingUse.value
   pendingUse.value = null
   if (!kind) return
+  if (kind === 'potion' && potionTurnLocked.value) return
 
   const me = room.inRoom ? room.myHunter : hunter.value
   const sig = {
@@ -4159,6 +4170,7 @@ const undoableLogId = computed(() => {
 })
 
 const logHp = (delta) => {
+  if (monsterEditLocked.value) return
   const prev = huntingHp.value
   adjustHp(delta)
   const diff = huntingHp.value - prev
@@ -4166,6 +4178,7 @@ const logHp = (delta) => {
 }
 
 const logPart = (position, delta) => {
+  if (monsterEditLocked.value) return
   const prev = partDamage.value[position] ?? 0
   adjustPartDamage(position, delta)
   const diff = (partDamage.value[position] ?? 0) - prev
@@ -4173,6 +4186,9 @@ const logPart = (position, delta) => {
 }
 
 const logMarkStatus = (statusId) => {
+  if (monsterEditLocked.value) return
+  const res = monsterHuntingData.value?.status_resistance?.find((s) => s.status_id === statusId)
+  if (!res || res.immune || res.level <= 0) return
   const prevMark = statusMarks.value[statusId] ?? 0
   const prevApplied = appliedStatuses.value.includes(statusId)
   markStatus(statusId)
@@ -4180,12 +4196,14 @@ const logMarkStatus = (statusId) => {
 }
 
 const logRemoveStatus = (statusId) => {
+  if (monsterEditLocked.value) return
   const prevMark = statusMarks.value[statusId] ?? 0
   removeStatus(statusId)
   _addHuntLog({ kind: 'statusRemove', sid: statusId, prevMark })
 }
 
 const logMarkElement = (elementId) => {
+  if (monsterEditLocked.value) return
   const prevMark = elementMarks.value[elementId] ?? 0
   const res = monsterHuntingData.value?.element_resistance?.find((e) => e.element_id === elementId)
   if (!res || res.immune || res.level <= 0) return
@@ -4211,14 +4229,14 @@ const _applyInverse = (e) => {
   } else if (e.kind === 'element') {
     elementMarks.value = { ...elementMarks.value, [e.eid]: e.prevMark ?? 0 }
   } else if (e.kind === 'potion') {
-    potionCount.value = potionCount.value + 1
+    potionCount.value = Math.min(3, potionCount.value + 1)
   }
   _pushHuntState()
 }
 
 const undoLogEntry = async (id) => {
   const e = huntLog.value.find((x) => x.id === id)
-  if (!e || e.undone || id !== undoableLogId.value) return
+  if (!e || e.undone || id !== undoableLogId.value || monsterEditLocked.value) return
   _sfxMenu()
   const by = _logWho().whoName
   if (!room.inRoom) {
@@ -4264,6 +4282,39 @@ const huntLogRecent = computed(() => huntLog.value.slice(-10).reverse())
 const huntStartedAt = ref(null)
 const huntRecap = ref(null)
 const showHuntRecap = ref(false)
+
+// ── ฉายาตอนสรุป (Hunter Highlights) ─────────────────────
+// คิดตอนเปิด ไม่ใช่ตอนประกาศผล — ผ่านแอนิเมชันผลเควสมาหลายวินาทีแล้ว บันทึกจากเครื่องอื่นเข้ามาครบ
+// ทุกเครื่องคิดเองจากบันทึกชุดเดียวกัน (huntTitles.js ตัดสินคะแนนเสมอด้วย id) จึงเห็นฉายาตรงกัน
+const huntHighlights = ref(null)
+const showHuntHighlights = ref(false)
+
+const _openHuntHighlights = () => {
+  const recap = huntRecap.value
+  const members = room.inRoom
+    ? room.hunters.map((h) => ({ id: h.hunter_id, name: h.hunter_name, classId: h.hunter_class_id }))
+    : hunter.value
+      ? [{ id: hunter.value.hunter_id, name: hunter.value.hunter_name, classId: hunter.value.hunter_class_id }]
+      : []
+  const myKey = String((room.inRoom ? room.myHunterId : hunter.value?.hunter_id) ?? '')
+  const cards = buildHuntHighlights(huntLog.value, members).map((c) => ({ ...c, isMe: c.key === myKey }))
+  if (!cards.length) {
+    showHuntRecap.value = true
+    return
+  }
+  huntHighlights.value = {
+    cards,
+    team: buildTeamTitle({ faints: recap?.faints ?? 0, brokenCount: recap?.broken.length ?? 0, partTotal: recap?.partTotal ?? 0 }),
+  }
+  showHuntHighlights.value = true
+  _sfxConfirm()
+}
+
+const closeHuntHighlights = () => {
+  showHuntHighlights.value = false
+  _sfxMenu()
+  showHuntRecap.value = true
+}
 
 const _buildHuntRecap = () => {
   const data = monsterHuntingData.value
@@ -5627,7 +5678,7 @@ const PHASE_TOURS = {
 const REWARD_TOURS = { diceRoll: 'rewardRoll', assign: 'rewardAssign', trade: 'rewardTrade' }
 const currentTourId = computed(() => {
   // การ์ดสรุปการล่าขึ้นพร้อมกับที่ phase เปลี่ยนเป็น reward — รอปิดสรุปก่อน ไม่งั้นทัวร์ซ้อนทับ
-  if (showHuntRecap.value) return null
+  if (showHuntRecap.value || showHuntHighlights.value) return null
   if (phase.value === 'reward') return REWARD_TOURS[rewardPhase.value] ?? null
   if (phase.value === 'huntingPanel') {
     // ช่วงเปิดฉากการล่ายาวหลายวินาที (เจอมอน → เปิด Track Token → การ์ดพิเศษ → เลือก Hunter Token)
@@ -7071,7 +7122,7 @@ onDeactivated(() => {
     </div>
 
     <!-- ═══════════ HUNTING PANEL ═══════════ -->
-    <div v-if="phase === 'huntingPanel' && monsterHuntingData" class="phase-hunting-panel" :class="{ 'php-bar-open': floatBarVisible && !floatBarCollapsed, 'php-party-strip': partyStripVisible }">
+    <div v-if="phase === 'huntingPanel' && monsterHuntingData" class="phase-hunting-panel" :class="{ 'php-bar-open': floatBarVisible && !floatBarCollapsed, 'php-party-strip': partyStripVisible, 'php-monster-lock': monsterEditLocked }">
       <!-- Header -->
       <div class="hpanel-header">
         <img :src="getImg(selectedMonster.thumbnail)" class="hpanel-monster-img" />
@@ -7556,6 +7607,7 @@ onDeactivated(() => {
             :style="{ width: hpPercent + '%', background: hpBarColor }"
           ></div>
         </div>
+        <p v-if="monsterEditLocked" class="mt-lock-note">🔒 เทิร์น Monster — Host เป็นคนปรับ HP / ชิ้นส่วน / สถานะ</p>
         <div data-tour="hunt-hp" class="hp-controls">
           <button class="hp-btn hp-minus" @click="logHp(-10)">−10</button>
           <button class="hp-btn hp-minus" @click="logHp(-5)">−5</button>
@@ -9449,8 +9501,8 @@ onDeactivated(() => {
         >
           <button
             class="use-btn use-btn-potion"
-            :disabled="!canUsePotion"
-            :title="canUsePotion ? 'ใช้ Potion' : 'ไม่มียาเหลือ'"
+            :disabled="!canUsePotion || potionTurnLocked"
+            :title="!canUsePotion ? 'ไม่มียาเหลือ' : potionTurnLocked ? 'ใช้ยาได้เฉพาะในเทิร์นของตัวเอง' : 'ใช้ Potion'"
             @click="pendingUse = 'potion'"
           >
             <img :src="getImg('assets/img/UI/potion_icon.webp')" class="use-btn-img" />
@@ -10270,6 +10322,42 @@ onDeactivated(() => {
 
             <button class="hrc-close" @click="showHuntRecap = false">ปิด</button>
           </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ HUNTER HIGHLIGHTS (ฉายา) ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="showHuntHighlights && huntHighlights" class="hhl-overlay" @click.self="closeHuntHighlights">
+          <div class="hhl-banner">Hunter Highlights</div>
+          <p class="hhl-team">
+            <span class="hhl-team-name">{{ huntHighlights.team.icon }} {{ huntHighlights.team.name }}</span>
+            <span class="hhl-team-desc">{{ huntHighlights.team.desc }}</span>
+          </p>
+          <div class="hhl-cards" :class="'hhl-n' + Math.min(4, huntHighlights.cards.length)">
+            <div
+              v-for="(c, i) in huntHighlights.cards"
+              :key="c.key"
+              class="hhl-card"
+              :class="{ 'hhl-me': c.isMe }"
+              :style="{ animationDelay: 0.15 + i * 0.18 + 's' }"
+            >
+              <div class="hhl-who">
+                <img v-if="getHunterClass(c.classId)?.thumbnail" :src="getImg(getHunterClass(c.classId).thumbnail)" class="hhl-who-icon" alt="" />
+                <span class="hhl-who-name">{{ c.name }}</span>
+              </div>
+              <div class="hhl-orn"></div>
+              <div class="hhl-title"><img v-if="c.title.img" :src="getImg(c.title.img)" class="hhl-title-img" alt="" /><span v-else class="hhl-title-icon">{{ c.title.icon }}</span>{{ c.title.name }}</div>
+              <div class="hhl-orn"></div>
+              <div class="hhl-label">{{ c.title.label }}</div>
+              <div class="hhl-value">
+                <span>{{ c.value }}</span>
+                <span v-if="c.unit" class="hhl-unit">{{ c.unit }}</span>
+              </div>
+            </div>
+          </div>
+          <button class="hhl-next" @click="closeHuntHighlights">ดูสรุปการล่า ›</button>
         </div>
       </Transition>
     </teleport>
@@ -14574,6 +14662,27 @@ onDeactivated(() => {
   transition: bottom 0.25s ease;
 }
 .use-strip-lifted { bottom: 110px; }
+
+/* เทิร์น Monster: Guest แก้ค่ามอนไม่ได้ — ปุ่มจางและกดไม่ติด (ดูข้อมูล / เปิดบันทึกได้ตามเดิม) */
+.php-monster-lock .hp-controls,
+.php-monster-lock .part-break-controls,
+.php-monster-lock .resist-item,
+.php-monster-lock .msc-applied-badge,
+.php-monster-lock .hlog-undo {
+  opacity: 0.4;
+  pointer-events: none;
+  filter: grayscale(0.6);
+}
+.mt-lock-note {
+  margin: 0 0 6px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: rgba(120, 30, 20, 0.35);
+  border: 1px solid rgba(220, 90, 60, 0.4);
+  color: #f0b8a0;
+  font-size: 0.74rem;
+  text-align: center;
+}
 .use-strip-tab { bottom: 50px; }
 
 .use-btn {
@@ -14645,6 +14754,104 @@ onDeactivated(() => {
 .hrc-hr { display: flex; justify-content: space-between; gap: 8px; margin-top: 12px; padding: 9px 12px; border-radius: 9px; background: rgba(240, 200, 96, 0.1); font-size: 0.85rem; font-weight: 700; color: #f0d890; }
 .hrc-hr-up { color: #7cf09a; }
 .hrc-close { display: block; width: 100%; margin-top: 14px; padding: 11px; border: none; border-radius: 10px; background: #c9a050; color: #1a1206; font-size: 0.95rem; font-weight: 800; cursor: pointer; }
+
+/* ── Hunter Highlights — การ์ดฉายาแบบหน้าจบเควสในเกม ── */
+.hhl-overlay {
+  position: fixed; inset: 0; z-index: 9000;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  padding: 20px 16px; overflow-y: auto;
+  background: radial-gradient(ellipse at 50% 45%, rgba(8, 14, 24, 0.9) 0%, rgba(0, 0, 0, 0.95) 75%);
+}
+.hhl-banner {
+  position: relative; width: 100%; max-width: 560px; padding: 7px 0; text-align: center;
+  font-family: Georgia, 'Times New Roman', serif; font-size: 1.15rem; letter-spacing: 0.04em; color: #8fe0ee;
+  text-shadow: 0 0 10px rgba(80, 200, 255, 0.45);
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.75) 22%, rgba(0, 0, 0, 0.75) 78%, transparent);
+}
+.hhl-banner::before, .hhl-banner::after {
+  content: ''; position: absolute; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, transparent, #2340d8 18%, #3c60ff 50%, #2340d8 82%, transparent);
+  box-shadow: 0 0 10px rgba(60, 96, 255, 0.8);
+}
+.hhl-banner::before { top: -2px; }
+.hhl-banner::after { bottom: -2px; }
+.hhl-team { margin: 0; display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 4px 8px; text-align: center; }
+.hhl-team-name { font-size: 0.95rem; font-weight: 800; color: #ffe08a; }
+.hhl-team-desc { font-size: 0.78rem; color: #c8bc9c; }
+
+.hhl-cards { display: grid; gap: 10px; width: 100%; max-width: 760px; justify-content: center; }
+.hhl-n1 { grid-template-columns: minmax(0, 210px); }
+.hhl-n2 { grid-template-columns: repeat(2, minmax(0, 190px)); }
+.hhl-n3 { grid-template-columns: repeat(3, minmax(0, 190px)); }
+.hhl-n4 { grid-template-columns: repeat(2, minmax(0, 190px)); }
+@media (min-width: 760px) {
+  .hhl-n4 { grid-template-columns: repeat(4, minmax(0, 180px)); }
+}
+
+.hhl-card {
+  --hhl-side: #3a4f63;
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+  min-width: 0; min-height: 200px; padding: 12px 10px 18px; text-align: center;
+  border: 2px solid #a8963e;
+  background: radial-gradient(ellipse at 50% 50%, #9c8e3e 0%, #7a6f2c 55%, #5f5622 100%);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55), inset 0 0 0 3px rgba(0, 0, 0, 0.25);
+  /* ขอบล่างหยักแบบธงในเกม */
+  -webkit-mask: linear-gradient(#000 0 0) top / 100% calc(100% - 7px) no-repeat,
+    repeating-linear-gradient(90deg, #000 0 13px, transparent 13px 19px) bottom / 100% 7px no-repeat;
+  mask: linear-gradient(#000 0 0) top / 100% calc(100% - 7px) no-repeat,
+    repeating-linear-gradient(90deg, #000 0 13px, transparent 13px 19px) bottom / 100% 7px no-repeat;
+  animation: hhl-card-in 0.55s cubic-bezier(0.2, 0.8, 0.3, 1.15) both;
+}
+/* แผงข้างซ้าย/ขวาลายเฉียง — การ์ดของตัวเองเป็นสีส้ม */
+.hhl-card::before {
+  content: ''; position: absolute; inset: 5px 5px 12px; pointer-events: none;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.07) 0 2px, transparent 2px 8px) left / 20% 100% no-repeat,
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.07) 0 2px, transparent 2px 8px) right / 20% 100% no-repeat,
+    linear-gradient(var(--hhl-side), var(--hhl-side)) left / 20% 100% no-repeat,
+    linear-gradient(var(--hhl-side), var(--hhl-side)) right / 20% 100% no-repeat;
+}
+.hhl-card > * { position: relative; }
+.hhl-me { --hhl-side: #9a5220; border-color: #e0a040; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55), 0 0 16px rgba(255, 160, 60, 0.35), inset 0 0 0 3px rgba(0, 0, 0, 0.25); }
+
+.hhl-who { display: flex; align-items: center; justify-content: center; gap: 5px; max-width: 100%; }
+.hhl-who-icon { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6)); }
+.hhl-who-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85rem; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); }
+.hhl-orn {
+  width: 78%; height: 10px; flex-shrink: 0;
+  background:
+    radial-gradient(circle, #efe3b4 2.5px, transparent 3px) center / 10px 10px no-repeat,
+    linear-gradient(90deg, transparent, #efe3b4 25%, #efe3b4 75%, transparent) center / 100% 1px no-repeat;
+  opacity: 0.85;
+}
+.hhl-title {
+  padding: 2px 0; font-size: 1rem; font-weight: 800; line-height: 1.3; color: #ffd66a;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95), 0 0 3px rgba(0, 0, 0, 0.7), 0 0 12px rgba(255, 200, 80, 0.45);
+}
+.hhl-title-icon { margin-right: 4px; }
+.hhl-title-img { width: 1.35em; height: 1.35em; margin-right: 4px; vertical-align: -0.3em; object-fit: contain; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8)); }
+.hhl-label { margin-top: 4px; font-size: 0.74rem; font-weight: 700; line-height: 1.3; color: #ff9c84; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95), 0 0 3px rgba(0, 0, 0, 0.8); }
+.hhl-value { display: flex; align-items: baseline; justify-content: center; gap: 6px; font-size: 1.7rem; font-weight: 800; line-height: 1.1; color: #fff; text-shadow: 0 2px 3px rgba(0, 0, 0, 0.7); }
+.hhl-unit { font-size: 0.8rem; font-weight: 700; color: #e8e0c8; }
+
+.hhl-next {
+  width: 100%; max-width: 320px; padding: 11px; border: none; border-radius: 10px;
+  background: #c9a050; color: #1a1206; font-size: 0.95rem; font-weight: 800; cursor: pointer;
+  animation: hhl-card-in 0.4s ease both; animation-delay: 0.9s;
+}
+@keyframes hhl-card-in {
+  from { opacity: 0; transform: translateY(26px) scale(0.9); }
+  to { opacity: 1; transform: none; }
+}
+/* 3 ใบบนจอแคบ — ย่อตัวอักษรให้พอดีช่อง */
+@media (max-width: 440px) {
+  .hhl-n3 { gap: 6px; }
+  .hhl-n3 .hhl-card { min-height: 170px; padding: 10px 6px 16px; }
+  .hhl-n3 .hhl-title { font-size: 0.82rem; }
+  .hhl-n3 .hhl-label { font-size: 0.66rem; }
+  .hhl-n3 .hhl-value { font-size: 1.35rem; }
+  .hhl-n3 .hhl-who-name { font-size: 0.74rem; }
+}
 
 /* ยืนยันใช้ Palico — โชว์การ์ดพร้อมข้อความความสามารถ เผื่อลืมว่าใบนี้ทำอะไร */
 .uc-palico { max-width: 320px; }
