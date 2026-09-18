@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { isFirebaseConnected } from '@/services/firebase'
-import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, cancelDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushSlayerDie, clearSlayerDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, pushHunterToken, pushAllHunterTokens, clearHunterTokens, pushHunterTokenConfirm, clearHunterTokenConfirms, pushAbilityUsed, clearAbilityUsed, pushTokenSwapRequest, clearTokenSwapRequest, pushUseSignal, setRoomHost, pushDialogDice, clearDialogDice, pushDiceResult, clearDiceResults, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds, pushShuffleSignal, pushActivationCount, pushOutcomeSignal, pushManualOutcome, pushRewardDiceModifiers, pushHqVote, clearHqVotes, pushHqCurrent, pushHqDoneList, pushHqReady, clearHqState, pushHunterPalico, pushPalicoOffer, pushPalicoHire, clearPalicoOffer, claimPalicoSlot, releasePalicoSlot, clearPalicoClaims, pushPalicoDraft, pushPalicoDraftPick, clearPalicoDraft, updateHunterProfile, publishLobby, updateLobby, removeLobby, listenLobbies, setRoomPassword, getRoomPassword } from '@/services/roomService'
+import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, cancelDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushSlayerDie, clearSlayerDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, pushHunterToken, pushAllHunterTokens, clearHunterTokens, pushHunterTokenConfirm, clearHunterTokenConfirms, pushAbilityUsed, clearAbilityUsed, pushTokenSwapRequest, clearTokenSwapRequest, pushUseSignal, pushHuntLogEntry, claimHuntLogUndo, clearHuntLog, setRoomHost, pushDialogDice, clearDialogDice, pushDiceResult, clearDiceResults, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds, pushShuffleSignal, pushActivationCount, pushOutcomeSignal, pushManualOutcome, pushRewardDiceModifiers, pushHqVote, clearHqVotes, pushHqCurrent, pushHqDoneList, pushHqReady, clearHqState, pushHunterPalico, pushPalicoOffer, pushPalicoHire, clearPalicoOffer, claimPalicoSlot, releasePalicoSlot, clearPalicoClaims, pushPalicoDraft, pushPalicoDraftPick, clearPalicoDraft, updateHunterProfile, publishLobby, updateLobby, removeLobby, listenLobbies, setRoomPassword, getRoomPassword } from '@/services/roomService'
 
 export const useRoomStore = defineStore('room', () => {
   const roomCode = ref(null)
@@ -65,6 +65,13 @@ export const useRoomStore = defineStore('room', () => {
   const myAbilityUsed = computed(() => abilityUsed.value[myHunterId.value] ?? {})
   const tokenSwapRequest = computed(() => roomData.value?.tokenSwapRequest ?? null)
   const useSignal = computed(() => roomData.value?.useSignal ?? null)
+  // บันทึกการล่า — Firebase เก็บเป็น object ตาม push id ซึ่งเรียงตามเวลาอยู่แล้ว (ปรับตามนาฬิกา server)
+  // เรียงด้วย id ไม่ใช่ at เพราะ at มาจากนาฬิกาเครื่องแต่ละคนที่อาจเพี้ยนกัน
+  const huntLog = computed(() =>
+    Object.entries(roomData.value?.huntLog ?? {})
+      .map(([id, e]) => ({ id, ...e }))
+      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)),
+  )
   const myHunterTokenConfirmed = computed(() => !!hunterTokenConfirms.value[myHunterId.value])
   // ทุกคนต้องทั้งเลือกและกดยืนยันครบ ถึงจะถือว่าจบรอบ
   const allHunterTokensConfirmed = computed(() =>
@@ -596,6 +603,19 @@ export const useRoomStore = defineStore('room', () => {
     return clearAbilityUsed(roomCode.value)
   }
 
+  const addHuntLog = (entry) => {
+    if (!roomCode.value) return
+    return pushHuntLogEntry(roomCode.value, entry)
+  }
+  const claimUndo = (entryId, undoneBy) => {
+    if (!roomCode.value) return Promise.resolve(false)
+    return claimHuntLogUndo(roomCode.value, entryId, undoneBy)
+  }
+  const clearHuntLogAll = () => {
+    if (!roomCode.value) return
+    return clearHuntLog(roomCode.value)
+  }
+
   const requestTokenSwap = (req) => {
     if (!roomCode.value) return
     return pushTokenSwapRequest(roomCode.value, req)
@@ -739,7 +759,7 @@ export const useRoomStore = defineStore('room', () => {
     dialogVotes, votesByAction, myVote, syncedDialogId,
     proceedVotes, allProceeded, myProceedVoted,
     syncedPendingActionId,
-    huntState, behaviorDeckState, hostConnected, partyDice, slayerDice, partyRewards, tradePool, myDialogCounts, dialogDice, hunterTokens, myHunterToken, hunterTokenConfirms, myHunterTokenConfirmed, allHunterTokensConfirmed, hunterTokensHaveDuplicate, abilityUsed, myAbilityUsed, tokenSwapRequest, useSignal, lobbies, lobbyList, lobbyPosted,
+    huntState, behaviorDeckState, hostConnected, partyDice, slayerDice, partyRewards, tradePool, myDialogCounts, dialogDice, hunterTokens, myHunterToken, hunterTokenConfirms, myHunterTokenConfirmed, allHunterTokensConfirmed, hunterTokensHaveDuplicate, abilityUsed, myAbilityUsed, tokenSwapRequest, useSignal, huntLog, lobbies, lobbyList, lobbyPosted,
     trackTokenState, timeCardState, tcTurnEnds,
     rerollRequest, myRerollApproval, rerollAllApproved,
     syncedPhase,
@@ -771,7 +791,7 @@ export const useRoomStore = defineStore('room', () => {
     clearSlayerDiceAll: () => (roomCode.value ? clearSlayerDice(roomCode.value) : undefined),
     pushMyRewards, clearAllPartyRewards,
     addToTradePool, removeFromTradePool, clearTrade,
-    setMyDialogCounts, clearDialogCounts, setMyHunterToken, setAllHunterTokens, clearHunterTokensAll, setMyHunterTokenConfirm, clearHunterTokenConfirmsAll, markAbilityUsed, clearAbilityUsedAll, requestTokenSwap, clearTokenSwapRequestAll,
+    setMyDialogCounts, clearDialogCounts, setMyHunterToken, setAllHunterTokens, clearHunterTokensAll, setMyHunterTokenConfirm, clearHunterTokenConfirmsAll, markAbilityUsed, clearAbilityUsedAll, addHuntLog, claimUndo, clearHuntLogAll, requestTokenSwap, clearTokenSwapRequestAll,
     triggerUseSignal: (payload) => (roomCode.value ? pushUseSignal(roomCode.value, payload) : undefined), setDialogDice, clearDialogDiceAll,
     diceResults, setMyDiceResult, clearDiceResultsAll,
     startLobbyBrowse, stopLobbyBrowse, postLobby, syncLobbyMembers, closeLobby, verifyLobbyPassword, syncMyProfile,

@@ -420,6 +420,23 @@ export const clearTokenSwapRequest = (code) => remove(ref(db, `rooms/${code}/tok
 export const pushUseSignal = (code, payload) =>
   set(ref(db, `rooms/${code}/useSignal`), { at: Date.now(), ...payload })
 
+// ── บันทึกการล่า — ใครกดอะไรไปบ้าง + ย้อนได้ ─────────────
+// push ต่อท้ายทีละรายการ ไม่เขียนทับทั้งก้อน สองคนกดพร้อมกันก็ไม่หายสักรายการ
+export const pushHuntLogEntry = (code, entry) =>
+  push(ref(db, `rooms/${code}/huntLog`), { at: Date.now(), ...entry })
+
+// จองสิทธิ์ย้อนรายการนี้ — transaction ให้มีคนเดียวที่ย้อนสำเร็จ ถ้าสองคนกดพร้อมกันจะไม่ย้อนซ้ำสองรอบ
+// คืน true = เราได้สิทธิ์ ต้องเป็นคนใส่ผลย้อนเอง
+export const claimHuntLogUndo = async (code, entryId, undoneBy) => {
+  const res = await runTransaction(ref(db, `rooms/${code}/huntLog/${entryId}`), (cur) => {
+    if (!cur || cur.undone) return undefined
+    return { ...cur, undone: true, undoneBy }
+  })
+  return res.committed
+}
+
+export const clearHuntLog = (code) => remove(ref(db, `rooms/${code}/huntLog`))
+
 // ── Dialog Dice (ผลทอยแบบ "ทอยครั้งเดียว" ใช้ร่วมกันทั้งกลุ่ม) ──
 export const pushDialogDice = (code, key, value) =>
   set(ref(db, `rooms/${code}/dialogDice/${key}`), value)

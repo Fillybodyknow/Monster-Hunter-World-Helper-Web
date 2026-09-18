@@ -1779,6 +1779,8 @@ const confirmOutcome = () => {
   const type = pendingOutcome.value
   pendingOutcome.value = null
   questOutcome.value = type
+  // สรุปการล่าขึ้นเฉพาะตอนชนะ — ถ่ายภาพ state ไว้ก่อน onComplete / goToRewardPhase ล้างทิ้ง
+  huntRecap.value = type === 'complete' ? _buildHuntRecap() : null
   if (room.inRoom) room.clearOutcome?.()
   resultMonsterName.value = selectedMonster.value?.monster_name ?? ''
   if (type === 'complete') {
@@ -1810,6 +1812,8 @@ const _doDismissResult = () => {
     resultAnimType.value = null
     resultMonsterName.value = ''
     isDismissing.value = false
+    // สรุปการล่าขึ้นทับหน้าถัดไป ปิดแล้วเล่นต่อได้เลย
+    if (huntRecap.value) showHuntRecap.value = true
     if (pendingRewardAfterAnim.value) {
       pendingRewardAfterAnim.value = false
       goToRewardPhase()
@@ -3496,6 +3500,9 @@ const endTurn = () => {
   if (!currentBehaviorCard.value) return
   if (activationLimit.value > 0 && monsterTurnReady.value) return
 
+  // จุดแบ่งเทิร์นในบันทึก — สรุปการล่าใช้ยกดาเมจที่กดมาก่อนหน้านี้ให้เจ้าของเทิร์น
+  _addHuntLog({ kind: 'turnEnd' })
+
   if (recoveryPending.value) {
     if (huntingHp.value >= recoveryHpSnapshot.value) adjustHpWithFlash(5)
     recoveryPending.value = false
@@ -3806,6 +3813,8 @@ const confirmUse = () => {
     left: kind === 'potion' ? potionCount.value - 1 : faintCount.value + 1,
   }
 
+  // จดตอนกด ไม่ใช่ตอน Host ทำจริง — บันทึกต้องบอกว่า "ใคร" กด ซึ่ง Host ไม่รู้
+  _addHuntLog({ kind })
   if (!room.inRoom) {
     _applyUse(kind)
     _showUseAnim(sig)
@@ -3856,6 +3865,7 @@ const confirmPalicoUse = () => {
     palicoId: myPalico.value.id,
     left: palicoUsesLeft.value - 1,
   }
+  _addHuntLog({ kind: 'palico' })
   if (!room.inRoom) {
     palicoUsesSolo.value += 1
     _showUseAnim(sig)
@@ -3874,6 +3884,9 @@ const initHuntingData = () => {
   faintCount.value = 0
   // สิทธิ์ใช้ Palico คืนทุกเควส (ใน Co-op Host ล้าง abilityUsed ให้ด้านล่าง)
   palicoUsesSolo.value = 0
+  // บันทึกการล่าเริ่มใหม่ทุกเควส (Co-op Host ล้างของห้อง) — เวลาเริ่ม sync ไปกับ huntState
+  _clearHuntLog()
+  huntStartedAt.value = Date.now()
   // potionCount ไม่ reset เพราะยาที่ได้จาก Dialog Phase ควรพกมาด้วย
   const parts = {}
   Object.keys(activeParts.value).forEach((pos) => {
@@ -4018,11 +4031,19 @@ const _pushHuntState = () => {
     faintCount: faintCount.value,
     potionCount: potionCount.value,
     triggeringElement: triggeringElement.value ?? '_none',
+    startedAt: huntStartedAt.value ?? null,
   })
 }
 
-watch([() => room.huntState, () => room.joinSignal], ([state]) => {
+// ห้องถูกแทนทั้งก้อนทุกครั้งที่ node ไหนเปลี่ยน (โหวต, huntLog, useSignal ...) watcher นี้เลยถูกปลุกตลอด
+// ถ้าไม่กรอง จะตั้ง _remoteSyncing ทั้งที่ huntState ไม่ได้เปลี่ยน แล้วการกดที่ตามมาใน 50ms ไม่ถูกส่งขึ้นห้อง
+// (เจอตอนทดสอบกับ Firebase จริง: ย้อนแล้วเพื่อนไม่เห็น, Guest ใช้ยาแต่ Host ไม่หัก)
+let _lastHuntStateJson = null
+watch([() => room.huntState, () => room.joinSignal], ([state, join], old) => {
   if (!state || !room.inRoom) return
+  const json = JSON.stringify(state)
+  if (json === _lastHuntStateJson && join === old?.[1]) return
+  _lastHuntStateJson = json
   _remoteSyncing = true
   if (state.huntingHp !== undefined) {
     const diff = state.huntingHp - huntingHp.value
@@ -4048,6 +4069,7 @@ watch([() => room.huntState, () => room.joinSignal], ([state]) => {
   elementMarks.value = state.elementMarks ?? {}
   if (state.faintCount !== undefined) faintCount.value = state.faintCount
   if (state.potionCount !== undefined) potionCount.value = state.potionCount
+  if (state.startedAt) huntStartedAt.value = state.startedAt
 
   // triggeringElement: sync animation to all players
   if (state.triggeringElement !== undefined) {
@@ -4101,6 +4123,251 @@ const adjustPartDamage = (position, delta) => {
   _pushHuntState()
 }
 
+// ── บันทึกการล่า + ย้อน ─────────────────────────────────
+// จดเฉพาะที่ "คนกดเอง" — ผลอัตโนมัติจาก Time Card / การ์ดท่าไม่จด (ย้อนแล้วจะผิดกติกา)
+// ย้อนได้ทีละรายการจากล่าสุดลงไป ใช้ "ค่าต่าง" ไม่ใช่ snapshot เพราะหลายคนแก้ HP พร้อมกันได้
+// ถ้าคืนเป็น snapshot จะทับสิ่งที่คนอื่นเพิ่งกดไปหลังจากนั้น
+// Co-op เก็บที่ rooms/<code>/huntLog (ทุกคนเห็นชุดเดียวกัน) เล่นคนเดียวเก็บในเครื่อง
+const huntLogSolo = ref([])
+let _soloLogSeq = 0
+const huntLog = computed(() => (room.inRoom ? room.huntLog : huntLogSolo.value))
+const UNDOABLE_LOG = new Set(['hp', 'part', 'status', 'statusRemove', 'element', 'potion'])
+
+const _logWho = () => {
+  const me = room.inRoom ? room.myHunter : hunter.value
+  return { whoId: me?.hunter_id ?? null, whoName: me?.hunter_name ?? 'Hunter', whoClass: me?.hunter_class_id ?? null }
+}
+
+const _addHuntLog = (entry) => {
+  const full = { ...entry, ..._logWho() }
+  if (room.inRoom) room.addHuntLog?.(full)
+  else huntLogSolo.value = [...huntLogSolo.value, { id: `s${++_soloLogSeq}`, at: Date.now(), ...full }]
+}
+
+const _clearHuntLog = () => {
+  huntLogSolo.value = []
+  if (room.inRoom && room.isHost) room.clearHuntLogAll?.()
+}
+
+// ปุ่มย้อนมีที่เดียว — รายการล่าสุดที่ยังย้อนได้ ย้อนแล้วรายการก่อนหน้าจะกลายเป็นตัวถัดไป
+const undoableLogId = computed(() => {
+  for (let i = huntLog.value.length - 1; i >= 0; i--) {
+    const e = huntLog.value[i]
+    if (!e.undone && UNDOABLE_LOG.has(e.kind)) return e.id
+  }
+  return null
+})
+
+const logHp = (delta) => {
+  const prev = huntingHp.value
+  adjustHp(delta)
+  const diff = huntingHp.value - prev
+  if (diff) _addHuntLog({ kind: 'hp', delta: diff })
+}
+
+const logPart = (position, delta) => {
+  const prev = partDamage.value[position] ?? 0
+  adjustPartDamage(position, delta)
+  const diff = (partDamage.value[position] ?? 0) - prev
+  if (diff) _addHuntLog({ kind: 'part', pos: position, delta: diff })
+}
+
+const logMarkStatus = (statusId) => {
+  const prevMark = statusMarks.value[statusId] ?? 0
+  const prevApplied = appliedStatuses.value.includes(statusId)
+  markStatus(statusId)
+  _addHuntLog({ kind: 'status', sid: statusId, prevMark, prevApplied, applied: appliedStatuses.value.includes(statusId) && !prevApplied })
+}
+
+const logRemoveStatus = (statusId) => {
+  const prevMark = statusMarks.value[statusId] ?? 0
+  removeStatus(statusId)
+  _addHuntLog({ kind: 'statusRemove', sid: statusId, prevMark })
+}
+
+const logMarkElement = (elementId) => {
+  const prevMark = elementMarks.value[elementId] ?? 0
+  const res = monsterHuntingData.value?.element_resistance?.find((e) => e.element_id === elementId)
+  if (!res || res.immune || res.level <= 0) return
+  markElement(elementId)
+  _addHuntLog({ kind: 'element', eid: elementId, prevMark, triggered: prevMark + 1 >= res.level })
+}
+
+// ทำผลตรงข้ามของรายการนั้นกับ state ปัจจุบัน
+const _applyInverse = (e) => {
+  if (e.kind === 'hp') {
+    const max = monsterHuntingData.value?.health ?? 999
+    huntingHp.value = Math.max(0, Math.min(max, huntingHp.value - e.delta))
+  } else if (e.kind === 'part') {
+    const max = activeParts.value[e.pos]?.part_break_threshold ?? 0
+    const cur = partDamage.value[e.pos] ?? 0
+    partDamage.value = { ...partDamage.value, [e.pos]: Math.max(0, Math.min(max, cur - e.delta)) }
+  } else if (e.kind === 'status') {
+    if (!e.prevApplied) appliedStatuses.value = appliedStatuses.value.filter((id) => id !== e.sid)
+    statusMarks.value = { ...statusMarks.value, [e.sid]: e.prevMark ?? 0 }
+  } else if (e.kind === 'statusRemove') {
+    if (!appliedStatuses.value.includes(e.sid)) appliedStatuses.value = [...appliedStatuses.value, e.sid]
+    statusMarks.value = { ...statusMarks.value, [e.sid]: e.prevMark ?? 0 }
+  } else if (e.kind === 'element') {
+    elementMarks.value = { ...elementMarks.value, [e.eid]: e.prevMark ?? 0 }
+  } else if (e.kind === 'potion') {
+    potionCount.value = potionCount.value + 1
+  }
+  _pushHuntState()
+}
+
+const undoLogEntry = async (id) => {
+  const e = huntLog.value.find((x) => x.id === id)
+  if (!e || e.undone || id !== undoableLogId.value) return
+  _sfxMenu()
+  const by = _logWho().whoName
+  if (!room.inRoom) {
+    huntLogSolo.value = huntLogSolo.value.map((x) => (x.id === id ? { ...x, undone: true, undoneBy: by } : x))
+    _applyInverse(e)
+    return
+  }
+  // สองคนกดย้อนพร้อมกัน — transaction ให้ผ่านแค่คนเดียว ผลย้อนจะไม่ถูกทำซ้ำ
+  if (await room.claimUndo?.(id, by)) _applyInverse(e)
+}
+
+const showHuntLog = ref(false)
+
+const _elemName = (id) => getElemental(id)?.elemental ?? 'ธาตุ'
+const _statusName = (id) => getStatusEffect(id)?.effect_name ?? 'สถานะ'
+const _partName = (pos) => getPartMeta(activeParts.value[pos]?.part_id)?.part ?? pos
+
+const logText = (e) => {
+  switch (e.kind) {
+    case 'hp': return e.delta < 0 ? `ตี ${-e.delta} ดาเมจ` : `เพิ่ม HP มอนสเตอร์ ${e.delta}`
+    case 'part': return `${_partName(e.pos)} ${e.delta > 0 ? '+' : ''}${e.delta}`
+    case 'status': return e.applied ? `${_statusName(e.sid)} ติดแล้ว!` : `ลง Mark ${_statusName(e.sid)}`
+    case 'statusRemove': return `เอา ${_statusName(e.sid)} ออก`
+    case 'element': return e.triggered ? `${_elemName(e.eid)} ทำงาน!` : `ลง Mark ${_elemName(e.eid)}`
+    case 'potion': return 'ใช้ยา'
+    case 'faint': return 'ล้ม'
+    case 'palico': return 'ใช้ความสามารถ Palico'
+    case 'turnEnd': return 'จบเทิร์น'
+    default: return ''
+  }
+}
+
+const logTimeText = (at) => {
+  if (!at) return ''
+  const d = new Date(at)
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+const huntLogRecent = computed(() => huntLog.value.slice(-10).reverse())
+
+// ── สรุปการล่า ──────────────────────────────────────────
+// ถ่ายภาพ state ไว้ตอนประกาศผล ก่อน onComplete / onFail ล้างทุกอย่างทิ้ง
+const huntStartedAt = ref(null)
+const huntRecap = ref(null)
+const showHuntRecap = ref(false)
+
+const _buildHuntRecap = () => {
+  const data = monsterHuntingData.value
+  if (!data || !selectedQuest.value) return null
+  const live = huntLog.value.filter((e) => !e.undone)
+  // ดาเมจนับเป็นของ "เจ้าของเทิร์น" ไม่ใช่คนกดปุ่ม — เล่นจริงมีกดแทนกันบ่อย
+  // สะสมดาเมจสุทธิ (+HP ที่กดแก้ก็หักออก) ไว้ในกอง พอใครกดจบเทิร์นก็ยกกองนั้นให้คนนั้น
+  // จบเทิร์นกดได้จากเครื่องตัวเองเท่านั้น เลยเชื่อได้ว่าเป็นเทิร์นของคนนั้นจริง
+  const byHunter = {}
+  const credit = (who, amount) => {
+    if (amount <= 0) return
+    const key = who.whoId ?? who.whoName
+    byHunter[key] ??= { name: who.whoName, classId: who.whoClass, dmg: 0 }
+    byHunter[key].dmg += amount
+  }
+  let loggedNet = 0
+  let pool = []
+  for (const e of live) {
+    if (e.kind === 'hp') {
+      loggedNet += -e.delta
+      pool.push(e)
+    } else if (e.kind === 'turnEnd') {
+      credit(e, pool.reduce((n, x) => n - x.delta, 0))
+      pool = []
+    }
+  }
+  // ที่ค้างหลังจบเทิร์นสุดท้าย (เช่นตีตายแล้วโหวตจบเลยไม่มีใครกดจบเทิร์น) — ยกให้คนที่กดแทน
+  const byPresser = {}
+  for (const e of pool) {
+    const key = e.whoId ?? e.whoName
+    byPresser[key] ??= { who: e, net: 0 }
+    byPresser[key].net -= e.delta
+  }
+  Object.values(byPresser).forEach(({ who, net }) => credit(who, net))
+  const dealt = Math.max(0, data.health - huntingHp.value)
+  const damage = Object.values(byHunter).sort((a, b) => b.dmg - a.dmg)
+  // ส่วนที่ไม่ได้กดเอง: ดาเมจจากเต๋าช่วง dialog, Time Card ฯลฯ
+  const other = dealt - loggedNet
+  const hrBefore = hunter.value ? pointsOf(hunter.value) : 0
+  const gain = questPoints(selectedQuest.value.difficulty_level, true)
+  return {
+    monsterName: selectedMonster.value?.monster_name ?? '',
+    monsterImg: selectedMonster.value?.thumbnail ?? null,
+    difficulty: selectedQuest.value.difficulty_level,
+    durationMs: huntStartedAt.value ? Date.now() - huntStartedAt.value : null,
+    // สรุปขึ้นเฉพาะตอนชนะ HP มอนเป็น 0 เสมอ — โชว์จำนวนเทิร์นที่ Hunter เล่นแทน (นับจากปุ่มจบเทิร์น)
+    turns: live.filter((e) => e.kind === 'turnEnd').length,
+    maxHp: data.health,
+    broken: Object.keys(activeParts.value).filter((pos) => brokenParts.value[pos]).map(_partName),
+    partTotal: Object.keys(activeParts.value).length,
+    tcUsed: timeCardDiscard.value.length,
+    tcLeft: timeCardDeck.value.length,
+    potions: live.filter((e) => e.kind === 'potion').length,
+    faints: faintCount.value,
+    palico: live.filter((e) => e.kind === 'palico').length,
+    damage,
+    otherDamage: other > 0 ? other : 0,
+    hrGain: gain,
+    hrBefore: hunter.value ? rankOf({ ...hunter.value, hr_points: hrBefore }) : null,
+    hrAfter: hunter.value ? rankOf({ ...hunter.value, hr_points: hrBefore + gain }) : null,
+  }
+}
+
+const recapDurationText = computed(() => {
+  const ms = huntRecap.value?.durationMs
+  if (!ms) return '—'
+  const min = Math.round(ms / 60000)
+  if (min < 1) return '< 1 นาที'
+  if (min < 60) return `${min} นาที`
+  return `${Math.floor(min / 60)} ชม. ${min % 60} นาที`
+})
+
+// ── จอไม่ดับระหว่างเควส ────────────────────────────────
+// วางมือถือไว้ข้างกระดาน จอดับกลางล่าแล้วต้องปลดล็อกใหม่ทุกครั้ง น่ารำคาญ
+// ระบบคืน lock เองเมื่อสลับแอป/พับจอ ต้องขอใหม่ตอนกลับมา (visibilitychange)
+const WAKE_LOCK_PHASES = new Set(['dialog', 'handlerStart', 'hunting', 'huntingPanel', 'reward', 'hq', 'hqVote', 'palicoDraft'])
+let _wakeLock = null
+const _wantWakeLock = () => WAKE_LOCK_PHASES.has(phase.value) && document.visibilityState === 'visible'
+
+const _syncWakeLock = async () => {
+  if (!('wakeLock' in navigator)) return
+  if (_wantWakeLock()) {
+    if (_wakeLock && !_wakeLock.released) return
+    try {
+      _wakeLock = await navigator.wakeLock.request('screen')
+    } catch {
+      // แบตต่ำ / เบราว์เซอร์ไม่ให้ — จอดับตามปกติ ไม่ต้องเตือน
+      _wakeLock = null
+    }
+  } else if (_wakeLock) {
+    const lock = _wakeLock
+    _wakeLock = null
+    lock.release().catch(() => {})
+  }
+}
+
+watch(phase, _syncWakeLock)
+document.addEventListener('visibilitychange', _syncWakeLock)
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', _syncWakeLock)
+  _wakeLock?.release().catch(() => {})
+  _wakeLock = null
+})
+
 
 const _applyCurrentHuntState = () => {
   const state = room.huntState
@@ -4117,6 +4384,7 @@ const _applyCurrentHuntState = () => {
   elementMarks.value = state.elementMarks ?? {}
   if (state.faintCount !== undefined) faintCount.value = state.faintCount
   if (state.potionCount !== undefined) potionCount.value = state.potionCount
+  if (state.startedAt) huntStartedAt.value = state.startedAt
 }
 
 const goToHuntingPanel = () => {
@@ -7128,7 +7396,7 @@ onDeactivated(() => {
                     v-for="sid in appliedStatuses"
                     :key="sid"
                     class="msc-applied-badge"
-                    @click="removeStatus(sid)"
+                    @click="logRemoveStatus(sid)"
                     title="กดเพื่อเอาออก"
                   >
                     <img
@@ -7169,7 +7437,7 @@ onDeactivated(() => {
                   :key="er.element_id"
                   class="resist-item"
                   :class="{ 'resist-item-active': !er.immune && er.level > 0 }"
-                  @click="markElement(er.element_id)"
+                  @click="logMarkElement(er.element_id)"
                 >
                   <div class="resist-icon-wrap">
                     <img
@@ -7206,7 +7474,7 @@ onDeactivated(() => {
                     'resist-item-active': !sr.immune && sr.level > 0,
                     'resist-item-applied': appliedStatuses.includes(sr.status_id),
                   }"
-                  @click="markStatus(sr.status_id)"
+                  @click="logMarkStatus(sr.status_id)"
                 >
                   <div class="resist-icon-wrap">
                     <img
@@ -7286,13 +7554,13 @@ onDeactivated(() => {
           ></div>
         </div>
         <div data-tour="hunt-hp" class="hp-controls">
-          <button class="hp-btn hp-minus" @click="adjustHp(-10)">−10</button>
-          <button class="hp-btn hp-minus" @click="adjustHp(-5)">−5</button>
-          <button class="hp-btn hp-minus" @click="adjustHp(-1)">−1</button>
+          <button class="hp-btn hp-minus" @click="logHp(-10)">−10</button>
+          <button class="hp-btn hp-minus" @click="logHp(-5)">−5</button>
+          <button class="hp-btn hp-minus" @click="logHp(-1)">−1</button>
           <div class="hp-ctrl-sep"></div>
-          <button class="hp-btn hp-plus" @click="adjustHp(1)">+1</button>
-          <button class="hp-btn hp-plus" @click="adjustHp(5)">+5</button>
-          <button class="hp-btn hp-plus" @click="adjustHp(10)">+10</button>
+          <button class="hp-btn hp-plus" @click="logHp(1)">+1</button>
+          <button class="hp-btn hp-plus" @click="logHp(5)">+5</button>
+          <button class="hp-btn hp-plus" @click="logHp(10)">+10</button>
         </div>
       </div>
 
@@ -7404,16 +7672,16 @@ onDeactivated(() => {
                     ></div>
                   </div>
                   <div class="part-break-controls">
-                    <button class="pb-btn pb-minus" @click="adjustPartDamage(position, -5)">
+                    <button class="pb-btn pb-minus" @click="logPart(position, -5)">
                       −5
                     </button>
-                    <button class="pb-btn pb-minus" @click="adjustPartDamage(position, -1)">
+                    <button class="pb-btn pb-minus" @click="logPart(position, -1)">
                       −1
                     </button>
-                    <button class="pb-btn pb-plus" @click="adjustPartDamage(position, 1)">
+                    <button class="pb-btn pb-plus" @click="logPart(position, 1)">
                       +1
                     </button>
-                    <button class="pb-btn pb-plus" @click="adjustPartDamage(position, 5)">
+                    <button class="pb-btn pb-plus" @click="logPart(position, 5)">
                       +5
                     </button>
                   </div>
@@ -7474,6 +7742,36 @@ onDeactivated(() => {
           >🗑 ทิ้ง</button>
         </div>
 
+      </div>
+
+      <!-- Hunt Log -->
+      <div data-tour="hunt-log" class="hlog-section">
+        <div class="hlog-toggle" role="button" @click="showHuntLog = !showHuntLog">
+          <span>📜 บันทึกการล่า</span>
+          <span class="hlog-count">{{ huntLog.length }}</span>
+          <button
+            v-if="undoableLogId && !showHuntLog"
+            class="hlog-undo hlog-undo-quick"
+            @click.stop="undoLogEntry(undoableLogId)"
+          >⟲ ย้อน</button>
+          <span class="hlog-chev">{{ showHuntLog ? '▲' : '▼' }}</span>
+        </div>
+        <div v-if="showHuntLog" class="hlog-list">
+          <p v-if="!huntLog.length" class="hlog-empty">ยังไม่มีอะไร — กดปุ่ม HP, ชิ้นส่วน, สถานะ แล้วจะจดไว้ที่นี่ กดผิดก็ย้อนได้</p>
+          <div
+            v-for="e in huntLogRecent"
+            :key="e.id"
+            class="hlog-row"
+            :class="{ 'hlog-undone': e.undone, 'hlog-dmg': e.kind === 'hp' && e.delta < 0, 'hlog-turn': e.kind === 'turnEnd' }"
+          >
+            <img v-if="getHunterClass(e.whoClass)?.thumbnail" :src="getImg(getHunterClass(e.whoClass).thumbnail)" class="hlog-icon" alt="" />
+            <span class="hlog-who">{{ e.whoName }}</span>
+            <span class="hlog-text">{{ logText(e) }}</span>
+            <span v-if="e.undone" class="hlog-undone-by">ย้อนโดย {{ e.undoneBy }}</span>
+            <button v-else-if="e.id === undoableLogId" class="hlog-undo" @click="undoLogEntry(e.id)">⟲ ย้อน</button>
+            <span v-else class="hlog-time">{{ logTimeText(e.at) }}</span>
+          </div>
+        </div>
       </div>
 
       <!-- Map Modal -->
@@ -9916,6 +10214,61 @@ onDeactivated(() => {
 
         <p v-if="resultAnimType === 'fail'" class="ra-tap-hint">Tap anywhere to continue</p>
       </div>
+    </teleport>
+
+    <!-- ═══════════ HUNT RECAP ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="showHuntRecap && huntRecap" class="hrc-overlay" @click.self="showHuntRecap = false">
+          <div class="hrc-card">
+            <div class="hrc-head">
+              <img v-if="huntRecap.monsterImg" :src="getImg(huntRecap.monsterImg)" class="hrc-monster" alt="" />
+              <div class="hrc-head-text">
+                <span class="hrc-result">ล่าสำเร็จ</span>
+                <span class="hrc-name">{{ huntRecap.monsterName }}</span>
+                <span class="hrc-stars">
+                  <span v-for="n in huntRecap.difficulty" :key="n" :style="{ color: starColor(huntRecap.difficulty) }">★</span>
+                </span>
+              </div>
+            </div>
+
+            <div class="hrc-grid">
+              <div class="hrc-stat"><span class="hrc-k">⏱ เวลาล่า</span><span class="hrc-v">{{ recapDurationText }}</span></div>
+              <div class="hrc-stat"><span class="hrc-k">🔄 เทิร์น Hunter</span><span class="hrc-v">{{ huntRecap.turns }}</span></div>
+              <div class="hrc-stat"><span class="hrc-k">🃏 Time Card</span><span class="hrc-v">ใช้ {{ huntRecap.tcUsed }} · เหลือ {{ huntRecap.tcLeft }}</span></div>
+              <div class="hrc-stat"><span class="hrc-k">🗡 ชิ้นส่วนแตก</span><span class="hrc-v">{{ huntRecap.broken.length }} / {{ huntRecap.partTotal }}</span></div>
+              <div class="hrc-stat"><span class="hrc-k">🧪 ยาที่ใช้</span><span class="hrc-v">{{ huntRecap.potions }}</span></div>
+              <div class="hrc-stat"><span class="hrc-k">💫 ล้ม</span><span class="hrc-v">{{ huntRecap.faints }} / 3</span></div>
+            </div>
+            <p v-if="huntRecap.broken.length" class="hrc-broken">แตก: {{ huntRecap.broken.join(', ') }}</p>
+            <p v-if="huntRecap.palico" class="hrc-broken">🐾 ใช้ Palico {{ huntRecap.palico }} ครั้ง</p>
+
+            <div v-if="huntRecap.damage.length || huntRecap.otherDamage" class="hrc-dmg">
+              <p class="hrc-dmg-title">ดาเมจที่ทำ</p>
+              <div v-for="d in huntRecap.damage" :key="d.name" class="hrc-dmg-row">
+                <img v-if="getHunterClass(d.classId)?.thumbnail" :src="getImg(getHunterClass(d.classId).thumbnail)" class="hrc-dmg-icon" alt="" />
+                <span class="hrc-dmg-name">{{ d.name }}</span>
+                <span class="hrc-dmg-bar"><span :style="{ width: Math.min(100, (d.dmg / huntRecap.maxHp) * 100) + '%' }"></span></span>
+                <span class="hrc-dmg-num">{{ d.dmg }}</span>
+              </div>
+              <div v-if="huntRecap.otherDamage" class="hrc-dmg-row hrc-dmg-other">
+                <span class="hrc-dmg-icon">🎴</span>
+                <span class="hrc-dmg-name">การ์ด / เต๋า</span>
+                <span class="hrc-dmg-bar"><span :style="{ width: Math.min(100, (huntRecap.otherDamage / huntRecap.maxHp) * 100) + '%' }"></span></span>
+                <span class="hrc-dmg-num">{{ huntRecap.otherDamage }}</span>
+              </div>
+            </div>
+
+            <div v-if="huntRecap.hrAfter != null" class="hrc-hr">
+              <span>🏅 +{{ huntRecap.hrGain }} แต้ม HR</span>
+              <span v-if="huntRecap.hrAfter > huntRecap.hrBefore" class="hrc-hr-up">HR{{ huntRecap.hrBefore }} → HR{{ huntRecap.hrAfter }}</span>
+              <span v-else>HR{{ huntRecap.hrAfter }}</span>
+            </div>
+
+            <button class="hrc-close" @click="showHuntRecap = false">ปิด</button>
+          </div>
+        </div>
+      </Transition>
     </teleport>
 
     <!-- ═══════════ PACK DRAWER ═══════════ -->
@@ -14241,6 +14594,54 @@ onDeactivated(() => {
 /* ปุ่ม Palico — ใช้รูปการ์ดของตัวเอง ครอบให้เป็นหน้า Palico ไม่ใช่ทั้งใบ */
 .use-btn-palico .use-btn-img.use-btn-palico-img { width: 26px; height: 26px; object-fit: cover; object-position: center 42%; border-radius: 50%; border: 1px solid rgba(255, 170, 80, 0.6); }
 .use-btn-palico .use-btn-count { color: #ffb070; }
+/* ── Hunt Log ── */
+.hlog-section { margin: 10px 0 4px; border: 1px solid #3a2a14; border-radius: 10px; background: rgba(20, 14, 6, 0.7); overflow: hidden; }
+.hlog-toggle { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 12px; cursor: pointer; color: #e8c98a; font-weight: 700; font-size: 0.9rem; user-select: none; }
+.hlog-count { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: #3a2a14; color: #c9a86a; font-size: 0.72rem; text-align: center; }
+.hlog-chev { margin-left: auto; color: #8a7050; font-size: 0.7rem; }
+.hlog-list { display: flex; flex-direction: column; gap: 2px; padding: 0 8px 8px; }
+.hlog-empty { margin: 4px 4px 2px; color: #8a7a60; font-size: 0.78rem; line-height: 1.45; }
+.hlog-row { display: flex; align-items: center; gap: 7px; min-height: 34px; padding: 4px 6px; border-radius: 7px; background: rgba(255, 255, 255, 0.03); font-size: 0.8rem; color: #d8c8a8; }
+.hlog-row.hlog-dmg .hlog-text { color: #ff9a80; }
+.hlog-row.hlog-undone { opacity: 0.45; }
+.hlog-row.hlog-turn { background: rgba(201, 160, 80, 0.1); border-top: 1px dashed rgba(201, 160, 80, 0.35); }
+.hlog-row.hlog-turn .hlog-text { color: #e8c98a; font-weight: 700; }
+.hlog-row.hlog-undone .hlog-text { text-decoration: line-through; }
+.hlog-icon { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; }
+.hlog-who { flex-shrink: 0; max-width: 34%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #b89a66; font-weight: 600; }
+.hlog-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hlog-time, .hlog-undone-by { flex-shrink: 0; color: #7a6a50; font-size: 0.7rem; }
+.hlog-undo { flex-shrink: 0; padding: 5px 10px; border: 1px solid #c9a050; border-radius: 7px; background: rgba(201, 160, 80, 0.15); color: #f0d28a; font-size: 0.75rem; font-weight: 700; cursor: pointer; }
+.hlog-undo:active { transform: scale(0.95); }
+.hlog-undo-quick { margin-left: auto; }
+.hlog-undo-quick + .hlog-chev { margin-left: 0; }
+
+/* ── Hunt Recap ── */
+.hrc-overlay { position: fixed; inset: 0; z-index: 9000; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, 0.72); }
+.hrc-card { width: 100%; max-width: 380px; max-height: 92vh; overflow-y: auto; padding: 18px 16px 14px; border-radius: 14px; border: 1.5px solid #c9a050; background: linear-gradient(180deg, #2a1d0c 0%, #140e06 100%); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6); color: #e8dcc0; }
+.hrc-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.hrc-monster { width: 64px; height: 64px; object-fit: contain; border-radius: 10px; background: rgba(0, 0, 0, 0.35); flex-shrink: 0; }
+.hrc-head-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hrc-result { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; color: #f0c860; }
+.hrc-name { font-size: 1.2rem; font-weight: 800; color: #fff4d8; }
+.hrc-stars { font-size: 0.85rem; letter-spacing: 1px; }
+.hrc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.hrc-stat { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 9px; background: rgba(255, 255, 255, 0.05); }
+.hrc-k { font-size: 0.7rem; color: #a8946c; }
+.hrc-v { font-size: 0.95rem; font-weight: 700; color: #fff0cc; }
+.hrc-broken { margin: 8px 2px 0; font-size: 0.78rem; color: #d8c090; }
+.hrc-dmg { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(201, 160, 80, 0.25); }
+.hrc-dmg-title { margin: 0 0 6px; font-size: 0.75rem; font-weight: 700; color: #c9a86a; }
+.hrc-dmg-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; font-size: 0.82rem; }
+.hrc-dmg-icon { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; text-align: center; }
+.hrc-dmg-name { width: 30%; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hrc-dmg-bar { flex: 1; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.hrc-dmg-bar > span { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #c9502a, #f0a040); }
+.hrc-dmg-other .hrc-dmg-bar > span { background: #6a5a44; }
+.hrc-dmg-num { width: 32px; text-align: right; font-weight: 700; color: #ffb080; }
+.hrc-hr { display: flex; justify-content: space-between; gap: 8px; margin-top: 12px; padding: 9px 12px; border-radius: 9px; background: rgba(240, 200, 96, 0.1); font-size: 0.85rem; font-weight: 700; color: #f0d890; }
+.hrc-hr-up { color: #7cf09a; }
+.hrc-close { display: block; width: 100%; margin-top: 14px; padding: 11px; border: none; border-radius: 10px; background: #c9a050; color: #1a1206; font-size: 0.95rem; font-weight: 800; cursor: pointer; }
 
 /* ยืนยันใช้ Palico — โชว์การ์ดพร้อมข้อความความสามารถ เผื่อลืมว่าใบนี้ทำอะไร */
 .uc-palico { max-width: 320px; }
