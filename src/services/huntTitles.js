@@ -2,10 +2,15 @@
 // ทุกเครื่องในห้องคำนวณเองจากบันทึกชุดเดียวกัน จึงต้อง deterministic:
 // คะแนนเท่ากันตัดสินด้วย key ของ Hunter ไม่ใช้ลำดับที่รายการเข้ามา
 
-// ลำดับในตาราง = ลำดับความสำคัญในการแจก
-// leaderOnly: ฉายาที่ความหมายคือ "มากที่สุด" ให้เฉพาะคนที่นำจริง ไม่ส่งต่อให้อันดับสอง
-// min: ค่าต่ำสุดที่ถือว่าเข้าเงื่อนไข
-// img: รูปสถานะ/ธาตุ แสดงแทน icon บนการ์ด
+// แต่ละคนได้ฉายาจากสถิติที่ "เด่นที่สุด" ของตัวเอง ไม่ใช่ตามลำดับตายตัว
+// (เคยเจอ: คนที่ทำให้ติดสถานะทั้งเกม แต่บังเอิญตีปิดด้วยดาเมจ 1 กลับได้ "ผู้ปิดฉาก")
+//
+// score(value, ctx): ความเด่นของค่านั้น ≈ 1 คือ "น่าพูดถึง" — ใช้เทียบข้ามฉายาต่างชนิด
+//   ค่าเริ่มต้น value / min · คะแนนเท่ากัน ฉายาที่อยู่บนในตารางชนะ
+// leaderOnly: ความหมายคือ "มากที่สุด" ให้เฉพาะคนที่นำจริง ไม่ส่งต่อให้อันดับสอง
+// secondOnly: ฉายาปลอบใจของคนที่ไม่ใช่อันดับ 1 — แจกเฉพาะรอบสอง
+// min: ค่าต่ำสุดที่ถือว่าเข้าเงื่อนไข · when: เงื่อนไขเพิ่มของคนนั้น
+// img: รูปสถานะ/ธาตุ แสดงแทน icon บนการ์ด · labelOf: ป้ายที่ขึ้นกับสถิติของคนนั้น
 
 // สถานะแยกตามชนิด — id ตาม status_effect.json
 const AILMENT_TITLES = [
@@ -14,7 +19,7 @@ const AILMENT_TITLES = [
   { sid: 3, icon: '💤', name: 'ผู้กล่อมนิทรา', label: 'ทำให้หลับ (Sleep)', img: 'assets/img/status_effect/sleep.webp' },
   { sid: 4, icon: '🔗', name: 'จอมสะกดร่าง', label: 'ทำให้อัมพาต (Paralysis)', img: 'assets/img/status_effect/paralysis.webp' },
   { sid: 5, icon: '💣', name: 'มือระเบิดพลีชีพ', label: 'ทำให้ระเบิด (Blast)', img: 'assets/img/status_effect/blastblight.webp' },
-].map((t) => ({ ...t, id: `ailment${t.sid}`, stat: `status${t.sid}`, min: 1, unit: 'x' }))
+].map((t) => ({ ...t, id: `ailment${t.sid}`, stat: `status${t.sid}`, min: 1, unit: 'x', score: (v) => v }))
 
 // ธาตุแยกตามชนิด — id ตาม elemental.json
 const ELEMENT_TITLES = [
@@ -23,31 +28,44 @@ const ELEMENT_TITLES = [
   { eid: 3, icon: '⚡', name: 'สายฟ้าฟาด', label: 'ธาตุสายฟ้าทำงาน', img: 'assets/img/elemental/thunder.webp' },
   { eid: 4, icon: '❄', name: 'หัวใจน้ำแข็ง', label: 'ธาตุน้ำแข็งทำงาน', img: 'assets/img/elemental/ice.webp' },
   { eid: 5, icon: '🐉', name: 'ผู้สังหารมังกร', label: 'ธาตุมังกรทำงาน', img: 'assets/img/elemental/dragon.webp' },
-].map((t) => ({ ...t, id: `element${t.eid}`, stat: `element${t.eid}`, min: 1, unit: 'x' }))
+].map((t) => ({ ...t, id: `element${t.eid}`, stat: `element${t.eid}`, min: 1, unit: 'x', score: (v) => v }))
 
 export const HUNT_TITLES = [
-  { id: 'finisher', icon: '🗡', name: 'ผู้ปิดฉาก', label: 'ดาเมจครั้งสุดท้าย', stat: 'finisher', min: 1, leaderOnly: true },
-  { id: 'topDamage', icon: '👑', name: 'นักล่าตัวจริง', label: 'ดาเมจรวม', stat: 'dmg', min: 1, leaderOnly: true },
+  // ตีปิดด้วยดาเมจ 1 ไม่ใช่เรื่องใหญ่ — 5 ดาเมจขึ้นไปถึงนับว่าเด่น
+  { id: 'finisher', icon: '🗡', name: 'ผู้ปิดฉาก', label: 'ดาเมจเทิร์นปิดฉาก', stat: 'finisher', min: 1, leaderOnly: true, score: (v) => v / 5 },
+  // วัดจากส่วนแบ่งดาเมจของทีม — ทำ 1/3 ของทีม = 1, ครึ่งหนึ่ง = 1.5
+  { id: 'topDamage', icon: '👑', name: 'นักล่าตัวจริง', label: 'ดาเมจรวม', stat: 'dmg', min: 1, leaderOnly: true, score: (v, ctx) => (ctx.totalDmg ? (v / ctx.totalDmg) * 3 : 0) },
+  // ดาเมจเยอะแต่ไม่ใช่อันดับ 1 — ไม่งั้นคนตีหนักอันดับสองได้แค่ "ผู้สนับสนุน"
+  { id: 'heavyHitter', icon: '⚔', name: 'มือหนัก', label: 'ดาเมจรวม', stat: 'dmg', min: 5, secondOnly: true, score: (v, ctx) => (ctx.totalDmg ? (v / ctx.totalDmg) * 2 : 0) },
   { id: 'bigTurn', icon: '💥', name: 'หนึ่งเทิร์นสะท้านโลก', label: 'ดาเมจในเทิร์นเดียว', stat: 'bestTurn', min: 8 },
-  { id: 'partBreaker', icon: '🔨', name: 'ช่างทุบเกราะ', label: 'ดาเมจชิ้นส่วน', stat: 'partDmg', min: 1 },
-  // ติดสถานะได้ตั้งแต่ 2 ชนิดขึ้นไป — เหนือกว่าฉายาสถานะชนิดเดียว (แบบ Ailment Master ในเกม)
-  { id: 'ailmentMaster', icon: '⚗', name: 'ปรมาจารย์สถานะ', label: 'ชนิดสถานะที่ทำให้ติด', stat: 'ailmentKinds', min: 2, unit: 'ชนิด' },
+  { id: 'partBreaker', icon: '🔨', name: 'ช่างทุบเกราะ', label: 'ดาเมจชิ้นส่วน', stat: 'partDmg', min: 1, score: (v) => v / 4 },
+  // ติดสถานะได้ตั้งแต่ 2 ชนิดขึ้นไป (แบบ Ailment Master ในเกม) — คะแนนเหนือฉายาสถานะชนิดเดียวเล็กน้อย
+  {
+    id: 'ailmentMaster', icon: '⚗', name: 'ปรมาจารย์สถานะ', stat: 'ailments', min: 2, unit: 'x',
+    when: (p) => p.stats.ailmentKinds >= 2, score: (v) => v * 1.2,
+    labelOf: (p) => `ทำให้ติดสถานะ ${p.stats.ailmentKinds} ชนิด`,
+  },
   ...AILMENT_TITLES,
-  { id: 'elementMaster', icon: '🌈', name: 'ผู้กุมธาตุทั้งปวง', label: 'ชนิดธาตุที่ทำงาน', stat: 'elementKinds', min: 2, unit: 'ชนิด' },
+  {
+    id: 'elementMaster', icon: '🌈', name: 'ผู้กุมธาตุทั้งปวง', stat: 'elements', min: 2, unit: 'x',
+    when: (p) => p.stats.elementKinds >= 2, score: (v) => v * 1.2,
+    labelOf: (p) => `ธาตุทำงาน ${p.stats.elementKinds} ชนิด`,
+  },
   ...ELEMENT_TITLES,
   // ลง Mark ไว้เยอะแต่คนอื่นเป็นคนทำให้ติด — คนปูทางให้ทีม
-  { id: 'marks', icon: '🧱', name: 'ผู้ปูทาง', label: 'ลง Mark ให้ทีม', stat: 'marks', min: 3, unit: 'x' },
-  { id: 'palico', icon: '🐾', name: 'ทาสแมว', label: 'ใช้ Palico', stat: 'palico', min: 1, unit: 'x' },
-  { id: 'faint', icon: '💫', name: 'ผู้กลับจากค่าย', label: 'ล้มกลับแคมป์', stat: 'faints', min: 1, unit: 'x' },
-  { id: 'potion', icon: '🧪', name: 'นักดื่มยา', label: 'ใช้ยา', stat: 'potions', min: 2, unit: 'x' },
-  { id: 'undo', icon: '⟲', name: 'ผู้แก้ไขประวัติศาสตร์', label: 'กดย้อน', stat: 'undos', min: 2, unit: 'x' },
+  { id: 'marks', icon: '🧱', name: 'ผู้ปูทาง', label: 'ลง Mark ให้ทีม', stat: 'marks', min: 3, unit: 'x', score: (v) => v / 4 },
+  // Palico ใช้ได้แค่ 1–2 ครั้งต่อเควส ใครมีก็ใช้ — ไม่ให้แย่งฉายาที่เป็นผลงานจริง
+  { id: 'palico', icon: '🐾', name: 'ทาสแมว', label: 'ใช้ Palico', stat: 'palico', min: 1, unit: 'x', score: (v) => v * 0.6 },
+  { id: 'faint', icon: '💫', name: 'ผู้กลับจากค่าย', label: 'ล้มกลับแคมป์', stat: 'faints', min: 1, unit: 'x', score: (v) => v * 0.5 },
+  { id: 'potion', icon: '🧪', name: 'นักดื่มยา', label: 'ใช้ยา', stat: 'potions', min: 2, unit: 'x', score: (v) => v / 3 },
+  { id: 'undo', icon: '⟲', name: 'ผู้แก้ไขประวัติศาสตร์', label: 'กดย้อน', stat: 'undos', min: 2, unit: 'x', score: (v) => v / 4 },
 ]
 // คนที่ไม่เข้าเงื่อนไขไหนเลย — ทุกคนต้องมีฉายา
 export const FALLBACK_TITLE = { id: 'support', icon: '🛡', name: 'ผู้สนับสนุน', label: 'เทิร์นที่เล่น', stat: 'turns', unit: 'x' }
 
 const keyOf = (e) => String(e.whoId ?? e.whoName ?? '?')
 // status1..5 / element1..5 เพิ่มเข้ามาเมื่อเจอ — อ่านผ่าน statOf ที่คืน 0 ถ้าไม่มี
-const emptyStats = () => ({ dmg: 0, bestTurn: 0, partDmg: 0, ailmentKinds: 0, elementKinds: 0, marks: 0, palico: 0, faints: 0, potions: 0, undos: 0, turns: 0, finisher: 0 })
+const emptyStats = () => ({ dmg: 0, bestTurn: 0, partDmg: 0, ailments: 0, elements: 0, ailmentKinds: 0, elementKinds: 0, marks: 0, palico: 0, faints: 0, potions: 0, undos: 0, turns: 0, finisher: 0 })
 const statOf = (p, stat) => p.stats[stat] ?? 0
 
 // ผลของเทิร์น (HP / ชิ้นส่วน / สถานะ / ธาตุ) นับให้เจ้าของเทิร์น — เล่นจริงกดแทนกันบ่อย
@@ -87,6 +105,8 @@ export const buildHuntHighlights = (log, members) => {
         else {
           const k = e.kind === 'status' ? `status${e.sid}` : `element${e.eid}`
           s[k] = (s[k] ?? 0) + 1
+          if (e.kind === 'status') s.ailments++
+          else s.elements++
         }
       }
     }
@@ -94,7 +114,7 @@ export const buildHuntHighlights = (log, members) => {
       s.dmg += turnDmg
       s.bestTurn = Math.max(s.bestTurn, turnDmg)
     }
-    for (const e of entries) ownerOf.set(e, owner)
+    for (const e of entries) ownerOf.set(e, { owner, turnDmg })
   }
 
   for (const e of live) {
@@ -121,9 +141,11 @@ export const buildHuntHighlights = (log, members) => {
   }
   for (const [k, entries] of leftover) settle(people.get(k), entries)
 
-  // ผู้ปิดฉาก = คนที่ได้เครดิตการตีครั้งสุดท้าย (ดาเมจจากเต๋า / Time Card ไม่อยู่ในบันทึก)
+  // ผู้ปิดฉาก = เจ้าของเทิร์นที่มีการตีครั้งสุดท้าย (ดาเมจจากเต๋า / Time Card ไม่อยู่ในบันทึก)
+  // ค่าที่โชว์คือดาเมจทั้งเทิร์นนั้น ไม่ใช่แค่ปุ่มสุดท้าย — กด −5 −3 −1 ในเทิร์นปิดฉาก = 9 ไม่ใช่ 1
   const lastHit = [...live].reverse().find((e) => e.kind === 'hp' && e.delta < 0)
-  if (lastHit && ownerOf.has(lastHit)) ownerOf.get(lastHit).stats.finisher = -lastHit.delta
+  const finish = lastHit && ownerOf.get(lastHit)
+  if (finish) finish.owner.stats.finisher = Math.max(finish.turnDmg, -lastHit.delta)
 
   // บันทึกเก็บแค่ชื่อคนกดย้อน
   for (const e of log) {
@@ -139,28 +161,66 @@ export const buildHuntHighlights = (log, members) => {
   }
 
   const list = [...people.values()]
-  const rank = (stat) => [...list].sort((a, b) => statOf(b, stat) - statOf(a, stat) || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
+  const ctx = { totalDmg: list.reduce((n, p) => n + p.stats.dmg, 0) }
+  const qualifies = (p, t) => statOf(p, t.stat) >= t.min && (!t.when || t.when(p))
+  const scoreOf = (p, t) => (t.score ? t.score(statOf(p, t.stat), ctx) : statOf(p, t.stat) / t.min)
+  const byKey = (a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0)
+  // คะแนนสูงก่อน → ฉายาที่อยู่บนในตารางก่อน → key — ทุกเครื่องเรียงได้ลำดับเดียวกัน
+  const byScore = (a, b) => b.score - a.score || a.order - b.order || byKey(a.p, b.p)
   const titled = new Map()
 
-  // รอบแรก: ฉายาไปที่คนนำของสถิตินั้น (เสมอกันหลายคน ให้คนแรกที่ยังไม่มีฉายา)
-  // คนนำทุกคนมีฉายาแล้ว ฉายานั้นถูกข้าม — ไม่ส่งต่อให้อันดับสอง
-  for (const t of HUNT_TITLES) {
-    const ranked = rank(t.stat)
-    const top = ranked[0] ? statOf(ranked[0], t.stat) : 0
-    if (top < t.min) continue
-    const leader = ranked.find((p) => statOf(p, t.stat) === top && !titled.has(p.key))
-    if (leader) titled.set(leader.key, t)
+  // รอบแรก: คู่ (คน, ฉายา) ที่คนนั้นเป็นอันดับ 1 ของสถิตินั้น (เสมอกันได้หลายคน)
+  // จับคู่ทั้งทีมพร้อมกันให้คะแนนรวมสูงสุด — คนละ 1 ฉายา ฉายาละ 1 คน
+  // (แจกทีละคู่จากคะแนนสูงสุดเคยพลาด: ดาเมจเสมอกัน คนที่ตีปิดเอา "นักล่าตัวจริง" ไป
+  //  เพื่อนที่ดาเมจเท่ากันเหลือแค่ "มือหนัก" ทั้งที่ให้คนตีปิดเป็น "ผู้ปิดฉาก" ได้ทั้งคู่)
+  const leads = []
+  HUNT_TITLES.forEach((t, order) => {
+    if (t.secondOnly) return
+    const cands = list.filter((p) => qualifies(p, t))
+    if (!cands.length) return
+    const top = Math.max(...cands.map((p) => statOf(p, t.stat)))
+    for (const p of cands) {
+      if (statOf(p, t.stat) === top) leads.push({ p, t, order, score: scoreOf(p, t) })
+    }
+  })
+  // ตี้ไม่เกิน 4 คน ค้นทุกแบบได้ — ตัดเหลือ 6 ตัวเลือกต่อคนกันกรณีมีคนออกจากห้องแล้วยังอยู่ในบันทึก
+  const order = [...list].sort(byKey)
+  const options = order.map((p) => leads.filter((c) => c.p === p).sort(byScore).slice(0, 6))
+  let best = { sum: -1, pick: [] }
+  const used = new Set()
+  const pick = []
+  const search = (i, sum) => {
+    if (i === order.length) {
+      // ต้องมากกว่าจริง ๆ — ผลเสมอเก็บแบบที่เจอก่อน (ตัวเลือกคะแนนสูงของคน key น้อยก่อน) ทุกเครื่องได้เหมือนกัน
+      if (sum > best.sum + 1e-9) best = { sum, pick: [...pick] }
+      return
+    }
+    for (const c of options[i]) {
+      if (used.has(c.t.id)) continue
+      used.add(c.t.id)
+      pick.push(c)
+      search(i + 1, sum + c.score)
+      pick.pop()
+      used.delete(c.t.id)
+    }
+    search(i + 1, sum) // คนนี้ไม่ได้ฉายารอบแรก ไปรับรอบสอง
   }
-  // รอบสอง: คนที่ยังไม่มีฉายา เอาฉายาแรกตามลำดับที่ตัวเองเข้าเงื่อนไข (ซ้ำกับคนอื่นได้)
+  search(0, 0)
+  for (const c of best.pick) titled.set(c.p.key, c.t)
+  // รอบสอง: คนที่ยังไม่มีฉายา เอาฉายาที่เด่นที่สุดที่ตัวเองเข้าเงื่อนไข (ซ้ำกับคนอื่นได้ ยกเว้น leaderOnly)
   for (const p of list) {
     if (titled.has(p.key)) continue
-    const t = HUNT_TITLES.find((x) => !x.leaderOnly && statOf(p, x.stat) >= x.min)
-    titled.set(p.key, t ?? FALLBACK_TITLE)
+    const best = HUNT_TITLES
+      .map((t, order) => ({ p, t, order, score: scoreOf(p, t) }))
+      .filter((c) => !c.t.leaderOnly && qualifies(p, c.t))
+      .sort(byScore)[0]
+    titled.set(p.key, best?.t ?? FALLBACK_TITLE)
   }
 
   return list.map((p) => {
     const t = titled.get(p.key)
-    return { key: p.key, name: p.name, classId: p.classId, title: t, value: statOf(p, t.stat), unit: t.unit ?? '' }
+    const title = t.labelOf ? { ...t, label: t.labelOf(p) } : t
+    return { key: p.key, name: p.name, classId: p.classId, title, value: statOf(p, t.stat), unit: t.unit ?? '' }
   })
 }
 

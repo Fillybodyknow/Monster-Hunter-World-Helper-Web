@@ -4350,6 +4350,14 @@ const _buildHuntRecap = () => {
   }
   Object.values(byPresser).forEach(({ who, net }) => credit(who, net))
   const dealt = Math.max(0, data.health - huntingHp.value)
+  // โชว์ครบทุกคนในตี้ — คนที่ไม่ได้ลด HP (ตีชิ้นส่วน / ลงสถานะ / สนับสนุน) ขึ้น 0 แทนที่จะหายไปจากรายการ
+  const members = room.inRoom
+    ? room.hunters.map((h) => ({ key: h.hunter_id, name: h.hunter_name, classId: h.hunter_class_id }))
+    : hunter.value ? [{ key: hunter.value.hunter_id, name: hunter.value.hunter_name, classId: hunter.value.hunter_class_id }] : []
+  for (const m of members) {
+    if (Object.keys(byHunter).some((k) => String(k) === String(m.key))) continue
+    byHunter[m.key] = { name: m.name, classId: m.classId, dmg: 0 }
+  }
   const damage = Object.values(byHunter).sort((a, b) => b.dmg - a.dmg)
   // ส่วนที่ไม่ได้กดเอง: ดาเมจจากเต๋าช่วง dialog, Time Card ฯลฯ
   const other = dealt - loggedNet
@@ -10287,6 +10295,9 @@ onDeactivated(() => {
               </div>
             </div>
 
+            <!-- จอแนวนอนกว้าง: สถิติซ้าย ดาเมจขวา · จออื่น display: contents = เรียงบนลงล่างเหมือนเดิม -->
+            <div class="hrc-body">
+            <div class="hrc-col">
             <div class="hrc-grid">
               <div class="hrc-stat"><span class="hrc-k">⏱ เวลาล่า</span><span class="hrc-v">{{ recapDurationText }}</span></div>
               <div class="hrc-stat"><span class="hrc-k">🔄 เทิร์น Hunter</span><span class="hrc-v">{{ huntRecap.turns }}</span></div>
@@ -10297,7 +10308,8 @@ onDeactivated(() => {
             </div>
             <p v-if="huntRecap.broken.length" class="hrc-broken">แตก: {{ huntRecap.broken.join(', ') }}</p>
             <p v-if="huntRecap.palico" class="hrc-broken">🐾 ใช้ Palico {{ huntRecap.palico }} ครั้ง</p>
-
+            </div>
+            <div class="hrc-col">
             <div v-if="huntRecap.damage.length || huntRecap.otherDamage" class="hrc-dmg">
               <p class="hrc-dmg-title">ดาเมจที่ทำ</p>
               <div v-for="d in huntRecap.damage" :key="d.name" class="hrc-dmg-row">
@@ -10318,6 +10330,8 @@ onDeactivated(() => {
               <span>🏅 +{{ huntRecap.hrGain }} แต้ม HR</span>
               <span v-if="huntRecap.hrAfter > huntRecap.hrBefore" class="hrc-hr-up">HR{{ huntRecap.hrBefore }} → HR{{ huntRecap.hrAfter }}</span>
               <span v-else>HR{{ huntRecap.hrAfter }}</span>
+            </div>
+            </div>
             </div>
 
             <button class="hrc-close" @click="showHuntRecap = false">ปิด</button>
@@ -14754,6 +14768,41 @@ onDeactivated(() => {
 .hrc-hr { display: flex; justify-content: space-between; gap: 8px; margin-top: 12px; padding: 9px 12px; border-radius: 9px; background: rgba(240, 200, 96, 0.1); font-size: 0.85rem; font-weight: 700; color: #f0d890; }
 .hrc-hr-up { color: #7cf09a; }
 .hrc-close { display: block; width: 100%; margin-top: 14px; padding: 11px; border: none; border-radius: 10px; background: #c9a050; color: #1a1206; font-size: 0.95rem; font-weight: 800; cursor: pointer; }
+.hrc-body, .hrc-col { display: contents; }
+/* จอคอม / iPad — การ์ด 380px เล็กจนอ่านยากบนจอกว้าง
+   ทุกขนาดข้างในเป็น em อิงตัวอักษรของการ์ด — ขยายทั้งใบด้วย font-size ตัวเดียว
+   และจำกัดด้วยความสูงจอ (vh) ด้วย ไม่งั้นจอเตี้ยอย่างโน้ตบุ๊ก / iPad แนวนอนต้องเลื่อนอ่านในการ์ด */
+@media (min-width: 720px) {
+  /* แนวตั้ง (iPad ตั้ง): เรียงบนลงล่าง การ์ดสูง ≈ 45em */
+  .hrc-card { max-width: 37.5em; font-size: min(20px, calc(92vh / 47)); padding: 1.6em 1.75em 1.25em; border-radius: 1.1em; }
+  .hrc-head { gap: 1em; margin-bottom: 1.1em; }
+  .hrc-monster { width: 5.75em; height: 5.75em; border-radius: 0.75em; }
+  .hrc-result { font-size: 0.9em; }
+  .hrc-name { font-size: 1.65em; }
+  .hrc-stars { font-size: 1.05em; }
+  .hrc-grid { grid-template-columns: repeat(3, 1fr); gap: 0.5em; }
+  .hrc-stat { padding: 0.7em 0.9em; border-radius: 0.7em; }
+  .hrc-k { font-size: 0.82em; }
+  .hrc-v { font-size: 1.2em; }
+  .hrc-broken { font-size: 0.92em; }
+  .hrc-dmg { margin-top: 1em; padding-top: 0.9em; }
+  .hrc-dmg-title { margin-bottom: 0.6em; font-size: 0.9em; }
+  .hrc-dmg-row { gap: 0.75em; margin-bottom: 0.5em; font-size: 1em; }
+  .hrc-dmg-icon { width: 1.9em; height: 1.9em; }
+  .hrc-dmg-bar { height: 0.7em; border-radius: 0.4em; }
+  .hrc-dmg-num { width: 2.6em; font-size: 1.05em; }
+  .hrc-hr { margin-top: 1em; padding: 0.75em 1em; font-size: 1em; }
+  .hrc-close { margin-top: 1.1em; padding: 0.85em; font-size: 1.05em; }
+}
+/* แนวนอนกว้าง (จอคอม / โน้ตบุ๊ก / iPad นอน): สถิติซ้าย ดาเมจขวา — การ์ดเตี้ยลงเกือบครึ่ง ขยายได้อีก */
+@media (min-width: 1024px) and (orientation: landscape) {
+  .hrc-card { max-width: 54em; font-size: min(24px, calc(92vh / 36)); }
+  .hrc-body { display: grid; grid-template-columns: 1fr 1.1fr; gap: 1.6em; align-items: start; }
+  .hrc-col { display: block; min-width: 0; }
+  .hrc-grid { grid-template-columns: repeat(2, 1fr); }
+  .hrc-dmg { margin-top: 0; padding-top: 0; border-top: none; }
+}
+
 
 /* ── Hunter Highlights — การ์ดฉายาแบบหน้าจบเควสในเกม ── */
 .hhl-overlay {
