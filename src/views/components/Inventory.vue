@@ -1,5 +1,6 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { requestTour, cancelTourRequest } from '@/composables/useTour'
 import { getHunterById, saveHunters, getHunters } from '@/services/hunterStorage'
 import { loadHunter } from '@/stores/hunter'
 import resourceData from '@/assets/files/resource.json'
@@ -16,7 +17,10 @@ const loadInventory = () => {
 
 onMounted(() => {
   loadInventory()
+  // ทัวร์ของหน้านี้ — ขึ้นครั้งแรกที่เปิดแท็บ Inventory (ข้อความอยู่ใน src/tours/tours.js)
+  requestTour('inventory')
 })
+onUnmounted(() => cancelTourRequest('inventory'))
 
 // ===== INVENTORY CONTROL =====
 const changeQty = (item, delta) => {
@@ -153,7 +157,7 @@ const confirmAdd = () => {
         <h2 class="inv-title">Supply Pack</h2>
         <span class="inv-ornament">◆</span>
       </div>
-      <button class="btn-add-item" @click="showAddModal = true">✚ เพิ่มของ</button>
+      <button data-tour="inv-add" class="btn-add-item" @click="showAddModal = true">✚ เพิ่มของ</button>
     </div>
     <p class="inv-subtitle">เป้สัมภาระของนักล่า</p>
 
@@ -165,7 +169,7 @@ const confirmAdd = () => {
     </div>
 
     <!-- ลังไม้แยกตามหมวด -->
-    <div v-for="group in groupedInventory" :key="group.resource_type" class="inv-group">
+    <div v-for="(group, gi) in groupedInventory" :key="group.resource_type" class="inv-group">
       <div class="group-header">
         <div class="gh-line"></div>
         <span class="gh-label">{{ group.resource_type }}</span>
@@ -174,7 +178,13 @@ const confirmAdd = () => {
       </div>
 
       <div class="grid">
-        <div v-for="item in group.items" :key="`${item.resource_type_id}-${item.item_id}`" class="card">
+        <!-- ชิ้นแรกของเป้เป็นตัวอย่างให้ทัวร์ชี้ปุ่ม − / 🔨 / + -->
+        <div
+          v-for="(item, ii) in group.items"
+          :key="`${item.resource_type_id}-${item.item_id}`"
+          class="card"
+          :data-tour="gi === 0 && ii === 0 ? 'inv-item' : undefined"
+        >
           <img :src="getImg(item.thumbnail)" class="card-img" />
           <span class="qty">x{{ item.quantity }}</span>
           <div class="control">

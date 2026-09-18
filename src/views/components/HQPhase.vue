@@ -9,6 +9,7 @@ import { PALICOS, getPalico, drawPalicos } from '@/composables/usePalico'
 import hunterClassData from '@/assets/files/class_hunter.json'
 import { openCraftLookup } from '@/composables/useCraftLookup'
 import { useSfx } from '@/composables/useSfx'
+import { requestTour, cancelTourRequest } from '@/composables/useTour'
 
 const props = defineProps({ maxActions: { type: Number, default: 3 } })
 const emit = defineEmits(['allReady'])
@@ -126,6 +127,15 @@ const voteReady = () => {
 }
 const _localReady = ref(false)
 const isReady = computed(() => room.inRoom ? myReady.value : _localReady.value)
+
+// ทัวร์ปุ่ม "พร้อม" — ขอตอนปุ่มโผล่ขึ้นมาจริงเท่านั้น (ทำกิจกรรมครบ และกลับมาหน้ารวมสถานที่แล้ว)
+// เดิมเป็นขั้นท้ายของทัวร์ downtime ที่ขึ้นตอนเพิ่งเข้า Downtime ปุ่มยังไม่มี ทัวร์เลยชี้กล่องเปล่า
+const readyButtonShown = computed(() => !activeLocation.value && !isReady.value && myVisitCount.value >= MAX_VISITS.value)
+watch(readyButtonShown, (shown) => {
+  if (shown) requestTour('downtimeReady')
+  else cancelTourRequest('downtimeReady')
+}, { immediate: true })
+onUnmounted(() => cancelTourRequest('downtimeReady'))
 
 watch([isReady], ([ready]) => {
   if (!ready) return
@@ -802,9 +812,10 @@ const moteStyle = (m) => ({
       </div>
 
       <!-- Ready button -->
-      <div data-tour="dt-ready" class="hqp-ready-wrap">
+      <!-- data-tour อยู่ที่ตัวปุ่ม ไม่ใช่กล่องครอบ — กล่องมีอยู่ตลอด ทัวร์เคยไปชี้กล่องเปล่าตอนปุ่มยังไม่ขึ้น -->
+      <div class="hqp-ready-wrap">
         <div v-if="!isReady && myVisitCount >= MAX_VISITS">
-          <button class="hqp-btn-ready" @click="voteReady">⚔ พร้อมลุย Quest</button>
+          <button data-tour="dt-ready" class="hqp-btn-ready" @click="voteReady">⚔ พร้อมลุย Quest</button>
         </div>
         <div v-else-if="isReady" class="hqp-ready-status">
           <span>✦ คุณพร้อมแล้ว</span>

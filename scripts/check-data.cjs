@@ -235,6 +235,39 @@ for (const f of fs.readdirSync(ELDER).filter((f) => f.endsWith('.json'))) {
 }
 for (const m of missingImages) fail('รูปหาย', m)
 
+// ── 8. ทัวร์สอนใช้งาน: ทุก target ต้องมี data-tour อยู่จริงในไฟล์ .vue ────
+// ทัวร์ชี้ปุ่มด้วย data-tour ไม่ใช่ชื่อคลาส — เปลี่ยนชื่อหรือลบ data-tour แล้วลืมแก้ tours.js
+// ขั้นนั้นจะหาไม่เจอ (ไม่ optional = ทัวร์จบกลางคัน, optional = ถูกข้ามเงียบ ๆ ไม่มีใครรู้)
+{
+  const SRC = path.join(ROOT, 'src')
+  const vueFiles = []
+  const walkDir = (d) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name)
+      if (e.isDirectory()) walkDir(p)
+      else if (e.name.endsWith('.vue')) vueFiles.push(p)
+    }
+  }
+  walkDir(SRC)
+  const staticIds = new Set()
+  const literals = new Set()
+  for (const f of vueFiles) {
+    const text = fs.readFileSync(f, 'utf8')
+    for (const m of text.matchAll(/(?:^|[^:\w-])data-tour="([^"]+)"/g)) staticIds.add(m[1])
+    // :data-tour="cond ? 'a' : 'b'" หรือ :data-tour="'tab-' + item.menu" — เก็บข้อความในเครื่องหมายคำพูด
+    for (const m of text.matchAll(/:data-tour="([^"]+)"/g)) {
+      for (const q of m[1].matchAll(/'([^']*)'/g)) literals.add(q[1])
+    }
+  }
+  const toursText = fs.readFileSync(path.join(ROOT, 'src/tours/tours.js'), 'utf8')
+  const targets = [...toursText.matchAll(/target:\s*'([^']+)'/g)].map((m) => m[1])
+  const prefixes = [...literals].filter((l) => l.endsWith('-'))
+  for (const t of new Set(targets)) {
+    const ok = staticIds.has(t) || literals.has(t) || prefixes.some((p) => t.startsWith(p))
+    if (!ok) fail('tours.js', `target "${t}" ไม่มี data-tour="${t}" ในไฟล์ .vue ไหนเลย`)
+  }
+}
+
 // ── สรุป ────────────────────────────────────────────────────
 const monsterCount = monsterIds.size
 console.log(`ตรวจแล้ว: มอน ${monsterCount} ตัว, เล่มเควสต์ ${books.length} เล่ม, วัตถุดิบ ${itemNames.size} ชนิด, changelog ${changelog.length} รายการ`)
