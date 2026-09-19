@@ -244,6 +244,8 @@ const startCoopQuest = async () => {
     campaign_day: hunter.value.campaign_day ?? 1,
     exhausted_attempt: _exhausted,
     hq_max_actions: _exhausted ? 2 : 3,
+    // จุดเริ่มตามสิทธิ์ของคน Post — Host เปลี่ยนมือทีหลังก็ยังเริ่มจุดเดิม
+    start_dialog_id: _ownStartDialogId(),
   })
   // ประกาศห้องขึ้นบอร์ดให้คนอื่นเห็นและกด Join ได้
   await room.postLobby?.({
@@ -909,13 +911,24 @@ watch(() => room.allPalicoDrafted, (done) => {
   room.clearPalicoDraftAll?.()
 })
 
+// จุดเริ่มตามสิทธิ์ลงเควสของ "เรา" — ใช้ครบแล้ว (เช่นผ่าน Assigned มาแล้ว) ใช้ช่องสุดท้าย ห้ามเกินรายการ
+const _ownStartDialogId = () => {
+  const points = selectedQuest.value.starting_point
+  const idx = Math.min(getAttempted(selectedMonster.value.monster_id, selectedQuest.value.quest_id), points.length - 1)
+  return points[Math.max(0, idx)]
+}
+
 const startQuest = () => {
   _clearPerQuestLocalState()
   initTrackTokens()
   buildTimeCardDeck()
+  // Co-op ใช้จุดเริ่มที่คน Post Quest เลือกไว้ (questInfo.start_dialog_id) ไม่ใช่ของ Host ตอนกดเริ่ม
+  // เคยพัง: โอนหัวห้องให้คนที่ผ่าน Assigned มาแล้ว → index เกินรายการได้ undefined
+  // → setCurrentDialog(undefined) โดน Firebase ปฏิเสธ เควสไม่เริ่ม ทุกเครื่องค้างหน้ากำลังเตรียมการล่า
+  const postedStart = room.inRoom ? room.questInfo?.start_dialog_id : null
   const startDialogId = (isExhaustedAttempt.value && handlerStartDialogId.value)
     ? handlerStartDialogId.value
-    : selectedQuest.value.starting_point[getAttempted(selectedMonster.value.monster_id, selectedQuest.value.quest_id)]
+    : (postedStart ?? _ownStartDialogId())
   currentDialogId.value = startDialogId
   phase.value = selectedMonster.value.dialog_hunting_phase.includes(currentDialogId.value)
     ? 'hunting'

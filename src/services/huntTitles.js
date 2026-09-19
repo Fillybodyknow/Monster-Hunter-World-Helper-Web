@@ -8,7 +8,8 @@
 // score(value, ctx): ความเด่นของค่านั้น ≈ 1 คือ "น่าพูดถึง" — ใช้เทียบข้ามฉายาต่างชนิด
 //   ค่าเริ่มต้น value / min · คะแนนเท่ากัน ฉายาที่อยู่บนในตารางชนะ
 // leaderOnly: ความหมายคือ "มากที่สุด" ให้เฉพาะคนที่นำจริง ไม่ส่งต่อให้อันดับสอง
-// secondOnly: ฉายาปลอบใจของคนที่ไม่ใช่อันดับ 1 — แจกเฉพาะรอบสอง
+// secondOnly: ฉายารองของคนที่ไม่ใช่อันดับ 1 — อันดับ 1 ได้ไม่ได้
+// ทุกฉายาในตี้ไม่ซ้ำกัน คนที่ไม่เหลือฉายาให้ได้ FALLBACK_TITLES คนละชื่อ
 // min: ค่าต่ำสุดที่ถือว่าเข้าเงื่อนไข · when: เงื่อนไขเพิ่มของคนนั้น
 // img: รูปสถานะ/ธาตุ แสดงแทน icon บนการ์ด · labelOf: ป้ายที่ขึ้นกับสถิติของคนนั้น
 
@@ -52,20 +53,32 @@ export const HUNT_TITLES = [
     labelOf: (p) => `ธาตุทำงาน ${p.stats.elementKinds} ชนิด`,
   },
   ...ELEMENT_TITLES,
+  // ฉายารอง — คนที่ทำสถิตินั้นได้แต่ไม่ใช่อันดับ 1 (อันดับ 1 ได้ฉายาหลักไปแล้ว)
+  // ไม่งั้นตีชิ้นส่วนกัน 3 คน ได้ "ช่างทุบเกราะ" ซ้ำกันทั้ง 3
+  { id: 'partHelper', icon: '🪓', name: 'มือขวาช่างทุบ', label: 'ดาเมจชิ้นส่วน', stat: 'partDmg', min: 1, secondOnly: true, score: (v) => (v / 4) * 0.9 },
+  { id: 'ailmentHelper', icon: '🌿', name: 'ผู้ช่วยลงสถานะ', label: 'ทำให้ติดสถานะ', stat: 'ailments', min: 1, unit: 'x', secondOnly: true, score: (v) => v * 0.8 },
+  { id: 'elementHelper', icon: '✨', name: 'ผู้ปลุกพลังธาตุ', label: 'ธาตุทำงาน', stat: 'elements', min: 1, unit: 'x', secondOnly: true, score: (v) => v * 0.8 },
   // ลง Mark ไว้เยอะแต่คนอื่นเป็นคนทำให้ติด — คนปูทางให้ทีม
   { id: 'marks', icon: '🧱', name: 'ผู้ปูทาง', label: 'ลง Mark ให้ทีม', stat: 'marks', min: 3, unit: 'x', score: (v) => v / 4 },
   // Palico ใช้ได้แค่ 1–2 ครั้งต่อเควส ใครมีก็ใช้ — ไม่ให้แย่งฉายาที่เป็นผลงานจริง
   { id: 'palico', icon: '🐾', name: 'ทาสแมว', label: 'ใช้ Palico', stat: 'palico', min: 1, unit: 'x', score: (v) => v * 0.6 },
   { id: 'faint', icon: '💫', name: 'ผู้กลับจากค่าย', label: 'ล้มกลับแคมป์', stat: 'faints', min: 1, unit: 'x', score: (v) => v * 0.5 },
   { id: 'potion', icon: '🧪', name: 'นักดื่มยา', label: 'ใช้ยา', stat: 'potions', min: 2, unit: 'x', score: (v) => v / 3 },
-  { id: 'undo', icon: '⟲', name: 'ผู้แก้ไขประวัติศาสตร์', label: 'กดย้อน', stat: 'undos', min: 2, unit: 'x', score: (v) => v / 4 },
 ]
-// คนที่ไม่เข้าเงื่อนไขไหนเลย — ทุกคนต้องมีฉายา
-export const FALLBACK_TITLE = { id: 'support', icon: '🛡', name: 'ผู้สนับสนุน', label: 'เทิร์นที่เล่น', stat: 'turns', unit: 'x' }
+// คนที่ไม่เหลือฉายาให้ (ไม่เข้าเงื่อนไข หรือฉายาที่เข้าเงื่อนไขมีคนได้ไปแล้ว) — แจกคนละชื่อ ไม่ซ้ำกัน
+export const FALLBACK_TITLES = [
+  { id: 'support', icon: '🛡', name: 'ผู้สนับสนุน' },
+  { id: 'companion', icon: '🧭', name: 'ผู้ร่วมทาง' },
+  { id: 'porter', icon: '🎒', name: 'ผู้แบกเสบียง' },
+  { id: 'lookout', icon: '👀', name: 'ผู้เฝ้าระวัง' },
+  { id: 'cheer', icon: '📣', name: 'กองเชียร์ประจำตี้' },
+  { id: 'rookie', icon: '🌱', name: 'นักล่าหน้าใหม่ไฟแรง' },
+].map((t) => ({ ...t, label: 'เทิร์นที่เล่น', stat: 'turns', unit: 'x' }))
+export const FALLBACK_TITLE = FALLBACK_TITLES[0]
 
 const keyOf = (e) => String(e.whoId ?? e.whoName ?? '?')
 // status1..5 / element1..5 เพิ่มเข้ามาเมื่อเจอ — อ่านผ่าน statOf ที่คืน 0 ถ้าไม่มี
-const emptyStats = () => ({ dmg: 0, bestTurn: 0, partDmg: 0, ailments: 0, elements: 0, ailmentKinds: 0, elementKinds: 0, marks: 0, palico: 0, faints: 0, potions: 0, undos: 0, turns: 0, finisher: 0 })
+const emptyStats = () => ({ dmg: 0, bestTurn: 0, partDmg: 0, ailments: 0, elements: 0, ailmentKinds: 0, elementKinds: 0, marks: 0, palico: 0, faints: 0, potions: 0, turns: 0, finisher: 0 })
 const statOf = (p, stat) => p.stats[stat] ?? 0
 
 // ผลของเทิร์น (HP / ชิ้นส่วน / สถานะ / ธาตุ) นับให้เจ้าของเทิร์น — เล่นจริงกดแทนกันบ่อย
@@ -87,7 +100,6 @@ export const buildHuntHighlights = (log, members) => {
     return p
   }
   for (const m of members) ensure(String(m.id ?? m.name), m.name, m.classId)
-  const byName = (name) => [...people.values()].find((p) => p.name === name)
 
   const live = log.filter((e) => !e.undone)
   let pool = []
@@ -147,12 +159,6 @@ export const buildHuntHighlights = (log, members) => {
   const finish = lastHit && ownerOf.get(lastHit)
   if (finish) finish.owner.stats.finisher = Math.max(finish.turnDmg, -lastHit.delta)
 
-  // บันทึกเก็บแค่ชื่อคนกดย้อน
-  for (const e of log) {
-    if (!e.undone || !e.undoneBy) continue
-    const p = byName(e.undoneBy)
-    if (p) p.stats.undos++
-  }
   for (const p of people.values()) {
     // ชิ้นส่วนกดลดได้ ติดลบไม่ถือเป็นผลงาน
     p.stats.partDmg = Math.max(0, p.stats.partDmg)
@@ -169,23 +175,27 @@ export const buildHuntHighlights = (log, members) => {
   const byScore = (a, b) => b.score - a.score || a.order - b.order || byKey(a.p, b.p)
   const titled = new Map()
 
-  // รอบแรก: คู่ (คน, ฉายา) ที่คนนั้นเป็นอันดับ 1 ของสถิตินั้น (เสมอกันได้หลายคน)
-  // จับคู่ทั้งทีมพร้อมกันให้คะแนนรวมสูงสุด — คนละ 1 ฉายา ฉายาละ 1 คน
-  // (แจกทีละคู่จากคะแนนสูงสุดเคยพลาด: ดาเมจเสมอกัน คนที่ตีปิดเอา "นักล่าตัวจริง" ไป
-  //  เพื่อนที่ดาเมจเท่ากันเหลือแค่ "มือหนัก" ทั้งที่ให้คนตีปิดเป็น "ผู้ปิดฉาก" ได้ทั้งคู่)
-  const leads = []
-  HUNT_TITLES.forEach((t, order) => {
-    if (t.secondOnly) return
-    const cands = list.filter((p) => qualifies(p, t))
-    if (!cands.length) return
-    const top = Math.max(...cands.map((p) => statOf(p, t.stat)))
-    for (const p of cands) {
-      if (statOf(p, t.stat) === top) leads.push({ p, t, order, score: scoreOf(p, t) })
-    }
-  })
-  // ตี้ไม่เกิน 4 คน ค้นทุกแบบได้ — ตัดเหลือ 6 ตัวเลือกต่อคนกันกรณีมีคนออกจากห้องแล้วยังอยู่ในบันทึก
+  // ใครมีสิทธิ์ได้ฉายาไหน
+  //  leaderOnly = ต้องเป็นอันดับ 1 ของสถิตินั้น (เสมอกันได้) · secondOnly = ต้องไม่ใช่อันดับ 1
+  const topOf = (t) => Math.max(...list.map((p) => statOf(p, t.stat)))
+  const eligible = (p, t) => {
+    if (!qualifies(p, t)) return false
+    if (t.leaderOnly) return statOf(p, t.stat) === topOf(t)
+    if (t.secondOnly) return statOf(p, t.stat) < topOf(t)
+    return true
+  }
+
+  // จับคู่ทั้งทีมพร้อมกันให้คะแนนรวมสูงสุด — คนละ 1 ฉายา ฉายาละ 1 คน (ไม่มีฉายาซ้ำในตี้)
+  // (แจกทีละคู่เคยพลาด: ดาเมจเสมอกัน คนตีปิดเอา "นักล่าตัวจริง" ไป เพื่อนเหลือแค่ฉายารอง
+  //  และเคยปล่อยให้ซ้ำ: ตีชิ้นส่วนกัน 3 คน ได้ "ช่างทุบเกราะ" ทั้ง 3)
+  // ตี้ไม่เกิน 4 คน ค้นทุกแบบได้ — ตัดเหลือ 8 ตัวเลือกต่อคนกันกรณีมีคนออกจากห้องแล้วยังอยู่ในบันทึก
   const order = [...list].sort(byKey)
-  const options = order.map((p) => leads.filter((c) => c.p === p).sort(byScore).slice(0, 6))
+  const options = order.map((p) =>
+    HUNT_TITLES.map((t, idx) => ({ p, t, order: idx, score: scoreOf(p, t) }))
+      .filter((c) => eligible(p, c.t))
+      .sort(byScore)
+      .slice(0, 8),
+  )
   let best = { sum: -1, pick: [] }
   const used = new Set()
   const pick = []
@@ -203,18 +213,15 @@ export const buildHuntHighlights = (log, members) => {
       pick.pop()
       used.delete(c.t.id)
     }
-    search(i + 1, sum) // คนนี้ไม่ได้ฉายารอบแรก ไปรับรอบสอง
+    search(i + 1, sum) // คนนี้ไปรับฉายาสำรอง
   }
   search(0, 0)
   for (const c of best.pick) titled.set(c.p.key, c.t)
-  // รอบสอง: คนที่ยังไม่มีฉายา เอาฉายาที่เด่นที่สุดที่ตัวเองเข้าเงื่อนไข (ซ้ำกับคนอื่นได้ ยกเว้น leaderOnly)
-  for (const p of list) {
+  // ที่เหลือได้ฉายาสำรองคนละชื่อ เรียงตาม key
+  let fb = 0
+  for (const p of order) {
     if (titled.has(p.key)) continue
-    const best = HUNT_TITLES
-      .map((t, order) => ({ p, t, order, score: scoreOf(p, t) }))
-      .filter((c) => !c.t.leaderOnly && qualifies(p, c.t))
-      .sort(byScore)[0]
-    titled.set(p.key, best?.t ?? FALLBACK_TITLE)
+    titled.set(p.key, FALLBACK_TITLES[fb++ % FALLBACK_TITLES.length])
   }
 
   return list.map((p) => {
