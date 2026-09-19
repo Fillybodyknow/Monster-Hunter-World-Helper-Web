@@ -2295,33 +2295,28 @@ const monsterHuntingData = computed(() => {
 })
 
 // จุดอ่อนของมอนในหน้ารายละเอียดเควส — โชว์เฉพาะ Investigation / Tempered
-// level = จำนวน Mark ที่ต้องลงให้ติด ยิ่งน้อยยิ่งแพ้ · Immune เก็บเป็น level 0
-// ป้าย "แพ้" ให้ตัวที่ level ต่ำสุดในกลุ่ม — ถ้าทุกตัวเท่ากันไม่มีตัวไหนเด่น ก็ไม่ติดป้าย
+// level = จำนวน Mark ที่ต้องลงให้ติด ยิ่งน้อยยิ่งแพ้ (1 Mark = ★★, 2 Mark = ★)
+// Immune (level 0) ไม่ต้องโชว์ · เรียงตัวที่แพ้มากไว้หน้า
 const questWeakness = computed(() => {
   if (!selectedQuest.value?.quest_type?.includes('Investigation')) return null
   const d = monsterHuntingData.value
   if (!d) return null
-  const group = (list, idKey, nameOf, thumbOf) => {
-    const items = (list ?? []).map((r) => ({
-      id: r[idKey],
-      name: nameOf(r[idKey]),
-      thumb: thumbOf(r[idKey]),
-      level: r.level,
-      immune: !!r.immune || r.level <= 0,
-    }))
-    const levels = items.filter((i) => !i.immune).map((i) => i.level)
-    const min = Math.min(...levels)
-    const max = Math.max(...levels)
-    for (const i of items) {
-      i.weak = !i.immune && min < max && i.level === min
-      i.stars = i.immune ? 0 : Math.max(1, 3 - i.level)
-    }
-    return items
-  }
-  return {
-    elements: group(d.element_resistance, 'element_id', (id) => getElemental(id)?.elemental ?? '', (id) => getElemental(id)?.thumbnail),
-    statuses: group(d.status_resistance, 'status_id', (id) => getStatusEffect(id)?.effect_name ?? '', (id) => getStatusEffect(id)?.thumbnail),
-  }
+  const group = (list, idKey, meta) =>
+    (list ?? [])
+      .filter((r) => !r.immune && r.level > 0)
+      .map((r) => ({
+        id: r[idKey],
+        name: meta(r[idKey])?.name ?? '',
+        thumb: meta(r[idKey])?.thumb,
+        level: r.level,
+        stars: Math.max(1, 3 - r.level),
+      }))
+      .sort((a, b) => b.stars - a.stars)
+  const groups = [
+    group(d.element_resistance, 'element_id', (id) => ({ name: getElemental(id)?.elemental, thumb: getElemental(id)?.thumbnail })),
+    group(d.status_resistance, 'status_id', (id) => ({ name: getStatusEffect(id)?.effect_name, thumb: getStatusEffect(id)?.thumbnail })),
+  ].filter((g) => g.length)
+  return groups.length ? groups : null
 })
 
 const activeParts = computed(() => {
@@ -6002,6 +5997,19 @@ onDeactivated(() => {
             <p class="detail-book-name">{{ selectedBook.name }}</p>
           </div>
         </div>
+        <!-- จุดอ่อน (Investigation / Tempered): ธาตุ | สถานะ — ไอคอน + ดาว ไม่โชว์ตัวที่ Immune -->
+        <!-- ดาวในนี้ = แพ้มากแค่ไหน (★★ ติดง่าย) กลับด้านกับขีดในหน้า Hunting ที่นับ Mark — หัวข้อกำกับกันอ่านสลับ -->
+        <div v-if="questWeakness" class="weak-strip">
+          <p class="weak-head"><span class="weak-head-title">แพ้ทาง</span><span class="weak-head-note">★ มาก = ติดง่าย</span></p>
+          <div class="weak-sets">
+          <div v-for="(g, gi) in questWeakness" :key="gi" class="weak-set">
+            <span v-for="it in g" :key="it.id" class="weak-chip" :class="{ 'weak-chip-top': it.stars >= 2 }" :title="`${it.name} · ลง ${it.level} Mark ติด`">
+              <img v-if="it.thumb" :src="getImg(it.thumb)" class="weak-chip-icon" :alt="it.name" />
+              <span class="weak-chip-stars">{{ '★'.repeat(it.stars) }}</span>
+            </span>
+          </div>
+          </div>
+        </div>
       </div>
 
       <!-- STATS PARCHMENT -->
@@ -6040,30 +6048,6 @@ onDeactivated(() => {
             {{ attemptsLeft(selectedQuest) }} / {{ selectedQuest.starting_point.length }}
           </span>
         </div>
-      </div>
-
-      <!-- WEAKNESS — Investigation / Tempered เท่านั้น -->
-      <div v-if="questWeakness" class="starting-scroll weak-scroll">
-        <div class="scroll-tab">Weakness · จุดอ่อน</div>
-        <div v-for="g in [{ label: 'Element', items: questWeakness.elements }, { label: 'สถานะผิดปกติ', items: questWeakness.statuses }]" :key="g.label" class="weak-group">
-          <p class="weak-label">{{ g.label }}</p>
-          <div class="weak-items">
-            <div
-              v-for="it in g.items"
-              :key="it.id"
-              class="weak-item"
-              :class="{ 'is-weak': it.weak, 'is-immune': it.immune }"
-              :title="it.immune ? `${it.name}: Immune` : `${it.name}: ลง ${it.level} Mark ติด`"
-            >
-              <span v-if="it.weak" class="weak-tag">แพ้</span>
-              <img v-if="it.thumb" :src="getImg(it.thumb)" class="weak-icon" alt="" />
-              <span class="weak-name">{{ it.name }}</span>
-              <span class="weak-stars">{{ it.immune ? '✕' : '★'.repeat(it.stars) }}</span>
-              <span class="weak-mark">{{ it.immune ? 'Immune' : `${it.level} Mark` }}</span>
-            </div>
-          </div>
-        </div>
-        <p class="weak-note">★ มาก = ลง Mark น้อยก็ติด · ✕ = ไม่มีผล</p>
       </div>
 
       <!-- STARTING POINT SCROLL -->
@@ -11476,42 +11460,40 @@ onDeactivated(() => {
   border-radius: 0 0 2px 2px;
 }
 
-/* จุดอ่อนมอน (Investigation / Tempered) — ตัวที่แพ้ขอบแดงมีป้าย, Immune จาง */
-.weak-scroll { display: flex; flex-direction: column; gap: 12px; padding-top: 28px; }
-.weak-label { margin: 0 0 5px; font-size: 11px; font-weight: bold; letter-spacing: 1px; color: #7a6238; }
-.weak-items { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
-.weak-item {
-  position: relative;
-  display: flex; flex-direction: column; align-items: center; gap: 1px;
-  padding: 8px 2px 6px; border-radius: 4px; min-width: 0;
-  border: 1px solid rgba(120, 95, 55, 0.35);
-  background: rgba(150, 120, 70, 0.1);
+/* จุดอ่อนมอน (Investigation / Tempered) — แถบไอคอน + ดาวในการ์ดเป้าหมาย */
+.weak-strip { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(124, 90, 43, 0.35); }
+.weak-head { display: flex; align-items: baseline; gap: 8px; margin: 0; }
+.weak-head-title { font-size: 11px; font-weight: bold; letter-spacing: 1px; color: #c89b3c; }
+.weak-head-note { font-size: 10.5px; color: #a88040; }
+.weak-sets { display: flex; flex-direction: column; gap: 6px; }
+.weak-set { display: flex; flex-wrap: wrap; gap: 6px; }
+.weak-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 3px 7px 3px 4px; border-radius: 12px;
+  border: 1px solid rgba(200, 155, 60, 0.3);
+  background: rgba(0, 0, 0, 0.28);
 }
-.weak-item.is-weak {
-  border-color: #a3301f;
-  background: rgba(200, 80, 50, 0.14);
-  box-shadow: 0 0 0 1px rgba(163, 48, 31, 0.25);
+.weak-chip-icon { width: 22px; height: 22px; object-fit: contain; }
+/* ★★ = แพ้หนัก ลง Mark เดียวก็ติด — ขอบทองเรืองแสง ให้เห็นก่อนตัวอื่น */
+.weak-chip-top {
+  border-color: #ffc94a;
+  background: linear-gradient(180deg, rgba(255, 190, 60, 0.28), rgba(150, 80, 10, 0.35));
+  box-shadow: 0 0 10px rgba(255, 190, 60, 0.45), inset 0 0 6px rgba(255, 220, 140, 0.25);
+  animation: weak-glow 2.4s ease-in-out infinite;
 }
-.weak-item.is-immune { opacity: 0.45; }
-.weak-tag {
-  position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
-  padding: 0 6px; border-radius: 8px;
-  background: #a3301f; color: #fff4e0;
-  font-size: 10px; font-weight: bold; line-height: 16px; white-space: nowrap;
-}
-.weak-icon { width: 26px; height: 26px; object-fit: contain; }
-.weak-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; color: #3a2c18; }
-.weak-stars { font-size: 12px; line-height: 1.2; letter-spacing: 1px; color: #b8741a; }
-.is-immune .weak-stars { color: #6b5a3e; }
-.weak-mark { font-size: 9.5px; color: #7a6238; }
-.weak-note { margin: 0; font-size: 10.5px; color: #7a6238; }
+.weak-chip-top .weak-chip-stars { color: #fff0b8; text-shadow: 0 0 8px rgba(255, 200, 80, 0.9); }
+@keyframes weak-glow { 50% { box-shadow: 0 0 16px rgba(255, 190, 60, 0.7), inset 0 0 8px rgba(255, 220, 140, 0.35); } }
+@media (prefers-reduced-motion: reduce) { .weak-chip-top { animation: none; } }
+.weak-chip-stars { font-size: 12px; letter-spacing: 1px; color: #ffc94a; text-shadow: 0 0 6px rgba(255, 190, 60, 0.35); }
+/* จอแคบ: ธาตุ / สถานะ คนละแถว · จอกว้าง: แถวเดียวมีเส้นคั่น */
 @media (min-width: 720px) {
-  .weak-items { gap: 10px; }
-  .weak-icon { width: 34px; height: 34px; }
-  .weak-name { font-size: 12px; }
-  .weak-stars { font-size: 14px; }
-  .weak-mark { font-size: 11px; }
-  .weak-tag { top: -10px; padding: 0 9px; font-size: 12px; line-height: 19px; }
+  .weak-sets { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+  .weak-head-title { font-size: 12px; }
+  .weak-head-note { font-size: 11.5px; }
+  .weak-set + .weak-set { padding-left: 12px; border-left: 1px solid rgba(124, 90, 43, 0.45); }
+  .weak-chip { padding: 4px 9px 4px 5px; }
+  .weak-chip-icon { width: 26px; height: 26px; }
+  .weak-chip-stars { font-size: 14px; }
 }
 .starting-scroll .scroll-flavor-title { color: #2f2312; }
 .starting-scroll .scroll-flavor-body { color: #4a3a22; }
