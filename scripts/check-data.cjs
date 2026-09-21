@@ -156,6 +156,113 @@ for (const book of books) {
   }
 }
 
+// ── 4.5 ค่าบนการ์ดพฤติกรรม ──────────────────────────────────
+// ทุกใบต้องมีครบ: attack (ค่าโจมตี), part_id (ส่วนที่ใช้โจมตี), move (ระยะเคลื่อนที่)
+// element_id 0 = กายภาพ · status_id 0 = ไม่ติดสถานะ · เลขอื่นต้องมีจริงในไฟล์ธาตุ/สถานะ
+// part_id ใช้เลขเดียวกับ monster_parts.json — การ์ดโจมตีด้วยส่วนที่ "แตกไม่ได้" ได้ (เช่น Diablos ใช้ Body)
+{
+  const elementIds = new Set(read(path.join(FILES, 'elemental.json')).map((e) => e.elemental_id))
+  const statusIds = new Set(read(path.join(FILES, 'status_effect.json')).map((s) => s.effect_id))
+  const partIds = new Set(read(path.join(FILES, 'monster_parts.json')).map((p) => p.part_id))
+  for (const info of monsterInfo) {
+    for (const card of [...(info.behavior_deck ?? []), ...(info.behavior_special_card ?? [])]) {
+      const who = `${info.monster_name} การ์ด "${card.behavior_name}"`
+      const a = card.attack
+      if (a == null) {
+        fail('monster_info', `${who} ยังไม่มี attack`)
+      } else {
+        for (const key of ['damage', 'range', 'agility']) {
+          if (!Number.isInteger(a[key]) || a[key] < 0) fail('monster_info', `${who} ${key} ต้องเป็นจำนวนเต็มไม่ติดลบ (ได้ ${a[key]})`)
+        }
+        if (a.element_id !== 0 && !elementIds.has(a.element_id)) fail('monster_info', `${who} element_id ${a.element_id} ไม่มีใน elemental.json`)
+        if (a.status_id !== 0 && !statusIds.has(a.status_id)) fail('monster_info', `${who} status_id ${a.status_id} ไม่มีใน status_effect.json`)
+      }
+      if (!partIds.has(card.part_id)) fail('monster_info', `${who} part_id ${card.part_id} ไม่มีใน monster_parts.json`)
+      if (!Number.isInteger(card.move) || card.move < 0) fail('monster_info', `${who} move ต้องเป็นจำนวนเต็มไม่ติดลบ (ได้ ${card.move})`)
+    }
+  }
+}
+
+// ── 4.6 ตัวแก้ค่าของกฎ (modifiers) ──────────────────────────
+// ข้อความกฎเป็นภาษาไทยไว้ให้คนอ่าน ส่วน modifiers คือตัวเลขที่เครื่องคำนวณใช้ — ต้องไม่หลุดจากกัน
+// กฎข้อไหนพูดถึงค่าสถานะ ({atk} ฯลฯ) ต้องมี modifiers คู่กันเสมอ ([] = ตรวจแล้วว่าไม่กระทบการ์ดมอน)
+// และทุกค่าที่ modifier แก้ ต้องมี token ของค่านั้นอยู่ในข้อความ จะได้ไม่มีตัวเลขโผล่มาลอย ๆ
+{
+  const elementIds = new Set(read(path.join(FILES, 'elemental.json')).map((e) => e.elemental_id))
+  const statusIds = new Set(read(path.join(FILES, 'status_effect.json')).map((s) => s.effect_id))
+  const partIds = new Set(read(path.join(FILES, 'monster_parts.json')).map((p) => p.part_id))
+  const TOKEN_OF = {
+    damage: 'atk', range: 'range', agility: 'agility',
+    activations: 'hturn', attack_cards: 'hcard', move: 'move', armor: 'armor',
+    poison_hp: 'poison', // HP ที่ Hunter เสียตอน Poison หมดผล
+  }
+  const STAT_TOKENS = [...new Set(Object.values(TOKEN_OF))]
+  const hasStatToken = (text) => STAT_TOKENS.some((t) => text.includes(`{${t}}`))
+
+  const checkWhen = (who, when) => {
+    if (when == null || typeof when !== 'object') return fail('monster_info', `${who} ขาด when`)
+    const keys = Object.keys(when)
+    if (keys.length !== 1) return fail('monster_info', `${who} when ต้องมีเงื่อนไขเดียว (ได้ ${keys.join('+') || 'ว่าง'})`)
+    const [k] = keys
+    const v = when[k]
+    if (k === 'always' || k === 'monster_has_broken_part') {
+      if (v !== true) fail('monster_info', `${who} when.${k} ต้องเป็น true`)
+    } else if (k === 'element_id') {
+      if (!elementIds.has(v)) fail('monster_info', `${who} when.element_id ${v} ไม่มีใน elemental.json`)
+    } else if (k === 'status_id') {
+      if (!statusIds.has(v)) fail('monster_info', `${who} when.status_id ${v} ไม่มีใน status_effect.json`)
+    } else if (k === 'part_id') {
+      if (!partIds.has(v)) fail('monster_info', `${who} when.part_id ${v} ไม่มีใน monster_parts.json`)
+    } else if (k === 'manual') {
+      if (typeof v !== 'string' || !v.trim()) fail('monster_info', `${who} when.manual ต้องเป็นข้อความอธิบายเงื่อนไข`)
+    } else {
+      fail('monster_info', `${who} when.${k} ไม่ใช่เงื่อนไขที่รองรับ`)
+    }
+  }
+
+  const checkRule = (who, text, mods) => {
+    if (!hasStatToken(text)) {
+      if (mods !== undefined) fail('monster_info', `${who} มี modifiers ทั้งที่ข้อความไม่ได้พูดถึงค่าไหนเลย`)
+      return
+    }
+    if (mods === undefined) return fail('monster_info', `${who} ข้อความแก้ค่าแต่ยังไม่มี modifiers`)
+    if (!Array.isArray(mods)) return fail('monster_info', `${who} modifiers ต้องเป็น array`)
+    if (!mods.length) return // [] = ตรวจแล้วว่าไม่กระทบค่าบนการ์ดของมอน (เช่น กฎที่แก้การ์ดของ Hunter)
+
+    const covered = new Set()
+    mods.forEach((mod, i) => {
+      const whoMod = `${who} modifier #${i + 1}`
+      checkWhen(whoMod, mod.when)
+      const change = mod.change
+      if (change == null || typeof change !== 'object' || !Object.keys(change).length) {
+        return fail('monster_info', `${whoMod} ขาด change`)
+      }
+      for (const [key, val] of Object.entries(change)) {
+        if (!(key in TOKEN_OF)) { fail('monster_info', `${whoMod} change.${key} ไม่ใช่ค่าที่รองรับ`); continue }
+        if (!Number.isInteger(val) || val === 0) fail('monster_info', `${whoMod} change.${key} ต้องเป็นจำนวนเต็มที่ไม่ใช่ 0 (ได้ ${val})`)
+        if (!text.includes(`{${TOKEN_OF[key]}}`)) fail('monster_info', `${whoMod} แก้ ${key} แต่ข้อความไม่มี {${TOKEN_OF[key]}}`)
+        covered.add(TOKEN_OF[key])
+      }
+    })
+    for (const t of STAT_TOKENS) {
+      if (text.includes(`{${t}}`) && !covered.has(t)) fail('monster_info', `${who} ข้อความมี {${t}} แต่ไม่มี modifier ไหนแก้ค่านั้น`)
+    }
+  }
+
+  for (const info of monsterInfo) {
+    for (const diff of info.difficulty ?? []) {
+      const who = `${info.monster_name} ความยาก ${diff.difficulty_id}`
+      if (diff.special_rule?.description) {
+        checkRule(`${who} special_rule`, diff.special_rule.description, diff.special_rule.modifiers)
+      }
+      for (const [pos, part] of Object.entries(diff.monster_parts ?? {})) {
+        if (!part?.part_break_rule) continue
+        checkRule(`${who} ชิ้นส่วน ${pos}`, part.part_break_rule, part.part_break_modifiers)
+      }
+    }
+  }
+}
+
 // ── 5. ตารางรางวัล ──────────────────────────────────────────
 for (const info of monsterInfo) {
   for (const diff of info.difficulty ?? []) {

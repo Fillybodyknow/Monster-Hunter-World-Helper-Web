@@ -14,7 +14,7 @@ import { soundEnabled, soundVolume } from '@/stores/settings'
 
 const props = defineProps({ maxActions: { type: Number, default: 3 } })
 // cutscene: true/false — Quest.vue พักเพลง Downtime ระหว่างเล่นคัตซีนที่มีเสียงของมันเอง
-const emit = defineEmits(['allReady', 'cutscene'])
+const emit = defineEmits(['allReady', 'cutscene', 'chef'])
 const room = useRoomStore()
 const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 const sfx = useSfx()
@@ -487,10 +487,17 @@ const _endChefCutscene = () => {
 }
 
 // จบคัตซีน (ดูจนจบ / กดข้าม / โหลดวิดีโอไม่ได้) → เสิร์ฟจาน
+// ธาตุที่กินไปต้องอยู่ต่อถึงตอนล่า (เกราะธาตุ +1) — state ในนี้ถูกล้างตอนออกจากร้าน
+// เลยต้องส่งออกไปให้ Quest.vue เก็บตั้งแต่ตอนเสิร์ฟเสร็จ
+const _serveChef = () => {
+  chefDone.value = true
+  emit('chef', chefChosenElement.value?.elemental_id ?? null)
+}
+
 const finishChefCutscene = () => {
   if (!_endChefCutscene()) return
   sfx.playRandom(`${SFX_UI}/item_pickup`, 3, { key: 'item' })
-  chefDone.value = true
+  _serveChef()
 }
 
 const chefConfirm = () => {
@@ -498,7 +505,7 @@ const chefConfirm = () => {
   const v = chefVideo.value
   if (!v) {
     sfx.playRandom(`${SFX_UI}/item_pickup`, 3, { key: 'item' })
-    chefDone.value = true
+    _serveChef()
     return
   }
   chefCutscene.value = true

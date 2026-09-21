@@ -11,8 +11,8 @@ import roomNameTemplates from '@/assets/files/room_name_templates.json'
 const getHunterClass = (id) => hunterClassData.find((c) => c.hunter_class_id === id)
 import monsterPartsData from '@/assets/files/monster_parts.json'
 import elementalData from '@/assets/files/elemental.json'
-import armorData from '@/assets/files/armors.json'
 import statusEffectData from '@/assets/files/status_effect.json'
+import bonusAbilityData from '@/assets/files/bonus_ability.json'
 import resourceData from '@/assets/files/resource.json'
 import { getHunters, saveHunters } from '@/services/hunterStorage'
 import { questPoints, rankOf, pointsOf } from '@/services/hunterRank'
@@ -28,6 +28,11 @@ import { openCraftLookup } from '@/composables/useCraftLookup'
 import { useSfx, preloadSfx, preloadMedia, playMedia, cancelPendingMedia, onUserGesture } from '@/composables/useSfx'
 import { preloadImages } from '@/services/assetPreload'
 import RuleText from './RuleText.vue'
+import CardStatStrip from './CardStatStrip.vue'
+import AttackChoicePanel from './AttackChoicePanel.vue'
+import AttackRevealOverlay from './AttackRevealOverlay.vue'
+import { resolveCardStats, resolveHunterDamage, resolvePoisonHpLoss, POISON_HP_LOSS, PART_POSITIONS } from '@/services/cardStats'
+import { armorSummary, armorAbilityIds } from '@/services/equipService'
 import { requestTour, cancelTourRequest } from '@/composables/useTour'
 
 const room = useRoomStore()
@@ -920,6 +925,8 @@ const _ownStartDialogId = () => {
 
 const startQuest = () => {
   _clearPerQuestLocalState()
+  // เควสใหม่ = HP เต็มใหม่ (Co-op ใช้ questStartAt ที่ Host ตั้งให้ทุกเครื่องแทน)
+  if (!room.inRoom) _soloQuestKey.value = `s${Date.now()}`
   initTrackTokens()
   buildTimeCardDeck()
   // Co-op ใช้จุดเริ่มที่คน Post Quest เลือกไว้ (questInfo.start_dialog_id) ไม่ใช่ของ Host ตอนกดเริ่ม
@@ -1799,6 +1806,7 @@ const confirmOutcome = () => {
   const type = pendingOutcome.value
   pendingOutcome.value = null
   questOutcome.value = type
+  _flushAttackLog() // การโจมตีครั้งสุดท้ายไม่มีการ์ดใบใหม่มาปิดให้ ต้องจดตรงนี้
   // สรุปการล่าขึ้นเฉพาะตอนชนะ — ถ่ายภาพ state ไว้ก่อน onComplete / goToRewardPhase ล้างทิ้ง
   huntRecap.value = type === 'complete' ? _buildHuntRecap() : null
   if (room.inRoom) room.clearOutcome?.()
@@ -2023,12 +2031,18 @@ const drawBehaviorCard = () => {
   if (rampageActive.value) {
     activationOverride.value = 0
   } else if (pendingActivationAdjust.value !== 0) {
-    activationOverride.value = Math.max(0, (card.activations ?? 0) + pendingActivationAdjust.value)
+    // ปรับมือ = บวกจากค่าที่กฎคิดให้แล้ว ไม่ใช่เลขดิบบนการ์ด
+    const resolved = resolveCardStats(card, huntRuleCtx.value).value.activations
+    activationOverride.value = Math.max(0, resolved + pendingActivationAdjust.value)
   } else {
     activationOverride.value = null
   }
   rampageActive.value = false
   pendingActivationAdjust.value = 0
+
+  // การ์ดใบใหม่ = การโจมตีครั้งก่อนจบแล้ว จดบันทึกแล้วเล็ง/เลือกกันใหม่
+  room.setMonsterTarget?.(null)
+  _resetAttackChoices({ log: true })
 
   monsterAttackStatuses.value = resolvedStatuses
   monsterAttackCard.value = card
@@ -2559,10 +2573,23 @@ const useStripVisible = computed(() =>
 )
 
 const nextBehaviorCard = computed(() => behaviorDeck.value[0] ?? null)
+
+// ค่าจริงของการ์ด = ค่าบนการ์ด + กฎของระดับความยาก + กฎของชิ้นส่วนที่พังแล้ว (src/services/cardStats.js)
+const huntRuleCtx = computed(() => ({ difficulty: monsterHuntingData.value, brokenParts: brokenParts.value }))
+const currentCardStats = computed(() =>
+  currentBehaviorCard.value ? resolveCardStats(currentBehaviorCard.value, huntRuleCtx.value) : null,
+)
+const attackCardStats = computed(() =>
+  monsterAttackCard.value ? resolveCardStats(monsterAttackCard.value, huntRuleCtx.value) : null,
+)
+
+// กฎของชิ้นส่วนที่พังแล้วซึ่งเปลี่ยนจำนวน Hunter Turn / Attack Card
+// ตอนกดยืนยัน Monster Turn ยังไม่เปิดการ์ด เลยยังไม่รู้ว่าเข้าเงื่อนไขไหม — เอาไว้เตือนเฉย ๆ
 const activationPartRules = computed(() =>
-  Object.entries(activeParts.value)
-    .filter(([pos, data]) => brokenParts.value[pos] && data.part_break_rule?.includes('จะทำให้ Hunter เล่นเพิ่มได้'))
-    .map(([, data]) => data.part_break_rule)
+  PART_POSITIONS.filter((pos) => brokenParts.value[pos])
+    .map((pos) => monsterHuntingData.value?.monster_parts?.[pos])
+    .filter((p) => p?.part_break_modifiers?.some((m) => m.change?.activations || m.change?.attack_cards))
+    .map((p) => p.part_break_rule),
 )
 const floatToggleLabel = computed(() => {
   if (floatOutcomeState.value === 'complete') return '✦ Quest Complete'
@@ -2684,6 +2711,8 @@ const rollNitrotoad = () => {
 
 const confirmNitrotoad = () => {
   nitrotoadStep.value = nitrotoadRoll.value <= 3 ? 'part-select' : 'blastblight'
+  // ปุ่มนี้มีแต่ในเครื่องคนจั่ว — คนจั่วคือคนโดน
+  if (nitrotoadStep.value === 'blastblight') inflictMyStatus(STATUS_BLAST)
   _pushTimeCardState()
 }
 
@@ -2855,6 +2884,7 @@ const confirmPoisoncup = () => {
     }
   } else {
     poisoncupStep.value = 'poison'
+    inflictMyStatus(STATUS_POISON)
   }
   _pushTimeCardState()
 }
@@ -2919,6 +2949,7 @@ const confirmSleeptoad = () => {
     }
   } else {
     sleeptoadStep.value = 'sleep'
+    inflictMyStatus(STATUS_SLEEP)
   }
   _pushTimeCardState()
 }
@@ -3035,6 +3066,8 @@ const confirmBoulder = () => {
     boulderDrawerId.value = null
   } else {
     boulderStep.value = 'hunter-damage'
+    // "your hunter suffers 2 damage" — ปุ่มนี้กดได้เฉพาะคนจั่ว จึงหักที่เครื่องนี้เครื่องเดียว
+    _hurtMeByTimeCard(2, 'Suspended Boulder')
   }
   _pushTimeCardState()
 }
@@ -3228,26 +3261,7 @@ watch(
 // ทิศทางการหันหน้าของโทเค็นจัดการบนโต๊ะเหมือน Threat Shift — ในแอปสลับแค่ตัวเลข
 const ABILITY_WEAKNESS_EXPLOIT = 11
 
-const myArmorAbilityIds = computed(() => {
-  const slots = hunter.value?.equipments?.armors
-  if (!slots) return []
-  const worn = ['helm', 'mail', 'greaves']
-    .map((k) => (slots[k] ?? []).find((a) => a.is_equip))
-    .filter(Boolean)
-
-  const ids = new Set()
-  for (const w of worn) {
-    const set = armorData.find((s) => s.equip_set_id === w.equip_set_id)
-    const piece = set?.equips.find((e) => e.equip_id === w.equip_id)
-    if (piece?.ability_id) ids.add(piece.ability_id)
-  }
-  // โบนัสเซ็ตได้เมื่อใส่ครบสามชิ้นจากเซ็ตเดียวกัน
-  if (worn.length === 3 && new Set(worn.map((w) => w.equip_set_id)).size === 1) {
-    const bonus = armorData.find((s) => s.equip_set_id === worn[0].equip_set_id)?.set_ability_bonus
-    if (bonus) ids.add(bonus)
-  }
-  return [...ids]
-})
+const myArmorAbilityIds = computed(() => armorAbilityIds(hunter.value))
 
 const weaknessExploitUsed = computed(
   () => !!room.myAbilityUsed?.[ABILITY_WEAKNESS_EXPLOIT],
@@ -3445,8 +3459,8 @@ watch(
   },
 )
 
-const _queueReveal = (hunterName, card, hunterClassId) => {
-  tcRevealQueue.value = [...tcRevealQueue.value, { hunterName, card, hunterClassId }]
+const _queueReveal = (hunterName, card, hunterClassId, hunterId = null) => {
+  tcRevealQueue.value = [...tcRevealQueue.value, { hunterName, card, hunterClassId, hunterId }]
   _processTcRevealQueue()
 }
 
@@ -3463,8 +3477,45 @@ const _processTcRevealQueue = () => {
   sfx.playRandom(`${SFX_UI}/draw_card`, 3, { key: 'draw' })
 }
 
+// ── Time Card ที่ทำร้าย Hunter ────────────────────────────
+// ทุกเครื่องเห็นหน้าเปิดการ์ดใบเดียวกัน (ไม่เล่นซ้ำตอน reconnect) — ตอนปิดหน้านั้นแต่ละเครื่องหัก HP ของตัวเอง
+// "each/all hunters" โดนทุกคน · "your hunter" โดนเฉพาะคนจั่ว
+// เป็นความเสียหายตรง ไม่หักเกราะ (ต่างจากการโจมตีของมอน) — ยกเว้น Ice Storm ที่มีเกราะน้ำแข็งแล้วไม่โดนเลย
+// Suspended Boulder (ทอยได้ 4-6) หักตอนคนจั่วกดดำเนินการใน confirmBoulder
+// Poisoncup / Sleeptoad / Nitrotoad ให้สถานะอยู่แล้วในขั้นตอนทอยเต๋าของแต่ละใบ
+const TC_ICE = 4
+const _hasIceResist = () => (myArmor.value.elements?.[TC_ICE] ?? 0) > 0 || Number(myChefElement.value) === TC_ICE
+const _hurtMeByTimeCard = (amount, cardName) => {
+  if (amount <= 0 || !myDefender.value) return
+  const before = myHp.value
+  setMyHp(before - amount)
+  addNotif(`💥 ${cardName}: HP ${before} → ${myHp.value}`, 'error')
+  if (before > 0 && myHp.value === 0) _askFaint()
+}
+const _applyTimeCardToMe = (card, drawerId) => {
+  if (!card || phase.value !== 'huntingPanel') return
+  const mine = drawerId != null && String(drawerId) === String(myDefenderId.value)
+  switch (card.card_name) {
+    case 'Turf War':
+    case 'Unavenged':
+      _hurtMeByTimeCard(2, card.card_name)
+      break
+    case 'Ice Storm':
+      if (_hasIceResist()) addNotif('❄ Ice Storm: มีเกราะน้ำแข็ง ไม่โดน', 'info')
+      else _hurtMeByTimeCard(3, card.card_name)
+      break
+    case 'Fumbled Carving':
+      if (myDefender.value) inflictMyStatus(STATUS_POISON)
+      break
+    case 'Vespoid Attack':
+      if (mine) statusNotice.value = [{ id: STATUS_PARALYSIS, resisted: resistAbilityOf(myDefenderId.value, STATUS_PARALYSIS)?.ability_name ?? null }]
+      break
+  }
+}
+
 const dismissTcReveal = () => {
   const card = tcRevealCurrent.value?.card
+  _applyTimeCardToMe(card, tcRevealCurrent.value?.hunterId)
   showTcReveal.value = false
   tcRevealCurrent.value = null
   // ต่อคิวใบถัดไปให้ช้าลงระหว่างเล่นแอนิเมชัน ไม่งั้นการ์ดใบใหม่จะเด้งทับ
@@ -3548,6 +3599,9 @@ const endTurn = () => {
 
   // จุดแบ่งเทิร์นในบันทึก — สรุปการล่าใช้ยกดาเมจที่กดมาก่อนหน้านี้ให้เจ้าของเทิร์น
   _addHuntLog({ kind: 'turnEnd' })
+  _resolveMyStatusesAtTurnEnd()
+  // ล้มแล้วได้เล่นเทิร์นของตัวเอง = กลับขึ้นบอร์ดแล้ว
+  if (room.inRoom && room.downHunters?.[room.myHunterId]) room.setHunterDownState?.(room.myHunterId, false)
 
   if (recoveryPending.value) {
     if (huntingHp.value >= recoveryHpSnapshot.value) adjustHpWithFlash(5)
@@ -3562,7 +3616,7 @@ const endTurn = () => {
     const deckWasEmpty = timeCardDeck.value.length === 0
     if (!deckWasEmpty) {
       const card = _drawTcCard(hunterName)
-      if (card) _queueReveal(hunterName, card, hunter.value?.hunter_class_id)
+      if (card) _queueReveal(hunterName, card, hunter.value?.hunter_class_id, hunter.value?.hunter_id)
     }
     _soloTurnEnded.value = true
     _incrementActivation()
@@ -3621,11 +3675,12 @@ watch([() => room.behaviorDeckState, () => room.joinSignal], ([state]) => {
   rampageActive.value = state.rampageActive ?? false
   activationOverride.value = state.activationOverride ?? null
 })
+// ใช้ค่าหลังกฎแล้ว — ชิ้นส่วนที่พังบางอันเพิ่ม Hunter Turn / Attack Card ให้การ์ดบางใบ
 const activationLimit = computed(() => {
   if (activationOverride.value !== null) return activationOverride.value
-  return currentBehaviorCard.value?.activations ?? 0
+  return currentCardStats.value?.value.activations ?? 0
 })
-const attackCardLimit = computed(() => currentBehaviorCard.value?.attack_cards ?? 0)
+const attackCardLimit = computed(() => currentCardStats.value?.value.attack_cards ?? 0)
 const monsterTurnReady = computed(() =>
   activationLimit.value === 0 || activationRoundsCompleted.value >= activationLimit.value
 )
@@ -3753,7 +3808,7 @@ watch(() => room.tcTurnEnds, (ends) => {
     if (!_suppressAnimations && data.card && !_tcAnimatedKeys.has(hunterId)) {
       _tcAnimatedKeys.add(hunterId)
       const h = room.hunters.find(hh => String(hh.hunter_id) === hunterId)
-      _queueReveal(data.hunterName, data.card, h?.hunter_class_id)
+      _queueReveal(data.hunterName, data.card, h?.hunter_class_id, hunterId)
     } else if (data.card) {
       _tcAnimatedKeys.add(hunterId)
     }
@@ -3798,9 +3853,539 @@ const togglePotion = (index) => {
   _pushHuntState()
 }
 
+// ── ใครอยู่บนบอร์ด + Hunter Token ช่วงเทิร์น Monster ────────────────────
+// ล้ม = ออกจากบอร์ด มอนไม่เล็ง · กดจบเทิร์น = กลับขึ้นบอร์ด (ตามที่เล่นบนโต๊ะจริง)
+const isHunterDown = (h) => !!room.downHunters?.[h.hunter_id]
+const boardHunters = computed(() => room.hunters.filter((h) => !isHunterDown(h)))
+const downHunterNames = computed(() => room.hunters.filter(isHunterDown).map((h) => h.hunter_name))
+const tokenOf = (h) => room.hunterTokens?.[h.hunter_id] ?? null
+
+// เลขสูงสุด 2 ค่าของคนที่ยังอยู่บนบอร์ด — เสมอกันไฮไลต์ทุกคนที่เลขเท่ากัน
+const topTokenValues = computed(() => {
+  const nums = [...new Set(boardHunters.value.map(tokenOf).filter((n) => typeof n === 'number'))]
+  return nums.sort((a, b) => b - a).slice(0, 2)
+})
+const isTopToken = (h) => topTokenValues.value.includes(tokenOf(h))
+
+// เล็งเป้าหมายได้หลัง "เปิดการ์ดพฤติกรรม" ของมอนแล้วเท่านั้น (ตามกติกาบนโต๊ะ)
+// การ์ดเพิ่งเปิด = ยังไม่มีใครเล่นเทิร์นของการ์ดใบนี้ (activationRoundsCompleted = 0)
+// พอ Hunter คนแรกจบเทิร์น ก็พ้นจังหวะเล็งแล้ว แผงจะหายไปเอง
+// เลือกเป้าหมายเสร็จแล้วแผงนี้ปิดไปเลย เพื่อไปขั้นตอนถัดไป (เลือกรับ/หลบ)
+const tokenPanelVisible = computed(() =>
+  room.inRoom &&
+  phase.value === 'huntingPanel' &&
+  !!currentBehaviorCard.value &&
+  activationRoundsCompleted.value === 0 &&
+  room.monsterTarget == null,
+)
+// เป้าหมาย: ทุกคนกดปุ่ม "ฉันเป็นเป้าหมาย" ของตัวเอง · ไอคอนคลาสกดได้เฉพาะ Host ไว้เลือกแทนคนอื่น
+// (คนวางมือถือไว้ข้างกระดาน) — Guest ไม่ต้องไล่หาไอคอนตัวเองในแถว
+const canSetTarget = () => room.isHost
+const isMe = (h) => String(h.hunter_id) === String(room.myHunterId)
+const myBoardHunter = computed(() => boardHunters.value.find(isMe) ?? null)
+// กดแล้วถามยืนยันก่อน — เลือกผิดแล้วย้อนไม่ได้ เพราะแผงปิดทันทีที่ยืนยัน
+const pendingTargetHunter = ref(null)
+const askMonsterTarget = (h) => {
+  if (!h || !(room.isHost || isMe(h))) return
+  _sfxSelect()
+  pendingTargetHunter.value = h
+}
+const confirmMonsterTarget = () => {
+  const h = pendingTargetHunter.value
+  pendingTargetHunter.value = null
+  if (!h) return
+  _sfxConfirm()
+  room.setMonsterTarget?.(h.hunter_id)
+}
+const isTargeted = (h) => String(room.monsterTarget ?? '') === String(h.hunter_id)
+
+// ── รับความเสียหายจากการโจมตี ─────────────────────────────
+// ขั้นตอน: เปิดการ์ด → เลือกเป้าหมาย → ทุกคนบนบอร์ดเลือกรับ/หลบ/นอกระยะ
+// คนที่รับ หักเกราะให้เอง (กายภาพหักเกราะกายภาพ ธาตุหักเกราะธาตุนั้น + ข้าวเชฟเหมี่ยว)
+// เฉลยแล้วหัก HP ของตัวเองให้ทันที HP หมดถามยืนยันล้มหลังแอนิเมชันเฉลยจบ
+const myArmor = computed(() => armorSummary(hunter.value))
+const myChefElement = ref(null) // ธาตุที่กินจากเชฟเหมี่ยว — อยู่ถึงจบเควสต์
+const onChefElement = (elementId) => {
+  myChefElement.value = elementId ?? null
+  _pushMyLoadout()
+}
+
+// ── HP ของตัวเอง ─────────────────────────────────────────
+// เต็มทุกครั้งที่ "เริ่มเควส" ไม่ใช่เริ่มล่า — Dialog Phase มีผลลัพธ์ที่ทำให้เสียเลือดก่อนเจอมอน
+// แล้วเลือดที่เหลือต้องพกเข้าการล่าด้วย · กด −/+ เองได้ (ยา, Time Card, ผลบนโต๊ะที่แอปไม่รู้)
+// ส่งขึ้นห้องพร้อมเกราะ เพื่อนเห็นในแถบปาร์ตี้ และหลุดแล้วกลับเข้ามาได้เลขเดิม
+// hp_hunt = รหัสเควสที่เลขนี้เป็นของ — เลขของเควสก่อนที่ค้างในห้องจะไม่ถูกดึงกลับมาใช้
+//   Co-op ใช้ questStartAt ที่ Host ตั้งตอนเริ่มเควส (ทุกเครื่องเห็นเลขเดียวกัน รวมถึงคนที่หลุดแล้วเข้าใหม่)
+//   เล่นคนเดียวใช้เวลาที่กดเริ่มเควสในเครื่อง
+const HUNTER_HP_MAX = 8
+const myHp = ref(HUNTER_HP_MAX)
+let _myHpHunt = null
+const _soloQuestKey = ref(null)
+const questRunKey = computed(() =>
+  room.inRoom ? (room.questStartAt ? `q${room.questStartAt}` : null) : _soloQuestKey.value,
+)
+
+// ── สถานะผิดปกติของตัวเอง ─────────────────────────────────
+// ติดจากการ์ดโจมตีที่เลือก "รับ" หรือจาก Time Card กบ (คนจั่วเป็นคนโดน)
+// ที่อยู่ถึงจบเทิร์นถัดไปของตัวเอง แอปเก็บไว้แล้วทำผลให้:
+//   Poison — จบเทิร์นถัดไป HP −2 · Sleep — กดหลบไม่ได้ · Blastblight — เกราะ −2 ตอนคิดดาเมจ
+// Stun / Paralysis ต้องทำบนโต๊ะทันที (คว่ำการ์ด / ทิ้งการ์ดบนมือ) แอปแค่บอกว่าต้องทำอะไร
+const STATUS_STUN = 1
+const STATUS_POISON = 2
+const STATUS_SLEEP = 3
+const STATUS_PARALYSIS = 4
+const STATUS_BLAST = 5
+const LASTING_STATUSES = [STATUS_POISON, STATUS_SLEEP, STATUS_BLAST]
+// Bonus Ability ของเกราะที่กันสถานะนั้นได้ทั้งหมด (bonus_ability.json) — มีเฉพาะ 3 สถานะนี้
+const STATUS_RESIST_ABILITY = { [STATUS_STUN]: 17, [STATUS_POISON]: 1, [STATUS_SLEEP]: 12 }
+// ability ของคนอื่นมาจากเกราะที่เขาส่งขึ้นห้องตอนเริ่มล่า (armorSummary().abilities)
+const _abilitiesOf = (hunterId) => {
+  if (!room.inRoom || String(hunterId) === String(myDefenderId.value)) return myArmorAbilityIds.value
+  return room.hunters.find((h) => String(h.hunter_id) === String(hunterId))?.armor?.abilities ?? []
+}
+// คืน ability ที่ทำให้ต้านทานได้ (ไว้บอกชื่อ) หรือ null ถ้าต้านไม่ได้
+const resistAbilityOf = (hunterId, statusId) => {
+  const abilityId = STATUS_RESIST_ABILITY[statusId]
+  if (!abilityId || !_abilitiesOf(hunterId).includes(abilityId)) return null
+  return bonusAbilityData.find((a) => a.ability_id === abilityId) ?? null
+}
+const myStatuses = ref([])
+// Poison ที่ติดจากการโจมตีของมอน โดนกฎของมอนได้ (เช่น Pukei-Pukei เสีย 3) · จาก Time Card เสีย 2 เสมอ
+// คิดเลขตอนหมดผล ไม่ใช่ตอนติด — ชิ้นส่วนพังระหว่างนั้นกฎก็เปลี่ยนตาม
+const myPoisonFromMonster = ref(false)
+const myPoisonLoss = computed(() =>
+  myPoisonFromMonster.value ? resolvePoisonHpLoss(huntRuleCtx.value).value : POISON_HP_LOSS,
+)
+// บอกผู้เล่นว่าแอปจัดการส่วนไหนให้แล้ว ส่วนไหนต้องทำเองบนโต๊ะ
+const statusAppEffect = computed(() => ({
+  [STATUS_STUN]: 'ทำบนโต๊ะตอนนี้เลย',
+  [STATUS_POISON]: `Poison: จบเทิร์นหน้าแอปหัก HP ${myPoisonLoss.value} ให้`,
+  [STATUS_SLEEP]: 'Sleep: เลือกหลบหลีกไม่ได้ เดิน/โจมตีไม่ได้',
+  [STATUS_PARALYSIS]: 'ทำบนโต๊ะตอนนี้เลย',
+  [STATUS_BLAST]: 'Blastblight: แอปหักเกราะ 2 ให้ตอนคิดดาเมจ',
+}))
+const hasMyStatus = (id) => myStatuses.value.includes(id)
+// สถานะที่เพิ่งติดจากการโจมตี — ขึ้นหน้าต่างบอกว่าต้องทำอะไรหลังเฉลยจบ
+const statusNotice = ref(null) // [{ id, resisted: ชื่อ ability | null }] | null
+
+const _setMyStatuses = (ids) => {
+  myStatuses.value = LASTING_STATUSES.filter((id) => ids.includes(id))
+  if (!hasMyStatus(STATUS_POISON)) myPoisonFromMonster.value = false
+  _pushMyLoadout()
+}
+const inflictMyStatus = (id, { fromMonster = false } = {}) => {
+  if (!LASTING_STATUSES.includes(id)) return
+  // เกราะกันสถานะนี้ได้ — ไม่ติด (ปุ่มในแถวสถานะยังกดติดเองได้ เผื่อกรณีพิเศษบนโต๊ะ)
+  if (resistAbilityOf(myDefenderId.value, id)) return
+  // ติด Poison ซ้ำจากมอน ตอนติดจาก Time Card อยู่แล้ว — ใช้กฎของมอน (หนักกว่าหรือเท่ากัน)
+  if (id === STATUS_POISON && fromMonster) myPoisonFromMonster.value = true
+  _setMyStatuses([...myStatuses.value, id])
+}
+// กดเองได้ เผื่อติดจากทางอื่นที่แอปไม่รู้ หรือมีของแก้สถานะบนโต๊ะ
+const toggleMyStatus = (id) => {
+  _setMyStatuses(hasMyStatus(id) ? myStatuses.value.filter((x) => x !== id) : [...myStatuses.value, id])
+}
+// เรียกตอนกดจบเทิร์นของตัวเอง ก่อนจั่ว Time Card — สถานะจาก Time Card ใบที่จั่วตอนนี้จึงอยู่ถึงเทิร์นหน้า
+const _resolveMyStatusesAtTurnEnd = () => {
+  if (!myStatuses.value.length) return
+  const loss = hasMyStatus(STATUS_POISON) ? myPoisonLoss.value : 0
+  _setMyStatuses([])
+  if (loss) stepMyHp(-loss)
+}
+const statusesOf = (h) => {
+  if (String(h.hunter_id) === String(myDefenderId.value)) return myStatuses.value
+  return h.hp_hunt === questRunKey.value && Array.isArray(h.statuses) ? h.statuses : []
+}
+
+const _pushMyLoadout = () => {
+  if (!room.inRoom) return
+  room.setMyLoadout?.({
+    armor: myArmor.value,
+    chef_element: myChefElement.value ?? null,
+    hp: myHp.value,
+    hp_hunt: _myHpHunt,
+    // Firebase ไม่เก็บ array ว่าง — null แทน แล้วฝั่งอ่านถือว่าไม่มีสถานะ
+    statuses: myStatuses.value.length ? myStatuses.value : null,
+    poison_monster: myPoisonFromMonster.value,
+  })
+}
+
+const setMyHp = (value) => {
+  const next = Math.max(0, Math.min(HUNTER_HP_MAX, value))
+  if (next === myHp.value) return
+  myHp.value = next
+  _pushMyLoadout()
+}
+const stepMyHp = (delta) => {
+  const before = myHp.value
+  setMyHp(before + delta)
+  // ตัวนับล้มกับการทิ้ง Time Card มีแค่ในช่วงล่า — ช่วง Dialog แค่เตือนในแถบ HP ให้ทำบนโต๊ะ
+  if (before > 0 && myHp.value === 0 && phase.value === 'huntingPanel') _askFaint()
+}
+const _askFaint = () => {
+  if (canFaint.value) pendingUse.value = 'faint'
+}
+const hpOf = (h) => {
+  if (String(h.hunter_id) === String(myDefenderId.value)) return myHp.value
+  return h.hp_hunt === questRunKey.value && typeof h.hp === 'number' ? h.hp : HUNTER_HP_MAX
+}
+// วงแหวน HP ในแถบปาร์ตี้ — สัดส่วนที่เหลือ และสีไล่จากเขียว (hue 120) ไปแดง (hue 0)
+const hpRingStyle = (h) => {
+  const ratio = Math.max(0, Math.min(1, hpOf(h) / HUNTER_HP_MAX))
+  return { '--hp-deg': `${ratio * 360}deg`, '--hp-color': `hsl(${Math.round(ratio * 120)}, 75%, 48%)` }
+}
+// ของที่ต้องบอกหลังเฉลยจบ ทีละหน้าต่าง ไม่ให้ซ้อนกัน: สถานะที่เพิ่งติด → แล้วค่อยถามล้มถ้า HP หมด
+let _faintAfterReveal = false
+let _noticeAfterReveal = null
+const _flushAfterReveal = () => {
+  if (_noticeAfterReveal) {
+    statusNotice.value = _noticeAfterReveal
+    _noticeAfterReveal = null
+    return
+  }
+  if (!_faintAfterReveal) return
+  _faintAfterReveal = false
+  if (myHp.value === 0) _askFaint()
+}
+const dismissStatusNotice = () => {
+  statusNotice.value = null
+  _flushAfterReveal()
+}
+
+const attackChoicesSolo = ref({})
+const attackChoicesAll = computed(() => (room.inRoom ? room.attackChoices : attackChoicesSolo.value))
+const choiceOf = (h) => attackChoicesAll.value?.[h.hunter_id] ?? null
+
+// เล่นคนเดียวไม่มี room.hunters — ปั้นแถวของตัวเองขึ้นมาให้ขั้นตอนเดียวกันใช้ได้
+const defenders = computed(() => {
+  if (room.inRoom) return boardHunters.value
+  const me = hunter.value
+  return me ? [{ hunter_id: me.hunter_id, hunter_name: me.hunter_name, hunter_class_id: me.hunter_class_id }] : []
+})
+
+const attackElementId = computed(() => monsterAttackCard.value?.attack?.element_id ?? 0)
+const attackBaseDamage = computed(() => attackCardStats.value?.value.damage ?? 0)
+const attackAgility = computed(() => attackCardStats.value?.value.agility ?? 0)
+
+const damageBreakdown = (h, { shield = 0 } = {}) => {
+  // เกราะของตัวเองใช้ของสด ๆ ในเครื่อง ของคนอื่นใช้ที่ส่งขึ้นห้องตอนเริ่มล่า
+  const mine = !room.inRoom || String(h.hunter_id) === String(room.myHunterId)
+  return resolveHunterDamage({
+    damage: attackBaseDamage.value,
+    element_id: attackElementId.value,
+    armor: mine ? myArmor.value : (h.armor ?? { physical: 0, elements: {} }),
+    chefElement: mine ? myChefElement.value : (h.chef_element ?? null),
+    shield,
+    blastblight: statusesOf(h).includes(STATUS_BLAST),
+  })
+}
+
+// เกราะจาก Attack Card ที่กดเพิ่มเอง — ของตัวเองเท่านั้น ล้างทุกครั้งที่ขึ้นการ์ดใหม่
+const myShieldDraft = ref(0)
+
+const _writeAttackChoice = (hunterId, entry) => {
+  if (room.inRoom) room.setAttackChoiceFor?.(hunterId, entry)
+  else {
+    const next = { ...attackChoicesSolo.value }
+    if (entry) next[hunterId] = entry
+    else delete next[hunterId]
+    attackChoicesSolo.value = next
+  }
+}
+
+const _buildChoiceEntry = (h, choiceId, { shield = 0, confirmed = false } = {}) => ({
+  choice: choiceId,
+  targeted: isTargeted(h),
+  card: monsterAttackCard.value?.behavior_name ?? '',
+  // หลบ/นอกระยะ ไม่ต้องคิดเลข จบขั้นตอนทันที · รับความเสียหายต้องไปหน้าคำนวณก่อน
+  confirmed: choiceId === 'hit' ? confirmed : true,
+  ...(choiceId === 'hit'
+    ? damageBreakdown(h, { shield })
+    : { dmg: 0, base: attackBaseDamage.value, worn: 0, guard: 0, chefBonus: 0, shield: 0, guardBonus: 0, element_id: attackElementId.value }),
+})
+
+// เลือกของใครของมัน — Host กดแทนไม่ได้
+const setMyAttackChoice = (choiceId) => {
+  const h = myDefender.value
+  if (!h || attackResolved.value) return
+  _sfxSelect()
+  if (!choiceId) myShieldDraft.value = 0
+  _writeAttackChoice(h.hunter_id, choiceId ? _buildChoiceEntry(h, choiceId) : null)
+}
+
+// หน้าคำนวณ: กดยืนยันแล้วล็อกตัวเลข รอคนอื่นให้ครบ
+const confirmMyDamage = () => {
+  const h = myDefender.value
+  if (!h || myAttackChoice.value?.choice !== 'hit') return
+  _sfxConfirm()
+  _writeAttackChoice(h.hunter_id, _buildChoiceEntry(h, 'hit', { shield: myShieldDraft.value, confirmed: true }))
+}
+
+const myDefenderId = computed(() => (room.inRoom ? room.myHunterId : hunter.value?.hunter_id) ?? null)
+const myDefender = computed(() =>
+  defenders.value.find((h) => String(h.hunter_id) === String(myDefenderId.value)) ?? null,
+)
+const myAttackChoice = computed(() => (myDefenderId.value ? (attackChoicesAll.value?.[myDefenderId.value] ?? null) : null))
+
+const rowOf = (h) => ({
+  id: h.hunter_id,
+  name: h.hunter_name,
+  icon: getHunterClass(h.hunter_class_id)?.thumbnail ?? null,
+  targeted: isTargeted(h),
+  choice: choiceOf(h),
+})
+
+// แถวของตัวเอง — แผงโชว์แค่อันนี้ ไม่เผยว่าคนอื่นเลือกอะไรจนกว่าจะครบ
+const myAttackRow = computed(() => (myDefender.value ? rowOf(myDefender.value) : null))
+// คนอื่น: บอกแค่ว่าจบขั้นตอนของตัวเองหรือยัง ไม่บอกว่าเลือกอะไร
+const otherAttackRows = computed(() =>
+  defenders.value
+    .filter((h) => String(h.hunter_id) !== String(myDefenderId.value))
+    .map((h) => ({
+      id: h.hunter_id,
+      name: h.hunter_name,
+      icon: getHunterClass(h.hunter_class_id)?.thumbnail ?? null,
+      done: !!choiceOf(h)?.confirmed,
+    })),
+)
+
+// ผลคำนวณของตัวเอง — เกราะจาก Attack Card ที่กดเพิ่มเองรวมอยู่ด้วย
+const myDamagePreview = computed(() =>
+  myDefender.value ? damageBreakdown(myDefender.value, { shield: myShieldDraft.value }) : null,
+)
+
+// สามจังหวะของตัวเอง: เลือก → (ถ้ารับ) คำนวณ → รอคนอื่น
+const myAttackStage = computed(() => {
+  const c = myAttackChoice.value
+  if (!c) return 'choice'
+  if (c.choice === 'hit' && !c.confirmed) return 'calc'
+  return 'wait'
+})
+
+// เลือกได้หลังยืนยันเป้าหมายแล้ว (เล่นคนเดียวไม่ต้องเล็ง) และยังไม่เฉลย
+const attackChoiceVisible = computed(() =>
+  !!monsterAttackCard.value &&
+  !!myAttackRow.value &&
+  !attackResolved.value &&
+  (!room.inRoom || room.monsterTarget != null),
+)
+// เป้าหมายยังไม่ถูกเลือก = ยังอยู่จังหวะเล็ง แผงโทเคนต้องยังอยู่
+const attackTargetStage = computed(() =>
+  room.inRoom && !!monsterAttackCard.value && !attackResolved.value && room.monsterTarget == null,
+)
+const attackAllChosen = computed(() => defenders.value.length > 0 && defenders.value.every((h) => choiceOf(h)))
+// เฉลยได้ต่อเมื่อคนที่เลือก "รับ" คำนวณเสร็จครบแล้วด้วย
+const attackAllConfirmed = computed(
+  () => defenders.value.length > 0 && defenders.value.every((h) => choiceOf(h)?.confirmed),
+)
+
+// จดบันทึกตอนการโจมตีครั้งนั้นจบแล้ว (ขึ้นการ์ดใบใหม่ / จบเควสต์) ไม่ใช่ตอนเลือกครบ
+// เพราะเลือกครบแล้วยังปรับโล่กับติ๊กคูณเกราะธาตุได้อีก ถ้าจดทันทีจะได้ตัวเลขเก่าค้างหรือจดซ้ำหลายรอบ
+// ในห้องให้ Host จดคนเดียว ไม่งั้นได้รายการซ้ำเท่าจำนวนเครื่อง
+const _attackLogged = ref(false)
+const _flushAttackLog = () => {
+  if (_attackLogged.value) return
+  if (room.inRoom && !room.isHost) return
+  if (!defenders.value.some((h) => choiceOf(h))) return
+  _attackLogged.value = true
+  for (const h of defenders.value) {
+    const c = choiceOf(h)
+    if (!c) continue
+    _addHuntLog({
+      kind: 'defend',
+      choice: c.choice,
+      dmg: c.dmg ?? 0,
+      base: c.base ?? 0,
+      guard: c.guard ?? 0,
+      shield: c.shield ?? 0,
+      guardBonus: c.guardBonus ?? 0,
+      doubled: !!c.doubled,
+      element_id: c.element_id ?? 0,
+      targeted: !!c.targeted,
+      card: c.card ?? '',
+      whoId: h.hunter_id,
+      whoName: h.hunter_name,
+      whoClass: h.hunter_class_id ?? null,
+    })
+  }
+}
+// สถานะในเครื่องตัวเอง — ต้องคืนค่าทุกครั้งที่ขึ้นการ์ดใบใหม่ ไม่ว่าจะเป็นคนกดเองหรือรับ state มาจากห้อง
+const _resetAttackLocal = () => {
+  _flushAfterReveal()
+  attackReveal.value = null
+  attackResolved.value = false
+  _attackLogged.value = false
+  myShieldDraft.value = 0
+}
+
+const _resetAttackChoices = ({ log = false } = {}) => {
+  if (log) _flushAttackLog()
+  attackChoicesSolo.value = {}
+  _resetAttackLocal()
+  if (room.inRoom && room.isHost) room.clearAttackChoicesAll?.()
+}
+
+// ── เฉลยพร้อมกัน ─────────────────────────────────────────
+// ครบทุกคนเมื่อไหร่ ทุกเครื่องเปิดหน้าเฉลยเองจากข้อมูลชุดเดียวกัน แล้วปิดโมดัลทั้งหมดเมื่อแอนิเมชันจบ
+const attackReveal = ref(null)   // { rows, cardName } | null
+const attackResolved = ref(false)
+
+watch(attackAllConfirmed, (done) => {
+  if (!done || attackResolved.value || !monsterAttackCard.value) return
+  attackResolved.value = true
+  _flushAttackLog() // ตัวเลือกล็อกแล้ว จดบันทึกตรงนี้ได้เลย (Host คนเดียวตามเดิม)
+  attackReveal.value = {
+    cardName: monsterAttackCard.value.behavior_name ?? '',
+    rows: defenders.value.map((h) => {
+      const c = choiceOf(h)
+      return {
+        id: h.hunter_id,
+        name: h.hunter_name,
+        icon: getHunterClass(h.hunter_class_id)?.thumbnail ?? null,
+        targeted: isTargeted(h),
+        choice: c?.choice ?? 'outrange',
+        dmg: c?.dmg ?? 0,
+        hp: Math.max(0, hpOf(h) - (c?.choice === 'hit' ? (c.dmg ?? 0) : 0)),
+        hpMax: HUNTER_HP_MAX,
+      }
+    }),
+  }
+  _applyMyAttackResult()
+})
+
+// หัก HP / ติดสถานะของตัวเอง — คนอื่นหักในเครื่องของเขาแล้วส่งขึ้นห้อง
+// ติดธง applied ไว้ในตัวเลือกของตัวเองบนห้อง: รีเฟรชแล้วไม่หักซ้ำ
+// และถ้าหลุดไปตอนเพื่อนกดครบพอดี กลับเข้ามาแล้วยังหักให้ได้ (ธงยังไม่ติด)
+const _applyMyAttackResult = () => {
+  const h = myDefender.value
+  const mine = h ? choiceOf(h) : null
+  if (!mine || mine.choice !== 'hit' || !mine.confirmed || mine.applied) return
+  _writeAttackChoice(h.hunter_id, { ...mine, applied: true })
+  if (mine.dmg > 0) {
+    setMyHp(myHp.value - mine.dmg)
+    if (myHp.value === 0) _faintAfterReveal = true
+  }
+  // สถานะบนการ์ดโจมตีติดเฉพาะคนที่รับ
+  const statusId = (monsterAttackCard.value ?? currentBehaviorCard.value)?.attack?.status_id ?? 0
+  if (statusId) {
+    const resisted = resistAbilityOf(h.hunter_id, statusId)
+    if (!resisted) inflictMyStatus(statusId, { fromMonster: true })
+    _noticeAfterReveal = [{ id: statusId, resisted: resisted?.ability_name ?? null }]
+  }
+}
+
+// รีเฟรช / หลุดแล้วเข้าใหม่: แอนิเมชันเปิดการ์ดถูกข้าม (_suppressAnimations) หน้าต่างการ์ดโจมตีเลยไม่เด้ง
+// ถ้าการโจมตีของการ์ดใบนี้ยังเดินไม่จบ ต้องเปิดกลับมาเอง ไม่งั้นทั้งตี้ค้างรอคนที่รีเฟรช
+// post-flush: ให้ watcher ที่คืนค่าตอนการ์ดเปลี่ยนใบ (_resetAttackLocal) ทำงานก่อน
+const _restoreAttackFlow = () => {
+  if (!room.inRoom || phase.value !== 'huntingPanel') return
+  const card = currentBehaviorCard.value
+  if (!card || showMonsterAttack.value || attackReveal.value) return
+  // ล้มอยู่ = ไม่ได้อยู่ในการโจมตีนี้ ไม่ต้องเด้งให้
+  if (!myDefender.value) return
+  // HP ของตัวเองต้องโหลดจากห้องเสร็จก่อน ไม่งั้นเลขที่โหลดทีหลังจะทับดาเมจที่เพิ่งหัก
+  if (!questRunKey.value || _myHpHunt !== questRunKey.value) return
+  if (attackAllConfirmed.value) {
+    // เฉลยไปแล้วตอนเราไม่อยู่ — ไม่เล่นเฉลยซ้ำ แค่หักของตัวเองที่ยังค้าง
+    attackResolved.value = true
+    _applyMyAttackResult()
+    _flushAfterReveal()
+    return
+  }
+  // ยังไม่เลือกเป้าหมาย: เปิดเฉพาะช่วงที่เพิ่งเปิดการ์ด (ยังไม่มีใครเล่นเทิร์น) ตามกติกาการเล็ง
+  if (room.monsterTarget == null && activationRoundsCompleted.value !== 0) return
+  monsterAttackCard.value = card
+  monsterAttackStatuses.value = room.behaviorDeckState?.attackStatuses ?? []
+  showMonsterAttack.value = true
+}
+
+// ระหว่างขั้นตอนโจมตี ห้ามแตะปิด Modal — ต้องเดินให้ครบแล้วระบบปิดให้เอง
+const attackFlowLocked = computed(
+  () => attackTargetStage.value || attackChoiceVisible.value || !!attackReveal.value,
+)
+const closeMonsterAttack = () => {
+  if (attackFlowLocked.value) return
+  showMonsterAttack.value = false
+  monsterAttackStatuses.value = []
+}
+
+// แอนิเมชันจบ → ปิดหน้าเฉลยและ Modal การ์ดโจมตีพร้อมกัน
+const finishAttackReveal = () => {
+  attackReveal.value = null
+  showMonsterAttack.value = false
+  _flushAfterReveal()
+}
+
+// การ์ดเปลี่ยนใบ = การโจมตีครั้งก่อนจบแล้ว
+// drawBehaviorCard ทำงานแค่ในเครื่อง Host — เครื่องอื่นรู้ว่าการ์ดเปลี่ยนจาก state ของห้องเท่านั้น
+// ถ้าไม่คืนค่าตรงนี้ สถานะ "เฉลยแล้ว" จะค้างในเครื่อง Guest แล้วแผงเลือกไม่กลับมาอีกเลย
+watch(() => currentBehaviorCard.value?.behavior_id, () => _resetAttackLocal())
+
+// ── แถบลอย 2 หน้า: หน้า 1 ของเดิม (ใช้ของ / ปาร์ตี้) · หน้า 2 ปุ่มพาไปส่วนต่าง ๆ ────
+// ปัดแนวนอนบนแถบ หรือกดลูกศรที่หัวแถบ — สลับพร้อมกันทั้งสองฝั่ง ไม่ให้งงว่าฝั่งไหนเป็นหน้าอะไร
+// หน้าจอเลื่อนทั้งหน้า (.content-panel เป็น overflow:hidden) เลยสั่ง scrollIntoView ได้ตรง ๆ
+const stripPage = ref(0) // 0 = ของเดิม · 1 = ปุ่มพาไป
+const navFlashId = ref(null)
+let _navFlashTimer = null
+
+const NAV_TARGETS = [
+  { id: 'behavior', icon: '🎴', label: 'การ์ดโจมตี', tour: 'hunt-behavior' },
+  { id: 'hp', icon: '❤', label: 'เลือดมอน', tour: 'hunt-hp' },
+  { id: 'parts', icon: '🦴', label: 'ชิ้นส่วน', tour: 'hunt-parts' },
+  { id: 'timecard', icon: '🃏', label: 'Time Card', tour: 'hunt-timecard' },
+]
+// ส่วนที่ยังไม่มีในจอตอนนี้ (เช่น Time Card หมดกอง) ปุ่มจะจางและกดไม่ได้
+const navReady = computed(() => ({
+  behavior: behaviorDeck.value.length > 0 || !!currentBehaviorCard.value,
+  hp: !!monsterHuntingData.value,
+  parts: Object.keys(activeParts.value).length > 0,
+  timecard: timeCardDeck.value.length > 0 || timeCardDiscard.value.length > 0,
+}))
+const navLeft = computed(() => NAV_TARGETS.slice(0, 2))
+const navRight = computed(() => NAV_TARGETS.slice(2))
+
+const jumpTo = (t) => {
+  const el = document.querySelector(`[data-tour="${t.tour}"]`)
+  if (!el) return
+  _sfxMenu()
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+  el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' })
+  // กะพริบให้รู้ว่ามาถึงจุดไหน — เลื่อนแบบนุ่มนวลบางทีดูไม่ทันว่าหยุดตรงไหน
+  clearTimeout(_navFlashTimer)
+  navFlashId.value = t.id
+  _navFlashTimer = setTimeout(() => { navFlashId.value = null }, 1400)
+  // กลับหน้าเดิมให้เอง ปุ่มยา/ล้มจะได้ไม่หายไปนาน
+  stripPage.value = 0
+}
+
+// ปัดนิ้ว — ล็อกทิศก่อน ถ้าปัดแนวตั้งปล่อยให้หน้าเลื่อนตามปกติ
+let _swipe = null
+const onStripTouchStart = (e) => {
+  const t = e.touches?.[0]
+  _swipe = t ? { x: t.clientX, y: t.clientY } : null
+}
+const onStripTouchEnd = (e) => {
+  const t = e.changedTouches?.[0]
+  if (!_swipe || !t) return
+  const dx = t.clientX - _swipe.x
+  const dy = t.clientY - _swipe.y
+  _swipe = null
+  if (Math.abs(dx) < 40 || Math.abs(dx) <= Math.abs(dy)) return
+  stripPage.value = stripPage.value === 0 ? 1 : 0
+  _sfxMenu()
+}
+const toggleStripPage = () => {
+  stripPage.value = stripPage.value === 0 ? 1 : 0
+  _sfxMenu()
+}
+// ออกจากหน้าล่าแล้วกลับมาใหม่ ให้เริ่มที่หน้าเดิมเสมอ
+watch(phase, () => { stripPage.value = 0 })
+
 // ── ใช้ยา / ล้ม — ปุ่มลอยที่ทุกคนกดได้ ────────────────────
 // กดแล้วยังไม่ทำทันที ถามยืนยันก่อน เพราะทั้งสองอย่างย้อนกลับเองไม่ได้ (guest แก้ตัวนับไม่ได้)
 const pendingUse = ref(null)      // null | 'potion' | 'faint'
+// แผง HP / สถานะของตัวเอง — เปิดจากปุ่มบนแถบลอยซ้าย (use-strip)
+const showHpStatusModal = ref(false)
 const useAnim = ref(null)         // { kind, classId, hunterName }
 let _useAnimTimer = null
 
@@ -3812,7 +4397,7 @@ const canFaint = computed(() => faintCount.value < 3)
 const FAINT_TIME_CARD_DISCARD = 2
 // แอนิเมชันใช้ยา/ล้มค้างนานเท่านี้ — ใช้ร่วมกับการหน่วงทิ้งการ์ดตอนล้ม
 const USE_ANIM_MS = 2600
-let _faintDiscardTimer = null
+let _faintDiscardTimers = []
 
 const _discardForFaint = () => {
   const count = Math.min(FAINT_TIME_CARD_DISCARD, timeCardDeck.value.length)
@@ -3833,14 +4418,15 @@ const _applyUse = (kind) => {
     faintCount.value = faintCount.value + 1
     // ทิ้งการ์ดหลังแอนิเมชันล้มจบ ไม่ใช่พร้อมกัน — เด้งซ้อนกันแล้วดูไม่ทันว่าใครล้ม
     // แฟลชทิ้งการ์ด sync ผ่าน timeCards อยู่แล้ว หน่วงที่ Host ทีเดียวทุกเครื่องก็เห็นตามลำดับ
-    clearTimeout(_faintDiscardTimer)
-    _faintDiscardTimer = setTimeout(() => {
+    // ตั้งเวลาแยกต่อการล้มหนึ่งครั้ง — ล้มพร้อมกัน 2 คนต้องทิ้งครบ 4 ใบ
+    // (เดิมมีตัวจับเวลาตัวเดียว การล้มครั้งที่สองไปยกเลิกของครั้งแรก เลยทิ้งแค่ 2 ใบ)
+    _faintDiscardTimers.push(setTimeout(() => {
       // ล้มครบ 3 แล้วเควสจบไประหว่างรอ — ไม่ต้องทิ้งการ์ดทับหน้าผลเควส
       if (phase.value !== 'huntingPanel') return
       _discardForFaint()
-    }, USE_ANIM_MS)
+    }, USE_ANIM_MS))
   }
-  _pushHuntState()
+  _pushHuntState({ force: true })
 }
 
 const _showUseAnim = (sig) => {
@@ -3870,6 +4456,14 @@ const confirmUse = () => {
 
   // จดตอนกด ไม่ใช่ตอน Host ทำจริง — บันทึกต้องบอกว่า "ใคร" กด ซึ่ง Host ไม่รู้
   _addHuntLog({ kind })
+  // ยาฟื้นเต็มให้คนกด (ยาเป็นของกลุ่ม แต่คนดื่มคือเจ้าของเครื่อง)
+  if (kind === 'potion') setMyHp(HUNTER_HP_MAX)
+  // ล้ม = ออกจากบอร์ด จนกว่าจะกดจบเทิร์นรอบหน้า · กลับมาพร้อม HP เต็มและไม่มีสถานะติดตัว
+  if (kind === 'faint') {
+    setMyHp(HUNTER_HP_MAX)
+    _setMyStatuses([])
+    if (room.inRoom) room.setHunterDownState?.(room.myHunterId, true)
+  }
   if (!room.inRoom) {
     _applyUse(kind)
     _showUseAnim(sig)
@@ -3880,15 +4474,21 @@ const confirmUse = () => {
   room.triggerUseSignal?.(sig)
 }
 
-const _useSignalAt = computed(() => room.useSignal?.at ?? null)
-watch(_useSignalAt, (at) => {
-  if (!at || !room.inRoom || _suppressAnimations) return
-  const sig = room.useSignal
-  if (!sig) return
-  _showUseAnim(sig)
-  // Palico เป็นแค่การประกาศ — ไม่แตะตัวนับยา/ล้มของกลุ่ม (_applyUse ถือว่าอย่างอื่นที่ไม่ใช่ยาคือล้ม)
-  if (room.isHost && (sig.kind === 'potion' || sig.kind === 'faint')) _applyUse(sig.kind)
-})
+// รายการใช้ยา/ล้ม/Palico เก็บต่อท้ายทีละรายการ — ทำทีละอันและจำว่าอันไหนทำไปแล้ว
+// (เดิมดูแค่เวลาบนสัญญาณเดียว สองคนกดพร้อมกันจะเหลือรอดแค่อันเดียว ตัวนับล้มเลยขึ้นแค่ 1)
+const _seenUseSignals = new Set()
+watch(() => room.useSignals, (list) => {
+  if (!room.inRoom || !Array.isArray(list)) return
+  for (const sig of list) {
+    if (_seenUseSignals.has(sig.id)) continue
+    _seenUseSignals.add(sig.id)
+    // reconnect / เพิ่งเข้าห้อง: รายการที่ค้างอยู่ถือว่าเห็นแล้ว ไม่เล่นซ้ำและไม่นับซ้ำ
+    if (_suppressAnimations) continue
+    _showUseAnim(sig)
+    // Palico เป็นแค่การประกาศ — ไม่แตะตัวนับยา/ล้มของกลุ่ม
+    if (room.isHost && (sig.kind === 'potion' || sig.kind === 'faint')) _applyUse(sig.kind)
+  }
+}, { deep: true })
 
 // ── ใช้ความสามารถ Palico ────────────────────────────────
 // แอปแค่จดว่าใช้แล้ว + ประกาศให้ทั้งตี้เห็น ตัวผลของความสามารถเล่นบนโต๊ะจริง
@@ -3955,8 +4555,15 @@ const initHuntingData = () => {
   if (_elemAnimTimer) clearTimeout(_elemAnimTimer)
   activationRoundsCompleted.value = 0
   activationOverride.value = null
+  _resetAttackChoices()
+  _pushMyLoadout() // เกราะ/ข้าวเชฟล่าสุด ส่งตอนเริ่มล่า เพราะ Downtime เปลี่ยนชุดได้
   if (room.inRoom && room.isHost) {
     room.syncActivationCount?.(0)
+    // ล่ารอบใหม่ ทุกคนอยู่บนบอร์ดและยังไม่มีใครโดนเล็ง
+    room.clearHunterDownsAll?.()
+    room.setMonsterTarget?.(null)
+    // รายการใช้ยา/ล้มของรอบก่อนไม่ต้องค้างไว้ (กันข้อมูลห้องโตเรื่อย ๆ)
+    room.clearUseSignalsAll?.()
     room.clearHunterTokensAll?.()
     // ต้องล้างคู่กันเสมอ ไม่งั้นล่าครั้งใหม่จะนับว่ายืนยันไว้แล้วทั้งที่ยังไม่มีใครเลือก
     room.clearHunterTokenConfirmsAll?.()
@@ -4073,8 +4680,10 @@ watch(triggeringElement, (el) => {
 // ── Hunt State Sync ──────────────────────────────────────
 let _remoteSyncing = false
 
-const _pushHuntState = () => {
-  if (!room.inRoom || _remoteSyncing) return
+// force: เขียนขึ้นห้องแม้อยู่ในช่วงกันเสียงสะท้อน 50ms — ใช้กับตัวนับยา/ล้มที่ Host เป็นคนสรุป
+// (ล้มพร้อมกัน 2 คน: ครั้งที่สองตกในช่วงกันพอดี ห้องเลยค้างที่ 1 ทั้งที่จอ Host ขึ้น 2)
+const _pushHuntState = (opts) => {
+  if (!room.inRoom || (_remoteSyncing && !opts?.force)) return
   room.syncHuntState({
     huntingHp: huntingHp.value,
     partDamage: partDamage.value,
@@ -4194,7 +4803,8 @@ const _logWho = () => {
 }
 
 const _addHuntLog = (entry) => {
-  const full = { ...entry, ..._logWho() }
+  // รายการที่ระบุ whoId มาเอง (เช่น Host กดแทนเพื่อน) ต้องชนะค่าเริ่มต้นที่เป็นคนกด
+  const full = { ..._logWho(), ...entry }
   if (room.inRoom) room.addHuntLog?.(full)
   else huntLogSolo.value = [...huntLogSolo.value, { id: `s${++_soloLogSeq}`, at: Date.now(), ...full }]
 }
@@ -4307,6 +4917,10 @@ const logText = (e) => {
     case 'element': return e.triggered ? `${_elemName(e.eid)} ทำงาน!` : `ลง Mark ${_elemName(e.eid)}`
     case 'potion': return 'ใช้ยา'
     case 'faint': return 'ล้ม'
+    case 'defend':
+      if (e.choice === 'dodge') return 'หลบการโจมตีได้'
+      if (e.choice === 'outrange') return 'อยู่นอกระยะโจมตี'
+      return `รับความเสียหาย ${e.dmg}${e.guard ? ` (กัน ${e.guard})` : ''}`
     case 'palico': return 'ใช้ความสามารถ Palico'
     case 'turnEnd': return 'จบเทิร์น'
     default: return ''
@@ -4324,6 +4938,25 @@ const huntLogRecent = computed(() => huntLog.value.slice(-10).reverse())
 // ── สรุปการล่า ──────────────────────────────────────────
 // ถ่ายภาพ state ไว้ตอนประกาศผล ก่อน onComplete / onFail ล้างทุกอย่างทิ้ง
 const huntStartedAt = ref(null)
+// เควสใหม่ = HP เต็ม · เควสเดิม (รีโหลด / หลุดแล้วเข้าใหม่) = ดึงเลขที่ตัวเองเคยส่งขึ้นห้องกลับมา
+// เริ่มล่าไม่ทำอะไรกับ HP แล้ว — เลือดที่เสียไปช่วง Dialog ต้องพกเข้าการล่าด้วย
+// immediate: เปิดแอปกลับมากลางเควสใน Co-op ต้องดึงเลขเดิมทันที ไม่ต้องรอ key เปลี่ยน
+watch(questRunKey, (at) => {
+  if (!at || at === _myHpHunt) return
+  _myHpHunt = at
+  const saved = room.inRoom ? room.myHunter : null
+  const same = saved?.hp_hunt === at
+  myHp.value = same && typeof saved.hp === 'number' ? saved.hp : HUNTER_HP_MAX
+  myStatuses.value = same && Array.isArray(saved.statuses) ? saved.statuses : []
+  myPoisonFromMonster.value = same && !!saved.poison_monster
+  _pushMyLoadout()
+}, { immediate: true })
+// ต้องอยู่หลัง huntStartedAt — getter ของ watch ถูกเรียกทันทีตอนสร้าง
+watch(
+  [() => room.joinSignal, phase, () => currentBehaviorCard.value?.behavior_id, () => room.attackChoices, () => huntStartedAt.value, () => questRunKey.value],
+  () => _restoreAttackFlow(),
+  { flush: 'post' },
+)
 const huntRecap = ref(null)
 const showHuntRecap = ref(false)
 
@@ -4348,7 +4981,12 @@ const _openHuntHighlights = () => {
   }
   huntHighlights.value = {
     cards,
-    team: buildTeamTitle({ faints: recap?.faints ?? 0, brokenCount: recap?.broken.length ?? 0, partTotal: recap?.partTotal ?? 0 }),
+    team: buildTeamTitle({
+      faints: recap?.faints ?? 0,
+      brokenCount: recap?.broken.length ?? 0,
+      partTotal: recap?.partTotal ?? 0,
+      log: huntLog.value,
+    }),
   }
   showHuntHighlights.value = true
   _sfxConfirm()
@@ -4854,13 +5492,13 @@ const EFFECT_LABEL = {
 // ผลที่ต้องทำบนกระดานเอง — แสดงเป็นหมายเหตุ ไม่ทำอัตโนมัติ
 // diceRollManual = สั่งทอยแต่ผลไปอยู่ที่ปุ่ม choice — ผู้เล่นทอยเองแล้วกดปุ่มที่ตรงกับเลข
 const MANUAL_EFFECTS = new Set([
-  'damage', 'heal', 'healFull', 'drawTimeCardAside', 'startHunting', 'checkScoutfly', 'diceRollManual',
+  'drawTimeCardAside', 'startHunting', 'checkScoutfly', 'diceRollManual',
   'manualRest',
 ])
 
-// ของติดตัวนักล่าแต่ละคน — ทุกคนต้อง apply เอง (dialogCounts แยกราย hunter)
+// ของติดตัวนักล่าแต่ละคน — ทุกคนต้อง apply เอง (dialogCounts / HP แยกราย hunter)
 // ที่เหลือเป็น state กลางของห้อง (deck / token / potion) ให้ Host ทำคนเดียวแล้ว sync
-const PER_HUNTER_EFFECTS = new Set(['gainResource'])
+const PER_HUNTER_EFFECTS = new Set(['gainResource', 'damage', 'heal', 'healFull'])
 
 // ต้องให้ผู้เล่นทอยก่อน ถึงจะรู้ว่าได้ผลอะไร
 const DICE_EFFECTS = new Set(['diceRoll', 'diceMonsterDamage'])
@@ -4890,6 +5528,9 @@ const EFFECT_ICON = {
   revealTrackToken: '🔍',
   discardTimeCard: '⏳',
   shuffleTimeCard: '🔀',
+  damage: '💥',
+  heal: '💚',
+  healFull: '💚',
 }
 
 // แจ้งทีละรายการ ผู้เล่นจะได้เห็นว่าระบบทำอะไรไปบ้าง ไม่ใช่แค่จำนวน
@@ -4972,6 +5613,24 @@ const _applyOneEffect = (e) => {
       if (e.type_id == null || e.item_id == null) return `${e.name} — ไม่มีในคลังไอเทม`
       for (let i = 0; i < e.n; i++) addDialogResource(e.type_id, e.item_id)
       return null
+
+    // HP ของตัวเอง — ทุกบทในเล่มเขียนว่า "นักล่าทุกคน" จึงให้ทุกเครื่องหัก/เพิ่มของตัวเอง
+    // HP หมดช่วง Dialog ไม่ถามล้ม (ตัวนับล้มมีแค่ตอนล่า) — แถบ HP เตือนให้ทำบนโต๊ะแทน
+    case 'damage': {
+      if (myHp.value <= 0) return 'HP หมดอยู่แล้ว'
+      setMyHp(myHp.value - e.n)
+      return null
+    }
+    case 'heal': {
+      if (myHp.value >= HUNTER_HP_MAX) return 'HP เต็มอยู่แล้ว'
+      setMyHp(myHp.value + e.n)
+      return null
+    }
+    case 'healFull': {
+      if (myHp.value >= HUNTER_HP_MAX) return 'HP เต็มอยู่แล้ว'
+      setMyHp(HUNTER_HP_MAX)
+      return null
+    }
 
     default:
       return 'ทำอัตโนมัติไม่ได้'
@@ -5755,12 +6414,40 @@ watch(
   },
   { immediate: true },
 )
+// ทัวร์สั้นของระบบที่เพิ่มทีหลัง — ขอตอนของนั้นโผล่บนจอจริง แยกจากทัวร์หลักของหน้า
+// (คนที่ดูทัวร์หลักไปแล้วจะไม่เห็นขั้นใหม่ถ้าไปต่อท้ายไว้ในนั้น)
+// ช่วงโจมตีของมอนแบ่งตามจังหวะ: เล็ง → เลือก → คิดดาเมจ แต่ละจังหวะชี้ของบนจอตอนนั้น
+const featureTourId = computed(() => {
+  if (showHuntRecap.value || showHuntHighlights.value) return null
+  if (phase.value === 'dialog' && currentDialog.value) return 'dialogHp'
+  if (phase.value !== 'huntingPanel') return null
+  // ตอนเฉลย / ถามยืนยันเป้าหมาย / ถามล้ม ไม่ขึ้นทัวร์ทับ
+  if (attackReveal.value || pendingTargetHunter.value || pendingUse.value) return null
+  if (showMonsterAttack.value) {
+    if (attackTargetStage.value) return 'monsterAttack'
+    if (!attackChoiceVisible.value) return null
+    if (myAttackStage.value === 'choice') return 'attackChoice'
+    if (myAttackStage.value === 'calc') return 'attackCalc'
+    return null
+  }
+  return currentTourId.value === 'hunting' ? 'huntHp' : null
+})
+watch(
+  featureTourId,
+  (id, prev) => {
+    if (prev) cancelTourRequest(prev)
+    if (id) requestTour(id)
+  },
+  { immediate: true },
+)
 // Quest อยู่ใน keep-alive — สลับแท็บไปแล้วกลับมา ขอทัวร์ของหน้าปัจจุบันอีกรอบ (ถ้ายังไม่เคยดู)
 onActivated(() => {
   if (currentTourId.value) requestTour(currentTourId.value)
+  if (featureTourId.value) requestTour(featureTourId.value)
 })
 onDeactivated(() => {
   if (currentTourId.value) cancelTourRequest(currentTourId.value)
+  if (featureTourId.value) cancelTourRequest(featureTourId.value)
 })
 </script>
 
@@ -6298,7 +6985,7 @@ onDeactivated(() => {
 
     <!-- ═══════════ HQ PHASE ═══════════ -->
     <div v-if="phase === 'hq'" class="phase-hq">
-      <HQPhase :maxActions="hqMaxActions" @allReady="onHQAllReady" @cutscene="onHqCutscene" />
+      <HQPhase :maxActions="hqMaxActions" @allReady="onHQAllReady" @cutscene="onHqCutscene" @chef="onChefElement" />
     </div>
 
     <!-- ═══════════ HANDLER START — HOST PICKS DIALOG ═══════════ -->
@@ -6587,6 +7274,21 @@ onDeactivated(() => {
           </div>
         </div>
         <button data-tour="dialog-pack" class="pack-toggle-btn" @click="openPackDrawer">🎒 Inventory</button>
+      </div>
+
+      <!-- HP ของตัวเอง — ผลลัพธ์ของบางบทให้ "นักล่าทุกคนรับความเสียหาย" กดลดเองได้ เลือดที่เหลือพกเข้าการล่า -->
+      <div data-tour="dialog-hp" class="dialog-hp">
+        <div class="qs-hp" :class="{ 'qs-hp-low': myHp <= 2 }">
+          <span class="qs-tracker-label">HP</span>
+          <button class="qs-hp-step" :disabled="myHp <= 0" aria-label="ลด HP" @click="stepMyHp(-1)">−</button>
+          <div class="qs-hp-pips" role="img" :aria-label="`HP ${myHp} จาก ${HUNTER_HP_MAX}`">
+            <i v-for="i in HUNTER_HP_MAX" :key="i" :class="{ on: i <= myHp }"></i>
+          </div>
+          <span class="qs-hp-num">{{ myHp }}<small>/{{ HUNTER_HP_MAX }}</small></span>
+          <button class="qs-hp-step" :disabled="myHp >= HUNTER_HP_MAX" aria-label="เพิ่ม HP" @click="stepMyHp(1)">+</button>
+        </div>
+        <p v-if="myHp === 0" class="dialog-hp-note">HP หมด — ทำตามกติกาล้มบนโต๊ะ แล้วกด + คืนเลือดเอง</p>
+        <p v-else class="dialog-hp-note">เลือดที่เหลือตอนนี้จะพกเข้าการล่าด้วย</p>
       </div>
 
       <!-- Dialog Resource Quick-Add -->
@@ -7248,7 +7950,6 @@ onDeactivated(() => {
             </div>
           </div>
         </div>
-
       </div>
 
       <!-- Palico ประจำเควสต์ — การ์ดอยู่ข้าง Quest Card บนโต๊ะจริง แต่ความสามารถต้องเปิดอ่านได้ในแอป -->
@@ -7283,7 +7984,7 @@ onDeactivated(() => {
       </div>
 
       <!-- Monster Turn (after map) -->
-      <div v-if="behaviorDeck.length > 0 || currentBehaviorCard" data-tour="hunt-behavior" class="monster-turn-section">
+      <div v-if="behaviorDeck.length > 0 || currentBehaviorCard" data-tour="hunt-behavior" class="monster-turn-section" :class="{ 'nav-flash': navFlashId === 'behavior' }">
         <p class="hunt-result-label">— Monster Turn —</p>
 
         <div class="mt-cards">
@@ -7311,6 +8012,15 @@ onDeactivated(() => {
           </div>
         </div>
 
+        <!-- ค่าจริงของการ์ดใบนี้ หลังกฎระดับความยาก + ชิ้นส่วนที่พังบวกลบแล้ว -->
+        <CardStatStrip
+          v-if="currentBehaviorCard"
+          class="mt-stats"
+          :stats="currentCardStats"
+          :card="currentBehaviorCard"
+          :parts="monsterHuntingData?.monster_parts"
+        />
+
         <!-- Rampage Warning -->
         <div v-if="rampageActive" class="rampage-banner">
           🔴 <strong>RAMPAGE!</strong> Monster Turn ถัดไป Hunter จะเล่นได้ 0 ครั้ง
@@ -7331,6 +8041,62 @@ onDeactivated(() => {
             </div>
           </div>
         </div>
+
+        <!-- Hunter Token ช่วงเทิร์น Monster — ใครอยู่บนบอร์ด เลขใครสูง และใครโดนเล็ง -->
+        <div v-if="tokenPanelVisible" data-tour="hunt-tokens" class="mt-tokens">
+          <p class="mt-tokens-head">
+            <span class="mt-tokens-title">Hunter Token บนบอร์ด</span>
+            <span class="mt-tokens-hint">เลขสูงสุด 2 อันดับเน้นไว้</span>
+          </p>
+          <p v-if="!boardHunters.length" class="mt-tokens-empty">ทุกคนล้มอยู่ — การโจมตีนี้ไม่มีเป้าหมาย</p>
+          <div class="mt-token-list">
+            <button
+              v-for="h in boardHunters"
+              :key="h.hunter_id"
+              class="mt-token"
+              :data-name="h.hunter_name"
+              :class="{ 'mt-token-top': isTopToken(h), 'mt-token-target': isTargeted(h), 'mt-token-me': String(h.hunter_id) === String(room.myHunterId) }"
+              :disabled="!canSetTarget(h)"
+              :title="canSetTarget(h) ? `ให้ ${h.hunter_name} เป็นเป้าหมาย` : 'กดปุ่ม ฉันเป็นเป้าหมาย ด้านล่างแทน'"
+              @click="askMonsterTarget(h)"
+            >
+              <span class="mt-token-num">{{ tokenOf(h) ?? '–' }}</span>
+              <img
+                v-if="getHunterClass(h.hunter_class_id)?.thumbnail"
+                :src="getImg(getHunterClass(h.hunter_class_id).thumbnail)"
+                class="mt-token-icon"
+                alt=""
+              />
+              <img v-if="isTargeted(h)" :src="getImg('assets/img/UI/symbol/target_furthest_symbol.webp')" class="mt-token-mark" alt="เป้าหมาย" />
+            </button>
+          </div>
+          <button v-if="myBoardHunter" class="mt-me-target" @click="askMonsterTarget(myBoardHunter)">
+            <img :src="getImg('assets/img/UI/symbol/target_furthest_symbol.webp')" alt="" />
+            ฉันเป็นเป้าหมาย
+          </button>
+          <p v-if="downHunterNames.length" class="mt-tokens-down">
+            💫 ล้มอยู่: {{ downHunterNames.join(', ') }} · กดจบเทิร์นเพื่อกลับขึ้นบอร์ด
+          </p>
+        </div>
+
+        <!-- แผงเดียวกับใน Modal โจมตี — เผื่อปิดโมดัลไปแล้วยังเลือกกันไม่ครบ -->
+        <AttackChoicePanel
+          v-if="tokenPanelVisible && attackChoiceVisible"
+          class="mt-choices"
+          :stage="myAttackStage"
+          :me="myAttackRow"
+          :others="otherAttackRows"
+          :agility="attackAgility"
+          :element-id="attackElementId"
+          :preview="myDamagePreview"
+          :hp="myHp"
+          :hp-max="HUNTER_HP_MAX"
+          :asleep="hasMyStatus(STATUS_SLEEP)"
+          v-model:shield="myShieldDraft"
+          @choose="setMyAttackChoice"
+          @reset="setMyAttackChoice(null)"
+          @confirm="confirmMyDamage"
+        />
 
         <!-- Recovery Pending -->
         <div v-if="recoveryPending" class="recovery-banner">
@@ -7673,7 +8439,7 @@ onDeactivated(() => {
           ></div>
         </div>
         <p v-if="monsterEditLocked" class="mt-lock-note">🔒 เทิร์น Monster — Host เป็นคนปรับ HP / ชิ้นส่วน / สถานะ</p>
-        <div data-tour="hunt-hp" class="hp-controls">
+        <div data-tour="hunt-hp" class="hp-controls" :class="{ 'nav-flash': navFlashId === 'hp' }">
           <button class="hp-btn hp-minus" @click="logHp(-10)">−10</button>
           <button class="hp-btn hp-minus" @click="logHp(-5)">−5</button>
           <button class="hp-btn hp-minus" @click="logHp(-1)">−1</button>
@@ -7686,7 +8452,7 @@ onDeactivated(() => {
 
           <!-- Part cards -->
           <div class="parts-layout">
-            <div data-tour="hunt-parts" class="parts-list">
+            <div data-tour="hunt-parts" class="parts-list" :class="{ 'nav-flash': navFlashId === 'parts' }">
               <div
                 v-for="(partData, position) in activeParts"
                 :key="position"
@@ -7829,7 +8595,7 @@ onDeactivated(() => {
       <!-- end info-parts-row -->
 
       <!-- Time Card Turn -->
-      <div v-if="timeCardDeck.length > 0 || timeCardDiscard.length > 0" data-tour="hunt-timecard" class="tct-section">
+      <div v-if="timeCardDeck.length > 0 || timeCardDiscard.length > 0" data-tour="hunt-timecard" class="tct-section" :class="{ 'nav-flash': navFlashId === 'timecard' }">
         <p class="hunt-result-label">— Time Card —</p>
         <div class="tct-card-group">
           <div class="tct-deck-row">
@@ -9031,6 +9797,9 @@ onDeactivated(() => {
                   <p class="nt-blast-desc">{{ getStatusEffect(2)?.hunter_suffer }}</p>
                 </div>
               </div>
+              <p v-if="resistAbilityOf(poisoncupDrawerId, STATUS_POISON)" class="nt-resist">
+                🛡 <ClassMedal :hunter-id="poisoncupDrawerId" /> ต้านทานได้ด้วย {{ resistAbilityOf(poisoncupDrawerId, STATUS_POISON).ability_name }} — ไม่ติด Poison
+              </p>
               <button class="nt-close-btn" @click="dismissPoisoncup">รับทราบ</button>
             </template>
 
@@ -9109,6 +9878,9 @@ onDeactivated(() => {
                   <p class="nt-blast-desc">{{ getStatusEffect(3)?.hunter_suffer }}</p>
                 </div>
               </div>
+              <p v-if="resistAbilityOf(sleeptoadDrawerId, STATUS_SLEEP)" class="nt-resist">
+                🛡 <ClassMedal :hunter-id="sleeptoadDrawerId" /> ต้านทานได้ด้วย {{ resistAbilityOf(sleeptoadDrawerId, STATUS_SLEEP).ability_name }} — ไม่ติด Sleep
+              </p>
               <button class="nt-close-btn" @click="dismissSleeptoad">รับทราบ</button>
             </template>
 
@@ -9237,7 +10009,10 @@ onDeactivated(() => {
               <div class="nt-blast-box">
                 <span style="font-size:28px;flex-shrink:0">💥</span>
                 <div>
-                  <p class="nt-blast-name">Hunter ได้รับความเสียหาย -2 หน่วย</p>
+                  <p class="nt-blast-name">
+                    <ClassMedal :hunter-id="boulderDrawerId" /> ได้รับความเสียหาย -2 หน่วย
+                  </p>
+                  <p class="nt-blast-desc">แอปหัก HP ให้แล้ว</p>
                 </div>
               </div>
               <button class="nt-close-btn" @click="dismissBoulder">รับทราบ</button>
@@ -9563,8 +10338,46 @@ onDeactivated(() => {
           v-if="useStripVisible"
           data-tour="hunt-use" class="use-strip"
           :class="{ 'use-strip-lifted': floatBarVisible && !floatBarCollapsed, 'use-strip-tab': floatBarVisible && floatBarCollapsed }"
+          @touchstart.passive="onStripTouchStart"
+          @touchend.passive="onStripTouchEnd"
         >
           <button
+            data-tour="hunt-nav" class="strip-flip"
+            :title="stripPage === 0 ? 'ไปหน้าปุ่มพาไปส่วนต่าง ๆ (ปัดแถบก็ได้)' : 'กลับไปปุ่มใช้ของ'"
+            @click="toggleStripPage"
+          >
+            <span class="strip-flip-arrow">{{ stripPage === 0 ? '›' : '‹' }}</span>
+            <span class="strip-dots"><i :class="{ on: stripPage === 0 }"></i><i :class="{ on: stripPage === 1 }"></i></span>
+          </button>
+
+          <div v-show="stripPage === 1" class="strip-nav">
+            <button
+              v-for="t in navLeft"
+              :key="t.id"
+              class="nav-btn"
+              :disabled="!navReady[t.id]"
+              :title="navReady[t.id] ? `ไปที่${t.label}` : `ยังไม่มี${t.label}ในจอ`"
+              @click="jumpTo(t)"
+            >
+              <span class="nav-btn-icon">{{ t.icon }}</span>
+              <span class="nav-btn-label">{{ t.label }}</span>
+            </button>
+          </div>
+
+          <!-- HP / สถานะของตัวเอง — ย้ายมาจาก Quick Status Strip เพราะแถวนั้นสูงเกินไปตอนเล่น 4 คน -->
+          <button
+            v-show="stripPage === 0"
+            data-tour="hunt-hp-self"
+            class="use-btn use-btn-hp"
+            :class="{ 'use-btn-hp-low': myHp <= 2 }"
+            title="ปรับ HP และสถานะผิดปกติของตัวเอง"
+            @click="showHpStatusModal = true"
+          >
+            <img :src="getImg('assets/img/take_damage.webp')" class="use-btn-img" />
+            <span class="use-btn-count">{{ myHp }}/{{ HUNTER_HP_MAX }}</span>
+          </button>
+          <button
+            v-show="stripPage === 0"
             class="use-btn use-btn-potion"
             :disabled="!canUsePotion || potionTurnLocked"
             :title="!canUsePotion ? 'ไม่มียาเหลือ' : potionTurnLocked ? 'ใช้ยาได้เฉพาะในเทิร์นของตัวเอง' : 'ใช้ Potion'"
@@ -9574,6 +10387,7 @@ onDeactivated(() => {
             <span class="use-btn-count">{{ potionCount }}</span>
           </button>
           <button
+            v-show="stripPage === 0"
             class="use-btn use-btn-faint"
             :disabled="!canFaint"
             :title="canFaint ? 'บันทึกว่าล้ม' : 'ล้มครบ 3 แล้ว'"
@@ -9585,6 +10399,7 @@ onDeactivated(() => {
           <!-- ใช้ความสามารถ Palico — เควสละครั้ง (Palico Rally ได้ 2) · ไม่มี Palico ไม่ต้องโชว์ -->
           <button
             v-if="myPalico"
+            v-show="stripPage === 0"
             class="use-btn use-btn-palico"
             :disabled="!canUsePalico"
             :title="canUsePalico ? `ใช้ความสามารถ ${myPalico.shortName}` : 'ใช้ Palico ครบแล้วในเควสนี้'"
@@ -9593,6 +10408,50 @@ onDeactivated(() => {
             <img :src="getImg(myPalico.card_img)" class="use-btn-img use-btn-palico-img" />
             <span class="use-btn-count">{{ palicoUsesLeft }}/{{ palicoUseLimit }}</span>
           </button>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- แผง HP / สถานะของตัวเอง — ย้ายมาจาก Quick Status Strip กดจากปุ่มบนแถบลอยซ้าย -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="showHpStatusModal" class="uc-overlay" @click.self="showHpStatusModal = false">
+          <div class="uc-modal hpm-modal">
+            <p class="uc-title">HP และสถานะของตัวเอง</p>
+
+            <div class="qs-hp" :class="{ 'qs-hp-low': myHp <= 2 }">
+              <span class="qs-tracker-label">HP</span>
+              <button class="qs-hp-step" :disabled="myHp <= 0" aria-label="ลด HP" @click="stepMyHp(-1)">−</button>
+              <div class="qs-hp-pips" role="img" :aria-label="`HP ${myHp} จาก ${HUNTER_HP_MAX}`">
+                <i v-for="i in HUNTER_HP_MAX" :key="i" :class="{ on: i <= myHp }"></i>
+              </div>
+              <span class="qs-hp-num">{{ myHp }}<small>/{{ HUNTER_HP_MAX }}</small></span>
+              <button class="qs-hp-step" :disabled="myHp >= HUNTER_HP_MAX" aria-label="เพิ่ม HP" @click="stepMyHp(1)">+</button>
+            </div>
+
+            <!-- สถานะผิดปกติที่ติดอยู่ — ติดให้เองจากการโจมตี / Time Card กดเปิดปิดเองก็ได้ -->
+            <div class="qs-status">
+              <span class="qs-tracker-label">สถานะ</span>
+              <button
+                v-for="id in LASTING_STATUSES"
+                :key="id"
+                class="qs-status-btn"
+                :class="{ 'qs-status-on': hasMyStatus(id) }"
+                :aria-pressed="hasMyStatus(id)"
+                :title="getStatusEffect(id)?.hunter_suffer"
+                @click="toggleMyStatus(id)"
+              >
+                <img :src="getImg(getStatusEffect(id).thumbnail)" class="qs-status-img" alt="" />
+                <span>{{ getStatusEffect(id).effect_name }}</span>
+              </button>
+            </div>
+            <p v-if="myStatuses.length" class="qs-status-hint">
+              <template v-for="(id, i) in myStatuses" :key="id">{{ i ? ' · ' : '' }}{{ statusAppEffect[id] }}</template>
+              — หายเองตอนกดจบเทิร์นหรือล้ม
+            </p>
+
+            <button class="uc-confirm hpm-close" @click="showHpStatusModal = false">ปิด</button>
+          </div>
         </div>
       </Transition>
     </teleport>
@@ -9625,9 +10484,10 @@ onDeactivated(() => {
             <p class="uc-title">{{ pendingUse === 'potion' ? 'ใช้ Potion?' : 'บันทึกว่าล้ม?' }}</p>
             <p class="uc-sub">
               {{ pendingUse === 'potion'
-                ? `ยาในกลุ่มจะลดจาก ${potionCount} เหลือ ${potionCount - 1} ขวด`
+                ? `ยาในกลุ่มจะลดจาก ${potionCount} เหลือ ${potionCount - 1} ขวด · HP ${myHp} → ${HUNTER_HP_MAX}`
                 : `ล้มจะเพิ่มจาก ${faintCount} เป็น ${faintCount + 1} จาก 3 · ทิ้ง Time Card ${Math.min(FAINT_TIME_CARD_DISCARD, timeCardDeck.length)} ใบ` }}
             </p>
+            <p v-if="pendingUse === 'faint' && myHp === 0" class="uc-sub">HP หมดแล้ว — ล้มแล้วจะกลับมาพร้อม HP เต็ม {{ HUNTER_HP_MAX }}</p>
             <p v-if="pendingUse === 'faint' && faintCount + 1 >= 3" class="uc-warn">
               ⚠ ครบ 3 แล้วเควสจะล้มเหลว
             </p>
@@ -9635,6 +10495,29 @@ onDeactivated(() => {
               <button class="uc-cancel" @click="pendingUse = null">ยกเลิก</button>
               <button class="uc-confirm" @click="confirmUse">✓ ยืนยัน</button>
             </div>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ติดสถานะจากการโจมตี — บอกว่าต้องทำอะไรบนโต๊ะ ขึ้นหลังเฉลยจบ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="statusNotice" class="uc-overlay">
+          <div class="uc-modal">
+            <template v-for="n in statusNotice" :key="n.id">
+              <img :src="getImg(getStatusEffect(n.id)?.thumbnail)" class="uc-icon" :class="{ 'sn-resisted-icon': n.resisted }" alt="" />
+              <template v-if="n.resisted">
+                <p class="uc-title">ต้านทาน {{ getStatusEffect(n.id)?.effect_name }} ได้</p>
+                <p class="uc-sub sn-resist">🛡 เกราะมี {{ n.resisted }} — ไม่ติดสถานะนี้</p>
+              </template>
+              <template v-else>
+                <p class="uc-title">ติด {{ getStatusEffect(n.id)?.effect_name }}</p>
+                <p class="uc-sub">{{ getStatusEffect(n.id)?.hunter_suffer }}</p>
+                <p class="uc-sub sn-app">{{ statusAppEffect[n.id] }}</p>
+              </template>
+            </template>
+            <button class="uc-confirm sn-ok" @click="dismissStatusNotice">รับทราบ</button>
           </div>
         </div>
       </Transition>
@@ -9728,9 +10611,34 @@ onDeactivated(() => {
             'party-strip-lifted': floatBarVisible && !floatBarCollapsed,
             'party-strip-tab': floatBarVisible && floatBarCollapsed
           }"
+          @touchstart.passive="onStripTouchStart"
+          @touchend.passive="onStripTouchEnd"
         >
+          <button
+            class="strip-flip strip-flip-right"
+            :title="stripPage === 0 ? 'ไปหน้าปุ่มพาไปส่วนต่าง ๆ (ปัดแถบก็ได้)' : 'กลับไปแถบปาร์ตี้'"
+            @click="toggleStripPage"
+          >
+            <span class="strip-flip-arrow">{{ stripPage === 0 ? '‹' : '›' }}</span>
+            <span class="strip-dots"><i :class="{ on: stripPage === 0 }"></i><i :class="{ on: stripPage === 1 }"></i></span>
+          </button>
+
+          <div v-show="stripPage === 1" class="strip-nav">
+            <button
+              v-for="t in navRight"
+              :key="t.id"
+              class="nav-btn"
+              :disabled="!navReady[t.id]"
+              :title="navReady[t.id] ? `ไปที่${t.label}` : `ยังไม่มี${t.label}ในจอ`"
+              @click="jumpTo(t)"
+            >
+              <span class="nav-btn-icon">{{ t.icon }}</span>
+              <span class="nav-btn-label">{{ t.label }}</span>
+            </button>
+          </div>
+
           <!-- Palico ของตัวเอง — อยู่หัวแถบ ขยับตามแถบเองเวลาแถบเทิร์นเปิด/พับ -->
-          <template v-if="myPalico || partyPalicos.length">
+          <template v-if="stripPage === 0 && (myPalico || partyPalicos.length)">
             <button
               class="party-palico-btn"
               title="ดูการ์ด Palico"
@@ -9743,19 +10651,26 @@ onDeactivated(() => {
           </template>
 
           <div
-            v-for="h in room.hunters"
+            v-for="h in (stripPage === 0 ? room.hunters : [])"
             :key="h.hunter_id"
             class="party-member"
             :class="{
               'party-done':    !!room.tcTurnEnds?.[h.hunter_id]?.card,
               'party-pending': !!room.tcTurnEnds?.[h.hunter_id]?.pending,
               'party-me':      h.hunter_id === room.myHunterId,
+              'party-down':    isHunterDown(h),
               'party-swappable': canSwapWith(h)
             }"
             :title="canSwapWith(h) ? `Weakness Exploit — ขอสลับ Hunter Token กับ ${h.hunter_name}` : null"
             @click="canSwapWith(h) && askSwapWith(h)"
           >
-            <div class="party-icon-wrap">
+            <!-- วงแหวนรอบไอคอน = HP ที่เหลือ เต็มเป็นเขียว ลดลงค่อย ๆ แดง — ไม่เพิ่มความสูงแถบตอนเล่น 4 คน -->
+            <div
+              class="party-icon-wrap"
+              :class="{ 'party-hp-low': hpOf(h) <= 2 }"
+              :style="hpRingStyle(h)"
+              :title="`${h.hunter_name} — HP ${hpOf(h)}/${HUNTER_HP_MAX}`"
+            >
               <img
                 v-if="getHunterClass(h.hunter_class_id)?.thumbnail"
                 :src="getImg(getHunterClass(h.hunter_class_id).thumbnail)"
@@ -9766,6 +10681,17 @@ onDeactivated(() => {
               </span>
               <span class="party-status-dot">
                 {{ room.tcTurnEnds?.[h.hunter_id]?.card ? '✓' : room.tcTurnEnds?.[h.hunter_id]?.pending ? '…' : '' }}
+              </span>
+              <!-- สถานะเกาะมุมล่างซ้าย (บนซ้าย = โทเคน, ล่างขวา = จบเทิร์น) -->
+              <span v-if="statusesOf(h).length" class="party-statuses">
+                <img
+                  v-for="id in statusesOf(h)"
+                  :key="id"
+                  :src="getImg(getStatusEffect(id)?.thumbnail)"
+                  :title="getStatusEffect(id)?.effect_name"
+                  class="party-status-img"
+                  alt=""
+                />
               </span>
             </div>
           </div>
@@ -9993,7 +10919,8 @@ onDeactivated(() => {
     <!-- ═══════════ MONSTER ATTACK OVERLAY ═══════════ -->
     <teleport to="body">
       <Transition name="ma-trans">
-        <div v-if="showMonsterAttack" class="ma-overlay" @click="showMonsterAttack = false; monsterAttackStatuses = []">
+        <!-- แตะที่ไหนก็ปิด ยกเว้นแผงเล็งเป้าหมายที่กัน propagation ไว้เอง -->
+        <div v-if="showMonsterAttack" class="ma-overlay" :class="{ 'ma-locked': attackFlowLocked }" @click="closeMonsterAttack">
           <!-- FX เสียงคำราม — แสงอัด คลื่นเสียง เส้นแรงพุ่งออก และขอบจอแดง
                ทั้งหมดอยู่หลัง .ma-content (z-index 0 vs 1) และไม่รับคลิก -->
           <span class="ma-flash"></span>
@@ -10030,9 +10957,121 @@ onDeactivated(() => {
               </div>
             </div>
             <p v-if="monsterAttackCard" class="ma-card-name">{{ monsterAttackCard.behavior_name }}</p>
-            <p class="ma-hint">แตะเพื่อปิด</p>
+
+            <!-- ตัวเลขที่ใช้จริง — จังหวะนี้คือจังหวะที่ทุกคนต้องรู้ว่าโดนเท่าไหร่ @click.stop ไม่ให้กดดูที่มาแล้วโมดัลปิด -->
+            <CardStatStrip
+              v-if="monsterAttackCard"
+              data-tour="ma-stats"
+              class="ma-stats"
+              :stats="attackCardStats"
+              :card="monsterAttackCard"
+              :parts="monsterHuntingData?.monster_parts"
+              @click.stop
+            />
+
+            <!-- เล็งเป้าหมายตั้งแต่ตอนการ์ดเด้ง — จังหวะที่ทุกคนกำลังมองจออยู่พอดี
+                 ยืนยันเป้าหมายแล้วแผงนี้ปิด ไปขั้นตอนเลือกรับ/หลบต่อ
+                 @click.stop ที่กล่อง ไม่งั้นกดปุ่มแล้วโมดัลปิดไปด้วย -->
+            <div v-if="attackTargetStage && (boardHunters.length || downHunterNames.length)" data-tour="ma-target" class="mt-tokens ma-tokens" @click.stop>
+              <p class="mt-tokens-head">
+                <span class="mt-tokens-title">ใครโดนเล็ง?</span>
+                <span class="mt-tokens-hint">เลขสูงสุด 2 อันดับเน้นไว้</span>
+              </p>
+              <p v-if="!boardHunters.length" class="mt-tokens-empty">ทุกคนล้มอยู่ — การโจมตีนี้ไม่มีเป้าหมาย</p>
+              <div class="mt-token-list">
+                <button
+                  v-for="h in boardHunters"
+                  :key="h.hunter_id"
+                  class="mt-token"
+                  :data-name="h.hunter_name"
+                  :class="{ 'mt-token-top': isTopToken(h), 'mt-token-target': isTargeted(h), 'mt-token-me': String(h.hunter_id) === String(room.myHunterId) }"
+                  :disabled="!canSetTarget(h)"
+                  :title="canSetTarget(h) ? `ให้ ${h.hunter_name} เป็นเป้าหมาย` : 'กดปุ่ม ฉันเป็นเป้าหมาย ด้านล่างแทน'"
+                  @click="askMonsterTarget(h)"
+                >
+                  <span class="mt-token-num">{{ tokenOf(h) ?? '–' }}</span>
+                  <img
+                    v-if="getHunterClass(h.hunter_class_id)?.thumbnail"
+                    :src="getImg(getHunterClass(h.hunter_class_id).thumbnail)"
+                    class="mt-token-icon"
+                    alt=""
+                  />
+                  <img v-if="isTargeted(h)" :src="getImg('assets/img/UI/symbol/target_furthest_symbol.webp')" class="mt-token-mark" alt="เป้าหมาย" />
+                </button>
+              </div>
+              <button v-if="myBoardHunter" class="mt-me-target" @click="askMonsterTarget(myBoardHunter)">
+                <img :src="getImg('assets/img/UI/symbol/target_furthest_symbol.webp')" alt="" />
+                ฉันเป็นเป้าหมาย
+              </button>
+              <p v-if="downHunterNames.length" class="mt-tokens-down">💫 ล้มอยู่: {{ downHunterNames.join(', ') }}</p>
+            </div>
+
+            <!-- ใครรับ/หลบ/อยู่นอกระยะ — คนที่รับ แอปหักเกราะให้แล้วบอกตัวเลข -->
+            <AttackChoicePanel
+              v-if="attackChoiceVisible"
+              :data-tour="myAttackStage === 'calc' ? 'ma-calc' : 'ma-choices'"
+              class="ma-choices"
+              :stage="myAttackStage"
+              :me="myAttackRow"
+              :others="otherAttackRows"
+              :agility="attackAgility"
+              :element-id="attackElementId"
+              :preview="myDamagePreview"
+              :hp="myHp"
+              :hp-max="HUNTER_HP_MAX"
+              :asleep="hasMyStatus(STATUS_SLEEP)"
+              v-model:shield="myShieldDraft"
+              @choose="setMyAttackChoice"
+              @reset="setMyAttackChoice(null)"
+              @confirm="confirmMyDamage"
+              @click.stop
+            />
+
+            <p class="ma-hint">
+              {{ attackFlowLocked ? 'ทำตามขั้นตอนให้ครบ เดี๋ยวระบบปิดให้เอง' : 'แตะเพื่อปิด' }}
+            </p>
           </div>
         </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ CONFIRM MONSTER TARGET ═══════════ -->
+    <!-- ยืนยันก่อน เพราะยืนยันแล้วแผงเล็งปิดทันที ย้อนไม่ได้ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="pendingTargetHunter" class="tgc-overlay" @click.self="pendingTargetHunter = null">
+          <div class="tgc-modal">
+            <p class="tgc-title">ยืนยันเป้าหมาย</p>
+            <div class="tgc-who">
+              <img
+                v-if="getHunterClass(pendingTargetHunter.hunter_class_id)?.thumbnail"
+                :src="getImg(getHunterClass(pendingTargetHunter.hunter_class_id).thumbnail)"
+                class="tgc-icon"
+                alt=""
+              />
+              <span class="tgc-name">{{ pendingTargetHunter.hunter_name }}</span>
+            </div>
+            <p class="tgc-desc">ให้มอนเล็ง <strong>{{ pendingTargetHunter.hunter_name }}</strong> ใช่ไหม? ยืนยันแล้วเปลี่ยนไม่ได้</p>
+            <div class="tgc-btns">
+              <button class="tgc-btn tgc-cancel" @click="pendingTargetHunter = null">ยกเลิก</button>
+              <button class="tgc-btn tgc-ok" @click="confirmMonsterTarget">ยืนยัน</button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ ATTACK REVEAL ═══════════ -->
+    <!-- ทุกคนเลือกครบแล้วค่อยเฉลยพร้อมกัน จบแอนิเมชันแล้วปิดโมดัลทั้งหมดเอง -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <AttackRevealOverlay
+          v-if="attackReveal"
+          :rows="attackReveal.rows"
+          :card-name="attackReveal.cardName"
+          :my-id="myDefenderId"
+          @done="finishAttackReveal"
+        />
       </Transition>
     </teleport>
 
@@ -13254,6 +14293,38 @@ onDeactivated(() => {
   100% { opacity: 0; }
 }
 .mt-card-name { font-size: 11px; color: #a88040; margin: 0; text-align: center; }
+/* แถบค่าการ์ด — ในแผงเทิร์นมอนวางใต้การ์ด ส่วนใน Modal โจมตีให้กว้างเท่าชื่อการ์ด */
+.mt-stats { margin: 10px auto 0; max-width: 340px; }
+.ma-stats { margin: 10px auto 0; max-width: 360px; }
+/* แผงเลือกรับ/หลบ — กว้างกว่าแถบค่าเพราะมีชื่อคนกับปุ่มสามอัน */
+.mt-choices { margin: 10px auto 0; max-width: 420px; }
+.ma-choices { margin: 12px auto 0; max-width: 440px; }
+/* ระหว่างขั้นตอนโจมตี แตะพื้นหลังแล้วต้องไม่ปิด — เปลี่ยนเคอร์เซอร์ให้รู้ว่ากดไม่ได้ */
+.ma-locked { cursor: default; }
+
+/* ยืนยันเป้าหมาย */
+.tgc-overlay {
+  position: fixed; inset: 0; z-index: 1050;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+  background: rgba(0, 0, 0, 0.72);
+}
+.tgc-modal {
+  width: 100%; max-width: 300px; padding: 16px 18px; text-align: center;
+  border: 1px solid #6b552f; border-radius: 12px;
+  background: linear-gradient(180deg, #221a0e, #120e07);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.6);
+}
+.tgc-title { margin: 0 0 10px; font-size: 13px; font-weight: bold; letter-spacing: 2px; color: #c89b3c; }
+.tgc-who { display: flex; align-items: center; justify-content: center; gap: 7px; margin-bottom: 8px; }
+.tgc-icon { width: 34px; height: 34px; object-fit: contain; }
+.tgc-name { font-size: 17px; font-weight: bold; color: #e8dcc0; }
+.tgc-desc { margin: 0 0 14px; font-size: 11px; line-height: 1.6; color: #a89878; }
+.tgc-desc strong { color: #ffb0a0; }
+.tgc-btns { display: flex; gap: 8px; }
+.tgc-btn { flex: 1; padding: 9px 0; border-radius: 9px; cursor: pointer; font-size: 13px; }
+.tgc-cancel { border: 1px solid #55452a; background: rgba(0, 0, 0, 0.35); color: #8c7a5c; }
+.tgc-ok { border: 1px solid #c0392b; background: rgba(120, 30, 20, 0.45); color: #ffb0a0; font-weight: bold; }
+.tgc-ok:active { background: rgba(160, 45, 30, 0.6); }
 /* ปุ่มเหล็กตีขึ้นรูป ชุบเลือด */
 .mt-draw-btn {
   padding: 14px;
@@ -13670,6 +14741,12 @@ onDeactivated(() => {
 .nt-blast-icon { width: 40px; height: 40px; object-fit: contain; flex-shrink: 0; }
 .nt-blast-name { font-size: 13px; font-weight: bold; color: #d48040; margin: 0; }
 .nt-blast-desc { font-size: 11px; color: #a86030; margin: 0; line-height: 1.5; }
+.nt-resist {
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px;
+  margin: 8px 0 0; padding: 6px 10px;
+  border-radius: 8px; border: 1px solid #3c6a48; background: rgba(20, 60, 32, 0.4);
+  font-size: 12px; color: #8fe0a0;
+}
 .nt-immune-box {
   display: flex; align-items: center; gap: 12px;
   padding: 10px 14px;
@@ -14770,6 +15847,136 @@ onDeactivated(() => {
 }
 .use-strip-lifted { bottom: 110px; }
 
+/* แผงเล็งเป้าหมายในโมดัลการ์ดโจมตี — จอแคบต้องยังเห็นการ์ดด้วย เลยจำกัดความสูงและเลื่อนในตัวเอง */
+.ma-tokens {
+  width: min(440px, 92vw);
+  max-height: 30vh;
+  overflow-y: auto;
+  margin-top: 10px;
+  background: rgba(20, 12, 5, 0.85);
+  cursor: default;
+}
+
+/* ── Hunter Token ช่วงเทิร์น Monster ── */
+.mt-tokens {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  border-radius: 6px;
+  background: rgba(20, 12, 5, 0.5);
+}
+.mt-tokens-head { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 4px 8px; margin: 0 0 8px; }
+.mt-tokens-title { font-size: 12px; font-weight: bold; letter-spacing: 1px; color: #c89b3c; }
+.mt-tokens-hint { font-size: 10.5px; color: #a88040; }
+.mt-token-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.mt-token {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  width: 44px; padding: 4px 2px 3px;
+  border: 1px solid rgba(124, 90, 43, 0.45); border-radius: 5px;
+  background: linear-gradient(170deg, #2b1f13, #1a1209);
+  color: #d8bc80; font-family: inherit; cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.mt-token:disabled { cursor: default; }
+.mt-token:hover:not(:disabled) { border-color: #c89b3c; }
+/* เลขสูงสุด 2 อันดับ — มอนเล็งคนพวกนี้ก่อน ต้องเห็นตั้งแต่แวบแรก */
+.mt-token-top {
+  border-color: #ffc94a;
+  background: linear-gradient(170deg, #4a3414, #241806);
+  box-shadow: 0 0 10px rgba(255, 190, 60, 0.35);
+}
+.mt-token-target { border-color: #ff6a3a; box-shadow: 0 0 12px rgba(255, 90, 40, 0.5); }
+.mt-token-me { outline: 1px dashed rgba(200, 155, 60, 0.5); outline-offset: 2px; }
+.mt-token-num { font-size: 15px; font-weight: bold; line-height: 1.1; color: #ffd27a; }
+.mt-token-top .mt-token-num { color: #fff0b8; text-shadow: 0 0 8px rgba(255, 200, 80, 0.8); }
+.mt-token-icon { width: 18px; height: 18px; object-fit: contain; }
+.mt-token-mark { width: 16px; height: 16px; object-fit: contain; filter: drop-shadow(0 0 4px rgba(255, 110, 60, 0.9)); }
+.mt-tokens-down { margin: 8px 0 0; font-size: 10.5px; color: #a88040; text-align: center; }
+/* ปุ่มเลือกตัวเองเป็นเป้าหมาย — ทุกคนมี (Host เลือกแทนคนอื่นผ่านไอคอนคลาสได้อีกทาง) */
+.mt-me-target {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  width: 100%; max-width: 260px; margin: 10px auto 0; padding: 9px 12px;
+  border: 1px solid #c0392b; border-radius: 10px; cursor: pointer;
+  background: rgba(120, 30, 20, 0.4); color: #ffb0a0;
+  font-size: 13px; font-weight: bold; letter-spacing: 0.5px;
+}
+.mt-me-target img { width: 18px; height: 18px; object-fit: contain; }
+.mt-me-target:active { background: rgba(160, 45, 30, 0.6); }
+.mt-tokens-empty { margin: 4px 0; text-align: center; font-size: 12px; color: #c88a6a; }
+/* ล้มอยู่ = ไม่ได้อยู่บนบอร์ด ในแถบปาร์ตี้ก็ต้องดูออก */
+.party-down { opacity: 0.4; filter: grayscale(0.6); }
+/* วงแหวน HP รอบไอคอน — conic-gradient เติมตามสัดส่วน แล้ว mask เหลือแค่ขอบวง
+   วาดนอกกรอบไอคอน จึงไม่ทับสีขอบที่บอกสถานะจบเทิร์น (เขียว/เหลือง) */
+.party-icon-wrap::before {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  background: conic-gradient(var(--hp-color, #3fbf5f) var(--hp-deg, 360deg), rgba(255,255,255,0.1) 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  pointer-events: none;
+  transition: background 0.4s ease;
+}
+.party-hp-low::before { animation: partyHpLow 1.2s ease-in-out infinite; }
+@keyframes partyHpLow {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .party-hp-low::before { animation: none; }
+}
+.party-statuses {
+  position: absolute;
+  bottom: -4px;
+  left: -5px;
+  display: flex;
+  gap: 0;
+}
+.party-status-img {
+  width: 11px;
+  height: 11px;
+  margin-right: -3px;
+  object-fit: contain;
+  border-radius: 50%;
+  background: #1a1304;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.8);
+}
+
+/* ── แถบลอย 2 หน้า — ปุ่มสลับหน้า + ปุ่มพาไปส่วนต่าง ๆ ── */
+.strip-flip {
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  width: 100%; padding: 4px 2px; border: none; border-radius: 4px;
+  background: rgba(200, 155, 60, 0.12); color: #c9a050;
+  font-family: inherit; cursor: pointer;
+}
+.strip-flip:hover { background: rgba(200, 155, 60, 0.22); color: #ffd27a; }
+.strip-flip-arrow { font-size: 14px; line-height: 1; }
+.strip-dots { display: flex; gap: 3px; }
+.strip-dots i { width: 4px; height: 4px; border-radius: 50%; background: rgba(200, 155, 60, 0.35); }
+.strip-dots i.on { background: #ffd27a; }
+
+.strip-nav { display: flex; flex-direction: column; gap: 6px; }
+.nav-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  width: 52px; min-height: 46px; padding: 5px 2px;
+  border: 1px solid rgba(124, 90, 43, 0.5); border-radius: 6px;
+  background: linear-gradient(170deg, #2b1f13, #1a1209); color: #d8bc80;
+  font-family: inherit; cursor: pointer; transition: border-color 0.15s, color 0.15s;
+}
+.nav-btn:hover:not(:disabled) { border-color: #c89b3c; color: #ffd27a; }
+.nav-btn:disabled { opacity: 0.35; cursor: default; }
+.nav-btn-icon { font-size: 17px; line-height: 1.1; }
+.nav-btn-label { font-size: 9.5px; line-height: 1.2; text-align: center; }
+
+/* กะพริบส่วนที่เพิ่งเลื่อนไปถึง */
+.nav-flash { animation: nav-flash 1.4s ease-out; border-radius: 6px; }
+@keyframes nav-flash {
+  0%, 100% { box-shadow: none; }
+  15%, 55% { box-shadow: 0 0 0 2px rgba(255, 210, 122, 0.85), 0 0 18px rgba(255, 190, 60, 0.5); }
+}
+@media (prefers-reduced-motion: reduce) { .nav-flash { animation: none; outline: 2px solid rgba(255, 210, 122, 0.8); } }
+
 /* เทิร์น Monster: Guest แก้ค่ามอนไม่ได้ — ปุ่มจางและกดไม่ติด (ดูข้อมูล / เปิดบันทึกได้ตามเดิม) */
 .php-monster-lock .hp-controls,
 .php-monster-lock .part-break-controls,
@@ -14810,6 +16017,16 @@ onDeactivated(() => {
 .use-btn-img { width: 24px; height: 24px; object-fit: contain; }
 .use-btn-count { font-size: 9px; font-weight: bold; color: #ffd27a; letter-spacing: 0.5px; }
 .use-btn-faint .use-btn-count { color: #ff9090; }
+.use-btn-hp .use-btn-count { color: #ff9c86; }
+.use-btn-hp-low { border-color: #ff4f3a; animation: useHpLowPulse 1.2s ease-in-out infinite; }
+@keyframes useHpLowPulse {
+  0%, 100% { box-shadow: none; }
+  50%      { box-shadow: 0 0 10px rgba(255, 79, 58, 0.5); }
+}
+@media (prefers-reduced-motion: reduce) { .use-btn-hp-low { animation: none; } }
+/* แผง HP / สถานะ — กว้างกว่า uc-modal ปกติเล็กน้อย ให้แถว HP มีที่หายใจ */
+.hpm-modal { width: min(360px, 100%); }
+.hpm-close { width: 100%; margin-top: 4px; }
 /* ปุ่ม Palico — ใช้รูปการ์ดของตัวเอง ครอบให้เป็นหน้า Palico ไม่ใช่ทั้งใบ */
 .use-btn-palico .use-btn-img.use-btn-palico-img { width: 26px; height: 26px; object-fit: cover; object-position: center 42%; border-radius: 50%; border: 1px solid rgba(255, 170, 80, 0.6); }
 .use-btn-palico .use-btn-count { color: #ffb070; }
@@ -15476,6 +16693,8 @@ onDeactivated(() => {
   gap: 4px;
   flex: 1;
   min-width: 0;
+  /* เว้นที่ให้วงแหวน HP (ยื่นออกนอกไอคอน 5px) ไม่ชนคนข้าง ๆ */
+  padding: 4px 3px;
 }
 .party-icon-wrap {
   position: relative;
@@ -15754,7 +16973,9 @@ onDeactivated(() => {
   position: fixed;
   inset: 0;
   background: #000;
-  z-index: 480;
+  /* ต้องสูงกว่าแถบลอย (.use-strip / .party-strip = 900) ไม่งั้นแถบทับปุ่มเลือกรับ/หลบ
+     แต่ยังต่ำกว่าหน้าต่างอื่น ๆ (1200 ขึ้นไป) ที่ควรเด้งทับโมดัลนี้ได้ */
+  z-index: 950;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -18463,6 +19684,117 @@ onDeactivated(() => {
   flex-shrink: 0;
   margin: 0 4px;
 }
+
+/* HP ในหน้า Dialog — ใช้แถวเดียวกับหน้าต่าง HP ตอนล่า ใส่กรอบให้เข้ากับแถบหนังด้านบน */
+.dialog-hp {
+  margin: 10px 0 4px;
+  padding: 2px 12px 8px;
+  border: 1px solid rgba(124,90,43,0.45);
+  border-radius: 10px;
+  background: rgba(0,0,0,0.28);
+}
+.dialog-hp .qs-hp { border-top: none; }
+.dialog-hp-note { margin: 4px 0 0; text-align: center; font-size: 10.5px; color: #8c7a5c; }
+
+/* HP ของตัวเอง — แถวเดียวใต้ตัวนับ เม็ดเลือด 8 เม็ดยืดตามความกว้าง */
+.qs-hp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(124,90,43,0.3);
+  /* .uc-modal มี align-items:center ทำให้แถวหดตามเนื้อหา ต้องสั่งให้เต็มความกว้างเอง */
+  align-self: stretch;
+}
+.qs-hp .qs-tracker-label { flex: none; letter-spacing: 2px; }
+.qs-hp-pips {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 3px;
+}
+.qs-hp-pips i {
+  flex: 1;
+  height: 12px;
+  border-radius: 2px;
+  background: rgba(0,0,0,0.35);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.6);
+  transition: background 0.25s;
+}
+.qs-hp-pips i.on {
+  background: linear-gradient(to bottom, #e0533c, #9c2418);
+  box-shadow: 0 0 5px rgba(224,83,60,0.35);
+}
+.qs-hp-low .qs-hp-pips i.on { animation: qsHpLow 1.2s ease-in-out infinite; }
+@keyframes qsHpLow {
+  0%, 100% { box-shadow: 0 0 3px rgba(255,60,40,0.3); }
+  50%      { box-shadow: 0 0 9px rgba(255,60,40,0.85); }
+}
+.qs-hp-num {
+  flex: none;
+  min-width: 2.6em;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 700;
+  color: #ffb4a4;
+}
+.qs-hp-num small { font-size: 11px; color: #8c7a5c; font-weight: 400; }
+.qs-hp-step {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(180,60,20,0.45);
+  border-radius: 6px;
+  background: rgba(0,0,0,0.3);
+  color: #e8dcc0;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.qs-hp-step:disabled { opacity: 0.35; cursor: not-allowed; }
+.qs-hp-step:not(:disabled):active { background: rgba(180,60,20,0.3); }
+@media (prefers-reduced-motion: reduce) {
+  .qs-hp-low .qs-hp-pips i.on { animation: none; }
+}
+
+.qs-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: stretch;
+}
+.qs-status .qs-tracker-label { flex: none; letter-spacing: 1px; }
+.qs-status-btn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 4px;
+  border: 1px solid rgba(124,90,43,0.35);
+  border-radius: 6px;
+  background: rgba(0,0,0,0.25);
+  color: #7a6a4c;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.qs-status-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qs-status-img { width: 18px; height: 18px; object-fit: contain; flex: none; opacity: 0.3; filter: grayscale(1); }
+.qs-status-on {
+  border-color: #b04ad0;
+  background: rgba(110,40,140,0.35);
+  color: #f0d6ff;
+  box-shadow: 0 0 8px rgba(176,74,208,0.35);
+}
+.qs-status-on .qs-status-img { opacity: 1; filter: none; }
+.qs-status-hint { margin: -2px 0 0; font-size: 11px; line-height: 1.5; color: #d9a8ec; }
+
+.sn-app { color: #d9a8ec; }
+.sn-resist { color: #8fe0a0; }
+.sn-resisted-icon { filter: grayscale(0.7); opacity: 0.6; }
+.sn-ok { width: 100%; margin-top: 6px; }
 
 
 /* ── Map Modal ── */
