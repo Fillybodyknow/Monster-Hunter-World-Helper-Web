@@ -1,6 +1,6 @@
 import { db, authReady } from './firebase'
 import { ref, set, get, update, onValue, remove, onDisconnect, push, runTransaction } from 'firebase/database'
-import { getWeapons } from './equipService'
+import { getWeapons, armorSummary } from './equipService'
 import { rankOf } from './hunterRank'
 
 // สรุปอาวุธที่ถืออยู่ให้เพื่อนร่วมตี้เห็น (ชื่อ + rarity + ไอคอน)
@@ -108,6 +108,8 @@ export const createRoom = async (hunter) => {
         campaign_day: hunter.campaign_day ?? 1,
         hunter_rank: rankOf(hunter),
         weapon,
+        armor: armorSummary(hunter),
+        chef_element: null,
         isHost: true,
         joinedAt: Date.now(),
       },
@@ -153,6 +155,8 @@ export const joinRoom = async (code, hunter, validate) => {
     campaign_day: hunter.campaign_day ?? 1,
     hunter_rank: rankOf(hunter),
     weapon: await buildWeaponSummary(hunter),
+    armor: armorSummary(hunter),
+    chef_element: existing?.chef_element ?? null,
     isHost: existing?.isHost ?? false,
     joinedAt: existing?.joinedAt ?? Date.now(),
   })
@@ -354,6 +358,33 @@ export const pushTcDrawn = (code, hunterId, hunterName, card) =>
 export const clearTcTurnEnds = (code) =>
   remove(ref(db, `rooms/${code}/tcTurnEnds`))
 
+// ── ใครอยู่บนบอร์ด / ใครโดนเล็ง ────────────────────────
+// ล้ม = ออกจากบอร์ด (เจ้าตัวเขียนของตัวเอง) · จบเทิร์น = กลับเข้าบอร์ด
+export const setHunterDown = (code, hunterId, down) =>
+  down
+    ? set(ref(db, `rooms/${code}/downHunters/${hunterId}`), true)
+    : remove(ref(db, `rooms/${code}/downHunters/${hunterId}`))
+
+export const clearHunterDowns = (code) => remove(ref(db, `rooms/${code}/downHunters`))
+
+// เกราะ + ธาตุที่ได้จากเชฟเหมี่ยว — ส่งซ้ำตอนเริ่มล่า เพราะ Downtime เปลี่ยนชุดได้
+export const setHunterLoadout = (code, hunterId, loadout) =>
+  update(ref(db, `rooms/${code}/hunters/${hunterId}`), loadout)
+
+// การโจมตีครั้งนี้ใครรับ / หลบ / อยู่นอกระยะ — ล้างพร้อมเป้าหมายทุกครั้งที่ขึ้นการ์ดใบใหม่
+export const setAttackChoice = (code, hunterId, entry) =>
+  entry == null
+    ? remove(ref(db, `rooms/${code}/attackChoices/${hunterId}`))
+    : set(ref(db, `rooms/${code}/attackChoices/${hunterId}`), entry)
+
+export const clearAttackChoices = (code) => remove(ref(db, `rooms/${code}/attackChoices`))
+
+// เป้าหมายของ Monster เทิร์นนี้ — ล้างทุกครั้งที่ขึ้นการ์ดพฤติกรรมใบใหม่
+export const pushMonsterTarget = (code, hunterId) =>
+  hunterId == null
+    ? remove(ref(db, `rooms/${code}/monsterTarget`))
+    : set(ref(db, `rooms/${code}/monsterTarget`), hunterId)
+
 // ── Quest Mode ────────────────────────────────────────────
 
 // ── Reroll Request ────────────────────────────────────────
@@ -417,8 +448,13 @@ export const clearTokenSwapRequest = (code) => remove(ref(db, `rooms/${code}/tok
 
 // ใช้ยา / ล้ม — ทุกคนยิงสัญญาณนี้ได้เอง แต่คนที่แก้ huntState จริงคือ Host เท่านั้น
 // (huntState ถูกเขียนทั้งก้อน ถ้าปล่อยให้ guest เขียนจะทับ HP/ชิ้นส่วนที่ Host ถืออยู่)
+// ใช้ยา / ล้ม / Palico — push ต่อท้ายทีละรายการ ไม่เขียนทับช่องเดียวกัน
+// เดิมใช้ set() ช่องเดียว: สองคนกดห่างกันไม่กี่สิบมิลลิวินาที อันหลังทับอันแรกก่อน Host จะเห็น
+// ผลคือล้มพร้อมกัน 2 คนแต่ตัวนับขึ้นแค่ 1
 export const pushUseSignal = (code, payload) =>
-  set(ref(db, `rooms/${code}/useSignal`), { at: Date.now(), ...payload })
+  push(ref(db, `rooms/${code}/useSignals`), { at: Date.now(), ...payload })
+
+export const clearUseSignals = (code) => remove(ref(db, `rooms/${code}/useSignals`))
 
 // ── บันทึกการล่า — ใครกดอะไรไปบ้าง + ย้อนได้ ─────────────
 // push ต่อท้ายทีละรายการ ไม่เขียนทับทั้งก้อน สองคนกดพร้อมกันก็ไม่หายสักรายการ

@@ -10,7 +10,8 @@
         "map_image": "assets/img/maps/kushala_daora/kushala_daora_1_star_map.webp",
         "special_rule": {
           "title": "Fiece Winds",
-          "description": "WIND EFFECT: เมื่อเริ่มเทิร์นของ Kushala Daora, วาง 1 {wind_token} ลงบนพิ้นที่บอร์ดของมัน. ถ้ามี 2 {wind_token} อยู่แล้วให้นำออกทั้งสองแล้ววาง 1 {wind_token} แทน, เมื่อ Hunter ทำการเคลื่อนที่เข้าใกล้ Kushala Daora ในระยะ 1 node, Hunter คนนั้นจำเป็นจะต้องทิ้ง Attack Card บนมือรวมกันให้มีค่า {agility} เท่ากับหรือมากกว่าจำนวน {wind_token} บนบอร์ดของ Kushala Daora, หาก Hunter ไม่สามารถทิ้งได้จะไม่ได้เคลื่อนที่เข้าใกล้มัน, Attack Cards บนมือของ Hunter จะมี -1{range} ต่อจำนวน {wind_token} บนบอร์ดของ Kushala Daora แต่จะไม่ต่ำกว่า 1\n\nTORNADO EFFECT: เมื่อจั่วการ์ดพฤติกรรมที่มี {tornado_token}, ให้วาง 1 {tornado_token} ลงบน node ของ Kushala Daora, ใน 1 node สามารถวางได้เพียง 1 {tornado_token} เท่านั้น, เมื่อมี 5 {tornado_token} บน Game Board อยู่แล้ว, ให้ทิ้งทั้งหมดแล้ววาง 1 {tornado_token} แทน, ในระหว่างเทิร์น Hunter, เมื่อ Hunter เคลื่อนที่ไปใน node เดียวกับ {tornado_token} จำเป็นจะต้องทิ้ง Attack Card บนมือรวมกันให้มีค่า {agility} เท่ากับหรือมากกว่าจำนวน {wind_token} บนบอร์ดของ Kushala Daora, หาก Hunter ไม่สามารถทิ้งได้จะไม่ได้เคลื่อนที่เข้าไปยัง node นั้นได้"
+          "description": "WIND EFFECT: เมื่อเริ่มเทิร์นของ Kushala Daora, วาง 1 {wind_token} ลงบนพิ้นที่บอร์ดของมัน. ถ้ามี 2 {wind_token} อยู่แล้วให้นำออกทั้งสองแล้ววาง 1 {wind_token} แทน, เมื่อ Hunter ทำการเคลื่อนที่เข้าใกล้ Kushala Daora ในระยะ 1 node, Hunter คนนั้นจำเป็นจะต้องทิ้ง Attack Card บนมือรวมกันให้มีค่า {agility} เท่ากับหรือมากกว่าจำนวน {wind_token} บนบอร์ดของ Kushala Daora, หาก Hunter ไม่สามารถทิ้งได้จะไม่ได้เคลื่อนที่เข้าใกล้มัน, Attack Cards บนมือของ Hunter จะมี -1{range} ต่อจำนวน {wind_token} บนบอร์ดของ Kushala Daora แต่จะไม่ต่ำกว่า 1\n\nTORNADO EFFECT: เมื่อจั่วการ์ดพฤติกรรมที่มี {tornado_token}, ให้วาง 1 {tornado_token} ลงบน node ของ Kushala Daora, ใน 1 node สามารถวางได้เพียง 1 {tornado_token} เท่านั้น, เมื่อมี 5 {tornado_token} บน Game Board อยู่แล้ว, ให้ทิ้งทั้งหมดแล้ววาง 1 {tornado_token} แทน, ในระหว่างเทิร์น Hunter, เมื่อ Hunter เคลื่อนที่ไปใน node เดียวกับ {tornado_token} จำเป็นจะต้องทิ้ง Attack Card บนมือรวมกันให้มีค่า {agility} เท่ากับหรือมากกว่าจำนวน {wind_token} บนบอร์ดของ Kushala Daora, หาก Hunter ไม่สามารถทิ้งได้จะไม่ได้เคลื่อนที่เข้าไปยัง node นั้นได้",
+          "modifiers": []
         },
         "monster_parts": {
           "front": {
@@ -39,7 +40,10 @@
             "connect_part_position": ["left"],
             "part_break_threshold": 7,
             "armor": 4,
-            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {head}, -1{move}"
+            "part_break_rule": "การ์ดพฤติกรรมที่มีการโจมตีส่วน {head}, -1{move}",
+            "part_break_modifiers": [
+              { "when": { "part_id": 1 }, "change": { "move": -1 } }
+            ]
           }
         },
         "element_resistance": [
@@ -175,7 +179,9 @@
         "front_card_img": "assets/img/behavior_deck/kushala_daora/wind_wave_front.webp",
         "back_card_img": "assets/img/behavior_deck/kushala_daora/wind_wave_back.webp",
         "activations": 2,
-        "attack_cards": 2
+        "attack_cards": 2,
+        "attack": { "damage": 10, "element_id": 0, "status_id": 0, "range": 3, "agility": 4 },
+        "part_id": 4, "move": 2
       },
       {
         "behavior_id": 2,
@@ -183,7 +189,9 @@
         "front_card_img": "assets/img/behavior_deck/kushala_daora/swooping_dive_front.webp",
         "back_card_img": "assets/img/behavior_deck/kushala_daora/swooping_dive_back.webp",
         "activations": 2,
-        "attack_cards": 2
+        "attack_cards": 2,
+        "attack": { "damage": 9, "element_id": 0, "status_id": 1, "range": 1, "agility": 6 },
+        "part_id": 4, "move": 4
       },
       {
         "behavior_id": 3,
@@ -191,7 +199,9 @@
         "front_card_img": "assets/img/behavior_deck/kushala_daora/wind_blast_front.webp",
         "back_card_img": "assets/img/behavior_deck/kushala_daora/wind_blast_back.webp",
         "activations": 2,
-        "attack_cards": 2
+        "attack_cards": 2,
+        "attack": { "damage": 11, "element_id": 0, "status_id": 1, "range": 4, "agility": 4 },
+        "part_id": 1, "move": 2
       },
       {
         "behavior_id": 4,
@@ -199,7 +209,9 @@
         "front_card_img": "assets/img/behavior_deck/kushala_daora/flying_press_front.webp",
         "back_card_img": "assets/img/behavior_deck/kushala_daora/flying_press_back.webp",
         "activations": 2,
-        "attack_cards": 3
+        "attack_cards": 3,
+        "attack": { "damage": 9, "element_id": 0, "status_id": 0, "range": 1, "agility": 5 },
+        "part_id": 4, "move": 4
       },
       {
         "behavior_id": 5,
@@ -207,7 +219,9 @@
         "front_card_img": "assets/img/behavior_deck/kushala_daora/air_blast_front.webp",
         "back_card_img": "assets/img/behavior_deck/kushala_daora/air_blast_back.webp",
         "activations": 1,
-        "attack_cards": 2
+        "attack_cards": 2,
+        "attack": { "damage": 9, "element_id": 0, "status_id": 0, "range": 3, "agility": 5 },
+        "part_id": 1, "move": 2
       },
       {
         "behavior_id": 6,
@@ -215,7 +229,9 @@
         "front_card_img": "assets/img/behavior_deck/kushala_daora/unearth_front.webp",
         "back_card_img": "assets/img/behavior_deck/kushala_daora/unearth_back.webp",
         "activations": 1,
-        "attack_cards": 4
+        "attack_cards": 4,
+        "attack": { "damage": 8, "element_id": 0, "status_id": 0, "range": 1, "agility": 6 },
+        "part_id": 4, "move": 4
       },
       {
         "behavior_id": 7,
@@ -223,7 +239,9 @@
         "front_card_img": "assets/img/behavior_deck/kushala_daora/air_cannon_front.webp",
         "back_card_img": "assets/img/behavior_deck/kushala_daora/air_cannon_back.webp",
         "activations": 1,
-        "attack_cards": 4
+        "attack_cards": 4,
+        "attack": { "damage": 9, "element_id": 0, "status_id": 0, "range": 2, "agility": 5 },
+        "part_id": 1, "move": 2
       },
       {
         "behavior_id": 8,
@@ -231,7 +249,9 @@
         "front_card_img": "assets/img/behavior_deck/kushala_daora/double_bite_front.webp",
         "back_card_img": "assets/img/behavior_deck/kushala_daora/double_bite_back.webp",
         "activations": 1,
-        "attack_cards": 2
+        "attack_cards": 2,
+        "attack": { "damage": 10, "element_id": 0, "status_id": 0, "range": 1, "agility": 5 },
+        "part_id": 1, "move": 3
       },
       {
         "behavior_id": 9,
@@ -239,7 +259,9 @@
         "front_card_img": "assets/img/behavior_deck/kushala_daora/wind_aura_front.webp",
         "back_card_img": "assets/img/behavior_deck/kushala_daora/wind_aura_back.webp",
         "activations": 1,
-        "attack_cards": 3
+        "attack_cards": 3,
+        "attack": { "damage": 9, "element_id": 0, "status_id": 0, "range": 1, "agility": 5 },
+        "part_id": 4, "move": 3
       },
       {
         "behavior_id": 10,
@@ -247,7 +269,9 @@
         "front_card_img": "assets/img/behavior_deck/kushala_daora/wind_pressure_front.webp",
         "back_card_img": "assets/img/behavior_deck/kushala_daora/wind_pressure_back.webp",
         "activations": 3,
-        "attack_cards": 3
+        "attack_cards": 3,
+        "attack": { "damage": 9, "element_id": 0, "status_id": 0, "range": 3, "agility": 5 },
+        "part_id": 4, "move": 4
       }
     ],
     "track_token": [-2, -1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2],
@@ -258,7 +282,9 @@
         "front_card_img": "assets/img/behavior_deck/kushala_daora/wind_bite_front.webp",
         "back_card_img": "assets/img/behavior_deck/kushala_daora/wind_bite_back.webp",
         "activations": 1,
-        "attack_cards": 3
+        "attack_cards": 3,
+        "attack": { "damage": 10, "element_id": 0, "status_id": 0, "range": 1, "agility": 6 },
+        "part_id": 1, "move": 3
       },
       {
         "behavior_id": 12,
@@ -266,7 +292,9 @@
         "front_card_img": "assets/img/behavior_deck/kushala_daora/wind_buffet_front.webp",
         "back_card_img": "assets/img/behavior_deck/kushala_daora/wind_buffet_back.webp",
         "activations": 2,
-        "attack_cards": 2
+        "attack_cards": 2,
+        "attack": { "damage": 10, "element_id": 0, "status_id": 1, "range": 3, "agility": 4 },
+        "part_id": 4, "move": 4
       },
       {
         "behavior_id": 13,
@@ -274,7 +302,9 @@
         "front_card_img": "assets/img/behavior_deck/kushala_daora/engulfing_aura_front.webp",
         "back_card_img": "assets/img/behavior_deck/kushala_daora/engulfing_aura_back.webp",
         "activations": 3,
-        "attack_cards": 2
+        "attack_cards": 2,
+        "attack": { "damage": 9, "element_id": 0, "status_id": 0, "range": 2, "agility": 5 },
+        "part_id": 4, "move": 0
       }
     ]
 }
