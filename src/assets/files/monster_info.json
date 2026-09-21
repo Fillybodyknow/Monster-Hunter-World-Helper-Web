@@ -4005,7 +4005,10 @@
         "map_image": "assets/img/maps/pukei-pukei/pukei-pukei_1_star_map.webp",
         "special_rule": {
           "title": "Toxic Presence",
-          "description": "เมื่อ Hunter ติดสถานะ {poison} จาก Pukei-Pukei, Hunter คนนั้นจะสูญเสีย HP -3 หน่วยแทนที่จะเป็น -2 หน่วย เมื่อจบเทิร์นของ Hunter คนนั้น"
+          "description": "เมื่อ Hunter ติดสถานะ {poison} จาก Pukei-Pukei, Hunter คนนั้นจะสูญเสีย HP -3 หน่วยแทนที่จะเป็น -2 หน่วย เมื่อจบเทิร์นของ Hunter คนนั้น",
+          "modifiers": [
+            { "when": { "always": true }, "change": { "poison_hp": 1 } }
+          ]
         },
         "monster_parts": {
           "front": {
@@ -4072,7 +4075,8 @@
           "title": "Toxic Presence",
           "description": "เมื่อ Hunter ติดสถานะ {poison} จาก Pukei-Pukei, Hunter คนนั้นจะสูญเสีย HP -3 หน่วยแทนที่จะเป็น -2 หน่วย เมื่อจบเทิร์นของ Hunter คนนั้น, การ์ดพฤติกรรมที่มีการโจมตีสถานะ {poison} , หลบหลีก {agility}+1",
           "modifiers": [
-            { "when": { "status_id": 2 }, "change": { "agility": 1 } }
+            { "when": { "status_id": 2 }, "change": { "agility": 1 } },
+            { "when": { "always": true }, "change": { "poison_hp": 1 } }
           ]
         },
         "monster_parts": {
@@ -4143,7 +4147,8 @@
           "title": "Toxic Predator",
           "description": "เมื่อ Hunter ติดสถานะ {poison} จาก Pukei-Pukei, Hunter คนนั้นจะสูญเสีย HP -3 หน่วยแทนที่จะเป็น -2 หน่วย เมื่อจบเทิร์นของ Hunter คนนั้น, การ์ดพฤติกรรมทุกใบ {agility}+1",
           "modifiers": [
-            { "when": { "always": true }, "change": { "agility": 1 } }
+            { "when": { "always": true }, "change": { "agility": 1 } },
+            { "when": { "always": true }, "change": { "poison_hp": 1 } }
           ]
         },
         "monster_parts": {
@@ -4152,7 +4157,10 @@
             "connect_part_position": null,
             "part_break_threshold": 5,
             "armor": 2,
-            "part_break_rule": "{poison} จะทำให้ Hunter สูญเสีย HP -2 หน่วยแทน -3 หน่วย"
+            "part_break_rule": "{poison} จะทำให้ Hunter สูญเสีย HP -2 หน่วยแทน -3 หน่วย",
+            "part_break_modifiers": [
+              { "when": { "always": true }, "change": { "poison_hp": -1 } }
+            ]
           },
           "back": {
             "part_id": 6,

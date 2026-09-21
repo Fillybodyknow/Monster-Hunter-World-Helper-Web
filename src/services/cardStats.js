@@ -44,6 +44,30 @@ const activeRules = (difficulty, brokenParts) => {
 
 const sourceOf = (rule) => ({ kind: rule.kind, position: rule.position, title: rule.title, text: rule.text })
 
+export const POISON_HP_LOSS = 2
+
+/**
+ * HP ที่ Hunter เสียตอน Poison ที่ติดจากการโจมตีของมอนหมดผล (ปกติ 2)
+ * กฎแก้ผ่าน change.poison_hp เช่น Pukei-Pukei +1 และหน้าพังที่ระดับ 3 −1
+ * Poison จาก Time Card ไม่ได้มาจากมอน ไม่ต้องเรียกตัวนี้ ใช้ POISON_HP_LOSS ตรง ๆ
+ * @returns { base, value, applied }
+ */
+export function resolvePoisonHpLoss({ difficulty, brokenParts } = {}) {
+  const base = POISON_HP_LOSS
+  let value = base
+  const applied = []
+  const ctx = { anyPartBroken: PART_POSITIONS.some((p) => brokenParts?.[p]) }
+  for (const rule of activeRules(difficulty, brokenParts)) {
+    for (const mod of rule.modifiers) {
+      const delta = mod.change?.poison_hp
+      if (!delta || evaluate(mod.when, null, ctx) !== 'yes') continue
+      value += delta
+      applied.push({ ...sourceOf(rule), change: { poison_hp: delta } })
+    }
+  }
+  return { base, value: Math.max(0, value), applied }
+}
+
 /**
  * ค่าจริงของการ์ดพฤติกรรม 1 ใบ
  * @param card การ์ดจาก behavior_deck / behavior_special_card (ต้องมี attack, part_id, move)
@@ -103,21 +127,27 @@ export const GUARD_ABILITY_ID = 16
  * การโจมตีธาตุ หักด้วยเกราะธาตุนั้น (+1 ถ้ากินข้าวเชฟเหมี่ยวธาตุตรงกัน)
  * เกราะที่ได้จาก Attack Card ที่เล่นลงไป แอปไม่เห็นการ์ดบนมือ — ผู้เล่นกดเพิ่มเองผ่าน shield
  * ability Guard ให้ค่าป้องกันเพิ่มอีก 1 เมื่อได้เล่นการ์ดที่มีค่าป้องกัน (shield > 0)
+ * ติด Blastblight เกราะรวม −2 (ไม่ต่ำกว่า 0) จนกว่าจะจบเทิร์นถัดไปของตัวเอง
  * หักจนเหลือ 0 หรือติดลบ ยังต้องรับอย่างน้อย 1 หน่วยเสมอ
  *
  * @param armor { physical, elements: { [elementId]: n }, abilities: number[] } จาก armorSummary()
  * @param shield เกราะจาก Attack Card ที่กดเพิ่มเอง (ชนิดเดียวกับการโจมตีที่เข้ามา)
- * @returns { base, worn, chefBonus, shield, guardBonus, guard, element_id, dmg }
+ * @param blastblight ติด Blastblight อยู่หรือไม่
+ * @returns { base, worn, chefBonus, shield, guardBonus, blast, guard, element_id, dmg }
  */
-export function resolveHunterDamage({ damage = 0, element_id = 0, armor, chefElement, shield = 0 } = {}) {
+export const BLASTBLIGHT_ARMOR_PENALTY = 2
+
+export function resolveHunterDamage({ damage = 0, element_id = 0, armor, chefElement, shield = 0, blastblight = false } = {}) {
   const base = Math.max(0, damage)
   const el = element_id || 0
   const played = Math.max(0, shield)
   const guardBonus = played > 0 && armor?.abilities?.includes(GUARD_ABILITY_ID) ? 1 : 0
   const chefBonus = el > 0 && Number(chefElement) === el ? 1 : 0
   const worn = (el > 0 ? (armor?.elements?.[el] ?? 0) : (armor?.physical ?? 0)) + chefBonus
-  const guard = worn + played + guardBonus
-  return { base, worn, chefBonus, shield: played, guardBonus, guard, element_id: el, dmg: Math.max(1, base - guard) }
+  const full = worn + played + guardBonus
+  const blast = blastblight ? Math.min(full, BLASTBLIGHT_ARMOR_PENALTY) : 0
+  const guard = full - blast
+  return { base, worn, chefBonus, shield: played, guardBonus, blast, guard, element_id: el, dmg: Math.max(1, base - guard) }
 }
 
 /**

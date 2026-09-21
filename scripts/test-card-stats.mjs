@@ -4,7 +4,7 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { resolveCardStats, resolvePartArmor, resolveHunterDamage, GUARD_ABILITY_ID, CARD_STATS } from '../src/services/cardStats.js'
+import { resolveCardStats, resolvePartArmor, resolveHunterDamage, resolvePoisonHpLoss, POISON_HP_LOSS, GUARD_ABILITY_ID, CARD_STATS } from '../src/services/cardStats.js'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const read = (p) => JSON.parse(fs.readFileSync(path.join(ROOT, p), 'utf8'))
@@ -253,6 +253,14 @@ const brief = (r) => CARD_STATS.filter((k) => r.base[k] !== r.value[k]).map((k) 
   expect(shielded.dmg === 4 && shielded.guard === 5, `9 − เกราะ 3 − โล่ 2 ควรได้ 4 (ได้ ${shielded.dmg})`)
   expect(d({ damage: 9, element_id: 0, shield: -3 }).dmg === 6, 'โล่ติดลบต้องถือเป็น 0')
 
+  // ── Blastblight: เกราะรวม −2 ไม่ต่ำกว่า 0 ──
+  const blast = d({ damage: 9, element_id: 0, blastblight: true })
+  expect(blast.dmg === 8 && blast.blast === 2, `Blastblight เกราะ 3 − 2 เหลือ 1 ควรรับ 8 (ได้ ${blast.dmg})`)
+  const blastShield = d({ damage: 9, element_id: 0, shield: 2, blastblight: true })
+  expect(blastShield.dmg === 6, `Blastblight หักจากเกราะรวมที่มีโล่ด้วย 5 − 2 ควรรับ 6 (ได้ ${blastShield.dmg})`)
+  const blastLow = resolveHunterDamage({ damage: 5, element_id: 2, armor, blastblight: true })
+  expect(blastLow.dmg === 5 && blastLow.blast === 0, 'ไม่มีเกราะอยู่แล้ว Blastblight ต้องไม่ทำให้เกราะติดลบ')
+
   // ── ability Guard: เล่นการ์ดที่มีค่าป้องกันแล้วได้ +1 ──
   const guard = { physical: 3, elements: { 1: 2 }, abilities: [GUARD_ABILITY_ID] }
   const withGuard = resolveHunterDamage({ damage: 9, element_id: 0, armor: guard, shield: 2 })
@@ -269,6 +277,26 @@ const brief = (r) => CARD_STATS.filter((k) => r.base[k] !== r.value[k]).map((k) 
   const elemChefShield = d({ damage: 9, element_id: 1, chefElement: 1, shield: 2 })
   expect(elemChefShield.guard === 5, `เกราะไฟ 2 + ข้าวเชฟ 1 + จากการ์ด 2 = 5 (ได้ ${elemChefShield.guard})`)
   expect(d({ damage: 9, element_id: 0, shield: 2 }).worn === 3, 'การโจมตีกายภาพ worn ต้องเป็นเกราะกายภาพที่ใส่อยู่')
+}
+
+// ── 10. HP ที่เสียตอน Poison หมดผล ──────────────────────────
+{
+  const pukei = monsters.find((m) => m.monster_name === 'Pukei-Pukei')
+  const lv = (n) => pukei.difficulty.find((d) => d.level === n)
+  const loss = (n, brokenParts = {}) => resolvePoisonHpLoss({ difficulty: lv(n), brokenParts }).value
+
+  expect(POISON_HP_LOSS === 2, 'Poison ปกติต้องเสีย 2')
+  expect(loss(1) === 3 && loss(2) === 3 && loss(3) === 3, `Pukei-Pukei ทุกระดับ Poison เสีย 3 (ได้ ${loss(1)}/${loss(2)}/${loss(3)})`)
+  expect(loss(3, { front: true }) === 2, `Pukei-Pukei ระดับ 3 หน้าพังแล้ว Poison กลับเป็น 2 (ได้ ${loss(3, { front: true })})`)
+  expect(loss(3, { back: true }) === 3, 'ชิ้นส่วนอื่นพังต้องไม่ลด Poison')
+  expect(loss(1, { front: true }) === 3, 'ระดับ 1 ไม่มีกฎหน้าพัง ต้องยังเสีย 3')
+
+  const others = monsters.filter((m) => m.monster_name !== 'Pukei-Pukei')
+  const bad = others.flatMap((m) => (m.difficulty ?? [])
+    .filter((d) => resolvePoisonHpLoss({ difficulty: d }).value !== POISON_HP_LOSS)
+    .map((d) => `${m.monster_name} ระดับ ${d.level}`))
+  expect(bad.length === 0, `มอนตัวอื่นไม่มีกฎ Poison ต้องเสีย 2: ${bad.join(', ')}`)
+  expect(resolvePoisonHpLoss().value === POISON_HP_LOSS, 'ไม่ส่งอะไรมาต้องได้ค่าปกติ')
 }
 
 console.log(failures ? `\n✗ ไม่ผ่าน ${failures} จาก ${checks} ข้อ` : `✓ ผ่านทั้งหมด ${checks} ข้อ`)

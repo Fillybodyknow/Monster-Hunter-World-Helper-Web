@@ -4,7 +4,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 const props = defineProps({
-  // [{ id, name, icon, choice, dmg, targeted }]
+  // [{ id, name, icon, choice, dmg, targeted, hp, hpMax }] — hp = เหลือหลังโดนครั้งนี้
   rows: { type: Array, default: () => [] },
   // ชื่อการ์ดที่มอนเล่น — ไว้บอกว่าเฉลยของท่าไหน
   cardName: { type: String, default: '' },
@@ -53,6 +53,9 @@ onUnmounted(() => { for (const t of timers) clearTimeout(t); timers = [] })
           </div>
           <span class="ar-name">{{ r.name }}</span>
           <span class="ar-badge">{{ label(r) }}</span>
+          <span v-if="r.hpMax" class="ar-hp" :class="{ 'ar-hp-out': r.hp === 0 }">
+            {{ r.hp === 0 ? 'HP หมด' : `❤ ${r.hp}/${r.hpMax}` }}
+          </span>
         </div>
       </div>
 
@@ -117,6 +120,8 @@ onUnmounted(() => { for (const t of timers) clearTimeout(t); timers = [] })
 
 .ar-safe { border-color: #3c7a4a; background: rgba(20, 70, 36, 0.38); }
 .ar-safe .ar-badge { font-size: 13px; color: #8fe0a0; }
+.ar-hp { font-size: 10px; color: #c8b998; }
+.ar-hp-out { font-weight: bold; color: #ff5a44; }
 
 .ar-total {
   margin: 14px 0 0; font-size: 12px; color: #8c7a5c;

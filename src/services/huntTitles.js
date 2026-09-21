@@ -53,6 +53,27 @@ export const HUNT_TITLES = [
     labelOf: (p) => `ธาตุทำงาน ${p.stats.elementKinds} ชนิด`,
   },
   ...ELEMENT_TITLES,
+  // ── ตอนมอนโจมตี (บันทึก defend จากขั้นตอนรับ / หลบ / นอกระยะ) ──
+  // รับดาเมจแทนทีมมากที่สุด — วัดจากส่วนแบ่งของทีมแบบเดียวกับ "นักล่าตัวจริง" แต่เบากว่านิดหน่อย
+  { id: 'tank', icon: '🛡', name: 'โล่มนุษย์', label: 'ดาเมจที่รับแทนทีม', stat: 'dmgTaken', min: 6, leaderOnly: true, score: (v, ctx) => (ctx.totalTaken ? (v / ctx.totalTaken) * 2.7 : 0) },
+  { id: 'bigHitTaken', icon: '🪨', name: 'รับเต็มหน้า', label: 'ดาเมจที่รับในครั้งเดียว', stat: 'bigHitTaken', min: 6, score: (v) => v / 7 },
+  // โดนตีกี่ครั้งก็ไม่ใช่ว่าเก่ง — ต้องยังตีคืนได้ด้วย ถึงเป็นคนยืนแถวหน้า
+  {
+    id: 'frontline', icon: '🦾', name: 'นักรบแนวหน้า', stat: 'hitsTaken', min: 2, unit: 'x',
+    when: (p) => p.stats.dmg >= 5, score: (v) => v / 3 + 0.1,
+    labelOf: (p) => `รับการโจมตี ${p.stats.hitsTaken} ครั้ง · ตีคืน ${p.stats.dmg}`,
+  },
+  { id: 'dodger', icon: '💨', name: 'เงาไร้ร่าง', label: 'หลบการโจมตีได้', stat: 'dodges', min: 2, unit: 'x', score: (v) => v / 2.5 },
+  // เจอการโจมตีอย่างน้อย 3 ครั้ง แต่ไม่โดนเลยสักครั้ง
+  {
+    id: 'untouchable', icon: '🍃', name: 'ผู้ไม่เคยถูกแตะต้อง', label: 'เจอการโจมตีแต่ไม่โดนเลย', stat: 'defends', min: 3, unit: 'x',
+    when: (p) => p.stats.hitsTaken === 0, score: (v) => v / 2.5,
+  },
+  // มอนเล็งบ่อยที่สุด — ความหมายคือ "ที่สุด" จึงให้เฉพาะคนนำ
+  { id: 'aggro', icon: '🎯', name: 'ขวัญใจมอนสเตอร์', label: 'โดนมอนเล็ง', stat: 'targeted', min: 2, unit: 'x', leaderOnly: true, score: (v) => v / 2.5 },
+  { id: 'guardian', icon: '🔰', name: 'จอมตั้งการ์ด', label: 'เกราะจากการ์ดที่ใช้กัน', stat: 'shieldUsed', min: 3, score: (v) => v / 4 },
+  // นอกระยะเป็นเรื่องตำแหน่งบนกระดาน ไม่ได้เก่งเท่าหลบ — คะแนนเบากว่า
+  { id: 'distance', icon: '🏃', name: 'ผู้รักษาระยะ', label: 'อยู่นอกระยะโจมตี', stat: 'outranges', min: 3, unit: 'x', score: (v) => (v / 3) * 0.7 },
   // ฉายารอง — คนที่ทำสถิตินั้นได้แต่ไม่ใช่อันดับ 1 (อันดับ 1 ได้ฉายาหลักไปแล้ว)
   // ไม่งั้นตีชิ้นส่วนกัน 3 คน ได้ "ช่างทุบเกราะ" ซ้ำกันทั้ง 3
   { id: 'partHelper', icon: '🪓', name: 'มือขวาช่างทุบ', label: 'ดาเมจชิ้นส่วน', stat: 'partDmg', min: 1, secondOnly: true, score: (v) => (v / 4) * 0.9 },
@@ -78,7 +99,11 @@ export const FALLBACK_TITLE = FALLBACK_TITLES[0]
 
 const keyOf = (e) => String(e.whoId ?? e.whoName ?? '?')
 // status1..5 / element1..5 เพิ่มเข้ามาเมื่อเจอ — อ่านผ่าน statOf ที่คืน 0 ถ้าไม่มี
-const emptyStats = () => ({ dmg: 0, bestTurn: 0, partDmg: 0, ailments: 0, elements: 0, ailmentKinds: 0, elementKinds: 0, marks: 0, palico: 0, faints: 0, potions: 0, turns: 0, finisher: 0 })
+const emptyStats = () => ({
+  dmg: 0, bestTurn: 0, partDmg: 0, ailments: 0, elements: 0, ailmentKinds: 0, elementKinds: 0, marks: 0,
+  palico: 0, faints: 0, potions: 0, turns: 0, finisher: 0,
+  defends: 0, hitsTaken: 0, dmgTaken: 0, bigHitTaken: 0, dodges: 0, outranges: 0, targeted: 0, shieldUsed: 0,
+})
 const statOf = (p, stat) => p.stats[stat] ?? 0
 
 // ผลของเทิร์น (HP / ชิ้นส่วน / สถานะ / ธาตุ) นับให้เจ้าของเทิร์น — เล่นจริงกดแทนกันบ่อย
@@ -143,6 +168,20 @@ export const buildHuntHighlights = (log, members) => {
     } else if (e.kind === 'potion') p.stats.potions++
     else if (e.kind === 'faint') p.stats.faints++
     else if (e.kind === 'palico') p.stats.palico++
+    else if (e.kind === 'defend') {
+      // จดโดย Host ตอนการโจมตีครั้งนั้นจบ — whoId คือคนที่โดนโจมตี ไม่ใช่คนกด
+      const s = p.stats
+      s.defends++
+      if (e.targeted) s.targeted++
+      if (e.choice === 'hit') {
+        const dmg = e.dmg ?? 0
+        s.hitsTaken++
+        s.dmgTaken += dmg
+        s.bigHitTaken = Math.max(s.bigHitTaken, dmg)
+        s.shieldUsed += e.shield ?? 0
+      } else if (e.choice === 'dodge') s.dodges++
+      else s.outranges++
+    }
   }
   // กองที่ค้าง — แยกตามคนกด
   const leftover = new Map()
@@ -167,7 +206,10 @@ export const buildHuntHighlights = (log, members) => {
   }
 
   const list = [...people.values()]
-  const ctx = { totalDmg: list.reduce((n, p) => n + p.stats.dmg, 0) }
+  const ctx = {
+    totalDmg: list.reduce((n, p) => n + p.stats.dmg, 0),
+    totalTaken: list.reduce((n, p) => n + p.stats.dmgTaken, 0),
+  }
   const qualifies = (p, t) => statOf(p, t.stat) >= t.min && (!t.when || t.when(p))
   const scoreOf = (p, t) => (t.score ? t.score(statOf(p, t.stat), ctx) : statOf(p, t.stat) / t.min)
   const byKey = (a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0)
@@ -232,9 +274,19 @@ export const buildHuntHighlights = (log, members) => {
 }
 
 // ฉายาของทั้งทีม — อันแรกที่เข้าเงื่อนไข
-export const buildTeamTitle = ({ faints = 0, brokenCount = 0, partTotal = 0 } = {}) => {
+// log (ถ้าส่งมา) ใช้นับการรับ / หลบการโจมตีของทั้งทีม
+export const buildTeamTitle = ({ faints = 0, brokenCount = 0, partTotal = 0, log = [] } = {}) => {
+  const defends = log.filter((e) => !e.undone && e.kind === 'defend')
+  const hits = defends.filter((e) => e.choice === 'hit').length
+  const dodges = defends.filter((e) => e.choice === 'dodge').length
+  const taken = defends.reduce((n, e) => n + (e.choice === 'hit' ? (e.dmg ?? 0) : 0), 0)
+
   if (partTotal > 0 && brokenCount >= partTotal) return { icon: '🔨', name: 'ทุบครบทุกชิ้น', desc: 'ชิ้นส่วนแตกหมดทุกชิ้น' }
-  if (faints === 0) return { icon: '✨', name: 'ไร้รอยขีดข่วน', desc: 'ไม่มีใครล้มเลย' }
+  // เจอการโจมตีหลายครั้งแต่ไม่มีใครโดนเลย — หายากกว่า "ไม่มีใครล้ม"
+  if (defends.length >= 4 && hits === 0) return { icon: '🍃', name: 'ไร้รอยขีดข่วน', desc: `เจอการโจมตี ${defends.length} ครั้ง ไม่มีใครโดนเลย` }
+  if (faints === 0 && dodges >= 4 && dodges * 2 >= defends.length) return { icon: '💨', name: 'ตี้สายหลบ', desc: `หลบการโจมตีได้ ${dodges} ครั้ง` }
+  if (faints === 0 && taken >= 20) return { icon: '🧱', name: 'ปราการเหล็ก', desc: `รับดาเมจรวม ${taken} แต่ไม่มีใครล้ม` }
+  if (faints === 0) return { icon: '✨', name: 'ไม่มีใครล้ม', desc: 'กลับแคมป์ครบทุกคน' }
   if (faints >= 2) return { icon: '😮‍💨', name: 'เฉียดตาย', desc: `ล้ม ${faints} ครั้งแต่ยังรอด` }
   return { icon: '🏆', name: 'ภารกิจสำเร็จ', desc: 'กลับแคมป์อย่างผู้ชนะ' }
 }

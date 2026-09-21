@@ -194,6 +194,7 @@ for (const book of books) {
   const TOKEN_OF = {
     damage: 'atk', range: 'range', agility: 'agility',
     activations: 'hturn', attack_cards: 'hcard', move: 'move', armor: 'armor',
+    poison_hp: 'poison', // HP ที่ Hunter เสียตอน Poison หมดผล
   }
   const STAT_TOKENS = [...new Set(Object.values(TOKEN_OF))]
   const hasStatToken = (text) => STAT_TOKENS.some((t) => text.includes(`{${t}}`))
