@@ -4,7 +4,7 @@
 //   calc   : เฉพาะคนที่เลือกรับ — คิดความเสียหาย เกราะจาก Attack Card กดเพิ่มเอง
 //   wait   : รอคนอื่นให้ครบ
 // เลือกของใครของมัน Host กดแทนไม่ได้
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import elementalData from '@/assets/files/elemental.json'
 
 const props = defineProps({
@@ -44,6 +44,22 @@ const guardLabel = computed(() => (element.value ? `เกราะ ${element.va
 const CHOSEN_LABEL = { hit: 'รับความเสียหาย', dodge: 'หลบหลีก', outrange: 'อยู่นอกระยะ' }
 const hpAfter = computed(() => (props.hp == null ? null : Math.max(0, props.hp - (props.preview?.dmg ?? 0))))
 const chosen = computed(() => props.me?.choice?.choice ?? null)
+
+// หลบ/นอกระยะ ไม่มีหน้าคิดเลขตามมา กดแล้วล็อกทันที — ถามก่อนกันกดพลาด
+// (รับความเสียหายไม่ต้องถาม เพราะยังมีหน้าคิดดาเมจให้ย้อนกลับได้)
+const asking = ref(null) // 'dodge' | 'outrange' | null
+const ASK = {
+  dodge: { title: 'หลบหลีก', icon: ICON.dodge, note: 'ทิ้ง Attack Card บนโต๊ะแล้วใช่ไหม? ยืนยันแล้วเปลี่ยนไม่ได้' },
+  outrange: { title: 'นอกระยะ', icon: ICON.outrange, note: 'การโจมตีไม่ถึงตัวจริงใช่ไหม? ยืนยันแล้วเปลี่ยนไม่ได้' },
+}
+const ask = (choice) => { asking.value = choice }
+const confirmAsk = () => {
+  const c = asking.value
+  asking.value = null
+  if (c) emit('choose', c)
+}
+// ขั้นตอนเปลี่ยน (เช่นการ์ดใบใหม่) ต้องไม่ค้างหน้าถามไว้
+watch(() => props.stage, () => { asking.value = null })
 </script>
 
 <template>
@@ -66,7 +82,22 @@ const chosen = computed(() => props.me?.choice?.choice ?? null)
     </header>
 
     <!-- ── เลือก ─────────────────────────────────────────── -->
-    <template v-if="stage === 'choice'">
+    <template v-if="stage === 'choice' && asking">
+      <div class="ac-ask-box">
+        <img :src="img(ASK[asking].icon)" class="ac-ask-icon" alt="" />
+        <p class="ac-ask-title">เลือก <strong>{{ ASK[asking].title }}</strong> ใช่ไหม?</p>
+        <p v-if="asking === 'dodge' && agility" class="ac-ask-need">
+          ต้องทิ้งการ์ดรวม <img :src="img(ICON.dodge)" class="ac-inline-icon" alt="Agility" /> {{ agility }}
+        </p>
+        <p class="ac-ask-note">{{ ASK[asking].note }}</p>
+      </div>
+      <div class="ac-btn-row">
+        <button class="ac-btn ac-btn-back" @click="asking = null">ย้อนกลับ</button>
+        <button class="ac-btn ac-btn-confirm" @click="confirmAsk">ยืนยัน {{ ASK[asking].title }}</button>
+      </div>
+    </template>
+
+    <template v-else-if="stage === 'choice'">
       <p class="ac-ask">จะเอายังไงกับการโจมตีนี้?</p>
 
       <button class="ac-opt ac-opt-hit" @click="emit('choose', 'hit')">
@@ -79,7 +110,7 @@ const chosen = computed(() => props.me?.choice?.choice ?? null)
       </button>
 
       <div class="ac-opt-row">
-        <button class="ac-opt ac-opt-tile ac-opt-safe" :disabled="asleep" @click="emit('choose', 'dodge')">
+        <button class="ac-opt ac-opt-tile ac-opt-safe" :disabled="asleep" @click="ask('dodge')">
           <img :src="img(asleep ? ICON.sleep : ICON.dodge)" class="ac-opt-icon" alt="" />
           <span class="ac-opt-title">หลบหลีก</span>
           <span v-if="asleep" class="ac-opt-sub ac-opt-sub-warn">ติด Sleep หลบไม่ได้</span>
@@ -88,7 +119,7 @@ const chosen = computed(() => props.me?.choice?.choice ?? null)
           </span>
           <span v-else class="ac-opt-sub">ทิ้งการ์ดเพื่อหลบ</span>
         </button>
-        <button class="ac-opt ac-opt-tile ac-opt-safe" @click="emit('choose', 'outrange')">
+        <button class="ac-opt ac-opt-tile ac-opt-safe" @click="ask('outrange')">
           <img :src="img(ICON.outrange)" class="ac-opt-icon" alt="" />
           <span class="ac-opt-title">นอกระยะ</span>
           <span class="ac-opt-sub">การโจมตีไม่ถึงตัว</span>
@@ -357,6 +388,19 @@ const chosen = computed(() => props.me?.choice?.choice ?? null)
 }
 .ac-step:disabled { opacity: 0.35; cursor: not-allowed; }
 .ac-step:not(:disabled):active { background: rgba(200, 155, 60, 0.25); }
+
+/* ── ถามยืนยัน หลบ / นอกระยะ ── */
+.ac-ask-box {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  margin: 4px 0 10px; padding: 14px 12px;
+  border: 1px solid #3c7a4a; border-radius: 10px;
+  background: rgba(20, 70, 36, 0.3); text-align: center;
+}
+.ac-ask-icon { width: 40px; height: 40px; object-fit: contain; }
+.ac-ask-title { margin: 2px 0 0; font-size: 14px; color: var(--bone); }
+.ac-ask-title strong { color: #8fe0a0; font-size: 16px; }
+.ac-ask-need { margin: 0; font-size: 12px; color: var(--bone); }
+.ac-ask-note { margin: 0; font-size: 11px; color: var(--muted); }
 
 .ac-btn-row { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; }
 .ac-btn {

@@ -35,6 +35,33 @@ let detachClick = null
 
 const findTarget = (key) => (key ? document.querySelector(`[data-tour="${key}"]`) : null)
 
+const fullyInView = (el) => {
+  const r = el.getBoundingClientRect()
+  return r.top >= 0 && r.left >= 0 && r.bottom <= window.innerHeight && r.right <= window.innerWidth
+}
+
+// scrollIntoView เลื่อนกล่องแม่ทุกชั้น รวมถึงกล่องที่ตั้ง overflow: hidden (เช่นโมดัลการ์ดโจมตี)
+// กล่องแบบนั้นผู้เล่นเลื่อนกลับเองไม่ได้ — ปิดทัวร์แล้วเนื้อหาค้างเลยขอบจอ
+// จำตำแหน่งเดิมไว้ก่อนเลื่อน แล้วคืนให้ตอนจบทัวร์ (เฉพาะกล่องที่เลื่อนเองไม่ได้ ที่เหลือปล่อยตามที่ผู้เล่นเห็น)
+let savedScrolls = []
+const rememberScroll = (el) => {
+  for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+    if (savedScrolls.some((s) => s.el === p)) continue
+    savedScrolls.push({ el: p, top: p.scrollTop, left: p.scrollLeft })
+  }
+}
+const restoreScrolls = () => {
+  for (const s of savedScrolls) {
+    if (!s.el.isConnected) continue
+    const st = getComputedStyle(s.el)
+    const locked = ['hidden', 'clip'].includes(st.overflowY) || ['hidden', 'clip'].includes(st.overflowX)
+    if (!locked) continue
+    s.el.scrollTop = s.top
+    s.el.scrollLeft = s.left
+  }
+  savedScrolls = []
+}
+
 const hasBox = (el) => {
   if (!el?.isConnected) return false
   const r = el.getBoundingClientRect()
@@ -107,7 +134,9 @@ const goTo = (idx, dir = 1) => {
     if (el && hasBox(el) && !isFixedOffscreen(el)) {
       searching.value = false
       targetEl = el
-      if (getComputedStyle(el).position !== 'fixed') {
+      // เลื่อนเฉพาะตอนปุ่มล้นจอจริง — อยู่ในจออยู่แล้วเลื่อนไปก็แค่ทำให้หน้าขยับเปล่า ๆ
+      if (getComputedStyle(el).position !== 'fixed' && !fullyInView(el)) {
+        rememberScroll(el)
         el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: reducedMotion ? 'auto' : 'smooth' })
       }
       if (s.mode === 'click') watchClick(s)
@@ -240,6 +269,7 @@ watch(activeTour, (tour, prevTour) => {
   } else if (!tour) {
     stopSearch()
     stopClick()
+    restoreScrolls()
     targetEl = null
     hole.value = null
     cancelAnimationFrame(raf)

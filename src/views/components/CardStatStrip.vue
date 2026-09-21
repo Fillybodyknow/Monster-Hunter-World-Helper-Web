@@ -29,7 +29,8 @@ const ROWS = [
   { key: 'attack_cards', icon: sym('hunter_attack_card_symbol'), label: 'Attack Card' },
 ]
 
-const open = ref(false)
+// เปิดไว้ตั้งแต่แรก — ตัวเลขที่เปลี่ยนต้องเห็นที่มาทันที ไม่ต้องกดหา (ยังพับเก็บได้)
+const open = ref(true)
 
 // โชว์เฉพาะค่าที่กฎแก้จริง — ค่าที่ไม่เปลี่ยนอ่านจากการ์ดได้อยู่แล้ว ไม่ต้องซ้ำ
 const chips = computed(() => {
@@ -83,7 +84,7 @@ const changeText = (change) =>
       {{ open ? '▲ ซ่อนที่มา' : anyChanged ? '▼ ตัวเลขนี้มาจากไหน' : '▼ มีกฎที่ต้องดูเอง' }}
     </button>
 
-    <div v-if="open" class="cs-why">
+    <div v-if="open && hasWhy" class="cs-why">
       <div v-for="(rule, i) in stats.applied" :key="'a' + i" class="cs-rule">
         <p class="cs-rule-head">
           <span class="cs-rule-src">{{ sourceLabel(rule) }}</span>
