@@ -11,6 +11,8 @@ import { openCraftLookup } from '@/composables/useCraftLookup'
 import { useSfx } from '@/composables/useSfx'
 import { requestTour, cancelTourRequest } from '@/composables/useTour'
 import { soundEnabled, soundVolume } from '@/stores/settings'
+import { pickDiceForRow, planRewards, planReasonText } from '@/services/rewardPlanner'
+import { whitelist, materialShortfall, recipeCountByMaterial } from '@/stores/craftingWhitelist'
 
 const props = defineProps({ maxActions: { type: Number, default: 3 } })
 // cutscene: true/false — Quest.vue พักเพลง Downtime ระหว่างเล่นคัตซีนที่มีเสียงของมันเอง
@@ -278,8 +280,42 @@ const rcToggleDie = (id) => {
     ? rcSelectedDiceIds.value.filter(x => x !== id)
     : [...rcSelectedDiceIds.value, id]
 }
+// ── แนะนำอัจฉริยะ — ตัววางแผนตัวเดียวกับหน้า Reward ท้ายเควสต์ (src/services/rewardPlanner.js) ──
+// ให้คะแนนตามรายการติดตามคราฟต์ แล้วหาวิธีแบ่งเต๋าที่คุ้มที่สุด แนะนำทีละกลุ่ม ผู้เล่นกดรับเอง
+// ตารางนี้ไม่มีแถว 1 — แผนอาจให้เต๋าหน้า 1 ลงแถวที่ไม่มีของ กลุ่มแบบนั้นไม่เอามาแนะนำ
+const rcPlanTable = Object.entries(RC_REWARD_TABLE).map(([num, reward]) => ({ rolled_number: Number(num), reward }))
+const rcPlan = computed(() => {
+  if (rcPhase.value !== 'claim' || !hunter.value) return null
+  return planRewards({
+    dice: rcDice.value,
+    table: rcPlanTable,
+    needs: materialShortfall(hunter.value),
+    usage: recipeCountByMaterial(hunter.value.hunter_class_id),
+    // ของที่กดรับรอบนี้ยังไม่เข้ากระเป๋าจนกว่าจะยืนยัน — นับให้ตัววางแผนเอง
+    claimed: rcStagedRewards.value,
+  })
+})
+// ซ่อนระหว่างที่ผู้เล่นกำลังเลือกเต๋าเอง
+const rcSuggested = computed(() =>
+  rcSelectedDiceIds.value.length ? null : rcPlan.value?.groups.find((g) => g.itemKey) ?? null,
+)
+const rcSuggestedItemName = computed(() => rcRewardTable.value.find((r) => r.num === rcSuggested.value?.row)?.item ?? '')
+const rcSuggestReasonText = computed(() => planReasonText(rcSuggested.value?.reason))
+
 const rcClaimReward = (row) => {
-  if (rcSelectedDiceIds.value.length === 0 || row.num !== rcSelectedSum.value) return
+  // แตะแถวก่อนเลือกเต๋า — หยิบเต๋าให้ แตะซ้ำถึงจะรับของ (แบบเดียวกับหน้า Reward ท้ายเควสต์)
+  // แถวที่แนะนำใช้เต๋าชุดตามแผน แถวอื่นใช้ชุดที่เหลือเต๋าไว้ใช้ต่อได้ดีที่สุด
+  if (rcSelectedDiceIds.value.length === 0) {
+    const ids = rcSuggested.value?.row === row.num
+      ? [...rcSuggested.value.diceIds]
+      : pickDiceForRow(rcDice.value, row.num)
+    if (ids) {
+      sfx.play(`${SFX_UI}/action_select.mp3`, { key: 'action' })
+      rcSelectedDiceIds.value = ids
+    }
+    return
+  }
+  if (row.num !== rcSelectedSum.value) return
   sfx.playRandom(`${SFX_UI}/item_pickup`, 3, { key: 'item' })
   const existing = rcStagedRewards.value.find(r => r.resource_type_id === row.resource_type_id && r.item_id === row.item_id)
   if (existing) existing.quantity++
@@ -1007,21 +1043,50 @@ const moteStyle = (m) => ({
             <p class="rc-section-label">เต๋าที่ทอยได้ — เลือกเพื่อรวมค่า</p>
             <div class="rc-chips-row">
               <div v-for="die in rcDice" :key="die.id" class="rc-die-chip"
-                :class="{ 'chip-selected': rcSelectedDiceIds.includes(die.id), 'chip-spent': die.spent }"
-                @click="rcToggleDie(die.id)">{{ die.value }}</div>
+                :class="{
+                  'chip-selected': rcSelectedDiceIds.includes(die.id),
+                  'chip-spent': die.spent,
+                  'chip-suggested': !!rcSuggested?.diceIds.includes(die.id),
+                }"
+                :title="`เต๋า ${die.value}`"
+                :aria-label="`เต๋า ${die.value}`"
+                @click="rcToggleDie(die.id)">
+                <!-- หน้าเต๋าแบบจุด ชุดเดียวกับตอนทอย — ผู้เล่นจำได้ว่าเป็นลูกเดียวกับที่เพิ่งทอยไป -->
+                <div class="rc-die-face">
+                  <span v-for="pos in 9" :key="pos" class="rc-die-dot" :class="{ visible: dotPatterns[die.value]?.includes(pos - 1) }" />
+                </div>
+              </div>
               <div v-if="rcSelectedDiceIds.length > 0" class="rc-sum-badge">= {{ rcSelectedSum }}</div>
+            </div>
+            <!-- แนะนำทีละกลุ่ม — ไฮไลต์เต๋ากับแถวให้ ผู้เล่นกดเอง -->
+            <div v-if="rcSuggested" class="rc-suggest">
+              <p class="rc-suggest-line">
+                <span class="rc-suggest-tag">แนะนำ</span>
+                แถว {{ rcSuggested.row }} · {{ rcSuggestedItemName }}
+                <span class="rc-suggest-why">{{ rcSuggestReasonText }}</span>
+              </p>
+              <p class="rc-sum-hint">แตะแถวที่ไฮไลต์เพื่อหยิบเต๋า แตะซ้ำเพื่อรับ — หรือเลือกเต๋าเองก็ได้</p>
+              <p v-if="!whitelist.length" class="rc-suggest-note">
+                ตั้งรายการติดตามในหน้า Crafting แล้วจะแนะนำของที่ต้องใช้คราฟจริง
+              </p>
             </div>
             <p v-if="rcSelectedDiceIds.length > 0" class="rc-sum-hint">เลือก row {{ rcSelectedSum }} เพื่อรับ Reward</p>
           </div>
           <p class="rc-section-label">ตาราง Reward</p>
           <div class="rc-table">
             <div v-for="row in rcRewardTable" :key="row.num" class="rc-row"
-              :class="{ 'rc-row-match': rcSelectedDiceIds.length > 0 && row.num === rcSelectedSum, 'rc-row-locked': rcSelectedDiceIds.length > 0 && row.num !== rcSelectedSum }"
+              :class="{
+                'rc-row-match': rcSelectedDiceIds.length > 0 && row.num === rcSelectedSum,
+                'rc-row-locked': rcSelectedDiceIds.length > 0 && row.num !== rcSelectedSum,
+                'rc-row-unreachable': rcSelectedDiceIds.length === 0 && !rcAllDiceSpent && !rcReachableSums.has(row.num),
+                'rc-row-suggested': rcSuggested?.row === row.num,
+              }"
               @click="rcClaimReward(row)">
               <span class="rc-row-num">{{ row.num }}</span>
               <div class="rc-row-item">
                 <img :src="getImg(row.thumbnail)" class="rc-item-img" />
                 <span class="rc-item-name">{{ row.item }}</span>
+                <span v-if="rcSuggested?.row === row.num" class="rc-suggest-badge">แนะนำ</span>
                 <button class="hq-craft-btn" @click.stop="openCraftLookup(row.resource_type_id, row.item_id, row.item)" title="ดูสูตรคราฟ">🔨</button>
               </div>
             </div>
@@ -2147,26 +2212,24 @@ const moteStyle = (m) => ({
 .rc-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 .rc-chips-wrap { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
 .rc-chips-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-/* เบี้ยไม้จารึกเลข — เลือกแล้วเป็นเหรียญทองเหลือง (ชุดเดียวกับเฟส Reward) */
+/* หน้าเต๋าจริงสีงาช้าง ย่อจาก .rc-die ตอนทอย — เลือกแล้วขอบทองยกขึ้น (ชุดเดียวกับ .rw-die-chip หน้า Reward) */
 .rc-die-chip {
-  width: 38px; height: 38px;
+  width: 42px; height: 42px;
+  padding: 5px;
   display: flex; align-items: center; justify-content: center;
-  border-radius: 50%;
-  border: 2px solid rgba(124,90,43,0.55);
-  background:
-    repeating-linear-gradient(120deg, rgba(0,0,0,0.12) 0px, rgba(0,0,0,0.12) 1px, transparent 1px, transparent 4px),
-    radial-gradient(circle at 38% 30%, #4a3520, #2b1f13 70%);
-  box-shadow: inset 0 0 8px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.5);
-  font-size: 16px; font-weight: bold; color: #c0985a;
+  border-radius: 8px;
+  border: 2px solid rgba(90, 61, 31, 0.4);
+  background: #f5f0e8;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.8);
   cursor: pointer; transition: all 0.15s; user-select: none;
 }
 .rc-die-chip:hover:not(.chip-spent) { border-color: #c89b3c; }
+.rc-die-chip .rc-die-face { gap: 2px; }
+.rc-die-chip .rc-die-dot.visible { box-shadow: none; }
 .rc-die-chip.chip-selected {
-  border-color: #6b4f1c;
-  color: #2a1d06;
-  text-shadow: 0 1px 0 rgba(255,225,170,0.4);
-  background: radial-gradient(circle at 36% 28%, #e0bc63, #a8802a 62%, #7a5c1c);
-  box-shadow: inset 0 1px 2px rgba(255,230,180,0.45), 0 2px 6px rgba(0,0,0,0.55);
+  border-color: #ffd27a;
+  box-shadow: 0 0 0 2px #7a5c1c, 0 0 14px rgba(255, 210, 122, 0.75);
+  transform: translateY(-3px);
 }
 .rc-die-chip.chip-spent { opacity: 0.25; cursor: default; pointer-events: none; }
 .rc-sum-badge { font-size: 14px; font-weight: bold; color: #2a1d06; letter-spacing: 1px; padding: 4px 12px; border-radius: 3px; background: linear-gradient(to bottom, #b08a34, #7a5c1c); border: 1px solid #6b4f1c; text-shadow: 0 1px 0 rgba(255,225,170,0.35); box-shadow: inset 0 1px 0 rgba(255,230,180,0.4), 0 2px 5px rgba(0,0,0,0.5); }
@@ -2257,6 +2320,59 @@ const moteStyle = (m) => ({
 .rc-row-match { background: rgba(200,155,60,0.28); cursor: pointer; box-shadow: inset 3px 0 0 #8c2f22, inset 0 0 18px rgba(150,110,35,0.25); }
 .rc-row-match:hover { background: rgba(200,155,60,0.42); }
 .rc-row-locked { opacity: 0.35; }
+/* แถวที่รวมเต๋าไม่ถึง — จาง · ที่เหลือแตะเพื่อให้หยิบเต๋าให้ได้ */
+.rc-row-unreachable { opacity: 0.35; }
+.rc-row:not(.rc-row-unreachable):not(.rc-row-locked) { cursor: pointer; }
+/* แถวที่แนะนำ — ชุดเดียวกับหน้า Reward ท้ายเควสต์ (.rw-row-suggested) */
+.rc-row.rc-row-suggested { background: rgba(200, 155, 60, 0.18); box-shadow: inset 3px 0 0 #c89b3c; }
+.rc-suggest-badge {
+  padding: 1px 6px;
+  border-radius: 2px;
+  border: 1px solid rgba(140, 47, 34, 0.5);
+  color: #8c2f22;
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+/* เต๋ากลุ่มที่แนะนำ — เส้นประทองกะพริบเบา ๆ ต่างจากเต๋าที่เลือกแล้ว */
+.rc-die-chip.chip-suggested {
+  outline: 2px dashed #ffd27a;
+  outline-offset: 3px;
+  animation: rc-suggest-pulse 1.6s ease-in-out infinite;
+}
+@keyframes rc-suggest-pulse {
+  0%, 100% { outline-color: rgba(255, 210, 122, 0.95); }
+  50% { outline-color: rgba(255, 210, 122, 0.3); }
+}
+.rc-suggest {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 3px;
+  border: 1px dashed rgba(255, 210, 122, 0.45);
+  background: rgba(255, 210, 122, 0.06);
+}
+.rc-suggest .rc-sum-hint { margin-top: 4px; }
+.rc-suggest-line {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 12px;
+  color: #f0dcae;
+}
+.rc-suggest-tag {
+  padding: 1px 7px;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, #b08a34, #7a5c1c);
+  color: #2a1d06;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+.rc-suggest-why { font-size: 11px; color: #ffd27a; }
+.rc-suggest-note { margin: 4px 0 0; font-size: 10px; color: #a88040; font-style: italic; }
 .rc-row-num { min-width: 22px; font-size: 12px; font-weight: bold; color: #7a6238; text-align: center; }
 .rc-row-match .rc-row-num { color: #8c2f22; font-size: 14px; }
 .rc-row-item { display: flex; align-items: center; gap: 8px; flex: 1; }
@@ -2279,7 +2395,8 @@ const moteStyle = (m) => ({
   .hqp-step.step-next,
   .hqp-step.step-next .hqp-step-icon,
   .hqp-loc-icon,
-  .hqp-loc-icon::before {
+  .hqp-loc-icon::before,
+  .rc-die-chip.chip-suggested {
     animation: none;
   }
 }

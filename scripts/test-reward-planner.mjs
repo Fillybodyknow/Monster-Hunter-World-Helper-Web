@@ -201,6 +201,33 @@ for (let round = 0; round < 1500; round++) {
   console.log('เวลา: เต๋า 10 ลูกไล่ทุกแบบ ' + exactMs.toFixed(0) + 'ms · เต๋า 25 ลูกทีละกลุ่ม ' + greedyMs.toFixed(0) + 'ms')
 }
 
+// ── ตาราง Resource Center ใน HQ: มีแค่แถว 2-12 (ไม่มีแถว 1) ──
+// เต๋าที่ลงแถวว่างไม่ได้ของ — แผนต้องไม่เลือกแยกเต๋าแล้วปล่อยลูกหน้า 1 ทิ้ง
+{
+  const RC = { 2: [1, 1], 3: [1, 2], 4: [1, 3], 5: [1, 4], 6: [1, 7], 7: [1, 8], 8: [1, 14], 9: [1, 5], 10: [1, 11], 11: [2, 3], 12: [2, 2] }
+  const rcTable = Object.entries(RC).map(([n, [t, i]]) => ({ rolled_number: Number(n), reward: { resource_type_id: t, item_id: i } }))
+  for (let a = 1; a <= 6; a++) {
+    for (let b = 1; b <= 6; b++) {
+      const dice = [{ id: 0, value: a, spent: false }, { id: 1, value: b, spent: false }]
+      const plan = planRewards({ dice, table: rcTable })
+      const withItem = plan?.groups.filter((g) => g.itemKey) ?? []
+      expect(withItem.length > 0, `RC ${a}+${b}: ต้องมีกลุ่มที่ได้ของให้แนะนำ`)
+      const wasted = plan?.groups.some((g) => !g.itemKey)
+      // หน้า 1 ลงแถวไหนเดี่ยว ๆ ไม่ได้ ต้องรวมกับอีกลูกเสมอ
+      if (a === 1 || b === 1) expect(!wasted, `RC ${a}+${b}: ไม่ควรทิ้งเต๋าหน้า 1 ลงแถวว่าง (${plan?.groups.map((g) => g.row).join('/')})`)
+      const used = new Set(plan?.groups.flatMap((g) => g.diceIds))
+      expect(used.size === 2, `RC ${a}+${b}: แผนต้องใช้เต๋าครบทั้ง 2 ลูก`)
+    }
+  }
+  // วัตถุดิบพิเศษ (แถว 11-12) มีค่ากว่า Common สองชิ้น
+  const p56 = planRewards({ dice: [{ id: 0, value: 5, spent: false }, { id: 1, value: 6, spent: false }], table: rcTable })
+  expect(p56.groups.length === 1 && p56.groups[0].row === 11, '5+6 ควรรวมเอาแถว 11 (วัตถุดิบพิเศษ)')
+  // ของที่ยังขาดตามรายการติดตามต้องมาก่อน
+  const needs = new Map([['1-7', { short: 1, targets: ['ทดสอบ'] }]])
+  const p24 = planRewards({ dice: [{ id: 0, value: 2, spent: false }, { id: 1, value: 4, spent: false }], table: rcTable, needs })
+  expect(p24.groups[0].row === 6 && p24.groups[0].reason.kind === 'need', '2+4 ขาดของแถว 6 → ควรรวมเอาแถว 6')
+}
+
 console.log(`rewardPlanner: ตรวจ ${checks} จุด (เต๋า 60 ลูก ${ms.toFixed(1)}ms)`)
 if (failures) {
   console.log(`พัง ${failures} จุด`)

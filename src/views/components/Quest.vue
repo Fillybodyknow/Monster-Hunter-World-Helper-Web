@@ -17,7 +17,7 @@ import resourceData from '@/assets/files/resource.json'
 import { getHunters, saveHunters } from '@/services/hunterStorage'
 import { questPoints, rankOf, pointsOf } from '@/services/hunterRank'
 import { buildHuntHighlights, buildTeamTitle } from '@/services/huntTitles'
-import { reachableRows, pickDiceForRow, planRewards } from '@/services/rewardPlanner'
+import { reachableRows, pickDiceForRow, planRewards, planReasonText } from '@/services/rewardPlanner'
 import { whitelist, materialShortfall, recipeCountByMaterial } from '@/stores/craftingWhitelist'
 import { useRoomStore } from '@/stores/room'
 import CoopLobbyModal from './CoopLobbyModal.vue'
@@ -2028,17 +2028,8 @@ const drawBehaviorCard = () => {
   if (currentBehaviorCard.value) behaviorDiscard.value = [...behaviorDiscard.value, currentBehaviorCard.value]
   currentBehaviorCard.value = card
 
-  if (rampageActive.value) {
-    activationOverride.value = 0
-  } else if (pendingActivationAdjust.value !== 0) {
-    // ปรับมือ = บวกจากค่าที่กฎคิดให้แล้ว ไม่ใช่เลขดิบบนการ์ด
-    const resolved = resolveCardStats(card, huntRuleCtx.value).value.activations
-    activationOverride.value = Math.max(0, resolved + pendingActivationAdjust.value)
-  } else {
-    activationOverride.value = null
-  }
+  activationOverride.value = rampageActive.value ? 0 : null
   rampageActive.value = false
-  pendingActivationAdjust.value = 0
 
   // การ์ดใบใหม่ = การโจมตีครั้งก่อนจบแล้ว จดบันทึกแล้วเล็ง/เลือกกันใหม่
   room.setMonsterTarget?.(null)
@@ -2549,7 +2540,6 @@ const showLastDiscard = ref(false)
 const showConfirmTurn = ref(false)
 const showMonsterTurnConfirm = ref(false)
 const showAddHunterTurnConfirm = ref(false)
-const pendingActivationAdjust = ref(0)
 const floatBarCollapsed = ref(false)
 const floatBarVisible = computed(() =>
   phase.value === 'huntingPanel' &&
@@ -2583,14 +2573,6 @@ const attackCardStats = computed(() =>
   monsterAttackCard.value ? resolveCardStats(monsterAttackCard.value, huntRuleCtx.value) : null,
 )
 
-// กฎของชิ้นส่วนที่พังแล้วซึ่งเปลี่ยนจำนวน Hunter Turn / Attack Card
-// ตอนกดยืนยัน Monster Turn ยังไม่เปิดการ์ด เลยยังไม่รู้ว่าเข้าเงื่อนไขไหม — เอาไว้เตือนเฉย ๆ
-const activationPartRules = computed(() =>
-  PART_POSITIONS.filter((pos) => brokenParts.value[pos])
-    .map((pos) => monsterHuntingData.value?.monster_parts?.[pos])
-    .filter((p) => p?.part_break_modifiers?.some((m) => m.change?.activations || m.change?.attack_cards))
-    .map((p) => p.part_break_rule),
-)
 const floatToggleLabel = computed(() => {
   if (floatOutcomeState.value === 'complete') return '✦ Quest Complete'
   if (floatOutcomeState.value === 'failed')   return '✕ Quest Failed'
@@ -4281,19 +4263,22 @@ const _restoreAttackFlow = () => {
   if (!room.inRoom || phase.value !== 'huntingPanel') return
   const card = currentBehaviorCard.value
   if (!card || showMonsterAttack.value || attackReveal.value) return
+  // เฉลยการโจมตีของการ์ดใบนี้ไปแล้ว = จบถาวร จนกว่าจะขึ้นการ์ดใบใหม่ (_resetAttackLocal)
+  // ไม่งั้นคนที่ล้มอยู่ตอนโจมตี (ไม่ได้เลือก) กดจบเทิร์นกลับขึ้นบอร์ด → นับว่า "ยังเลือกไม่ครบ"
+  // → ทุกเครื่องเด้งการ์ดใบล่าสุดขึ้นมาใหม่ และถ้าเขากดรับก็โดนหัก HP จากการโจมตีที่จบไปแล้ว
+  if (attackResolved.value) return
   // ล้มอยู่ = ไม่ได้อยู่ในการโจมตีนี้ ไม่ต้องเด้งให้
   if (!myDefender.value) return
   // HP ของตัวเองต้องโหลดจากห้องเสร็จก่อน ไม่งั้นเลขที่โหลดทีหลังจะทับดาเมจที่เพิ่งหัก
   if (!questRunKey.value || _myHpHunt !== questRunKey.value) return
-  if (attackAllConfirmed.value) {
-    // เฉลยไปแล้วตอนเราไม่อยู่ — ไม่เล่นเฉลยซ้ำ แค่หักของตัวเองที่ยังค้าง
+  // เฉลยไปแล้วตอนเราไม่อยู่ หรือมีคนเล่นเทิร์นไปแล้ว (ขั้นตอนโจมตีเกิดก่อนเทิร์นแรกของการ์ดใบนี้เสมอ)
+  // ไม่เปิดหน้าต่าง ไม่เล่นเฉลยซ้ำ แค่หักของตัวเองที่ยืนยันไว้แต่ยังไม่ได้หัก
+  if (attackAllConfirmed.value || activationRoundsCompleted.value !== 0) {
     attackResolved.value = true
     _applyMyAttackResult()
     _flushAfterReveal()
     return
   }
-  // ยังไม่เลือกเป้าหมาย: เปิดเฉพาะช่วงที่เพิ่งเปิดการ์ด (ยังไม่มีใครเล่นเทิร์น) ตามกติกาการเล็ง
-  if (room.monsterTarget == null && activationRoundsCompleted.value !== 0) return
   monsterAttackCard.value = card
   monsterAttackStatuses.value = room.behaviorDeckState?.attackStatuses ?? []
   showMonsterAttack.value = true
@@ -6051,20 +6036,7 @@ const suggestedItemName = computed(() => {
   const row = monsterHuntingData.value?.reward_table?.find((r) => r.rolled_number === suggestedGroup.value?.row)
   return row ? getResourceItem(row.reward.resource_type_id, row.reward.item_id)?.item ?? '' : ''
 })
-const suggestReasonText = computed(() => {
-  const reason = suggestedGroup.value?.reason
-  if (!reason) return ''
-  if (reason.kind === 'need') {
-    const names = reason.targets.length > 2
-      ? `${reason.targets.slice(0, 2).join(', ')} +${reason.targets.length - 2}`
-      : reason.targets.join(', ')
-    return `🎯 ขาดอีก ${reason.short} ชิ้น · ${names}`
-  }
-  if (reason.kind === 'unique') return '💎 หายาก ได้จากช่องนี้ช่องเดียว'
-  if (reason.kind === 'part') return 'ชิ้นส่วนมอนสเตอร์'
-  if (reason.kind === 'other') return 'วัตถุดิบพิเศษ'
-  return 'ใช้เต๋าที่เหลือ'
-})
+const suggestReasonText = computed(() => planReasonText(suggestedGroup.value?.reason))
 
 const claimReward = (row) => {
   // แตะแถวก่อนเลือกเต๋า — หยิบเต๋าให้ แตะซ้ำถึงจะรับของ
@@ -8149,7 +8121,7 @@ onDeactivated(() => {
           class="mt-draw-btn"
           :class="{ 'mt-btn-ready': monsterTurnReady }"
           :disabled="behaviorDeck.length === 0 || !monsterTurnReady"
-          @click="pendingActivationAdjust = 0; showMonsterTurnConfirm = true"
+          @click="showMonsterTurnConfirm = true"
         >
           ⚔ Monster Turn
         </button>
@@ -10804,26 +10776,9 @@ onDeactivated(() => {
               <img :src="getImg(nextBehaviorCard.back_card_img)" class="mtc-card-img" />
             </div>
 
-            <!-- Part break rules that give extra turns -->
-            <div v-if="activationPartRules.length > 0" class="mtc-rules">
-              <p class="mtc-rules-label">⚡ Part Break Effects</p>
-              <p v-for="(rule, i) in activationPartRules" :key="i" class="mtc-rule-text"><RuleText :text="rule" /></p>
-            </div>
-
-            <!-- Manual activation adjust -->
-            <div v-if="activationPartRules.length > 0" class="mtc-adjust-wrap">
-              <p class="mtc-adjust-label">เพิ่ม / ลด Hunter Turn</p>
-              <div class="mtc-adjust-row">
-                <button class="mtc-adj-btn" @click="pendingActivationAdjust--">−</button>
-                <span class="mtc-adj-value" :class="pendingActivationAdjust > 0 ? 'mtc-adj-pos' : pendingActivationAdjust < 0 ? 'mtc-adj-neg' : ''">
-                  {{ pendingActivationAdjust > 0 ? '+' : '' }}{{ pendingActivationAdjust }}
-                </span>
-                <button class="mtc-adj-btn" @click="pendingActivationAdjust++">+</button>
-              </div>
-            </div>
-
+            <!-- กฎชิ้นส่วนพังที่เพิ่ม Hunter Turn / Attack Card แอปคิดให้เองตอนเปิดการ์ด (resolveCardStats) ไม่ต้องถาม -->
             <div class="mtc-btns">
-              <button class="mtc-btn mtc-cancel" @click="showMonsterTurnConfirm = false; pendingActivationAdjust = 0">ยกเลิก</button>
+              <button class="mtc-btn mtc-cancel" @click="showMonsterTurnConfirm = false">ยกเลิก</button>
               <button class="mtc-btn mtc-confirm" @click="showMonsterTurnConfirm = false; drawBehaviorCard()">ยืนยัน</button>
             </div>
           </div>
@@ -12670,76 +12625,6 @@ onDeactivated(() => {
   color: rgba(200,130,130,0.6);
   margin: 0;
 }
-.mtc-rules {
-  width: 100%;
-  background: rgba(180,60,60,0.08);
-  border: 1px solid rgba(180,60,60,0.25);
-  border-radius: 8px;
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.mtc-rules-label {
-  font-size: 10px;
-  color: rgba(220,120,80,0.8);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin: 0 0 4px;
-}
-.mtc-rule-text {
-  font-size: 12px;
-  color: rgba(230,190,150,0.85);
-  margin: 0;
-  line-height: 1.5;
-}
-.mtc-adjust-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-.mtc-adjust-label {
-  font-size: 10px;
-  color: rgba(200,155,60,0.6);
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  margin: 0;
-}
-.mtc-adjust-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-.mtc-adj-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px solid rgba(200,155,60,0.4);
-  background: rgba(40,28,12,0.8);
-  color: rgba(200,155,60,0.9);
-  font-size: 20px;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.15s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.mtc-adj-btn:hover {
-  border-color: rgba(200,155,60,0.8);
-  background: rgba(60,40,12,0.9);
-}
-.mtc-adj-value {
-  font-size: 28px;
-  font-weight: bold;
-  color: rgba(230,185,80,1);
-  min-width: 50px;
-  text-align: center;
-  line-height: 1;
-}
-.mtc-adj-pos { color: rgba(100,220,120,1); }
-.mtc-adj-neg { color: rgba(220,100,100,1); }
 .mtc-btns {
   display: grid;
   grid-template-columns: 1fr 2fr;
