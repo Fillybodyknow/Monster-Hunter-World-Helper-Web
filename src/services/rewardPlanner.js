@@ -225,14 +225,17 @@ export const planRewards = ({ dice, table, needs = new Map(), usage = new Map(),
   let chosenRows
   const exact = unspent.length <= EXACT_DICE_LIMIT
   if (exact) {
+    // นับเฉพาะแถวที่มีของ — ตาราง Resource Center ใน HQ ไม่มีแถว 1 เต๋าที่ลงแถวว่างไม่ได้อะไร
+    const itemsOf = (rows) => rows.filter((r) => rowItem.has(r)).length
     let best = null
     for (const rows of rowMultisets(countFaces(dice))) {
       const score = scoreRows(rows)
+      const items = itemsOf(rows)
       // เท่ากัน → ได้ของหลายชิ้นกว่า → เลขแถวสูงกว่า (ผลออกมาเหมือนเดิมทุกครั้ง)
       if (!best || score > best.score + 1e-9 ||
           (Math.abs(score - best.score) <= 1e-9 &&
-            (rows.length > best.rows.length || (rows.length === best.rows.length && rows.join(',') > best.rows.join(','))))) {
-        best = { rows, score }
+            (items > best.items || (items === best.items && rows.join(',') > best.rows.join(','))))) {
+        best = { rows, score, items }
       }
     }
     chosenRows = best.rows
@@ -278,4 +281,19 @@ export const planRewards = ({ dice, table, needs = new Map(), usage = new Map(),
   }
   groups.sort((a, b) => b.value - a.value || b.row - a.row)
   return { groups, exact }
+}
+
+// ข้อความเหตุผลของกลุ่มที่แนะนำ — ใช้ร่วมกันทั้งหน้า Reward ท้ายเควสต์และ Resource Center ใน HQ
+export const planReasonText = (reason) => {
+  if (!reason) return ''
+  if (reason.kind === 'need') {
+    const names = reason.targets.length > 2
+      ? `${reason.targets.slice(0, 2).join(', ')} +${reason.targets.length - 2}`
+      : reason.targets.join(', ')
+    return `🎯 ขาดอีก ${reason.short} ชิ้น · ${names}`
+  }
+  if (reason.kind === 'unique') return '💎 หายาก ได้จากช่องนี้ช่องเดียว'
+  if (reason.kind === 'part') return 'ชิ้นส่วนมอนสเตอร์'
+  if (reason.kind === 'other') return 'วัตถุดิบพิเศษ'
+  return 'ใช้เต๋าที่เหลือ'
 }
