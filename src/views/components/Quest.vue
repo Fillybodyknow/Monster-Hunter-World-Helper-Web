@@ -4011,6 +4011,14 @@ const hpOf = (h) => {
   if (String(h.hunter_id) === String(myDefenderId.value)) return myHp.value
   return h.hp_hunt === questRunKey.value && typeof h.hp === 'number' ? h.hp : HUNTER_HP_MAX
 }
+// ตัวเองบนแถบลอยซ้าย — หน้าตาเดียวกับ party-member แต่แยกออกจากแถบปาร์ตี้ (แถบขวาเหลือแค่คนอื่น)
+// เล่นคนเดียวไม่มี room.myHunter — ปั้นจาก hunter ในเครื่อง ใช้ hpOf / statusesOf ชุดเดียวกันได้
+const meHunter = computed(() => {
+  if (room.inRoom) return room.myHunter ?? null
+  const me = hunter.value
+  return me ? { hunter_id: me.hunter_id, hunter_name: me.hunter_name, hunter_class_id: me.hunter_class_id } : null
+})
+const partyOthers = computed(() => room.hunters.filter((h) => String(h.hunter_id) !== String(room.myHunterId)))
 // วงแหวน HP ในแถบปาร์ตี้ — สัดส่วนที่เหลือ และสีไล่จากเขียว (hue 120) ไปแดง (hue 0)
 const hpRingStyle = (h) => {
   const ratio = Math.max(0, Math.min(1, hpOf(h) / HUNTER_HP_MAX))
@@ -10336,16 +10344,48 @@ onDeactivated(() => {
             </button>
           </div>
 
-          <!-- HP / สถานะของตัวเอง — ย้ายมาจาก Quick Status Strip เพราะแถวนั้นสูงเกินไปตอนเล่น 4 คน -->
+          <!-- ตัวเอง — หน้าตาเดียวกับ party-member (วงแหวน HP / โทเคน / จบเทิร์น / สถานะ) แยกออกมาจากแถบปาร์ตี้
+               กดแล้วเปิดแผงปรับ HP และสถานะของตัวเอง -->
           <button
+            v-if="meHunter"
             v-show="stripPage === 0"
             data-tour="hunt-hp-self"
-            class="use-btn use-btn-hp"
-            :class="{ 'use-btn-hp-low': myHp <= 2 }"
-            title="ปรับ HP และสถานะผิดปกติของตัวเอง"
+            class="use-btn use-btn-me"
+            :title="`${meHunter.hunter_name} — HP ${myHp}/${HUNTER_HP_MAX} · กดเพื่อปรับ HP และสถานะ`"
             @click="showHpStatusModal = true"
           >
-            <img :src="getImg('assets/img/take_damage.webp')" class="use-btn-img" />
+            <div
+              class="party-member party-me"
+              :class="{
+                'party-done':    !!room.tcTurnEnds?.[meHunter.hunter_id]?.card,
+                'party-pending': !!room.tcTurnEnds?.[meHunter.hunter_id]?.pending,
+                'party-down':    isHunterDown(meHunter),
+              }"
+            >
+              <div class="party-icon-wrap" :class="{ 'party-hp-low': myHp <= 2 }" :style="hpRingStyle(meHunter)">
+                <img
+                  v-if="getHunterClass(meHunter.hunter_class_id)?.thumbnail"
+                  :src="getImg(getHunterClass(meHunter.hunter_class_id).thumbnail)"
+                  class="party-icon-img"
+                />
+                <span v-if="room.hunterTokens?.[meHunter.hunter_id]" class="party-token">
+                  {{ room.hunterTokens[meHunter.hunter_id] }}
+                </span>
+                <span class="party-status-dot">
+                  {{ room.tcTurnEnds?.[meHunter.hunter_id]?.card ? '✓' : room.tcTurnEnds?.[meHunter.hunter_id]?.pending ? '…' : '' }}
+                </span>
+                <span v-if="myStatuses.length" class="party-statuses">
+                  <img
+                    v-for="id in myStatuses"
+                    :key="id"
+                    :src="getImg(getStatusEffect(id)?.thumbnail)"
+                    :title="getStatusEffect(id)?.effect_name"
+                    class="party-status-img"
+                    alt=""
+                  />
+                </span>
+              </div>
+            </div>
             <span class="use-btn-count">{{ myHp }}/{{ HUNTER_HP_MAX }}</span>
           </button>
           <button
@@ -10623,7 +10663,7 @@ onDeactivated(() => {
           </template>
 
           <div
-            v-for="h in (stripPage === 0 ? room.hunters : [])"
+            v-for="h in (stripPage === 0 ? partyOthers : [])"
             :key="h.hunter_id"
             class="party-member"
             :class="{
@@ -15902,13 +15942,10 @@ onDeactivated(() => {
 .use-btn-img { width: 24px; height: 24px; object-fit: contain; }
 .use-btn-count { font-size: 9px; font-weight: bold; color: #ffd27a; letter-spacing: 0.5px; }
 .use-btn-faint .use-btn-count { color: #ff9090; }
-.use-btn-hp .use-btn-count { color: #ff9c86; }
-.use-btn-hp-low { border-color: #ff4f3a; animation: useHpLowPulse 1.2s ease-in-out infinite; }
-@keyframes useHpLowPulse {
-  0%, 100% { box-shadow: none; }
-  50%      { box-shadow: 0 0 10px rgba(255, 79, 58, 0.5); }
-}
-@media (prefers-reduced-motion: reduce) { .use-btn-hp-low { animation: none; } }
+/* ตัวเอง — ยืม .party-member ทั้งชุด แค่ตัด padding ที่ซ้อนกับ .use-btn ออก (เหลือที่ให้วงแหวน HP ยื่น 5px) */
+.use-btn-me { padding: 4px 4px 5px; }
+.use-btn-me .party-member { padding: 6px 5px 3px; }
+.use-btn-me .use-btn-count { color: #ff9c86; }
 /* แผง HP / สถานะ — กว้างกว่า uc-modal ปกติเล็กน้อย ให้แถว HP มีที่หายใจ */
 .hpm-modal { width: min(360px, 100%); }
 .hpm-close { width: 100%; margin-top: 4px; }
