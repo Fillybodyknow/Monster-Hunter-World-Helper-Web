@@ -324,7 +324,7 @@ export const TOURS = {
         target: 'hunt-party',
         optional: true,
         title: 'ปาร์ตี้',
-        body: 'สถานะจบเทิร์นของเพื่อนแต่ละคน และการ์ด Palico ของทุกคน',
+        body: 'เพื่อนแต่ละคน: วงแหวน HP (เขียว → แดง) · เลข Hunter Token มุมบนซ้าย · สถานะผิดปกติมุมล่างซ้าย · จบเทิร์นแล้วหรือยังมุมล่างขวา และการ์ด Palico ของทุกคน\nของตัวเองอยู่บนแถบซ้าย',
       },
       {
         target: 'hunt-tokens',
@@ -362,7 +362,7 @@ export const TOURS = {
         target: 'hunt-hp-self',
         optional: true,
         title: 'HP และสถานะของคุณ',
-        body: 'แตะเพื่อปรับ HP หรือเปิด/ปิดสถานะผิดปกติเอง\nแอปหัก HP ให้เองเมื่อ: รับการโจมตีของมอน · Time Card อย่าง Turf War, Unavenged, Ice Storm, Suspended Boulder · Poison ตอนจบเทิร์น\nHP หมดแอปจะถามให้ยืนยันล้ม · ใช้ยาหรือล้มแล้ว HP กลับมาเต็ม',
+        body: 'ไอคอนคลาสของคุณ: วงแหวน HP · เลข Hunter Token · สถานะผิดปกติที่ติดอยู่ · จบเทิร์นแล้วหรือยัง\nแตะเพื่อปรับ HP หรือเปิด/ปิดสถานะผิดปกติเอง\nแอปหัก HP ให้เองเมื่อ: รับการโจมตีของมอน · Time Card อย่าง Turf War, Unavenged, Ice Storm, Suspended Boulder · Poison ตอนจบเทิร์น\nHP หมดแอปจะถามให้ยืนยันล้ม · ใช้ยาหรือล้มแล้ว HP กลับมาเต็ม',
       },
     ],
   },
