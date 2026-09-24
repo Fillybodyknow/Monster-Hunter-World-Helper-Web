@@ -4,6 +4,7 @@ import { h as vh, ref, computed, watch, nextTick, onMounted, onActivated, onDeac
 defineOptions({ name: 'Quest' })
 import { showQuestEffects, soundEnabled, soundVolume } from '@/stores/settings'
 import { hunter, loadHunter, saveHunter } from '@/stores/hunter'
+import { questInProgress } from '@/stores/questSession'
 import { MONSTER_INFO as monsterInfoData, BOOKS as books, ALL_MONSTERS, bookOfMonster } from '@/composables/useMonsterData'
 import timeCardData from '@/assets/files/time_card_management.json'
 import hunterClassData from '@/assets/files/class_hunter.json'
@@ -547,6 +548,10 @@ watch(phase, (p) => {
   if (!room.inRoom || !room.isHost) return
   if (SYNCED_HUNT_PHASES.includes(p)) room.syncPhase?.(p)
 })
+
+// บอกหน้าอื่นว่ากำลังเล่นเควสอยู่ — หน้า State ใช้กันไม่ให้เปลี่ยนสายอาวุธกลางเควส
+watch(phase, (p) => { questInProgress.value = SYNCED_HUNT_PHASES.includes(p) }, { immediate: true })
+onUnmounted(() => { questInProgress.value = false })
 
 const _incrementDay = () => {
   if (!hunter.value) return
@@ -2577,7 +2582,7 @@ const floatToggleLabel = computed(() => {
   if (floatOutcomeState.value === 'complete') return '✦ Quest Complete'
   if (floatOutcomeState.value === 'failed')   return '✕ Quest Failed'
   if (floatOutcomeState.value === 'timeout')  return '⏱ Time Out'
-  if (!currentBehaviorCard.value || (activationLimit.value > 0 && monsterTurnReady.value)) return '⚔ รอ Monster Turn'
+  if (!currentBehaviorCard.value || (activationLimit.value > 0 && monsterTurnReady.value)) return '⚔️ รอ Monster Turn'
   if (myTurnEnded.value) return '✓ รอคนอื่น'
   return '🃏 จบเทิร์น'
 })
@@ -3483,7 +3488,7 @@ const _applyTimeCardToMe = (card, drawerId) => {
       _hurtMeByTimeCard(2, card.card_name)
       break
     case 'Ice Storm':
-      if (_hasIceResist()) addNotif('❄ Ice Storm: มีเกราะน้ำแข็ง ไม่โดน', 'info')
+      if (_hasIceResist()) addNotif('❄️ Ice Storm: มีเกราะน้ำแข็ง ไม่โดน', 'info')
       else _hurtMeByTimeCard(3, card.card_name)
       break
     case 'Fumbled Carving':
@@ -6477,7 +6482,7 @@ onDeactivated(() => {
       <!-- Co-op -->
       <div data-tour="quest-coop" class="join-quest-bar">
         <div v-if="room.inRoom" class="join-quest-inroom">
-          <span class="join-quest-icon">⚔</span>
+          <span class="join-quest-icon">⚔️</span>
           <span>Co-op Room: <strong>{{ room.roomCode }}</strong></span>
           <span class="join-room-count">{{ room.hunterCount }}/4 Hunters</span>
           <button class="join-leave-btn" @click="leaveRoomFromBoard">ออก</button>
@@ -6850,7 +6855,7 @@ onDeactivated(() => {
       </Teleport>
 
       <div v-if="myHqVote" class="hqv-waiting">
-        <span class="hqv-wax">{{ myHqVote === 'hq' ? '🏰' : '⚔' }}</span>
+        <span class="hqv-wax">{{ myHqVote === 'hq' ? '🏰' : '⚔️' }}</span>
         <p class="hqv-voted-label">
           ลงเสียงแล้ว: <strong>{{ myHqVote === 'hq' ? 'แวะ Downtime' : 'ลุย Quest' }}</strong>
         </p>
@@ -6873,7 +6878,7 @@ onDeactivated(() => {
           <span class="hqv-hunter-name">{{ h.hunter_name }}</span>
           <span class="hqv-dotted"></span>
           <span v-if="room.hqVotes[h.hunter_id] === 'hq'" class="hqv-vote-pill hqv-vote-hq">🏰 Downtime</span>
-          <span v-else-if="room.hqVotes[h.hunter_id] === 'quest'" class="hqv-vote-pill hqv-vote-quest">⚔ Quest</span>
+          <span v-else-if="room.hqVotes[h.hunter_id] === 'quest'" class="hqv-vote-pill hqv-vote-quest">⚔️ Quest</span>
           <span v-else class="hqv-vote-pill hqv-vote-pending">รอ…</span>
         </div>
       </div>
@@ -7862,7 +7867,7 @@ onDeactivated(() => {
       <!-- ENTER HUNTING PANEL -->
       <div class="hunt-enter-section">
         <button class="btn-enter-hunt" @click="goToHuntingPanel">
-          <span class="enter-hunt-icon">⚔</span>
+          <span class="enter-hunt-icon">⚔️</span>
           เข้าสู่ Hunting Phase
         </button>
       </div>
@@ -8131,7 +8136,7 @@ onDeactivated(() => {
           :disabled="behaviorDeck.length === 0 || !monsterTurnReady"
           @click="showMonsterTurnConfirm = true"
         >
-          ⚔ Monster Turn
+          ⚔️ Monster Turn
         </button>
         <p v-else class="mt-guest-hint">
           <template v-if="!monsterTurnReady">
@@ -8400,7 +8405,7 @@ onDeactivated(() => {
         <!-- Parts Section (right) -->
         <div v-if="Object.keys(activeParts).length > 0" class="hpanel-section hpanel-parts-col">
           <!-- <div class="hpanel-section-header">
-          <span class="hpanel-section-icon">🗡</span>
+          <span class="hpanel-section-icon">🗡️</span>
           <span class="hpanel-section-label">Monster Parts</span>
         </div> -->
         <!-- HP Section -->
@@ -8736,7 +8741,7 @@ onDeactivated(() => {
           class="rw-btn-primary"
           @click="startRewardRoll"
         >
-          ⚔ เริ่มรับรางวัล
+          ⚔️ เริ่มรับรางวัล
         </button>
       </div>
 
@@ -8814,7 +8819,7 @@ onDeactivated(() => {
             📦 รับเข้าคลัง
           </button>
           <button v-else class="rw-btn-primary" @click="finishSlayerBonus">
-            ⚔ ไปรับรางวัลของเควส
+            ⚔️ ไปรับรางวัลของเควส
           </button>
         </template>
 
@@ -9213,9 +9218,9 @@ onDeactivated(() => {
             @click="room.inRoom ? room.voteAction('goTrade') : confirmRewards()"
           >
             <span v-if="room.inRoom && room.actionVoteCount('goTrade') > 0">
-              ⚔ รับรางวัลและ Trade ของกัน ({{ room.actionVoteCount('goTrade') }}/{{ room.hunterCount }})
+              ⚔️ รับรางวัลและ Trade ของกัน ({{ room.actionVoteCount('goTrade') }}/{{ room.hunterCount }})
             </span>
-            <span v-else-if="room.inRoom">⚔ รับรางวัลและ Trade ของกัน</span>
+            <span v-else-if="room.inRoom">⚔️ รับรางวัลและ Trade ของกัน</span>
             <span v-else>✦ รับรางวัลและปิด Quest</span>
           </button>
         </div>
@@ -9705,7 +9710,7 @@ onDeactivated(() => {
             <template v-else-if="paratoadStep === 'immune'">
               <p class="nt-roll-result">ได้ <strong>{{ paratoadRoll }}</strong></p>
               <div class="nt-immune-box">
-                <span class="nt-immune-icon">🛡</span>
+                <span class="nt-immune-icon">🛡️</span>
                 <div>
                   <p class="nt-immune-title">Monster ต้านทาน!</p>
                   <p class="nt-immune-desc">Monster ไม่ได้รับผลจาก Paralysis</p>
@@ -9723,7 +9728,7 @@ onDeactivated(() => {
       <Transition name="slain-fade">
         <div v-if="poisoncupStep" class="nt-overlay">
           <div class="nt-modal">
-            <p class="nt-title">☠ Poisoncup!</p>
+            <p class="nt-title">☠️ Poisoncup!</p>
 
             <template v-if="poisoncupStep === 'roll'">
               <p class="nt-rule">1–3 : วาง Poison Token บน Monster</p>
@@ -9778,7 +9783,7 @@ onDeactivated(() => {
                 </div>
               </div>
               <p v-if="resistAbilityOf(poisoncupDrawerId, STATUS_POISON)" class="nt-resist">
-                🛡 <ClassMedal :hunter-id="poisoncupDrawerId" /> ต้านทานได้ด้วย {{ resistAbilityOf(poisoncupDrawerId, STATUS_POISON).ability_name }} — ไม่ติด Poison
+                🛡️ <ClassMedal :hunter-id="poisoncupDrawerId" /> ต้านทานได้ด้วย {{ resistAbilityOf(poisoncupDrawerId, STATUS_POISON).ability_name }} — ไม่ติด Poison
               </p>
               <button class="nt-close-btn" @click="dismissPoisoncup">รับทราบ</button>
             </template>
@@ -9786,7 +9791,7 @@ onDeactivated(() => {
             <template v-else-if="poisoncupStep === 'immune'">
               <p class="nt-roll-result">ได้ <strong>{{ poisoncupRoll }}</strong></p>
               <div class="nt-immune-box">
-                <span class="nt-immune-icon">🛡</span>
+                <span class="nt-immune-icon">🛡️</span>
                 <div>
                   <p class="nt-immune-title">Monster ต้านทาน!</p>
                   <p class="nt-immune-desc">Monster ไม่ได้รับผลจาก Poison</p>
@@ -9859,7 +9864,7 @@ onDeactivated(() => {
                 </div>
               </div>
               <p v-if="resistAbilityOf(sleeptoadDrawerId, STATUS_SLEEP)" class="nt-resist">
-                🛡 <ClassMedal :hunter-id="sleeptoadDrawerId" /> ต้านทานได้ด้วย {{ resistAbilityOf(sleeptoadDrawerId, STATUS_SLEEP).ability_name }} — ไม่ติด Sleep
+                🛡️ <ClassMedal :hunter-id="sleeptoadDrawerId" /> ต้านทานได้ด้วย {{ resistAbilityOf(sleeptoadDrawerId, STATUS_SLEEP).ability_name }} — ไม่ติด Sleep
               </p>
               <button class="nt-close-btn" @click="dismissSleeptoad">รับทราบ</button>
             </template>
@@ -9867,7 +9872,7 @@ onDeactivated(() => {
             <template v-else-if="sleeptoadStep === 'immune'">
               <p class="nt-roll-result">ได้ <strong>{{ sleeptoadRoll }}</strong></p>
               <div class="nt-immune-box">
-                <span class="nt-immune-icon">🛡</span>
+                <span class="nt-immune-icon">🛡️</span>
                 <div>
                   <p class="nt-immune-title">Monster ต้านทาน!</p>
                   <p class="nt-immune-desc">Monster ไม่ได้รับผลจาก Sleep</p>
@@ -10280,7 +10285,7 @@ onDeactivated(() => {
             :disabled="myTurnEnded || !currentBehaviorCard || monsterTurnReady"
             @click="showConfirmTurn = true"
           >
-            <span v-if="!currentBehaviorCard || monsterTurnReady">⚔ รอ Monster Turn</span>
+            <span v-if="!currentBehaviorCard || monsterTurnReady">⚔️ รอ Monster Turn</span>
             <span v-else-if="!myTurnEnded">🃏 จบเทิร์น</span>
             <span v-else class="float-wait">
               ✓ รอคนอื่น
@@ -10521,7 +10526,7 @@ onDeactivated(() => {
               <img :src="getImg(getStatusEffect(n.id)?.thumbnail)" class="uc-icon" :class="{ 'sn-resisted-icon': n.resisted }" alt="" />
               <template v-if="n.resisted">
                 <p class="uc-title">ต้านทาน {{ getStatusEffect(n.id)?.effect_name }} ได้</p>
-                <p class="uc-sub sn-resist">🛡 เกราะมี {{ n.resisted }} — ไม่ติดสถานะนี้</p>
+                <p class="uc-sub sn-resist">🛡️ เกราะมี {{ n.resisted }} — ไม่ติดสถานะนี้</p>
               </template>
               <template v-else>
                 <p class="uc-title">ติด {{ getStatusEffect(n.id)?.effect_name }}</p>
@@ -10809,7 +10814,7 @@ onDeactivated(() => {
       <Transition name="slain-fade">
         <div v-if="showMonsterTurnConfirm" class="mtc-overlay" @click.self="showMonsterTurnConfirm = false">
           <div class="mtc-modal">
-            <p class="mtc-title">⚔ Monster Turn</p>
+            <p class="mtc-title">⚔️ Monster Turn</p>
 
             <!-- Back of next card -->
             <div v-if="nextBehaviorCard" class="mtc-card-wrap">
@@ -10924,7 +10929,7 @@ onDeactivated(() => {
           <span class="ma-vignette"></span>
 
           <div class="ma-content">
-            <p class="ma-label">⚔ Monster Attack!</p>
+            <p class="ma-label">⚔️ Monster Attack!</p>
             <div v-if="monsterAttackStatuses.length" class="ma-status-list">
               <div v-for="sid in monsterAttackStatuses" :key="sid" class="ma-status-item">
                 <img :src="getImg(getStatusEffect(sid)?.thumbnail)" class="ma-status-icon" />
@@ -11075,7 +11080,7 @@ onDeactivated(() => {
       <Transition name="slain-fade">
         <div v-if="showSpecialCardOverlay" class="sc-overlay" @click="showSpecialCardOverlay = false; phase = 'huntingPanel'">
           <div class="sc-content">
-            <p class="sc-label">⚔ Special Attack Added!</p>
+            <p class="sc-label">⚔️ Special Attack Added!</p>
             <div class="sc-card">
               <img v-if="specialCardOverlayCard" :src="getImg(specialCardOverlayCard.front_card_img)" class="sc-card-img" />
             </div>
@@ -11393,7 +11398,7 @@ onDeactivated(() => {
               <div class="hrc-stat"><span class="hrc-k">⏱ เวลาล่า</span><span class="hrc-v">{{ recapDurationText }}</span></div>
               <div class="hrc-stat"><span class="hrc-k">🔄 เทิร์น Hunter</span><span class="hrc-v">{{ huntRecap.turns }}</span></div>
               <div class="hrc-stat"><span class="hrc-k">🃏 Time Card</span><span class="hrc-v">ใช้ {{ huntRecap.tcUsed }} · เหลือ {{ huntRecap.tcLeft }}</span></div>
-              <div class="hrc-stat"><span class="hrc-k">🗡 ชิ้นส่วนแตก</span><span class="hrc-v">{{ huntRecap.broken.length }} / {{ huntRecap.partTotal }}</span></div>
+              <div class="hrc-stat"><span class="hrc-k">🗡️ ชิ้นส่วนแตก</span><span class="hrc-v">{{ huntRecap.broken.length }} / {{ huntRecap.partTotal }}</span></div>
               <div class="hrc-stat"><span class="hrc-k">🧪 ยาที่ใช้</span><span class="hrc-v">{{ huntRecap.potions }}</span></div>
               <div class="hrc-stat"><span class="hrc-k">💫 ล้ม</span><span class="hrc-v">{{ huntRecap.faints }} / 3</span></div>
             </div>
