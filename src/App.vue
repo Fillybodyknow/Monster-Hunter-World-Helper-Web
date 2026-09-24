@@ -125,7 +125,7 @@ watch(
                   {{ notif.notifType === 'craftable' ? 'สามารถ Craft ได้แล้ว!' : 'วัตถุดิบใหม่!' }}
                 </span>
                 <span class="cn-name">{{ notif.name }}</span>
-                <span class="cn-type">{{ notif.type === 'weapon' ? '⚔ Weapon' : '🛡 Armor' }}</span>
+                <span class="cn-type">{{ notif.type === 'weapon' ? '⚔️ Weapon' : '🛡️ Armor' }}</span>
               </div>
               <button class="cn-dismiss" @click="dismissNotification(notif.id)">✕</button>
             </div>

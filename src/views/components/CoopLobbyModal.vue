@@ -69,7 +69,7 @@ const counting = ref(false)
 let _countdownTimer = null
 
 const countdownText = [
-  '⚔ Hunter พร้อมแล้ว!',
+  '⚔️ Hunter พร้อมแล้ว!',
   '🗺 กำลังออกล่า...',
   '🌿 ได้เวลาออกล่า!',
 ]
@@ -184,7 +184,7 @@ const starColor = computed(() => {
                   :src="getImg(getClass(h.hunter_class_id).thumbnail)"
                   class="cl-loading-icon"
                 />
-                <span v-else class="cl-loading-icon-fallback">⚔</span>
+                <span v-else class="cl-loading-icon-fallback">⚔️</span>
               </div>
             </div>
             <p class="cl-loading-text">{{ countdownMsg }}</p>

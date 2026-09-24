@@ -449,7 +449,7 @@ const handleCreate = () => {
         </div>
 
         <div class="modal-actions">
-          <button class="btn-embark" @click="enterWorld"><span>⚔</span> Enter World</button>
+          <button class="btn-embark" @click="enterWorld"><span>⚔️</span> Enter World</button>
           <button class="btn-danger-sm" @click="showDeleteModal = true">Retire Hunter</button>
           <button class="btn-close-sm" @click="showDetailModal = false">Close</button>
         </div>

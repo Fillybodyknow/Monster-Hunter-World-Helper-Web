@@ -105,14 +105,14 @@ const titleOf = (cards, id) => cards.find((c) => c.key === String(id))?.title.id
 {
   const t = (o) => buildTeamTitle(o).name
   const dodgeLog = Array.from({ length: 5 }, () => def(1, 'dodge'))
-  expect(t({ faints: 0, log: dodgeLog }) === 'ไร้รอยขีดข่วน', 'เจอการโจมตี 5 ครั้งไม่มีใครโดน = ไร้รอยขีดข่วน')
+  expect(t({ faints: 0, log: dodgeLog }) === 'ตี้ไร้บาดแผล', 'เจอการโจมตี 5 ครั้งไม่มีใครโดน = ตี้ไร้บาดแผล')
   const mixed = [def(1, 'dodge'), def(1, 'dodge'), def(2, 'dodge'), def(2, 'dodge'), def(1, 'hit', 3)]
-  expect(t({ faints: 0, log: mixed }) === 'ตี้สายหลบ', 'หลบได้ 4 จาก 5 ครั้ง = ตี้สายหลบ')
+  expect(t({ faints: 0, log: mixed }) === 'ตี้เงาสายลม', 'หลบได้ 4 จาก 5 ครั้ง = ตี้เงาสายลม')
   const heavy = [def(1, 'hit', 8), def(2, 'hit', 7), def(1, 'hit', 6)]
   expect(t({ faints: 0, log: heavy }) === 'ปราการเหล็ก', 'รับรวม 21 แต่ไม่มีใครล้ม = ปราการเหล็ก')
-  expect(t({ faints: 0 }) === 'ไม่มีใครล้ม', 'ไม่มีบันทึกการโจมตี + ไม่มีใครล้ม = ไม่มีใครล้ม')
-  expect(t({ faints: 2, log: heavy }) === 'เฉียดตาย', 'ล้ม 2 ครั้ง = เฉียดตาย')
-  expect(t({ faints: 0, brokenCount: 3, partTotal: 3, log: dodgeLog }) === 'ทุบครบทุกชิ้น', 'ทุบครบยังชนะทุกอย่าง')
+  expect(t({ faints: 0 }) === 'ตี้ไร้ผู้ล้ม', 'ไม่มีบันทึกการโจมตี + ไม่มีใครล้ม = ตี้ไร้ผู้ล้ม')
+  expect(t({ faints: 2, log: heavy }) === 'รอดแบบเฉียดฉิว', 'ล้ม 2 ครั้ง = เฉียดตาย')
+  expect(t({ faints: 0, brokenCount: 3, partTotal: 3, log: dodgeLog }) === 'ตี้ทลายเกราะ', 'ทุบครบยังชนะทุกอย่าง')
 }
 
 console.log(failures ? `\n✗ ไม่ผ่าน ${failures} จาก ${checks} ข้อ` : `✓ ผ่านทั้งหมด ${checks} ข้อ`)
