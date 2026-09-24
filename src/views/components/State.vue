@@ -6,8 +6,15 @@ import { getHunterById, saveHunter } from '@/services/hunterStorage'
 import { rankOf } from '@/services/hunterRank'
 import { getHunterClassById } from '@/services/hunterService'
 import { getArmors, getWeapons } from '@/services/equipService'
+import { previewClassSwitch, switchHunterClass, weaponCountOfClass } from '@/services/classSwitch'
+import { loadHunter } from '@/stores/hunter'
+import { questInProgress } from '@/stores/questSession'
+import { useRoomStore } from '@/stores/room'
 import elementalData from '@/assets/files/elemental.json'
 import bonusAbilityData from '@/assets/files/bonus_ability.json'
+import classHunterData from '@/assets/files/class_hunter.json'
+import weaponsData from '@/assets/files/weapons.json'
+import armorsData from '@/assets/files/armors.json'
 
 const hunter    = ref(null)
 const rawHunter = ref(null)
@@ -115,6 +122,9 @@ onMounted(loadState)
 // ทัวร์ของหน้านี้ — ขึ้นครั้งแรกที่เปิดแท็บ State (ข้อความอยู่ใน src/tours/tours.js)
 onMounted(() => requestTour('state'))
 onUnmounted(() => cancelTourRequest('state'))
+// ทัวร์สั้นของปุ่มเปลี่ยนสายอาวุธ — แยกจากทัวร์หลักของหน้า คนที่ดูทัวร์หน้านี้ไปแล้วจะได้เห็นด้วย
+onMounted(() => requestTour('classSwitch'))
+onUnmounted(() => cancelTourRequest('classSwitch'))
 
 // ─── Swap Equipment ───────────────────────────────────────────────────────────
 const equipType    = ref('weapon')
@@ -173,6 +183,58 @@ const setEquip = async (item) => {
   showSwapModal.value = false
   await loadState()
 }
+
+// ─── เปลี่ยนสายอาวุธ (1 ID เล่นได้หลายคลาส) ─────────────────────────────────
+// อาวุธผูกกับคลาส เกราะใช้ร่วมกัน ยกเว้น Starting Armor ที่เปลี่ยนตามคลาส — กติกาทั้งหมดอยู่ใน classSwitch.js
+const room = useRoomStore()
+const CLASS_DATA = { classes: classHunterData, weapons: weaponsData }
+
+const showClassModal = ref(false)
+const classPick = ref(null) // คลาสที่กดเลือกไว้ รอยืนยัน
+
+const switchBlockedReason = computed(() => {
+  if (questInProgress.value) return 'กำลังอยู่ในเควส — กลับมาเปลี่ยนหลังจบการล่า'
+  if (room.inRoom) return 'อยู่ในห้อง Co-op — ออกจากห้องก่อนถึงจะเปลี่ยนได้ (คลาสในตี้ห้ามซ้ำกัน)'
+  return ''
+})
+
+const classList = computed(() =>
+  classHunterData.map((c) => ({
+    ...c,
+    current: c.hunter_class_id === rawHunter.value?.hunter_class_id,
+    weaponCount: weaponCountOfClass(rawHunter.value, c.hunter_class_id),
+  })),
+)
+
+const armorName = (a) =>
+  armorsData.find((s) => s.equip_set_id === a?.equip_set_id)?.equips.find((e) => e.equip_id === a?.equip_id)?.equip ??
+  `Armor ${a?.equip_id ?? '?'}`
+
+const classPreview = computed(() =>
+  classPick.value ? previewClassSwitch(CLASS_DATA, rawHunter.value, classPick.value.hunter_class_id) : null,
+)
+
+const openClassModal = () => {
+  if (switchBlockedReason.value) return
+  classPick.value = null
+  showClassModal.value = true
+}
+
+const pickClass = (c) => {
+  if (c.current) return
+  classPick.value = c
+}
+
+const confirmClassSwitch = async () => {
+  const next = switchHunterClass(CLASS_DATA, rawHunter.value, classPick.value?.hunter_class_id)
+  if (!next) return
+  saveHunter(next)
+  loadHunter() // สโตร์กลางถือตัวละครคนละก้อน — หน้าอื่น (คราฟต์ / เควส) ต้องเห็นคลาสใหม่ด้วย
+  rawHunter.value = next
+  showClassModal.value = false
+  classPick.value = null
+  await loadState()
+}
 </script>
 
 <template>
@@ -185,6 +247,16 @@ const setEquip = async (item) => {
       <div class="dh-title-block">
         <h2 class="dh-title">{{ hunter.name }}</h2>
         <p class="dh-class">{{ hunter.class.hunter_class }}</p>
+        <button
+          data-tour="state-class-switch"
+          class="dh-class-btn"
+          :disabled="!!switchBlockedReason"
+          :title="switchBlockedReason || 'เปลี่ยนไปเล่นสายอาวุธอื่นด้วยตัวละครเดิม'"
+          @click="openClassModal"
+        >
+          ⇄ เปลี่ยนสายอาวุธ
+        </button>
+        <p v-if="switchBlockedReason" class="dh-class-note">{{ switchBlockedReason }}</p>
       </div>
       <div class="dh-ornament">✦</div>
     </div>
@@ -451,6 +523,82 @@ const setEquip = async (item) => {
             </div>
             <div v-if="!modalItems.length" class="swap-no-items">No items available</div>
           </div>
+        </div>
+      </div>
+    </div>
+  </teleport>
+
+  <!-- ══════════ CLASS SWITCH MODAL ══════════ -->
+  <teleport to="body">
+    <div v-if="showClassModal" class="swap-overlay" @click.self="showClassModal = false">
+      <div class="swap-parchment">
+        <div class="swap-modal-top">
+          <div class="swap-title-row">
+            <span class="swap-ornament">◆</span>
+            <h3 class="swap-title">เปลี่ยนสายอาวุธ</h3>
+            <span class="swap-ornament">◆</span>
+          </div>
+          <button class="btn-swap-close" @click="showClassModal = false">✕</button>
+        </div>
+
+        <div class="swap-modal-body">
+          <!-- เลือกคลาส -->
+          <template v-if="!classPick">
+            <p class="cls-hint">
+              ตัวละครเดิม เล่นได้ทุกสายอาวุธ — อาวุธของแต่ละสายเก็บแยกกัน เกราะ ของในกระเป๋า Campaign Day และ HR ใช้ร่วมกัน
+            </p>
+            <div class="cls-grid">
+              <div
+                v-for="c in classList"
+                :key="c.hunter_class_id"
+                class="cls-card"
+                :class="{ 'cls-current': c.current }"
+                @click="pickClass(c)"
+              >
+                <img :src="getImg(c.thumbnail)" class="cls-img" />
+                <p class="cls-name">{{ c.hunter_class }}</p>
+                <span v-if="c.current" class="cls-badge cls-badge-now">สายปัจจุบัน</span>
+                <span v-else-if="c.weaponCount" class="cls-badge">เคยเล่น · อาวุธ {{ c.weaponCount }} ชิ้น</span>
+                <span v-else class="cls-badge cls-badge-new">ยังไม่เคยเล่น</span>
+              </div>
+            </div>
+          </template>
+
+          <!-- ยืนยัน -->
+          <template v-else>
+            <div class="cls-confirm">
+              <img :src="getImg(classPick.thumbnail)" class="cls-confirm-img" />
+              <p class="cls-confirm-title">เปลี่ยนไปเล่น {{ classPick.hunter_class }}?</p>
+
+              <div class="cls-row">
+                <span class="cls-row-label">อาวุธ</span>
+                <span class="cls-row-val">
+                  {{ classPreview.equipped?.info?.item ?? '—' }}
+                  <em v-if="classPreview.returning">(ของเดิมที่เก็บไว้ · {{ classPreview.weaponCount }} ชิ้น)</em>
+                  <em v-else>(อาวุธเริ่มต้นของสายนี้)</em>
+                </span>
+              </div>
+
+              <div class="cls-row">
+                <span class="cls-row-label">เกราะ</span>
+                <span v-if="!classPreview.armorChanges.length" class="cls-row-val">ไม่มีอะไรเปลี่ยน</span>
+                <span v-else class="cls-row-val">
+                  <span v-for="ch in classPreview.armorChanges" :key="ch.slot" class="cls-armor-line">
+                    {{ armorName(ch.from) }} → {{ armorName(ch.to) }}<em v-if="ch.worn"> (ใส่อยู่)</em>
+                  </span>
+                </span>
+              </div>
+
+              <p class="cls-note">
+                อาวุธของสาย {{ hunter.class.hunter_class }} เก็บไว้ให้ครบ กลับมาเล่นเมื่อไหร่ก็ได้ของเดิมคืน
+              </p>
+
+              <div class="cls-btn-row">
+                <button class="cls-btn cls-btn-back" @click="classPick = null">ย้อนกลับ</button>
+                <button class="cls-btn cls-btn-ok" @click="confirmClassSwitch">ยืนยันเปลี่ยน</button>
+              </div>
+            </div>
+          </template>
         </div>
       </div>
     </div>
@@ -1732,4 +1880,84 @@ const setEquip = async (item) => {
   font-style: italic;
   font-size: 13px;
 }
+
+/* ── เปลี่ยนสายอาวุธ ─────────────────────────────── */
+.dh-class-btn {
+  margin-top: 6px;
+  padding: 4px 12px;
+  border: 1px solid rgba(200, 155, 60, 0.5);
+  border-radius: 3px 2px 3px 2px;
+  background: linear-gradient(168deg, rgba(200, 155, 60, 0.18), rgba(0, 0, 0, 0.3));
+  color: #ffd27a;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.dh-class-btn:hover:not(:disabled) {
+  border-color: rgba(200, 155, 60, 0.85);
+  background: linear-gradient(168deg, rgba(200, 155, 60, 0.3), rgba(0, 0, 0, 0.3));
+}
+.dh-class-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.dh-class-note { margin: 4px 0 0; font-size: 10px; color: #a88040; }
+
+.cls-hint { margin: 0 0 10px; font-size: 11px; line-height: 1.5; color: #c9b895; }
+.cls-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.cls-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 6px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  border-radius: 3px 2px 3px 2px;
+  background: var(--grain), linear-gradient(168deg, rgba(0, 0, 0, 0.46), rgba(0, 0, 0, 0.26));
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.6);
+}
+.cls-card:hover {
+  border-color: rgba(200, 155, 60, 0.55);
+  background: var(--grain), linear-gradient(168deg, rgba(200, 155, 60, 0.14), rgba(0, 0, 0, 0.26));
+}
+.cls-current { border-color: rgba(200, 155, 60, 0.7); cursor: default; }
+.cls-img { width: 46px; height: 46px; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.8)); }
+.cls-name { margin: 0; font-size: 11px; font-weight: 700; color: #e8c698; line-height: 1.2; }
+.cls-badge { font-size: 9px; line-height: 1.3; color: #a88040; }
+.cls-badge-now { color: #ffd27a; font-weight: 700; }
+.cls-badge-new { color: #7d6a4c; }
+
+.cls-confirm { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.cls-confirm-img { width: 64px; height: 64px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8)); }
+.cls-confirm-title { margin: 0; font-size: 14px; font-weight: 800; color: #ffd27a; }
+.cls-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  border-radius: 3px 2px 3px 2px;
+  background: linear-gradient(168deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.2));
+}
+.cls-row-label { flex: 0 0 52px; font-size: 11px; font-weight: 700; color: #a88040; letter-spacing: 1px; }
+.cls-row-val { flex: 1; font-size: 12px; line-height: 1.5; color: #e8c698; }
+.cls-row-val em { font-style: normal; color: #a88040; }
+.cls-armor-line { display: block; }
+.cls-note { margin: 0; font-size: 11px; line-height: 1.5; color: #c9b895; text-align: center; }
+.cls-btn-row { display: flex; gap: 10px; width: 100%; }
+.cls-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 3px 2px 3px 2px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+.cls-btn-back { background: rgba(0, 0, 0, 0.45); color: #c9b895; border: 1px solid rgba(0, 0, 0, 0.6); }
+.cls-btn-ok { background: #c9a050; color: #1a1206; }
+.cls-btn-ok:hover { background: #d9b060; }
 </style>

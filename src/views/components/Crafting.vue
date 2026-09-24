@@ -699,12 +699,12 @@ watch(forgeState, async (state, prev) => {
     <div data-tour="craft-tabs" class="tabs">
       <button class="tab-btn" :class="{ active: activeTab === 'weapon' }" @click="activeTab = 'weapon'">
         <img v-if="weaponTabIcon" :src="weaponTabIcon" class="tab-icon-img" alt="" />
-        <span v-else class="tab-icon">⚔</span>
+        <span v-else class="tab-icon">⚔️</span>
         <span>Weapons</span>
       </button>
       <button class="tab-btn" :class="{ active: activeTab === 'armor' }" @click="activeTab = 'armor'">
         <img v-if="armorTabIcon" :src="armorTabIcon" class="tab-icon-img" alt="" />
-        <span v-else class="tab-icon">🛡</span>
+        <span v-else class="tab-icon">🛡️</span>
         <span>Armor</span>
       </button>
     </div>
@@ -886,7 +886,7 @@ watch(forgeState, async (state, prev) => {
                   </template>
                 </div>
 
-                <!-- 🛡 DEFENSE -->
+                <!-- 🛡️ DEFENSE -->
                 <div class="defense-row" v-if="node.defense > 0">
                   <div class="armor-element-card">
                     <img :src="getImg('assets/img/bonus_armor.webp')" class="armor-base" />
@@ -1049,7 +1049,7 @@ watch(forgeState, async (state, prev) => {
 
                 <div class="forge-impact-zone">
                   <div class="forge-impact-flash"></div>
-                  <span class="forge-item">{{ modalType === 'weapon' ? '⚔' : '🛡' }}</span>
+                  <span class="forge-item">{{ modalType === 'weapon' ? '⚔️' : '🛡️' }}</span>
                   <span v-for="n in 12" :key="n" class="forge-spark" :style="`--i:${n}`"></span>
                 </div>
 
@@ -1061,7 +1061,7 @@ watch(forgeState, async (state, prev) => {
             <div class="im-header">
               <img :src="modalRarityIcon" class="im-rarity-icon" />
               <div class="im-header-info">
-                <span class="im-type-badge">{{ modalType === 'weapon' ? '⚔ Weapon' : '🛡 Armor' }}</span>
+                <span class="im-type-badge">{{ modalType === 'weapon' ? '⚔️ Weapon' : '🛡️ Armor' }}</span>
                 <h3 class="im-name">{{ modalName }}</h3>
               </div>
               <button class="im-close" @click="closeModal">✕</button>

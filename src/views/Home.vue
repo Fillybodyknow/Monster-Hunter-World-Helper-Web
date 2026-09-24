@@ -223,7 +223,7 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
         <div v-if="showPartyPanel" class="party-panel-overlay" @click.self="showPartyPanel = false">
           <div class="party-panel">
             <div class="party-panel-header">
-              <span class="party-panel-title">⚔ ตี้</span>
+              <span class="party-panel-title">⚔️ ตี้</span>
               <span class="party-panel-code">{{ room.roomCode }}</span>
               <button class="party-panel-close" @click="showPartyPanel = false">✕</button>
             </div>

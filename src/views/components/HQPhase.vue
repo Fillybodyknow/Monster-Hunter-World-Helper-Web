@@ -960,7 +960,7 @@ const moteStyle = (m) => ({
       <!-- data-tour อยู่ที่ตัวปุ่ม ไม่ใช่กล่องครอบ — กล่องมีอยู่ตลอด ทัวร์เคยไปชี้กล่องเปล่าตอนปุ่มยังไม่ขึ้น -->
       <div class="hqp-ready-wrap">
         <div v-if="!isReady && myVisitCount >= MAX_VISITS">
-          <button data-tour="dt-ready" class="hqp-btn-ready" @click="voteReady">⚔ พร้อมลุย Quest</button>
+          <button data-tour="dt-ready" class="hqp-btn-ready" @click="voteReady">⚔️ พร้อมลุย Quest</button>
         </div>
         <div v-else-if="isReady" class="hqp-ready-status">
           <span>✦ คุณพร้อมแล้ว</span>

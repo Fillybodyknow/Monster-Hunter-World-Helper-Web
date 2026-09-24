@@ -3,7 +3,7 @@
 // คะแนนเท่ากันตัดสินด้วย key ของ Hunter ไม่ใช้ลำดับที่รายการเข้ามา
 
 // แต่ละคนได้ฉายาจากสถิติที่ "เด่นที่สุด" ของตัวเอง ไม่ใช่ตามลำดับตายตัว
-// (เคยเจอ: คนที่ทำให้ติดสถานะทั้งเกม แต่บังเอิญตีปิดด้วยดาเมจ 1 กลับได้ "ผู้ปิดฉาก")
+// (เคยเจอ: คนที่ทำให้ติดสถานะทั้งเกม แต่บังเอิญตีปิดด้วยดาเมจ 1 กลับได้ "ดาบปิดฉาก")
 //
 // score(value, ctx): ความเด่นของค่านั้น ≈ 1 คือ "น่าพูดถึง" — ใช้เทียบข้ามฉายาต่างชนิด
 //   ค่าเริ่มต้น value / min · คะแนนเท่ากัน ฉายาที่อยู่บนในตารางชนะ
@@ -15,85 +15,85 @@
 
 // สถานะแยกตามชนิด — id ตาม status_effect.json
 const AILMENT_TITLES = [
-  { sid: 1, icon: '🌀', name: 'ช่างเคาะกะโหลก', label: 'ทำให้มึน (Stun)', img: 'assets/img/status_effect/stun.webp' },
-  { sid: 2, icon: '☠', name: 'นักปรุงพิษ', label: 'ทำให้ติดพิษ (Poison)', img: 'assets/img/status_effect/poison.webp' },
+  { sid: 1, icon: '🌀', name: 'ค้อนน็อกสติ', label: 'ทำให้มึน (Stun)', img: 'assets/img/status_effect/stun.webp' },
+  { sid: 2, icon: '☠️', name: 'นักปรุงพิษ', label: 'ทำให้ติดพิษ (Poison)', img: 'assets/img/status_effect/poison.webp' },
   { sid: 3, icon: '💤', name: 'ผู้กล่อมนิทรา', label: 'ทำให้หลับ (Sleep)', img: 'assets/img/status_effect/sleep.webp' },
-  { sid: 4, icon: '🔗', name: 'จอมสะกดร่าง', label: 'ทำให้อัมพาต (Paralysis)', img: 'assets/img/status_effect/paralysis.webp' },
-  { sid: 5, icon: '💣', name: 'มือระเบิดพลีชีพ', label: 'ทำให้ระเบิด (Blast)', img: 'assets/img/status_effect/blastblight.webp' },
+  { sid: 4, icon: '🔗', name: 'มือสะกดร่าง', label: 'ทำให้อัมพาต (Paralysis)', img: 'assets/img/status_effect/paralysis.webp' },
+  { sid: 5, icon: '💣', name: 'มือจุดชนวน', label: 'ทำให้ระเบิด (Blast)', img: 'assets/img/status_effect/blastblight.webp' },
 ].map((t) => ({ ...t, id: `ailment${t.sid}`, stat: `status${t.sid}`, min: 1, unit: 'x', score: (v) => v }))
 
 // ธาตุแยกตามชนิด — id ตาม elemental.json
 const ELEMENT_TITLES = [
-  { eid: 1, icon: '🔥', name: 'เจ้าแห่งเปลวเพลิง', label: 'ธาตุไฟทำงาน', img: 'assets/img/elemental/fire.webp' },
+  { eid: 1, icon: '🔥', name: 'จ้าวเปลวเพลิง', label: 'ธาตุไฟทำงาน', img: 'assets/img/elemental/fire.webp' },
   { eid: 2, icon: '💧', name: 'นักรบสายน้ำ', label: 'ธาตุน้ำทำงาน', img: 'assets/img/elemental/water.webp' },
   { eid: 3, icon: '⚡', name: 'สายฟ้าฟาด', label: 'ธาตุสายฟ้าทำงาน', img: 'assets/img/elemental/thunder.webp' },
-  { eid: 4, icon: '❄', name: 'หัวใจน้ำแข็ง', label: 'ธาตุน้ำแข็งทำงาน', img: 'assets/img/elemental/ice.webp' },
+  { eid: 4, icon: '❄️', name: 'หัวใจน้ำแข็ง', label: 'ธาตุน้ำแข็งทำงาน', img: 'assets/img/elemental/ice.webp' },
   { eid: 5, icon: '🐉', name: 'ผู้สังหารมังกร', label: 'ธาตุมังกรทำงาน', img: 'assets/img/elemental/dragon.webp' },
 ].map((t) => ({ ...t, id: `element${t.eid}`, stat: `element${t.eid}`, min: 1, unit: 'x', score: (v) => v }))
 
 export const HUNT_TITLES = [
   // ตีปิดด้วยดาเมจ 1 ไม่ใช่เรื่องใหญ่ — 5 ดาเมจขึ้นไปถึงนับว่าเด่น
-  { id: 'finisher', icon: '🗡', name: 'ผู้ปิดฉาก', label: 'ดาเมจเทิร์นปิดฉาก', stat: 'finisher', min: 1, leaderOnly: true, score: (v) => v / 5 },
+  { id: 'finisher', icon: '🗡️', name: 'ดาบปิดฉาก', label: 'ดาเมจเทิร์นปิดฉาก', stat: 'finisher', min: 1, leaderOnly: true, score: (v) => v / 5 },
   // วัดจากส่วนแบ่งดาเมจของทีม — ทำ 1/3 ของทีม = 1, ครึ่งหนึ่ง = 1.5
-  { id: 'topDamage', icon: '👑', name: 'นักล่าตัวจริง', label: 'ดาเมจรวม', stat: 'dmg', min: 1, leaderOnly: true, score: (v, ctx) => (ctx.totalDmg ? (v / ctx.totalDmg) * 3 : 0) },
+  { id: 'topDamage', icon: '👑', name: 'สุดยอดนักล่า', label: 'ดาเมจรวม', stat: 'dmg', min: 1, leaderOnly: true, score: (v, ctx) => (ctx.totalDmg ? (v / ctx.totalDmg) * 3 : 0) },
   // ดาเมจเยอะแต่ไม่ใช่อันดับ 1 — ไม่งั้นคนตีหนักอันดับสองได้แค่ "ผู้สนับสนุน"
-  { id: 'heavyHitter', icon: '⚔', name: 'มือหนัก', label: 'ดาเมจรวม', stat: 'dmg', min: 5, secondOnly: true, score: (v, ctx) => (ctx.totalDmg ? (v / ctx.totalDmg) * 2 : 0) },
-  { id: 'bigTurn', icon: '💥', name: 'หนึ่งเทิร์นสะท้านโลก', label: 'ดาเมจในเทิร์นเดียว', stat: 'bestTurn', min: 8 },
-  { id: 'partBreaker', icon: '🔨', name: 'ช่างทุบเกราะ', label: 'ดาเมจชิ้นส่วน', stat: 'partDmg', min: 1, score: (v) => v / 4 },
+  { id: 'heavyHitter', icon: '⚔️', name: 'หมัดหนัก', label: 'ดาเมจรวม', stat: 'dmg', min: 5, secondOnly: true, score: (v, ctx) => (ctx.totalDmg ? (v / ctx.totalDmg) * 2 : 0) },
+  { id: 'bigTurn', icon: '💥', name: 'เทิร์นสะท้านสนาม', label: 'ดาเมจในเทิร์นเดียว', stat: 'bestTurn', min: 8 },
+  { id: 'partBreaker', icon: '🔨', name: 'มือทลายเกราะ', label: 'ดาเมจชิ้นส่วน', stat: 'partDmg', min: 1, score: (v) => v / 4 },
   // ติดสถานะได้ตั้งแต่ 2 ชนิดขึ้นไป (แบบ Ailment Master ในเกม) — คะแนนเหนือฉายาสถานะชนิดเดียวเล็กน้อย
   {
-    id: 'ailmentMaster', icon: '⚗', name: 'ปรมาจารย์สถานะ', stat: 'ailments', min: 2, unit: 'x',
+    id: 'ailmentMaster', icon: '⚗️', name: 'ปรมาจารย์สถานะ', stat: 'ailments', min: 2, unit: 'x',
     when: (p) => p.stats.ailmentKinds >= 2, score: (v) => v * 1.2,
     labelOf: (p) => `ทำให้ติดสถานะ ${p.stats.ailmentKinds} ชนิด`,
   },
   ...AILMENT_TITLES,
   {
-    id: 'elementMaster', icon: '🌈', name: 'ผู้กุมธาตุทั้งปวง', stat: 'elements', min: 2, unit: 'x',
+    id: 'elementMaster', icon: '🌈', name: 'ผู้เชี่ยวชาญธาตุ', stat: 'elements', min: 2, unit: 'x',
     when: (p) => p.stats.elementKinds >= 2, score: (v) => v * 1.2,
     labelOf: (p) => `ธาตุทำงาน ${p.stats.elementKinds} ชนิด`,
   },
   ...ELEMENT_TITLES,
   // ── ตอนมอนโจมตี (บันทึก defend จากขั้นตอนรับ / หลบ / นอกระยะ) ──
-  // รับดาเมจแทนทีมมากที่สุด — วัดจากส่วนแบ่งของทีมแบบเดียวกับ "นักล่าตัวจริง" แต่เบากว่านิดหน่อย
-  { id: 'tank', icon: '🛡', name: 'โล่มนุษย์', label: 'ดาเมจที่รับแทนทีม', stat: 'dmgTaken', min: 6, leaderOnly: true, score: (v, ctx) => (ctx.totalTaken ? (v / ctx.totalTaken) * 2.7 : 0) },
-  { id: 'bigHitTaken', icon: '🪨', name: 'รับเต็มหน้า', label: 'ดาเมจที่รับในครั้งเดียว', stat: 'bigHitTaken', min: 6, score: (v) => v / 7 },
+  // รับดาเมจแทนทีมมากที่สุด — วัดจากส่วนแบ่งของทีมแบบเดียวกับ "สุดยอดนักล่า" แต่เบากว่านิดหน่อย
+  { id: 'tank', icon: '🛡️', name: 'โล่ประจำตี้', label: 'ดาเมจที่รับแทนทีม', stat: 'dmgTaken', min: 6, leaderOnly: true, score: (v, ctx) => (ctx.totalTaken ? (v / ctx.totalTaken) * 2.7 : 0) },
+  { id: 'bigHitTaken', icon: '🪨', name: 'รับเต็มแรง', label: 'ดาเมจที่รับในครั้งเดียว', stat: 'bigHitTaken', min: 6, score: (v) => v / 7 },
   // โดนตีกี่ครั้งก็ไม่ใช่ว่าเก่ง — ต้องยังตีคืนได้ด้วย ถึงเป็นคนยืนแถวหน้า
   {
-    id: 'frontline', icon: '🦾', name: 'นักรบแนวหน้า', stat: 'hitsTaken', min: 2, unit: 'x',
+    id: 'frontline', icon: '🦾', name: 'นักรบหน้าด่าน', stat: 'hitsTaken', min: 2, unit: 'x',
     when: (p) => p.stats.dmg >= 5, score: (v) => v / 3 + 0.1,
     labelOf: (p) => `รับการโจมตี ${p.stats.hitsTaken} ครั้ง · ตีคืน ${p.stats.dmg}`,
   },
   { id: 'dodger', icon: '💨', name: 'เงาไร้ร่าง', label: 'หลบการโจมตีได้', stat: 'dodges', min: 2, unit: 'x', score: (v) => v / 2.5 },
   // เจอการโจมตีอย่างน้อย 3 ครั้ง แต่ไม่โดนเลยสักครั้ง
   {
-    id: 'untouchable', icon: '🍃', name: 'ผู้ไม่เคยถูกแตะต้อง', label: 'เจอการโจมตีแต่ไม่โดนเลย', stat: 'defends', min: 3, unit: 'x',
+    id: 'untouchable', icon: '🍃', name: 'ไร้บาดแผล', label: 'เจอการโจมตีแต่ไม่โดนเลย', stat: 'defends', min: 3, unit: 'x',
     when: (p) => p.stats.hitsTaken === 0, score: (v) => v / 2.5,
   },
   // มอนเล็งบ่อยที่สุด — ความหมายคือ "ที่สุด" จึงให้เฉพาะคนนำ
   { id: 'aggro', icon: '🎯', name: 'ขวัญใจมอนสเตอร์', label: 'โดนมอนเล็ง', stat: 'targeted', min: 2, unit: 'x', leaderOnly: true, score: (v) => v / 2.5 },
-  { id: 'guardian', icon: '🔰', name: 'จอมตั้งการ์ด', label: 'เกราะจากการ์ดที่ใช้กัน', stat: 'shieldUsed', min: 3, score: (v) => v / 4 },
+  { id: 'guardian', icon: '🔰', name: 'มือตั้งการ์ด', label: 'เกราะจากการ์ดที่ใช้กัน', stat: 'shieldUsed', min: 3, score: (v) => v / 4 },
   // นอกระยะเป็นเรื่องตำแหน่งบนกระดาน ไม่ได้เก่งเท่าหลบ — คะแนนเบากว่า
-  { id: 'distance', icon: '🏃', name: 'ผู้รักษาระยะ', label: 'อยู่นอกระยะโจมตี', stat: 'outranges', min: 3, unit: 'x', score: (v) => (v / 3) * 0.7 },
+  { id: 'distance', icon: '🏃', name: 'นักล่าระยะไกล', label: 'อยู่นอกระยะโจมตี', stat: 'outranges', min: 3, unit: 'x', score: (v) => (v / 3) * 0.7 },
   // ฉายารอง — คนที่ทำสถิตินั้นได้แต่ไม่ใช่อันดับ 1 (อันดับ 1 ได้ฉายาหลักไปแล้ว)
-  // ไม่งั้นตีชิ้นส่วนกัน 3 คน ได้ "ช่างทุบเกราะ" ซ้ำกันทั้ง 3
-  { id: 'partHelper', icon: '🪓', name: 'มือขวาช่างทุบ', label: 'ดาเมจชิ้นส่วน', stat: 'partDmg', min: 1, secondOnly: true, score: (v) => (v / 4) * 0.9 },
+  // ไม่งั้นตีชิ้นส่วนกัน 3 คน ได้ "มือทลายเกราะ" ซ้ำกันทั้ง 3
+  { id: 'partHelper', icon: '🪓', name: 'ผู้ช่วยทลายเกราะ', label: 'ดาเมจชิ้นส่วน', stat: 'partDmg', min: 1, secondOnly: true, score: (v) => (v / 4) * 0.9 },
   { id: 'ailmentHelper', icon: '🌿', name: 'ผู้ช่วยลงสถานะ', label: 'ทำให้ติดสถานะ', stat: 'ailments', min: 1, unit: 'x', secondOnly: true, score: (v) => v * 0.8 },
   { id: 'elementHelper', icon: '✨', name: 'ผู้ปลุกพลังธาตุ', label: 'ธาตุทำงาน', stat: 'elements', min: 1, unit: 'x', secondOnly: true, score: (v) => v * 0.8 },
   // ลง Mark ไว้เยอะแต่คนอื่นเป็นคนทำให้ติด — คนปูทางให้ทีม
   { id: 'marks', icon: '🧱', name: 'ผู้ปูทาง', label: 'ลง Mark ให้ทีม', stat: 'marks', min: 3, unit: 'x', score: (v) => v / 4 },
   // Palico ใช้ได้แค่ 1–2 ครั้งต่อเควส ใครมีก็ใช้ — ไม่ให้แย่งฉายาที่เป็นผลงานจริง
-  { id: 'palico', icon: '🐾', name: 'ทาสแมว', label: 'ใช้ Palico', stat: 'palico', min: 1, unit: 'x', score: (v) => v * 0.6 },
-  { id: 'faint', icon: '💫', name: 'ผู้กลับจากค่าย', label: 'ล้มกลับแคมป์', stat: 'faints', min: 1, unit: 'x', score: (v) => v * 0.5 },
+  { id: 'palico', icon: '🐾', name: 'คู่หูเหมียว', label: 'ใช้ Palico', stat: 'palico', min: 1, unit: 'x', score: (v) => v * 0.6 },
+  { id: 'faint', icon: '💫', name: 'ผู้คืนสังเวียน', label: 'ล้มกลับแคมป์', stat: 'faints', min: 1, unit: 'x', score: (v) => v * 0.5 },
   { id: 'potion', icon: '🧪', name: 'นักดื่มยา', label: 'ใช้ยา', stat: 'potions', min: 2, unit: 'x', score: (v) => v / 3 },
 ]
 // คนที่ไม่เหลือฉายาให้ (ไม่เข้าเงื่อนไข หรือฉายาที่เข้าเงื่อนไขมีคนได้ไปแล้ว) — แจกคนละชื่อ ไม่ซ้ำกัน
 export const FALLBACK_TITLES = [
-  { id: 'support', icon: '🛡', name: 'ผู้สนับสนุน' },
-  { id: 'companion', icon: '🧭', name: 'ผู้ร่วมทาง' },
+  { id: 'support', icon: '🛡️', name: 'ผู้สนับสนุน' },
+  { id: 'companion', icon: '🧭', name: 'สหายร่วมทาง' },
   { id: 'porter', icon: '🎒', name: 'ผู้แบกเสบียง' },
-  { id: 'lookout', icon: '👀', name: 'ผู้เฝ้าระวัง' },
+  { id: 'lookout', icon: '👀', name: 'ยามเฝ้าระวัง' },
   { id: 'cheer', icon: '📣', name: 'กองเชียร์ประจำตี้' },
-  { id: 'rookie', icon: '🌱', name: 'นักล่าหน้าใหม่ไฟแรง' },
+  { id: 'rookie', icon: '🌱', name: 'นักล่าหน้าใหม่' },
 ].map((t) => ({ ...t, label: 'เทิร์นที่เล่น', stat: 'turns', unit: 'x' }))
 export const FALLBACK_TITLE = FALLBACK_TITLES[0]
 
@@ -192,7 +192,7 @@ export const buildHuntHighlights = (log, members) => {
   }
   for (const [k, entries] of leftover) settle(people.get(k), entries)
 
-  // ผู้ปิดฉาก = เจ้าของเทิร์นที่มีการตีครั้งสุดท้าย (ดาเมจจากเต๋า / Time Card ไม่อยู่ในบันทึก)
+  // ดาบปิดฉาก = เจ้าของเทิร์นที่มีการตีครั้งสุดท้าย (ดาเมจจากเต๋า / Time Card ไม่อยู่ในบันทึก)
   // ค่าที่โชว์คือดาเมจทั้งเทิร์นนั้น ไม่ใช่แค่ปุ่มสุดท้าย — กด −5 −3 −1 ในเทิร์นปิดฉาก = 9 ไม่ใช่ 1
   const lastHit = [...live].reverse().find((e) => e.kind === 'hp' && e.delta < 0)
   const finish = lastHit && ownerOf.get(lastHit)
@@ -228,8 +228,8 @@ export const buildHuntHighlights = (log, members) => {
   }
 
   // จับคู่ทั้งทีมพร้อมกันให้คะแนนรวมสูงสุด — คนละ 1 ฉายา ฉายาละ 1 คน (ไม่มีฉายาซ้ำในตี้)
-  // (แจกทีละคู่เคยพลาด: ดาเมจเสมอกัน คนตีปิดเอา "นักล่าตัวจริง" ไป เพื่อนเหลือแค่ฉายารอง
-  //  และเคยปล่อยให้ซ้ำ: ตีชิ้นส่วนกัน 3 คน ได้ "ช่างทุบเกราะ" ทั้ง 3)
+  // (แจกทีละคู่เคยพลาด: ดาเมจเสมอกัน คนตีปิดเอา "สุดยอดนักล่า" ไป เพื่อนเหลือแค่ฉายารอง
+  //  และเคยปล่อยให้ซ้ำ: ตีชิ้นส่วนกัน 3 คน ได้ "มือทลายเกราะ" ทั้ง 3)
   // ตี้ไม่เกิน 4 คน ค้นทุกแบบได้ — ตัดเหลือ 8 ตัวเลือกต่อคนกันกรณีมีคนออกจากห้องแล้วยังอยู่ในบันทึก
   const order = [...list].sort(byKey)
   const options = order.map((p) =>
@@ -281,12 +281,12 @@ export const buildTeamTitle = ({ faints = 0, brokenCount = 0, partTotal = 0, log
   const dodges = defends.filter((e) => e.choice === 'dodge').length
   const taken = defends.reduce((n, e) => n + (e.choice === 'hit' ? (e.dmg ?? 0) : 0), 0)
 
-  if (partTotal > 0 && brokenCount >= partTotal) return { icon: '🔨', name: 'ทุบครบทุกชิ้น', desc: 'ชิ้นส่วนแตกหมดทุกชิ้น' }
-  // เจอการโจมตีหลายครั้งแต่ไม่มีใครโดนเลย — หายากกว่า "ไม่มีใครล้ม"
-  if (defends.length >= 4 && hits === 0) return { icon: '🍃', name: 'ไร้รอยขีดข่วน', desc: `เจอการโจมตี ${defends.length} ครั้ง ไม่มีใครโดนเลย` }
-  if (faints === 0 && dodges >= 4 && dodges * 2 >= defends.length) return { icon: '💨', name: 'ตี้สายหลบ', desc: `หลบการโจมตีได้ ${dodges} ครั้ง` }
+  if (partTotal > 0 && brokenCount >= partTotal) return { icon: '🔨', name: 'ตี้ทลายเกราะ', desc: 'ชิ้นส่วนแตกหมดทุกชิ้น' }
+  // เจอการโจมตีหลายครั้งแต่ไม่มีใครโดนเลย — หายากกว่า "ตี้ไร้ผู้ล้ม"
+  if (defends.length >= 4 && hits === 0) return { icon: '🍃', name: 'ตี้ไร้บาดแผล', desc: `เจอการโจมตี ${defends.length} ครั้ง ไม่มีใครโดนเลย` }
+  if (faints === 0 && dodges >= 4 && dodges * 2 >= defends.length) return { icon: '💨', name: 'ตี้เงาสายลม', desc: `หลบการโจมตีได้ ${dodges} ครั้ง` }
   if (faints === 0 && taken >= 20) return { icon: '🧱', name: 'ปราการเหล็ก', desc: `รับดาเมจรวม ${taken} แต่ไม่มีใครล้ม` }
-  if (faints === 0) return { icon: '✨', name: 'ไม่มีใครล้ม', desc: 'กลับแคมป์ครบทุกคน' }
-  if (faints >= 2) return { icon: '😮‍💨', name: 'เฉียดตาย', desc: `ล้ม ${faints} ครั้งแต่ยังรอด` }
+  if (faints === 0) return { icon: '✨', name: 'ตี้ไร้ผู้ล้ม', desc: 'กลับแคมป์ครบทุกคน' }
+  if (faints >= 2) return { icon: '😮‍💨', name: 'รอดแบบเฉียดฉิว', desc: `ล้ม ${faints} ครั้งแต่ยังรอด` }
   return { icon: '🏆', name: 'ภารกิจสำเร็จ', desc: 'กลับแคมป์อย่างผู้ชนะ' }
 }
