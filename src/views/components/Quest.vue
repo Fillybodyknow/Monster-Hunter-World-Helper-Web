@@ -5271,7 +5271,7 @@ const rewardDiceModifier = computed(() => {
   return mod
 })
 
-const rewardPhase = ref('hunterSelect') // 'hunterSelect' | 'slayerRoll' | 'diceRoll' | 'assign' | 'trade'
+const rewardPhase = ref('diceRoll') // 'slayerRoll' | 'diceRoll' | 'assign' | 'trade'
 
 // ── Slayer Card: ทอยโบนัส 1 ลูกก่อนรับรางวัลปกติ ─────────
 // ต่างจากการทอยหลักตรงที่ "ต่างคนต่างทอยของตัวเอง" ไม่ใช่กองเต๋ารวมของตี้
@@ -5357,13 +5357,6 @@ const rewardDiceCount = computed(() => {
   const base = diceCountTable[qt]?.[rewardHunterCount.value] ?? 2
   return Math.max(0, base + rewardDiceModifier.value)
 })
-
-const previewDiceCount = (hunterCount) => {
-  const qt = selectedQuest.value?.quest_type ?? ''
-  const base = diceCountTable[qt]?.[hunterCount]
-  if (base === undefined) return '?'
-  return Math.max(0, base + rewardDiceModifier.value)
-}
 
 const rolledDice = ref([]) // [{id, value, spent}]
 const selectedDiceIds = ref([]) // ids of dice currently selected
@@ -6252,13 +6245,10 @@ const goToRewardPhase = () => {
   }
   phase.value = 'reward'
   if (room.inRoom) room.syncPhase?.('reward')
-  if (room.inRoom && room.hunterCount >= 2) {
-    rewardHunterCount.value = room.hunterCount
-    startRewardRoll()
-  } else {
-    rewardHunterCount.value = 2
-    rewardPhase.value = 'hunterSelect'
-  }
+  // เล่นคนเดียวใช้ตารางเดียวกับ 2 Hunter — ไม่ต้องถามจำนวนคนอีก
+  // (จำนวนเต๋าที่อยากได้ต่างจากนี้ ปรับเองได้ที่ปุ่ม "ปรับจำนวนเต๋า" ในหน้าทอย)
+  rewardHunterCount.value = room.inRoom && room.hunterCount >= 2 ? room.hunterCount : 2
+  startRewardRoll()
 }
 
 // ─── Quest Pack Drawer ────────────────────────────────────────────────────────
@@ -8665,88 +8655,8 @@ onDeactivated(() => {
 
     <!-- ═══════════ REWARD PHASE ═══════════ -->
     <div v-if="phase === 'reward' && monsterHuntingData" class="phase-reward">
-      <!-- ── Hunter Count Select ── -->
-      <div v-if="rewardPhase === 'hunterSelect'" class="rw-hunter-select">
-        <div class="rw-header">
-          <span class="rw-trophy">🏆</span>
-          <div>
-            <p class="rw-title">Quest Complete</p>
-            <p class="rw-sub">{{ selectedMonster.monster_name }} ถูกล่าสำเร็จ</p>
-          </div>
-        </div>
-        <p class="rw-section-label">มี Hunter กี่คนร่วมล่า?</p>
-        <div class="rw-hunter-btns">
-          <button
-            v-for="n in [2, 3, 4]"
-            :key="n"
-            class="rw-hunter-btn"
-            :class="{ active: rewardHunterCount === n }"
-            @click="rewardHunterCount = n"
-          >
-            <span class="rw-hunter-num">{{ n }}</span>
-            <span class="rw-hunter-label">Hunters</span>
-            <span class="rw-dice-preview">
-              {{ previewDiceCount(n) }} 🎲
-            </span>
-          </button>
-        </div>
-        <div class="rw-quest-type-row">
-          <span class="rw-qt-label">{{ selectedQuest.quest_type }}</span>
-          <span class="rw-qt-arrow">→</span>
-          <span class="rw-qt-dice">{{ rewardDiceCount }} ลูกเต๋า</span>
-        </div>
-        <div class="rw-tc-modifiers">
-          <label
-            v-if="activeSlayerCardId"
-            class="rw-tc-toggle"
-            :class="{ active: slayerActive, 'rw-tc-readonly': room.inRoom && !room.isHost }"
-          >
-            <input
-              type="checkbox"
-              :checked="slayerActive"
-              :disabled="room.inRoom && !room.isHost"
-              @change="setSlayerModifier($event.target.checked)"
-            />
-            <span class="rw-tc-name">🃏 {{ activeSlayerCardName }}</span>
-            <span class="rw-tc-effect rw-tc-effect-plus">🎲 ทอยโบนัส</span>
-          </label>
-          <label
-            class="rw-tc-toggle"
-            :class="{ active: betrayalActive, 'rw-tc-readonly': room.inRoom && !room.isHost }"
-          >
-            <input
-              type="checkbox"
-              :checked="betrayalActive"
-              :disabled="room.inRoom && !room.isHost"
-              @change="setBetrayalModifier($event.target.checked)"
-            />
-            <span class="rw-tc-name">🃏 The Betrayal</span>
-            <span class="rw-tc-effect rw-tc-effect-minus">-1 🎲</span>
-          </label>
-          <label
-            class="rw-tc-toggle"
-            :class="{ active: plunderbladeActive, 'rw-tc-readonly': room.inRoom && !room.isHost }"
-          >
-            <input
-              type="checkbox"
-              :checked="plunderbladeActive"
-              :disabled="room.inRoom && !room.isHost"
-              @change="setPlunderbladeModifier($event.target.checked)"
-            />
-            <span class="rw-tc-name">🐱 Plunderblade (Palico)</span>
-            <span class="rw-tc-effect rw-tc-effect-plus">+2 🎲</span>
-          </label>
-        </div>
-        <button
-          class="rw-btn-primary"
-          @click="startRewardRoll"
-        >
-          ⚔️ เริ่มรับรางวัล
-        </button>
-      </div>
-
       <!-- ── Slayer Card: ทอยโบนัสก่อนรับรางวัลปกติ ── -->
-      <div v-else-if="rewardPhase === 'slayerRoll'" class="rw-slayer">
+      <div v-if="rewardPhase === 'slayerRoll'" class="rw-slayer">
         <div class="rw-slayer-head">
           <img
             v-if="activeSlayerCardId"
@@ -22806,74 +22716,6 @@ onDeactivated(() => {
   margin: 0 0 8px;
 }
 
-/* Hunter count buttons */
-.rw-hunter-btns {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-.rw-hunter-btn {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 12px 8px;
-  border-radius: 3px;
-  border: 1px solid rgba(124, 90, 43, 0.5);
-  background: linear-gradient(170deg, #2b1f13, #1c1409);
-  box-shadow: inset 0 1px 0 rgba(255,220,160,0.06);
-  color: #a88040;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.rw-hunter-btn.active {
-  border-color: #6b4f1c;
-  background: linear-gradient(to bottom, #b08a34 0%, #8a6a22 48%, #6b501a 100%);
-  color: #2a1d06;
-  text-shadow: 0 1px 0 rgba(255,225,170,0.35);
-  box-shadow: inset 0 1px 0 rgba(255,230,180,0.4), 0 2px 6px rgba(0,0,0,0.5);
-}
-.rw-hunter-num {
-  font-size: 22px;
-  font-weight: bold;
-  line-height: 1;
-}
-.rw-hunter-label {
-  font-size: 9px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-.rw-dice-preview {
-  font-size: 12px;
-  margin-top: 2px;
-}
-
-.rw-quest-type-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  border-radius: 3px;
-  background: linear-gradient(170deg, #2b1f13, #1c1409);
-  border: 1px solid rgba(124, 90, 43, 0.45);
-  border-left: 3px solid #7c5a2b;
-  margin-bottom: 14px;
-}
-.rw-qt-label {
-  font-size: 11px;
-  color: #a88040;
-}
-.rw-qt-arrow {
-  color: #5a3d1f;
-}
-.rw-qt-dice {
-  font-size: 13px;
-  color: #ffd27a;
-  font-weight: bold;
-}
-
 /* Time Card reward dice modifiers */
 .rw-tc-modifiers {
   display: flex;
@@ -24254,12 +24096,6 @@ onDeactivated(() => {
 .rw-slayer-party-icon { width: 20px; height: 20px; object-fit: contain; }
 .rw-slayer-party-name { flex: 1; min-width: 0; font-size: 12px; color: #c0a870; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rw-slayer-party-die { font-size: 14px; font-weight: bold; color: #ffd27a; }
-
-.rw-hunter-select {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
 
 /* ══════════════════════════════════════════
    SCROLLBAR
