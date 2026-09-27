@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, provide } from 'vue'
+import { ref, computed, watch, provide, onUnmounted } from 'vue'
 import { useRoomStore } from '@/stores/room'
 import { requestTour, cancelTourRequest } from '@/composables/useTour'
 import CraftLookupModal from './components/CraftLookupModal.vue'
@@ -39,22 +39,81 @@ const addNotif = (message, type = 'info') => {
 
 provide('addNotif', addNotif)
 
-// Auto-reconnect เมื่อ Firebase reconnect และมี savedRoomCode
+// กลับเข้าห้องเดิมอัตโนมัติ เมื่อมี savedRoomCode แต่ยังไม่ได้อยู่ในห้อง
 // เคสนี้คือ "หลุดจนห้องถูก reset ไปแล้ว" (roomData กลายเป็น null) — ต้อง join ใหม่ทั้งหมด
 // ส่วนเคสที่ยังอยู่ในห้อง store จะ re-register presence + bump joinSignal ให้เอง
-let _autoReconnecting = false
-watch(isFirebaseConnected, async (connected, wasConnected) => {
-  if (!connected || wasConnected) return
-  if (room.inRoom || !room.savedRoomCode || !hunter.value || _autoReconnecting) return
-  _autoReconnecting = true
+//
+// เดิมผูกกับจังหวะที่ Firebase "ขาดแล้วต่อใหม่" อย่างเดียว ซึ่งจับไม่ได้ตอนเปิดแอปใหม่:
+// บนมือถือ ปัดแอปทิ้งแล้วเปิดใหม่ = โหลดหน้าใหม่ทั้งหมด Firebase ต่อติดตั้งแต่ยังอยู่หน้าเลือกตัวละคร
+// พอเข้าหน้าหลักจึงไม่เหลือจังหวะให้จับ ผู้เล่นเลยค้างอยู่นอกห้องทั้งที่ยังมีชื่ออยู่ในตี้
+// และบนมือถือกดรีเฟรชหน้าเองไม่ได้ด้วย จึงต้องพยายามเองซ้ำ ๆ จนกว่าจะเข้าได้
+const REJOIN_RETRY_MS = 4000
+const REJOIN_MAX_TRIES = 5
+const rejoining = ref(false) // ค้างไว้ตลอดชุดที่พยายาม ไม่ใช่เฉพาะตอนยิง join — จอจะได้ไม่กะพริบ
+let _rejoinBusy = false
+let _rejoinTries = 0
+let _rejoinTimer = null
+
+const stopAutoRejoin = () => {
+  clearTimeout(_rejoinTimer)
+  _rejoinTries = 0
+  rejoining.value = false
+}
+
+// ไม่เอาห้องเดิมแล้ว — ปุ่มหนีออกจากจอรอ เผื่อห้องค้างหรือเปลี่ยนใจไปเล่นคนเดียว
+const giveUpSavedRoom = () => {
+  stopAutoRejoin()
+  room.clearSavedRoom?.()
+  addNotif('ไม่กลับเข้าห้องเดิมแล้ว', 'info')
+}
+
+const tryAutoRejoin = async () => {
+  clearTimeout(_rejoinTimer)
+  if (_rejoinBusy) return
+  if (room.inRoom || !room.savedRoomCode || !hunter.value) return stopAutoRejoin()
+  _rejoinBusy = true
+  rejoining.value = true
   try {
     await room.join(room.savedRoomCode, hunter.value)
-    addNotif('✅ Reconnect สำเร็จ', 'info')
-  } catch {
-    addNotif('❌ Auto-reconnect ล้มเหลว กรุณากด Reconnect เอง', 'warn')
+    stopAutoRejoin()
+    addNotif('✅ กลับเข้าห้องเดิมแล้ว', 'info')
+  } catch (e) {
+    // ห้องถูกปิดไปแล้ว — ลองใหม่กี่ครั้งก็ไม่มีทางเข้าได้ ลืมห้องนั้นไปเลยดีกว่า
+    if (/ไม่พบ Room/.test(e?.message ?? '')) {
+      stopAutoRejoin()
+      room.clearSavedRoom?.()
+      addNotif('ห้องเดิมถูกปิดไปแล้ว', 'warn')
+      return
+    }
+    if (++_rejoinTries < REJOIN_MAX_TRIES) {
+      _rejoinTimer = setTimeout(tryAutoRejoin, REJOIN_RETRY_MS)
+    } else {
+      stopAutoRejoin()
+      addNotif('❌ กลับเข้าห้องเดิมไม่สำเร็จ — กด Reconnect ในบอร์ด Co-op', 'warn')
+    }
   } finally {
-    _autoReconnecting = false
+    _rejoinBusy = false
   }
+}
+
+// ลองใหม่ทุกครั้งที่สภาพพร้อมขึ้น: เน็ตกลับมา / โหลดตัวละครเสร็จ / เพิ่งรู้รหัสห้องเดิม
+watch(
+  [isFirebaseConnected, hunter, () => room.savedRoomCode],
+  ([connected]) => {
+    if (!connected) return
+    _rejoinTries = 0
+    tryAutoRejoin()
+  },
+  { immediate: true },
+)
+// กลับมาจากพื้นหลัง (สลับแอปบนมือถือ) — เช็คให้แน่ว่ายังอยู่ในห้อง
+const _onVisible = () => {
+  if (document.visibilityState === 'visible') tryAutoRejoin()
+}
+document.addEventListener('visibilitychange', _onVisible)
+onUnmounted(() => {
+  clearTimeout(_rejoinTimer)
+  document.removeEventListener('visibilitychange', _onVisible)
 })
 
 // แจ้งเตือนสถานะการเชื่อมต่อของ "ตัวเอง" — เดิมผู้เล่นไม่รู้เลยว่าเน็ตตัวเองหลุด
@@ -293,16 +352,17 @@ const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
     <!-- ── Disconnect Overlay ── -->
     <teleport to="body">
       <Transition name="notif-slide">
-        <div v-if="selfOffline || hostOffline" class="disconnect-overlay">
+        <div v-if="selfOffline || hostOffline || rejoining" class="disconnect-overlay">
           <div class="disconnect-box">
             <div class="disconnect-spinner"></div>
             <p class="disconnect-title">
-              {{ selfOffline ? 'คุณขาดการเชื่อมต่อ' : 'Host ขาดการเชื่อมต่อ' }}
+              {{ rejoining ? 'กำลังกลับเข้าห้องเดิม' : selfOffline ? 'คุณขาดการเชื่อมต่อ' : 'Host ขาดการเชื่อมต่อ' }}
             </p>
             <p class="disconnect-sub">
-              {{ selfOffline ? 'กำลังเชื่อมต่อใหม่อัตโนมัติ' : 'กำลัง Reconnect...' }}
+              {{ rejoining ? `ห้อง ${room.savedRoomCode}` : selfOffline ? 'กำลังเชื่อมต่อใหม่อัตโนมัติ' : 'กำลัง Reconnect...' }}
             </p>
-            <button v-if="showLeaveButton" class="disconnect-leave-btn" @click="room.leave()">ออกจากตี้</button>
+            <button v-if="rejoining" class="disconnect-leave-btn" @click="giveUpSavedRoom">ไม่กลับเข้าห้องเดิม</button>
+            <button v-else-if="showLeaveButton" class="disconnect-leave-btn" @click="room.leave()">ออกจากตี้</button>
           </div>
         </div>
       </Transition>
