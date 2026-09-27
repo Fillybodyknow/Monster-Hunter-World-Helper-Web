@@ -7303,7 +7303,7 @@
             ]
           },
           {
-            "action_id": 1,
+            "action_id": 2,
             "required_dialog": "",
             "title": "เมินซากและตามรอยต่อไป",
             "consequences": "ได้รับ track token 1 ชิ้น",
@@ -7549,7 +7549,7 @@
             ]
           },
           {
-            "action_id": 1,
+            "action_id": 2,
             "required_dialog": "หากทอยได้ 4-6 เลือกตัวเลือกนี้",
             "title": "นักล่าจะปีนขึ้นไปได้โดยไม่บาดเจ็บ",
             "consequences": "ได้ track token 3 ชิ้น ทิ้ง time card 1 ใบ",
@@ -8058,7 +8058,7 @@
             ]
           },
           {
-            "action_id": 1,
+            "action_id": 2,
             "required_dialog": "",
             "title": "กลับไปที่การล่าทันที",
             "consequences": "นักล่าทุกคนได้รับ Warm Pelt 1 ชิ้น. รับ 1 track token.",
