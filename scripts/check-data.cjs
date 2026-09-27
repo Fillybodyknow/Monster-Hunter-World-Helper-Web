@@ -132,6 +132,18 @@ for (const book of books) {
       if (!dialogIds.has(id)) fail('books', `${who} dialog_hunting_phase อ้าง dialog_id ${id} ที่ไม่มีอยู่`)
     }
 
+    /* action_id ของแต่ละบทต้องเป็น 1..n เรียงตามลำดับ
+       แอปใช้เลขนี้เป็น key ของตัวเลือก เป็นเลขที่โชว์บนปุ่ม และเป็นตัวหาว่าโหวตข้อไหน
+       เลขซ้ำ = กดข้อเดียวแต่ติดสองข้อ โหวตรวมกัน และ Co-op อาจไปบทผิดเพราะหาเจอตัวแรกก่อน
+       (เคยเกิดจริงกับ Azure Rathalos, Barroth, Diablos, Black Diablos) */
+    for (const dialog of monster.quest_dialogs ?? []) {
+      const ids = (dialog.actions ?? []).map((a) => a.action_id)
+      const want = ids.map((_, i) => i + 1)
+      if (ids.join() !== want.join()) {
+        fail('books', `${who} dialog ${dialog.dialog_id} action_id ต้องเป็น ${want.join(', ') || '(ว่าง)'} ตามลำดับ แต่เป็น ${ids.join(', ')}`)
+      }
+    }
+
     const questIds = new Set()
     for (const quest of monster.quest ?? []) {
       const q = `${who} quest_id ${quest.quest_id}`

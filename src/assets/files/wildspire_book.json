@@ -632,7 +632,7 @@
             ]
           },
           {
-            "action_id": 2,
+            "action_id": 3,
             "required_dialog": "",
             "title": "สำรวจพื้นที่ที่ Barroth ทำลายไว้ อาจมีบางสิ่งหลงเหลืออยู่",
             "consequences": "ทิ้ง Track Token 1 อัน สับการ์ด Researcher's Favour ลงในกอง Time Card",
@@ -5223,7 +5223,7 @@
             "PathToDialog": 9
           },
           {
-            "action_id": 1,
+            "action_id": 2,
             "required_dialog": "",
             "title": "อยู่ที่นี่ต่อไป เส้นทางเหล่านี้อาจนำคุณไปหา Diablos",
             "consequences": "ได้รับ track token 1 ชิ้น",
@@ -6742,7 +6742,7 @@
             ]
           },
           {
-            "action_id": 1,
+            "action_id": 2,
             "required_dialog": "",
             "title": "มีเพชรที่มีค่าอยู่นี่ อาจคุ้มค่าที่จะตรวจสอบ แม้จะไม่เคารพก็ตาม แต่ความต้องการของคุณสำคัญกว่า",
             "consequences": "นักล่าทุกคนจะได้รับ Dragonvein Crystal 1 อัน",
@@ -6791,7 +6791,7 @@
             ]
           },
           {
-            "action_id": 1,
+            "action_id": 2,
             "required_dialog": "สามารถเลือกได้เมื่อนักล่ามี Black Diablos Carapace อย่างน้อย 1 อันในคลังของพวกเขา",
             "title": "",
             "consequences": "",
@@ -6823,7 +6823,7 @@
             ]
           },
           {
-            "action_id": 1,
+            "action_id": 2,
             "required_dialog": "",
             "title": "รออยู่ คุณมั่นใจว่าสัตว์ร้ายรู้ว่าคุณอยู่ที่นี่",
             "consequences": "ทิ้ง Time card 1 ใบ",
@@ -6860,7 +6860,7 @@
             ]
           },
           {
-            "action_id": 1,
+            "action_id": 2,
             "required_dialog": "",
             "title": "คุณไม่ได้กลัวหรอก คุณแค่สนใจสิ่งที่อยู่ที่นั่นมากกว่า",
             "consequences": "รับ 1 Track token",
