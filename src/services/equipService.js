@@ -99,15 +99,24 @@ export const armorSummary = (hunter) => {
   return { physical, elements, abilities: armorAbilityIds(hunter) }
 }
 
+/* รูปช่องอุปกรณ์แยกตามระดับ R — ของ Kushala Daora เป็น R5 ซึ่งยังไม่มีไฟล์รูปในโปรเจกต์
+   ถ้าไม่มีระดับที่ขอ ให้ถอยไปใช้ระดับที่สูงที่สุดเท่าที่มี จะได้ไม่เป็นรูปแตก
+   วันที่เพิ่มรูป R5 เข้ามาพร้อมรายการใน equiment_rarity.json ส่วนนี้จะหยิบของจริงเอง */
+export const rarityGroupOf = (type, rarity) => {
+  const typeData = raritydata.find(t => t.type_id === type)
+  if (!typeData) return null
+  const exact = typeData.rarity_list.find(r => r.equipment_rarity === rarity)
+  if (exact) return exact
+  const lower = typeData.rarity_list
+    .filter(r => r.equipment_rarity < rarity)
+    .sort((a, b) => b.equipment_rarity - a.equipment_rarity)[0]
+  return lower ?? null
+}
+
 export const getItemByRarity = (type, rarity, slotId) => {
   return new Promise((resolve) => {
 
-    const typeData = raritydata.find(t => t.type_id === type)
-    if (!typeData) return resolve(null)
-
-    const rarityData = typeData.rarity_list.find(
-      r => r.equipment_rarity === rarity
-    )
+    const rarityData = rarityGroupOf(type, rarity)
     if (!rarityData) return resolve(null)
 
     const item = rarityData.list.find(i => i.id === slotId)

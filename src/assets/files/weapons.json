@@ -239,6 +239,43 @@
             "add": "2 Toxic Charged Slash\n2 Poisoned Charge Up"
           }
         ]
+      },
+      {
+        "weapon_type_id": 7,
+        "weapon_type": "Kushala Daora",
+        "thumbnail": "assets/img/Kushala_Daora_Icon.webp",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Icesteel Edge",
+            "rarity": 4,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 4,
+              "damage_3": 4,
+              "damage_4": 5,
+              "damage_5": 1
+            },
+            "remove": "2 Charge Up",
+            "add": "2 Frozen Charge Up"
+          },
+          {
+            "item_id": 2,
+            "item": "Daora's Decimator",
+            "rarity": 5,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 5,
+              "damage_3": 6,
+              "damage_4": 3,
+              "damage_5": 2
+            },
+            "remove": "2 Charge Up\n4 Overhead Slam",
+            "add": "2 Frozen Charge Up\n4 Frostbite Slam"
+          }
+        ]
       }
     ],
     "weapon_priority_set": [
@@ -288,6 +325,23 @@
           [1, 1],
           [6, 1],
           [6, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 7,
+        "priority": [
+          [
+            1,
+            1
+          ],
+          [
+            7,
+            1
+          ],
+          [
+            7,
+            2
+          ]
         ]
       }
     ]
@@ -532,6 +586,43 @@
             "add": "2 Paralysis Coating\n2 Rending Arrows\n2 Rapid Dash"
           }
         ]
+      },
+      {
+        "weapon_type_id": 7,
+        "weapon_type": "Kushala Daora",
+        "thumbnail": "assets/img/Kushala_Daora_Icon.webp",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Icesteel Bow",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 4,
+              "damage_3": 8,
+              "damage_4": 2,
+              "damage_5": 0
+            },
+            "remove": "4 Power Coating",
+            "add": "4 Frost Coating"
+          },
+          {
+            "item_id": 2,
+            "item": "Daora's Sagittarii",
+            "rarity": 5,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 5,
+              "damage_3": 7,
+              "damage_4": 4,
+              "damage_5": 0
+            },
+            "remove": "4 Power Coating\n1 Dragon Piercer\nAny 1 Card",
+            "add": "4 Frost Coating\n2 Ice Piercer"
+          }
+        ]
       }
     ],
     "weapon_priority_set": [
@@ -581,6 +672,23 @@
           [2, 1],
           [6, 1],
           [6, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 7,
+        "priority": [
+          [
+            1,
+            1
+          ],
+          [
+            7,
+            1
+          ],
+          [
+            7,
+            2
+          ]
         ]
       }
     ]
@@ -825,6 +933,43 @@
             "add": "2 Brutal Double Slash\n2 Brutal Demon Mode"
           }
         ]
+      },
+      {
+        "weapon_type_id": 7,
+        "weapon_type": "Kushala Daora",
+        "thumbnail": "assets/img/Kushala_Daora_Icon.webp",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Twin Nails",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 3,
+              "damage_2": 5,
+              "damage_3": 5,
+              "damage_4": 1,
+              "damage_5": 0
+            },
+            "remove": "Any 2 Cards",
+            "add": "2 Blast Wrath"
+          },
+          {
+            "item_id": 2,
+            "item": "Fire and Ice",
+            "rarity": 5,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 9,
+              "damage_3": 4,
+              "damage_4": 3,
+              "damage_5": 0
+            },
+            "remove": "Any 2 Cards\n1 Sixfold Slash\n2 Double Slash",
+            "add": "2 Blast Wrath\n3 Rending Slice"
+          }
+        ]
       }
     ],
     "weapon_priority_set": [
@@ -874,6 +1019,23 @@
           [2, 1],
           [6, 1],
           [6, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 7,
+        "priority": [
+          [
+            1,
+            1
+          ],
+          [
+            7,
+            1
+          ],
+          [
+            7,
+            2
+          ]
         ]
       }
     ]
@@ -1411,6 +1573,43 @@
             "add": "4 Crippling Big Bang\n2 Brutal Upswing"
           }
         ]
+      },
+      {
+        "weapon_type_id": 7,
+        "weapon_type": "Kushala Daora",
+        "thumbnail": "assets/img/Kushala_Daora_Icon.webp",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Icesteel Hammer",
+            "rarity": 4,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 10,
+              "damage_3": 0,
+              "damage_4": 2,
+              "damage_5": 2
+            },
+            "remove": "2 Side Smash",
+            "add": "2 Icy Side Smash"
+          },
+          {
+            "item_id": 2,
+            "item": "Daora's Colossus",
+            "rarity": 5,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 11,
+              "damage_3": 0,
+              "damage_4": 2,
+              "damage_5": 3
+            },
+            "remove": "2 Side Smash\n2 Upswing",
+            "add": "2 Icy Side Smash\n2 Frozen Upswing"
+          }
+        ]
       }
     ],
     "weapon_priority_set": [
@@ -1460,6 +1659,23 @@
           [2, 1],
           [6, 1],
           [6, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 7,
+        "priority": [
+          [
+            1,
+            1
+          ],
+          [
+            7,
+            1
+          ],
+          [
+            7,
+            2
+          ]
         ]
       }
     ]
@@ -1704,6 +1920,43 @@
             "add": "2 Deft Slash\n2 Crippling Discharge"
           }
         ]
+      },
+      {
+        "weapon_type_id": 7,
+        "weapon_type": "Kushala Daora",
+        "thumbnail": "assets/img/Kushala_Daora_Icon.webp",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Daora's Casca",
+            "rarity": 4,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 8,
+              "damage_3": 2,
+              "damage_4": 3,
+              "damage_5": 1
+            },
+            "remove": "3 Return Stroke",
+            "add": "3 Freezing Stroke"
+          },
+          {
+            "item_id": 2,
+            "item": "Daora's Thwartoise",
+            "rarity": 5,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 8,
+              "damage_3": 2,
+              "damage_4": 4,
+              "damage_5": 2
+            },
+            "remove": "3 Return Stroke\n2 Weak Slash",
+            "add": "3 Freezing Stroke\n2 Gliding Slash"
+          }
+        ]
       }
     ],
     "weapon_priority_set": [
@@ -1753,6 +2006,23 @@
           [2, 1],
           [6, 1],
           [6, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 7,
+        "priority": [
+          [
+            1,
+            1
+          ],
+          [
+            7,
+            1
+          ],
+          [
+            7,
+            2
+          ]
         ]
       }
     ]
@@ -2290,6 +2560,43 @@
             "add": "3 Aqua Thrust\n2 Aqua Bash"
           }
         ]
+      },
+      {
+        "weapon_type_id": 7,
+        "weapon_type": "Kushala Daora",
+        "thumbnail": "assets/img/Kushala_Daora_Icon.webp",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Icesteel Spear",
+            "rarity": 4,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 6,
+              "damage_3": 5,
+              "damage_4": 3,
+              "damage_5": 0
+            },
+            "remove": "3 Mid Thrust",
+            "add": "3 Blizzard Thrust"
+          },
+          {
+            "item_id": 2,
+            "item": "Daora's Fang",
+            "rarity": 5,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 5,
+              "damage_3": 8,
+              "damage_4": 2,
+              "damage_5": 1
+            },
+            "remove": "3 Mid Thrust\n2 Guard Dash",
+            "add": "3 Blizzard Thrust\n2 Frozen Dash"
+          }
+        ]
       }
     ],
     "weapon_priority_set": [
@@ -2339,6 +2646,23 @@
           [2, 1],
           [6, 1],
           [6, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 7,
+        "priority": [
+          [
+            1,
+            1
+          ],
+          [
+            7,
+            1
+          ],
+          [
+            7,
+            2
+          ]
         ]
       }
     ]
@@ -2876,6 +3200,43 @@
             "add": "2 Water Burst\n2 Tidal Wyrmstake Cannon"
           }
         ]
+      },
+      {
+        "weapon_type_id": 7,
+        "weapon_type": "Kushala Daora",
+        "thumbnail": "assets/img/Kushala_Daora_Icon.webp",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Icesteel Gunlance",
+            "rarity": 4,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 7,
+              "damage_3": 6,
+              "damage_4": 1,
+              "damage_5": 0
+            },
+            "remove": "2 Rising Slash",
+            "add": "2 Freezing Rising Slash"
+          },
+          {
+            "item_id": 2,
+            "item": "Daora's Brigia",
+            "rarity": 5,
+            "defense": 1,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 8,
+              "damage_3": 5,
+              "damage_4": 3,
+              "damage_5": 0
+            },
+            "remove": "2 Rising Slash\n2 Charged Shell",
+            "add": "2 Freezing Rising Slash\n2 Frozen Charged Shell"
+          }
+        ]
       }
     ],
     "weapon_priority_set": [
@@ -2925,6 +3286,23 @@
           [1, 1],
           [6, 1],
           [6, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 7,
+        "priority": [
+          [
+            1,
+            1
+          ],
+          [
+            7,
+            1
+          ],
+          [
+            7,
+            2
+          ]
         ]
       }
     ]
@@ -3462,6 +3840,43 @@
             "add": "2 Brutal Sweep\n2 Annihilating Tornado Slash"
           }
         ]
+      },
+      {
+        "weapon_type_id": 7,
+        "weapon_type": "Kushala Daora",
+        "thumbnail": "assets/img/Kushala_Daora_Icon.webp",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Daora's Entom",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 2,
+              "damage_2": 7,
+              "damage_3": 3,
+              "damage_4": 2,
+              "damage_5": 0
+            },
+            "remove": "1 White Kinsect: Harvest Extract",
+            "add": "1 Kushala Daora Kinsect: Harvest Extract"
+          },
+          {
+            "item_id": 2,
+            "item": "Daora's Tethidine",
+            "rarity": 5,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 0,
+              "damage_2": 8,
+              "damage_3": 4,
+              "damage_4": 4,
+              "damage_5": 0
+            },
+            "remove": "1 White Kinsect: Harvest Extract\n2 Reaping Slash",
+            "add": "1 Kushala Daora Kinsect: Harvest Extract\n2 Brittle Slash"
+          }
+        ]
       }
     ],
     "weapon_priority_set": [
@@ -3511,6 +3926,23 @@
           [2, 1],
           [6, 1],
           [6, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 7,
+        "priority": [
+          [
+            1,
+            1
+          ],
+          [
+            7,
+            1
+          ],
+          [
+            7,
+            2
+          ]
         ]
       }
     ]
@@ -3755,6 +4187,43 @@
             "add": "2 Rapid Water Ammo\n2 Sleep Ammo 1"
           }
         ]
+      },
+      {
+        "weapon_type_id": 7,
+        "weapon_type": "Kushala Daora",
+        "thumbnail": "assets/img/Kushala_Daora_Icon.webp",
+        "items": [
+          {
+            "item_id": 1,
+            "item": "Icesteel Wasp",
+            "rarity": 4,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 1,
+              "damage_2": 9,
+              "damage_3": 2,
+              "damage_4": 2,
+              "damage_5": 0
+            },
+            "remove": "2 Poison Ammo 1",
+            "add": "2 Freeze Ammo"
+          },
+          {
+            "item_id": 2,
+            "item": "Daora's Hornet",
+            "rarity": 5,
+            "defense": 0,
+            "damage_cards": {
+              "damage_1": 2,
+              "damage_2": 9,
+              "damage_3": 3,
+              "damage_4": 2,
+              "damage_5": 0
+            },
+            "remove": "2 Poison Ammo 1\n1 Wyvernblast\nAny 1 Card",
+            "add": "2 Freeze Ammo\n2 Freezing Wyvernblast"
+          }
+        ]
       }
     ],
     "weapon_priority_set": [
@@ -3804,6 +4273,23 @@
           [2, 1],
           [6, 1],
           [6, 2]
+        ]
+      },
+      {
+        "weapon_type_id": 7,
+        "priority": [
+          [
+            1,
+            1
+          ],
+          [
+            7,
+            1
+          ],
+          [
+            7,
+            2
+          ]
         ]
       }
     ]

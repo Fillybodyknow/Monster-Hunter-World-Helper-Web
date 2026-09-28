@@ -7,7 +7,7 @@
     {
         "ability_id": 2,
         "ability_name": "Slugger",
-        "ability": "เควสละครั้ง, เมื่อ Hunter ใช้การ์ดโจมตีที่มีสถานะ Stun ให้วาง Token Stun +1 อัน"
+        "ability": "เควสละครั้ง, เมื่อ Hunter ใช้ Attack Card ที่มีสถานะ Stun ให้วาง Token Stun +1 อัน"
     },
     {
         "ability_id": 3,
@@ -22,7 +22,7 @@
     {
         "ability_id": 5,
         "ability_name": "Constitution",
-        "ability": "เควสละครั้ง, เมื่อ Hunter ทำการหลบหลีกการโจมตีของมอนสเตอร์ได้สำเร็จ ให้ทิ้งการ์ดโจมตีที่ใช้หลบหลีกทั้งหมดนั้นออกจาก Stamina Board"
+        "ability": "เควสละครั้ง, เมื่อ Hunter ทำการหลบหลีกการโจมตีของมอนสเตอร์ได้สำเร็จ ให้ทิ้ง Attack Card ที่ใช้หลบหลีกทั้งหมดนั้นออกจาก Stamina Board"
     },
     {
         "ability_id": 6,
@@ -32,12 +32,12 @@
     {
         "ability_id": 7,
         "ability_name": "Thunder Attack",
-        "ability": "เมื่อ Hunter เล่นการ์ดโจมตีที่มีการโจมตีธาตุ Thunder, จั๋ว Damage card เพิ่มเติม +1 ใบ"
+        "ability": "เมื่อ Hunter เล่น Attack Card ที่มีการโจมตีธาตุ Thunder, จั๋ว Damage card เพิ่มเติม +1 ใบ"
     },
     {
         "ability_id": 8,
         "ability_name": "Fire Attack",
-        "ability": "เมื่อ Hunter เล่นการ์ดโจมตีที่มีการโจมตีธาตุ Fire, จั๋ว Damage card เพิ่มเติม +1 ใบ"
+        "ability": "เมื่อ Hunter เล่น Attack Card ที่มีการโจมตีธาตุ Fire, จั๋ว Damage card เพิ่มเติม +1 ใบ"
     },
     {
         "ability_id": 9,
@@ -47,7 +47,7 @@
     {
         "ability_id": 10,
         "ability_name": "Rathalos Mastery",
-        "ability": "เมื่อ Hunter เล่นการ์ดโจมตีที่มีการโจมตีธาตุ Fire, แทนการวางโทเคนธาตุ Fire, ให้จั๋ว Elemental Damage card 1 ใบทันที, เอฟเฟคนี้จะไม่เป็นผลหากมอนสเตอร์นั้นไม่รับผลดาเมจธาตุ Fire"
+        "ability": "เมื่อ Hunter เล่น Attack Card ที่มีการโจมตีธาตุ Fire, แทนการวางโทเคนธาตุ Fire, ให้จั๋ว Elemental Damage card 1 ใบทันที, เอฟเฟคนี้จะไม่เป็นผลหากมอนสเตอร์นั้นไม่รับผลดาเมจธาตุ Fire"
     },
     {
         "ability_id": 11,
@@ -77,7 +77,7 @@
     {
         "ability_id": 16,
         "ability_name": "Guard",
-        "ability": "เมื่อ Hunter เล่นการ์ดโจมตีที่มีค่าป้องกัน ให้เพิ่มค่าป้องกันอีก +1 หน่วย"
+        "ability": "เมื่อ Hunter เล่น Attack Card ที่มีค่าป้องกัน ให้เพิ่มค่าป้องกันอีก +1 หน่วย"
     },
     {
         "ability_id": 17,
@@ -102,31 +102,46 @@
     {
         "ability_id": 21,
         "ability_name": "Water Attack",
-        "ability": "เมื่อ Hunter เล่นการ์ดโจมตีที่มีการโจมตีธาตุ Water, จั๋ว Damage card เพิ่มเติม +1 ใบ"
+        "ability": "เมื่อ Hunter เล่น Attack Card ที่มีการโจมตีธาตุ Water, จั๋ว Damage card เพิ่มเติม +1 ใบ"
     },
     {
         "ability_id": 22,
         "ability_name": "Heroics",
-        "ability": "ในระหว่างที่ Hunter พลังชีวิตเหลือ 2 หรือน้อยกว่า เมื่อ Hunter เล่นการ์ดโจมตีที่ไม่มีการโจมตีธาตุ จั๋ว Damage Card เพิ่ม +1 ใบ"
+        "ability": "ในระหว่างที่ Hunter พลังชีวิตเหลือ 2 หรือน้อยกว่า เมื่อ Hunter เล่น Attack Card ที่ไม่มีการโจมตีธาตุ จั๋ว Damage Card เพิ่ม +1 ใบ"
     },
     {
         "ability_id": 23,
         "ability_name": "Diablos Mastery",
-        "ability": "เมื่อ Hunter เล่นการ์ดโจมตีที่ไม่มีการโจมตีธาตุ จั๋ว Damage Card เพิ่ม +1 ใบ"
+        "ability": "เมื่อ Hunter เล่น Attack Card ที่ไม่มีการโจมตีธาตุ จั๋ว Damage Card เพิ่ม +1 ใบ"
     },
     {
         "ability_id": 24,
         "ability_name": "Black Diablos Mastery",
-        "ability": "เมื่อ Hunter เล่นการ์ดโจมตีที่ไม่มีการโจมตีธาตุ จั๋ว Damage Card เพิ่ม +1 ใบ"
+        "ability": "เมื่อ Hunter เล่น Attack Card ที่ไม่มีการโจมตีธาตุ จั๋ว Damage Card เพิ่ม +1 ใบ"
     },
     {
         "ability_id": 25,
         "ability_name": "Resentment",
-        "ability": "หาก Hunter ฟื้นฟูพลังชีวิตในเทิร์นก่อนหน้านี้ การ์ดโจมตีใบแรกที่คุณเล่นในเทิร์นนี้จะได้รับ +2 ความเสียหาย"
+        "ability": "หาก Hunter ฟื้นฟูพลังชีวิตในเทิร์นก่อนหน้านี้, Attack Card ใบแรกที่คุณเล่นในเทิร์นนี้ได้จั๋ว Damage Card เพิ่ม +2 ใบ"
     },
     {
         "ability_id": 26,
         "ability_name": "Part Breaker",
-        "ability": "เมื่อ Hunter เล่นการ์ดโจมตีที่มีการ Break Part การ์ดนั้นได้รับ Break Part +1 หน่วย"
+        "ability": "เมื่อ Hunter เล่น Attack Card ที่มีการ Break Part การ์ดนั้นได้รับ Break Part +1 หน่วย"
+    },
+    {
+        "ability_id": 27,
+        "ability_name": "Ice Attack",
+        "ability": "เมื่อ Hunter เล่น Attack Card ที่มีการโจมตีธาตุ Ice, จั๋ว Damage card เพิ่มเติม +1 ใบ"
+    },
+    {
+        "ability_id": 28,
+        "ability_name": "Handicraft",
+        "ability": "เควสละครั้ง, หากคุณเล่น Attack Card แล้ว Damage Deck มีไม่เพียงพอ, ให้ทำการสับกอง Damage Deck ใหม่แล้วดำเนินการต่อได้เลย"
+    },
+    {
+        "ability_id": 29,
+        "ability_name": "Kushala Daora Flight",
+        "ability": ""
     }
 ]

@@ -586,5 +586,47 @@
                         "ability_id": 26
                     }
                 ]
-            } 
+            },
+            {
+                "equip_set_id": 15,
+                "equip_set": "Kushala Daora",
+                "thumbnail": "assets/img/Kushala_Daora_Icon.webp",
+                "rarity": 5,
+                "set_ability_bonus": 29,
+                "equips": [
+                    {
+                        "equip_id": 1,
+                        "equip": "Kushala Glare",
+                        "armor_part_id": 1,
+                        "physical_armor": 1,
+                        "elemental_armor": {
+                            "elemental_id": 4,
+                            "protection": 2
+                        },
+                        "ability_id": 27
+                    },
+                    {
+                        "equip_id": 2,
+                        "equip": "Kushala Cista",
+                        "armor_part_id": 2,
+                        "physical_armor": 2,
+                        "elemental_armor": {
+                            "elemental_id": 4,
+                            "protection": 1
+                        },
+                        "ability_id": 0
+                    },
+                    {
+                        "equip_id": 3,
+                        "equip": "Kushala Crus",
+                        "armor_part_id": 3,
+                        "physical_armor": 2,
+                        "elemental_armor": {
+                            "elemental_id": 4,
+                            "protection": 1
+                        },
+                        "ability_id": 28
+                    }
+                ]
+            }
 ]

@@ -945,6 +945,108 @@
                         "amount": 1
                     }
                 ]
+            },
+            {
+                "equip_set_id": 15,
+                "equip_id": 1,
+                "crafting_table": [
+                    {
+                        "material": [
+                            3,
+                            61
+                        ],
+                        "amount": 2
+                    },
+                    {
+                        "material": [
+                            3,
+                            62
+                        ],
+                        "amount": 1
+                    },
+                    {
+                        "material": [
+                            3,
+                            58
+                        ],
+                        "amount": 1
+                    },
+                    {
+                        "material": [
+                            3,
+                            65
+                        ],
+                        "amount": 2
+                    }
+                ]
+            },
+            {
+                "equip_set_id": 15,
+                "equip_id": 2,
+                "crafting_table": [
+                    {
+                        "material": [
+                            3,
+                            62
+                        ],
+                        "amount": 1
+                    },
+                    {
+                        "material": [
+                            3,
+                            63
+                        ],
+                        "amount": 1
+                    },
+                    {
+                        "material": [
+                            3,
+                            60
+                        ],
+                        "amount": 1
+                    },
+                    {
+                        "material": [
+                            3,
+                            59
+                        ],
+                        "amount": 1
+                    }
+                ]
+            },
+            {
+                "equip_set_id": 15,
+                "equip_id": 3,
+                "crafting_table": [
+                    {
+                        "material": [
+                            3,
+                            62
+                        ],
+                        "amount": 1
+                    },
+                    {
+                        "material": [
+                            3,
+                            61
+                        ],
+                        "amount": 1
+                    },
+                    {
+                        "material": [
+                            3,
+                            58
+                        ],
+                        "amount": 2
+                    },
+                    {
+                        "material": [
+                            3,
+                            66
+                        ],
+                        "amount": 2
+                    }
+                ]
             }
         ]
     },
@@ -1309,6 +1411,75 @@
                                 "amount": 2
                             }
                         ]   
+                    },
+                    {
+                        "weapon_type_id": 7,
+                        "item_id": 1,
+                        "required_weapon": [
+                            1,
+                            1
+                        ],
+                        "crafting_table": [
+                            {
+                                "material": [
+                                    3,
+                                    60
+                                ],
+                                "amount": 1
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    58
+                                ],
+                                "amount": 2
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    67
+                                ],
+                                "amount": 1
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    64
+                                ],
+                                "amount": 2
+                            }
+                        ]
+                    },
+                    {
+                        "weapon_type_id": 7,
+                        "item_id": 2,
+                        "required_weapon": [
+                            7,
+                            1
+                        ],
+                        "crafting_table": [
+                            {
+                                "material": [
+                                    3,
+                                    63
+                                ],
+                                "amount": 4
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    60
+                                ],
+                                "amount": 3
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    59
+                                ],
+                                "amount": 1
+                            }
+                        ]
                     }
                 ]
             },
@@ -1669,6 +1840,75 @@
                                 "amount": 2
                             }
                         ]   
+                    },
+                    {
+                        "weapon_type_id": 7,
+                        "item_id": 1,
+                        "required_weapon": [
+                            1,
+                            1
+                        ],
+                        "crafting_table": [
+                            {
+                                "material": [
+                                    3,
+                                    60
+                                ],
+                                "amount": 1
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    58
+                                ],
+                                "amount": 2
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    67
+                                ],
+                                "amount": 1
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    64
+                                ],
+                                "amount": 2
+                            }
+                        ]
+                    },
+                    {
+                        "weapon_type_id": 7,
+                        "item_id": 2,
+                        "required_weapon": [
+                            7,
+                            1
+                        ],
+                        "crafting_table": [
+                            {
+                                "material": [
+                                    3,
+                                    63
+                                ],
+                                "amount": 4
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    60
+                                ],
+                                "amount": 3
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    59
+                                ],
+                                "amount": 1
+                            }
+                        ]
                     }
                 ]
             },
@@ -2029,6 +2269,75 @@
                                 "amount": 2
                             }
                         ]   
+                    },
+                    {
+                        "weapon_type_id": 7,
+                        "item_id": 1,
+                        "required_weapon": [
+                            1,
+                            1
+                        ],
+                        "crafting_table": [
+                            {
+                                "material": [
+                                    3,
+                                    60
+                                ],
+                                "amount": 1
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    58
+                                ],
+                                "amount": 2
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    67
+                                ],
+                                "amount": 1
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    64
+                                ],
+                                "amount": 2
+                            }
+                        ]
+                    },
+                    {
+                        "weapon_type_id": 7,
+                        "item_id": 2,
+                        "required_weapon": [
+                            7,
+                            1
+                        ],
+                        "crafting_table": [
+                            {
+                                "material": [
+                                    3,
+                                    63
+                                ],
+                                "amount": 4
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    60
+                                ],
+                                "amount": 3
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    59
+                                ],
+                                "amount": 1
+                            }
+                        ]
                     }
                 ]
             },
@@ -2725,6 +3034,75 @@
                                 "amount": 2
                             }
                         ]   
+                    },
+                    {
+                        "weapon_type_id": 7,
+                        "item_id": 1,
+                        "required_weapon": [
+                            1,
+                            1
+                        ],
+                        "crafting_table": [
+                            {
+                                "material": [
+                                    3,
+                                    60
+                                ],
+                                "amount": 1
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    58
+                                ],
+                                "amount": 2
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    67
+                                ],
+                                "amount": 1
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    64
+                                ],
+                                "amount": 2
+                            }
+                        ]
+                    },
+                    {
+                        "weapon_type_id": 7,
+                        "item_id": 2,
+                        "required_weapon": [
+                            7,
+                            1
+                        ],
+                        "crafting_table": [
+                            {
+                                "material": [
+                                    3,
+                                    63
+                                ],
+                                "amount": 4
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    60
+                                ],
+                                "amount": 3
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    59
+                                ],
+                                "amount": 1
+                            }
+                        ]
                     }
                 ]
             },
@@ -3097,6 +3475,75 @@
                                 "amount": 2
                             }
                         ]   
+                    },
+                    {
+                        "weapon_type_id": 7,
+                        "item_id": 1,
+                        "required_weapon": [
+                            1,
+                            1
+                        ],
+                        "crafting_table": [
+                            {
+                                "material": [
+                                    3,
+                                    60
+                                ],
+                                "amount": 1
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    58
+                                ],
+                                "amount": 2
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    67
+                                ],
+                                "amount": 1
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    64
+                                ],
+                                "amount": 2
+                            }
+                        ]
+                    },
+                    {
+                        "weapon_type_id": 7,
+                        "item_id": 2,
+                        "required_weapon": [
+                            7,
+                            1
+                        ],
+                        "crafting_table": [
+                            {
+                                "material": [
+                                    3,
+                                    63
+                                ],
+                                "amount": 4
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    60
+                                ],
+                                "amount": 3
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    59
+                                ],
+                                "amount": 1
+                            }
+                        ]
                     }
                 ]
             },
@@ -3385,6 +3832,75 @@
                         { "material": [2,13], "amount": 1 },
                         { "material": [2,14], "amount": 1 }
                     ]
+                    },
+                    {
+                        "weapon_type_id": 7,
+                        "item_id": 1,
+                        "required_weapon": [
+                            1,
+                            1
+                        ],
+                        "crafting_table": [
+                            {
+                                "material": [
+                                    3,
+                                    60
+                                ],
+                                "amount": 1
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    58
+                                ],
+                                "amount": 2
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    67
+                                ],
+                                "amount": 1
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    64
+                                ],
+                                "amount": 2
+                            }
+                        ]
+                    },
+                    {
+                        "weapon_type_id": 7,
+                        "item_id": 2,
+                        "required_weapon": [
+                            7,
+                            1
+                        ],
+                        "crafting_table": [
+                            {
+                                "material": [
+                                    3,
+                                    63
+                                ],
+                                "amount": 4
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    60
+                                ],
+                                "amount": 3
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    59
+                                ],
+                                "amount": 1
+                            }
+                        ]
                     }
                 ]
             },
@@ -3668,6 +4184,75 @@
                         { "material": [2,13], "amount": 1 },
                         { "material": [2,14], "amount": 1 }
                     ]
+                    },
+                    {
+                        "weapon_type_id": 7,
+                        "item_id": 1,
+                        "required_weapon": [
+                            1,
+                            1
+                        ],
+                        "crafting_table": [
+                            {
+                                "material": [
+                                    3,
+                                    60
+                                ],
+                                "amount": 1
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    58
+                                ],
+                                "amount": 2
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    67
+                                ],
+                                "amount": 1
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    64
+                                ],
+                                "amount": 2
+                            }
+                        ]
+                    },
+                    {
+                        "weapon_type_id": 7,
+                        "item_id": 2,
+                        "required_weapon": [
+                            7,
+                            1
+                        ],
+                        "crafting_table": [
+                            {
+                                "material": [
+                                    3,
+                                    63
+                                ],
+                                "amount": 4
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    60
+                                ],
+                                "amount": 3
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    59
+                                ],
+                                "amount": 1
+                            }
+                        ]
                     }
                 ]
             },
@@ -3949,6 +4534,75 @@
                         { "material": [3,53], "amount": 2 },
                         { "material": [3,52], "amount": 1 }
                     ]
+                    },
+                    {
+                        "weapon_type_id": 7,
+                        "item_id": 1,
+                        "required_weapon": [
+                            1,
+                            1
+                        ],
+                        "crafting_table": [
+                            {
+                                "material": [
+                                    3,
+                                    60
+                                ],
+                                "amount": 1
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    58
+                                ],
+                                "amount": 2
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    67
+                                ],
+                                "amount": 1
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    64
+                                ],
+                                "amount": 2
+                            }
+                        ]
+                    },
+                    {
+                        "weapon_type_id": 7,
+                        "item_id": 2,
+                        "required_weapon": [
+                            7,
+                            1
+                        ],
+                        "crafting_table": [
+                            {
+                                "material": [
+                                    3,
+                                    63
+                                ],
+                                "amount": 4
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    60
+                                ],
+                                "amount": 3
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    59
+                                ],
+                                "amount": 1
+                            }
+                        ]
                     }
                 ]
             },
@@ -4090,6 +4744,75 @@
                         { "material": [2,13], "amount": 1 },
                         { "material": [2,14], "amount": 1 }
                     ]
+                    },
+                    {
+                        "weapon_type_id": 7,
+                        "item_id": 1,
+                        "required_weapon": [
+                            1,
+                            1
+                        ],
+                        "crafting_table": [
+                            {
+                                "material": [
+                                    3,
+                                    60
+                                ],
+                                "amount": 1
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    58
+                                ],
+                                "amount": 2
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    67
+                                ],
+                                "amount": 1
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    64
+                                ],
+                                "amount": 2
+                            }
+                        ]
+                    },
+                    {
+                        "weapon_type_id": 7,
+                        "item_id": 2,
+                        "required_weapon": [
+                            7,
+                            1
+                        ],
+                        "crafting_table": [
+                            {
+                                "material": [
+                                    3,
+                                    63
+                                ],
+                                "amount": 4
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    60
+                                ],
+                                "amount": 3
+                            },
+                            {
+                                "material": [
+                                    3,
+                                    59
+                                ],
+                                "amount": 1
+                            }
+                        ]
                     }
                 ]
             },

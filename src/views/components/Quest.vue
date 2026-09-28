@@ -32,6 +32,8 @@ import RuleText from './RuleText.vue'
 import CardStatStrip from './CardStatStrip.vue'
 import AttackChoicePanel from './AttackChoicePanel.vue'
 import AttackRevealOverlay from './AttackRevealOverlay.vue'
+import CounterAttackModal from './CounterAttackModal.vue'
+import HunterEffectOverlay from './HunterEffectOverlay.vue'
 import { resolveCardStats, resolveHunterDamage, resolvePoisonHpLoss, POISON_HP_LOSS, PART_POSITIONS } from '@/services/cardStats'
 import { armorSummary, armorAbilityIds } from '@/services/equipService'
 import { requestTour, cancelTourRequest } from '@/composables/useTour'
@@ -1587,6 +1589,17 @@ const _startSuppressAnimations = () => {
 watch(() => room.joinSignal, () => {
   if (!room.inRoom) return
   _startSuppressAnimations()
+  /* หลุดกลางทางแล้วกลับเข้ามา: การ์ดสวนกลับที่ถืออยู่บนโต๊ะแอปไม่รู้ และการโจมตีรอบนั้นเฉลยไปแล้ว
+     จึงต้องไม่เด้งหน้าต่างสวนกลับเอง ให้ผู้เล่นเริ่มใหม่ในการโจมตีรอบถัดไป
+     ส่วนคำจองที่ค้างอยู่ในห้องของตัวเองต้องคืน ไม่งั้นเพื่อนค้างอยู่หน้าจอรอ */
+  showCounter.value = false
+  _counterAfterReveal = false
+  myCounterReady.value = false
+  counterAnim.value = null
+  // ประกาศที่ค้างอยู่ในห้องเป็นของก่อนหลุด — ไม่ต้องเล่นย้อนหลัง
+  effectQueue.value = []
+  for (const e of room.effectSignals ?? []) _seenEffectIds.add(e.id)
+  _releaseMyCounterClaim()
   // Allow reactive watchers to restore Host state from Firebase during reconnect window
   _isReconnecting = true
   clearTimeout(_reconnectTimer)
@@ -2699,7 +2712,7 @@ const rollNitrotoad = () => {
 const confirmNitrotoad = () => {
   nitrotoadStep.value = nitrotoadRoll.value <= 3 ? 'part-select' : 'blastblight'
   // ปุ่มนี้มีแต่ในเครื่องคนจั่ว — คนจั่วคือคนโดน
-  if (nitrotoadStep.value === 'blastblight') inflictMyStatus(STATUS_BLAST)
+  if (nitrotoadStep.value === 'blastblight') inflictMyStatus(STATUS_BLAST, { source: 'Nitrotoad' })
   _pushTimeCardState()
 }
 
@@ -2871,7 +2884,7 @@ const confirmPoisoncup = () => {
     }
   } else {
     poisoncupStep.value = 'poison'
-    inflictMyStatus(STATUS_POISON)
+    inflictMyStatus(STATUS_POISON, { source: 'Poisoncup' })
   }
   _pushTimeCardState()
 }
@@ -2936,7 +2949,7 @@ const confirmSleeptoad = () => {
     }
   } else {
     sleeptoadStep.value = 'sleep'
-    inflictMyStatus(STATUS_SLEEP)
+    inflictMyStatus(STATUS_SLEEP, { source: 'Sleeptoad' })
   }
   _pushTimeCardState()
 }
@@ -3472,11 +3485,65 @@ const _processTcRevealQueue = () => {
 // Poisoncup / Sleeptoad / Nitrotoad ให้สถานะอยู่แล้วในขั้นตอนทอยเต๋าของแต่ละใบ
 const TC_ICE = 4
 const _hasIceResist = () => (myArmor.value.elements?.[TC_ICE] ?? 0) > 0 || Number(myChefElement.value) === TC_ICE
+/* ── ประกาศผลที่ "ระบบของแอป" ทำกับ Hunter ─────────────
+   เสีย HP จาก Time Card / กับดัก / พิษตอนจบเทิร์น และการติดสถานะผิดปกติ
+   เดิมรู้แค่คนที่โดน (ข้อความเล็ก ๆ มุมจอ) เพื่อนไม่รู้ว่าเกิดอะไรขึ้นบนโต๊ะ
+   ตอนนี้ยิงขึ้นห้องให้ทุกเครื่องเล่นแอนิเมชันเดียวกัน — โดนพร้อมกันหลายคนก็ต่อคิวทีละรายการ
+   ดาเมจจากการ์ดโจมตีมอนไม่ยิงซ้ำ เพราะหน้าเฉลยผลบอกของทุกคนอยู่แล้ว */
+const effectQueue = ref([])
+const currentEffect = computed(() => effectQueue.value[0] ?? null)
+let _effectTimer = null
+const EFFECT_ANIM_MS = 2100
+const _seenEffectIds = new Set()
+
+const _playNextEffect = () => {
+  clearTimeout(_effectTimer)
+  if (!effectQueue.value.length) return
+  _effectTimer = setTimeout(() => {
+    effectQueue.value = effectQueue.value.slice(1)
+    _playNextEffect()
+  }, EFFECT_ANIM_MS)
+}
+const _enqueueEffect = (e) => {
+  effectQueue.value = [...effectQueue.value, e]
+  if (effectQueue.value.length === 1) _playNextEffect()
+}
+const skipEffect = () => {
+  effectQueue.value = effectQueue.value.slice(1)
+  _playNextEffect()
+}
+const effectClassThumb = computed(() =>
+  currentEffect.value ? (getHunterClass(currentEffect.value.classId)?.thumbnail ?? null) : null,
+)
+
+const _announceMyEffect = (payload) => {
+  const me = room.inRoom ? room.myHunter : hunter.value
+  const full = {
+    hunterName: me?.hunter_name ?? 'Hunter',
+    classId: me?.hunter_class_id ?? null,
+    ...payload,
+  }
+  if (room.inRoom) room.triggerEffectSignal?.(full)
+  else _enqueueEffect(full)
+}
+
+// รายการใหม่จากห้อง — ของเก่าตอน reconnect ไม่เล่นย้อนหลัง
+watch(() => (room.inRoom ? room.effectSignals : []), (list) => {
+  if (!room.inRoom || !list?.length) return
+  for (const e of list) {
+    if (_seenEffectIds.has(e.id)) continue
+    _seenEffectIds.add(e.id)
+    if (_suppressAnimations || Date.now() - (e.at ?? 0) > 20000) continue
+    _enqueueEffect(e)
+  }
+}, { deep: true })
+
 const _hurtMeByTimeCard = (amount, cardName) => {
   if (amount <= 0 || !myDefender.value) return
   const before = myHp.value
   setMyHp(before - amount)
   addNotif(`💥 ${cardName}: HP ${before} → ${myHp.value}`, 'error')
+  _announceMyEffect({ kind: 'damage', amount, source: cardName, hpBefore: before, hpAfter: myHp.value })
   if (before > 0 && myHp.value === 0) _askFaint()
 }
 const _applyTimeCardToMe = (card, drawerId) => {
@@ -3492,7 +3559,7 @@ const _applyTimeCardToMe = (card, drawerId) => {
       else _hurtMeByTimeCard(3, card.card_name)
       break
     case 'Fumbled Carving':
-      if (myDefender.value) inflictMyStatus(STATUS_POISON)
+      if (myDefender.value) inflictMyStatus(STATUS_POISON, { source: card.card_name })
       break
     case 'Vespoid Attack':
       if (mine) statusNotice.value = [{ id: STATUS_PARALYSIS, resisted: resistAbilityOf(myDefenderId.value, STATUS_PARALYSIS)?.ability_name ?? null }]
@@ -3960,13 +4027,16 @@ const _setMyStatuses = (ids) => {
   if (!hasMyStatus(STATUS_POISON)) myPoisonFromMonster.value = false
   _pushMyLoadout()
 }
-const inflictMyStatus = (id, { fromMonster = false } = {}) => {
+const inflictMyStatus = (id, { fromMonster = false, source = null } = {}) => {
   if (!LASTING_STATUSES.includes(id)) return
   // เกราะกันสถานะนี้ได้ — ไม่ติด (ปุ่มในแถวสถานะยังกดติดเองได้ เผื่อกรณีพิเศษบนโต๊ะ)
   if (resistAbilityOf(myDefenderId.value, id)) return
+  // ติดซ้ำสถานะเดิม — ไม่ต้องประกาศอีกรอบ
+  const already = hasMyStatus(id)
   // ติด Poison ซ้ำจากมอน ตอนติดจาก Time Card อยู่แล้ว — ใช้กฎของมอน (หนักกว่าหรือเท่ากัน)
   if (id === STATUS_POISON && fromMonster) myPoisonFromMonster.value = true
   _setMyStatuses([...myStatuses.value, id])
+  if (!already) _announceMyEffect({ kind: 'status', statusId: id, source: source ?? (fromMonster ? 'การโจมตีของมอนสเตอร์' : null) })
 }
 // กดเองได้ เผื่อติดจากทางอื่นที่แอปไม่รู้ หรือมีของแก้สถานะบนโต๊ะ
 const toggleMyStatus = (id) => {
@@ -3977,7 +4047,11 @@ const _resolveMyStatusesAtTurnEnd = () => {
   if (!myStatuses.value.length) return
   const loss = hasMyStatus(STATUS_POISON) ? myPoisonLoss.value : 0
   _setMyStatuses([])
-  if (loss) stepMyHp(-loss)
+  if (loss) {
+    const before = myHp.value
+    stepMyHp(-loss)
+    _announceMyEffect({ kind: 'damage', amount: loss, source: 'พิษ', hpBefore: before, hpAfter: myHp.value })
+  }
 }
 const statusesOf = (h) => {
   if (String(h.hunter_id) === String(myDefenderId.value)) return myStatuses.value
@@ -4038,13 +4112,140 @@ const _flushAfterReveal = () => {
     _noticeAfterReveal = null
     return
   }
-  if (!_faintAfterReveal) return
-  _faintAfterReveal = false
-  if (myHp.value === 0) _askFaint()
+  if (_faintAfterReveal) {
+    _faintAfterReveal = false
+    // ล้มแล้วไม่ต้องถามเรื่องสวนกลับ — ฟื้นก่อนค่อยว่ากัน
+    if (myHp.value === 0) { _counterAfterReveal = false; _askFaint(); return }
+  }
+  if (_counterAfterReveal) {
+    _counterAfterReveal = false
+    _openCounter()
+  }
 }
 const dismissStatusNotice = () => {
   statusNotice.value = null
   _flushAfterReveal()
+}
+
+/* ── สวนกลับหลังโดนโจมตี ────────────────────────────────
+   Attack Card บางใบสวนกลับมอนได้เมื่อโดนโจมตี ตอนนี้มีแค่ของ Lance
+   ขั้นตอน: เลือกส่วนที่ตีได้จากที่ยืนอยู่ → ใส่ดาเมจรวมจาก Damage Card → แอปหักเกราะของส่วนนั้นให้
+   ดาเมจเข้าอย่างน้อย 1 หน่วยเสมอ และใส่ Break Token เพิ่มได้ในจังหวะเดียวกัน
+   ขึ้นเฉพาะคนที่เลือก "รับความเสียหาย" เพราะกติกาคือโดนก่อนแล้วค่อยสวน */
+const LANCE_CLASS_ID = 8
+const showCounter = ref(false)
+let _counterAfterReveal = false
+// ติ๊กเองในหน้าคิดดาเมจว่า "การ์ดที่เล่นรอบนี้สวนกลับได้" — ไม่ติ๊กก็ไม่มีหน้าต่างมาขึ้น
+const myCounterReady = ref(false)
+// คำประกาศผลสวนกลับที่เล่นแอนิเมชันอยู่ { hunterName, classId, partName, dmg, breakAdd }
+const counterAnim = ref(null)
+let _counterAnimTimer = null
+const COUNTER_ANIM_MS = 2600
+// คำจองที่ค้างเกินนี้ถือว่าเจ้าตัวหลุดไปแล้ว — คนอื่นไม่ต้องรอค้าง
+const COUNTER_CLAIM_TTL = 90000
+const myClassId = computed(() =>
+  (room.inRoom ? room.myHunter?.hunter_class_id : hunter.value?.hunter_class_id) ?? null,
+)
+const canCounterAttack = computed(() => myClassId.value === LANCE_CLASS_ID)
+
+// คนที่กำลังเปิดหน้าต่างสวนกลับอยู่ (ของห้อง) — ทิ้งคำจองที่ค้างหรือของคนที่ออกจากห้องไปแล้ว
+const counterClaim = computed(() => {
+  const c = room.inRoom ? room.counterClaim : null
+  if (!c?.hunterId) return null
+  if (Date.now() - (c.at ?? 0) > COUNTER_CLAIM_TTL) return null
+  if (!room.hunters.some((h) => String(h.hunter_id) === String(c.hunterId))) return null
+  return c
+})
+// คนอื่นกำลังสวนอยู่ = หน้าจอรอ (ของตัวเองไม่ต้องรอ เพราะเห็นหน้าต่างจริงอยู่แล้ว)
+const counterWaiting = computed(() =>
+  counterClaim.value && String(counterClaim.value.hunterId) !== String(myDefenderId.value)
+    ? counterClaim.value
+    : null,
+)
+// ส่วนที่เลือกตีได้ พร้อมค่าเกราะที่หัก Blastblight แล้ว (ตัวเลขเดียวกับการ์ด Part ในหน้าล่า)
+const counterParts = computed(() =>
+  Object.entries(activeParts.value).map(([position, data]) => ({
+    position,
+    name: getPartMeta(data.part_id)?.part ?? position,
+    thumbnail: getPartMeta(data.part_id)?.thumbnail ?? null,
+    armor: blastblightActive.value ? Math.max(0, data.armor - 1) : data.armor,
+    current: partDamage.value[position] ?? 0,
+    max: data.part_break_threshold ?? 0,
+    broken: !!brokenParts.value[position],
+    // ส่วนโค้งที่ตีชิ้นนี้ได้ — ชิ้นเดียวอาจกินหลายด้าน (connect_part_position) เหมือนการ์ด Part ในหน้าล่า
+    positions: [position, ...(data.connect_part_position ?? [])],
+  })),
+)
+
+// ระหว่างเทิร์นมอน guest แก้เลขมอนตรง ๆ ไม่ได้ (monsterEditLocked) แต่การสวนกลับเป็นท่าที่กติกาให้ทำ
+// จึงเขียนผ่าน adjustHp / adjustPartDamage ตรง ๆ ไม่ผ่าน logHp ที่ติดล็อกนั้น
+// จองสิทธิ์ก่อนเปิด — คนอื่นเห็นหน้าจอรอ จะได้ไม่มีใครกดทับกันหรือเข้าใจผิดว่าค้าง
+const _openCounter = () => {
+  showCounter.value = true
+  myCounterReady.value = false
+  if (room.inRoom) {
+    room.claimCounter?.({
+      hunterId: myDefenderId.value,
+      hunterName: room.myHunter?.hunter_name ?? 'Hunter',
+      classId: myClassId.value,
+    })
+  }
+}
+
+// ปล่อยคำจองของตัวเอง (ปิดหน้าต่าง / ยกเลิก / หลุดแล้วกลับเข้ามา)
+const _releaseMyCounterClaim = () => {
+  if (!room.inRoom) return
+  const c = room.counterClaim
+  if (c && String(c.hunterId) !== String(myDefenderId.value)) return
+  room.releaseCounter?.()
+}
+
+const _showCounterAnim = (sig) => {
+  clearTimeout(_counterAnimTimer)
+  counterAnim.value = sig
+  _counterAnimTimer = setTimeout(() => { counterAnim.value = null }, COUNTER_ANIM_MS)
+  if (!_suppressAnimations) sfx.playRandom(`${SFX_COMBAT}/monster_hit`, 3, { gain: 0.9, key: 'counter' })
+}
+
+// เล่นแอนิเมชันพร้อมกันทุกเครื่องจากสัญญาณของห้อง — ของเก่าตอน reconnect ไม่ต้องเล่นซ้ำ
+const _counterSignalAt = computed(() => (room.inRoom ? (room.counterSignal?.at ?? null) : null))
+watch(_counterSignalAt, (at, prev) => {
+  if (!at || !room.inRoom || at === prev) return
+  if (_suppressAnimations || Date.now() - at > 20000) return
+  _showCounterAnim(room.counterSignal)
+})
+
+const applyCounterAttack = ({ position, raw, dealt, breakAdd }) => {
+  showCounter.value = false
+  if (dealt > 0) {
+    const prev = huntingHp.value
+    adjustHp(-dealt)
+    const diff = huntingHp.value - prev
+    if (diff) _addHuntLog({ kind: 'counter', pos: position, delta: diff, raw })
+  }
+  if (breakAdd > 0) {
+    const prev = partDamage.value[position] ?? 0
+    adjustPartDamage(position, breakAdd)
+    const diff = (partDamage.value[position] ?? 0) - prev
+    if (diff) _addHuntLog({ kind: 'part', pos: position, delta: diff })
+  }
+  const sig = {
+    hunterName: (room.inRoom ? room.myHunter?.hunter_name : hunter.value?.hunter_name) ?? 'Hunter',
+    classId: myClassId.value,
+    partName: _partName(position),
+    dmg: dealt,
+    breakAdd,
+  }
+  if (room.inRoom) {
+    _releaseMyCounterClaim()
+    room.triggerCounterSignal?.(sig)   // เครื่องตัวเองเล่นจาก watcher เหมือนคนอื่น จะได้ไม่เล่นซ้อนสองรอบ
+  } else {
+    _showCounterAnim(sig)
+  }
+}
+const skipCounterAttack = () => {
+  showCounter.value = false
+  _releaseMyCounterClaim()
 }
 
 const attackChoicesSolo = ref({})
@@ -4209,8 +4410,14 @@ const _resetAttackLocal = () => {
   _flushAfterReveal()
   attackReveal.value = null
   attackResolved.value = false
+  showCounter.value = false
+  _counterAfterReveal = false
+  myCounterReady.value = false
   _attackLogged.value = false
   myShieldDraft.value = 0
+  // คำจองของรอบก่อนต้องไม่ค้างข้ามการ์ด — Host ล้างของห้องให้ทุกคน
+  if (room.inRoom && room.isHost) room.clearCounterAll?.()
+  else _releaseMyCounterClaim()
 }
 
 const _resetAttackChoices = ({ log = false } = {}) => {
@@ -4309,6 +4516,7 @@ const closeMonsterAttack = () => {
 
 // แอนิเมชันจบ → ปิดหน้าเฉลยและ Modal การ์ดโจมตีพร้อมกัน
 const finishAttackReveal = () => {
+  _counterAfterReveal = canCounterAttack.value && myCounterReady.value && myAttackChoice.value?.choice === 'hit'
   attackReveal.value = null
   showMonsterAttack.value = false
   _flushAfterReveal()
@@ -4539,6 +4747,8 @@ const initHuntingData = () => {
   palicoUsesSolo.value = 0
   // บันทึกการล่าเริ่มใหม่ทุกเควส (Co-op Host ล้างของห้อง) — เวลาเริ่ม sync ไปกับ huntState
   _clearHuntLog()
+  effectQueue.value = []
+  if (room.inRoom && room.isHost) room.clearEffectSignalsAll?.()
   huntStartedAt.value = Date.now()
   // potionCount ไม่ reset เพราะยาที่ได้จาก Dialog Phase ควรพกมาด้วย
   const parts = {}
@@ -4793,7 +5003,7 @@ const adjustPartDamage = (position, delta) => {
 const huntLogSolo = ref([])
 let _soloLogSeq = 0
 const huntLog = computed(() => (room.inRoom ? room.huntLog : huntLogSolo.value))
-const UNDOABLE_LOG = new Set(['hp', 'part', 'status', 'statusRemove', 'element', 'potion'])
+const UNDOABLE_LOG = new Set(['hp', 'counter', 'part', 'status', 'statusRemove', 'element', 'potion'])
 
 const _logWho = () => {
   const me = room.inRoom ? room.myHunter : hunter.value
@@ -4865,7 +5075,8 @@ const logMarkElement = (elementId) => {
 
 // ทำผลตรงข้ามของรายการนั้นกับ state ปัจจุบัน
 const _applyInverse = (e) => {
-  if (e.kind === 'hp') {
+  // สวนกลับเก็บค่าต่างของ HP เหมือนกัน ย้อนด้วยวิธีเดียวกันได้
+  if (e.kind === 'hp' || e.kind === 'counter') {
     const max = monsterHuntingData.value?.health ?? 999
     huntingHp.value = Math.max(0, Math.min(max, huntingHp.value - e.delta))
   } else if (e.kind === 'part') {
@@ -4919,6 +5130,7 @@ const logText = (e) => {
       if (e.choice === 'dodge') return 'หลบการโจมตีได้'
       if (e.choice === 'outrange') return 'อยู่นอกระยะโจมตี'
       return `รับความเสียหาย ${e.dmg}${e.guard ? ` (กัน ${e.guard})` : ''}`
+    case 'counter': return `สวนกลับ ${_partName(e.pos)} ${-e.delta} ดาเมจ`
     case 'palico': return 'ใช้ความสามารถ Palico'
     case 'turnEnd': return 'จบเทิร์น'
     default: return ''
@@ -5016,6 +5228,10 @@ const _buildHuntRecap = () => {
     if (e.kind === 'hp') {
       loggedNet += -e.delta
       pool.push(e)
+    } else if (e.kind === 'counter') {
+      // สวนกลับเกิดในเทิร์นมอน ไม่ใช่เทิร์นใคร — ยกให้คนที่สวนตรง ๆ
+      loggedNet += -e.delta
+      credit(e, -e.delta)
     } else if (e.kind === 'turnEnd') {
       credit(e, pool.reduce((n, x) => n - x.delta, 0))
       pool = []
@@ -10930,6 +11146,8 @@ onDeactivated(() => {
               :hp="myHp"
               :hp-max="HUNTER_HP_MAX"
               :asleep="hasMyStatus(STATUS_SLEEP)"
+              :can-counter="canCounterAttack"
+              v-model:counter="myCounterReady"
               v-model:shield="myShieldDraft"
               @choose="setMyAttackChoice"
               @reset="setMyAttackChoice(null)"
@@ -10981,6 +11199,80 @@ onDeactivated(() => {
           :card-name="attackReveal.cardName"
           :my-id="myDefenderId"
           @done="finishAttackReveal"
+        />
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ ผลที่ระบบทำกับ HUNTER ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <HunterEffectOverlay
+          :effect="currentEffect"
+          :class-thumb="effectClassThumb"
+          :queued="Math.max(0, effectQueue.length - 1)"
+          @skip="skipEffect"
+        />
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ COUNTER: คนอื่นกำลังสวนกลับ ═══════════ -->
+    <!-- กันกดทับกัน และบอกว่าไม่ได้ค้าง — ถ้าเจ้าตัวหลุด คำจองหมดอายุเองใน 90 วิ กดข้ามได้ด้วย -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="counterWaiting && !showCounter" class="cw-overlay">
+          <div class="cw-box">
+            <div class="cw-ring">
+              <img
+                v-if="getHunterClass(counterWaiting.classId)?.thumbnail"
+                :src="getImg(getHunterClass(counterWaiting.classId).thumbnail)"
+                class="cw-icon"
+                alt=""
+              />
+              <span class="cw-spark" v-for="n in 3" :key="n" :style="{ '--i': n }"></span>
+            </div>
+            <p class="cw-title">{{ counterWaiting.hunterName }} กำลังสวนกลับ</p>
+            <p class="cw-sub">รอสักครู่ เดี๋ยวได้เห็นว่าเข้ากี่ดาเมจ</p>
+            <button class="cw-skip" @click="room.releaseCounter?.()">ข้ามการรอ</button>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ COUNTER: ประกาศผล ═══════════ -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <div v-if="counterAnim" class="cf-overlay" @click="counterAnim = null">
+          <div class="cf-burst"></div>
+          <div class="cf-content">
+            <img
+              v-if="getHunterClass(counterAnim.classId)?.thumbnail"
+              :src="getImg(getHunterClass(counterAnim.classId).thumbnail)"
+              class="cf-icon"
+              alt=""
+            />
+            <p class="cf-label">⚔ สวนกลับ!</p>
+            <p class="cf-who">{{ counterAnim.hunterName }}</p>
+            <p class="cf-dmg">−{{ counterAnim.dmg }}</p>
+            <p class="cf-part">
+              เข้าที่ {{ counterAnim.partName }}
+              <span v-if="counterAnim.breakAdd"> · Break +{{ counterAnim.breakAdd }}</span>
+            </p>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
+
+    <!-- ═══════════ COUNTER ATTACK ═══════════ -->
+    <!-- โดนโจมตีแล้วสวนกลับ (Attack Card ของ Lance) — ขึ้นหลังเฉลยผลของการโจมตีครั้งนั้น -->
+    <teleport to="body">
+      <Transition name="slain-fade">
+        <CounterAttackModal
+          v-if="showCounter"
+          :parts="counterParts"
+          :hunter-name="(room.inRoom ? room.myHunter?.hunter_name : hunter?.hunter_name) ?? ''"
+          :blast="blastblightActive"
+          @confirm="applyCounterAttack"
+          @cancel="skipCounterAttack"
         />
       </Transition>
     </teleport>
@@ -15891,6 +16183,29 @@ onDeactivated(() => {
 
 /* ── Hunt Recap ── */
 .hrc-overlay { position: fixed; inset: 0; z-index: 9000; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, 0.72); }
+/* ── สวนกลับ: หน้าจอรอ + ประกาศผล ── */
+.cw-overlay { position: fixed; inset: 0; z-index: 9960; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, 0.66); }
+.cw-box { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 22px 26px; border: 1.5px solid #c9a050; border-radius: 14px; background: linear-gradient(180deg, #2a1d0c 0%, #140e06 100%); color: #e8dcc0; text-align: center; }
+.cw-ring { position: relative; width: 68px; height: 68px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid rgba(201, 160, 80, 0.6); animation: cw-pulse 1.4s ease-in-out infinite; }
+.cw-icon { width: 40px; height: 40px; object-fit: contain; }
+.cw-spark { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: #ffd27a; opacity: 0.9; animation: cw-orbit 1.6s linear infinite; animation-delay: calc(var(--i) * -0.5s); }
+@keyframes cw-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(201, 160, 80, 0.4); } 50% { box-shadow: 0 0 0 10px rgba(201, 160, 80, 0); } }
+@keyframes cw-orbit { from { transform: rotate(0deg) translateX(34px); } to { transform: rotate(360deg) translateX(34px); } }
+.cw-title { margin: 6px 0 0; font-size: 1.05rem; font-weight: 800; color: #ffd27a; }
+.cw-sub { margin: 0; font-size: 0.8rem; color: #a8946c; }
+.cw-skip { margin-top: 6px; padding: 7px 14px; border: 1px solid #5a3d1f; border-radius: 8px; background: rgba(255, 255, 255, 0.04); color: #c9a86a; font-family: inherit; font-size: 0.8rem; cursor: pointer; }
+
+.cf-overlay { position: fixed; inset: 0; z-index: 9970; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.82); backdrop-filter: blur(3px); }
+.cf-burst { position: absolute; width: 260px; height: 260px; border-radius: 50%; background: radial-gradient(circle, rgba(255, 170, 60, 0.55) 0%, rgba(255, 90, 30, 0.25) 45%, transparent 70%); animation: cf-burst 0.6s ease-out both; }
+@keyframes cf-burst { from { transform: scale(0.2); opacity: 0; } 60% { opacity: 1; } to { transform: scale(1.15); opacity: 0.85; } }
+.cf-content { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 18px 28px; border-radius: 16px; background: rgba(20, 14, 6, 0.75); border: 1px solid rgba(201, 160, 80, 0.45); animation: cf-pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+@keyframes cf-pop { from { transform: scale(0.6) rotate(-6deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.cf-icon { width: 54px; height: 54px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(255, 180, 80, 0.8)); }
+.cf-label { margin: 4px 0 0; font-size: 1.1rem; font-weight: 800; letter-spacing: 2px; color: #ffd27a; text-shadow: 0 0 12px rgba(255, 160, 60, 0.8); }
+.cf-who { margin: 0; font-size: 0.9rem; color: #e8dcc0; }
+.cf-dmg { margin: 2px 0 0; font-size: 3rem; font-weight: 900; color: #ff8a3c; text-shadow: 0 2px 16px rgba(255, 90, 20, 0.7); }
+.cf-part { margin: 0; font-size: 0.85rem; color: #d8c090; }
+
 .hrc-card { width: 100%; max-width: 380px; max-height: 92vh; overflow-y: auto; padding: 18px 16px 14px; border-radius: 14px; border: 1.5px solid #c9a050; background: linear-gradient(180deg, #2a1d0c 0%, #140e06 100%); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6); color: #e8dcc0; }
 .hrc-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
 .hrc-monster { width: 64px; height: 64px; object-fit: contain; border-radius: 10px; background: rgba(0, 0, 0, 0.35); flex-shrink: 0; }

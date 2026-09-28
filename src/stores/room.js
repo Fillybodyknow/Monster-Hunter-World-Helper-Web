@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { isFirebaseConnected } from '@/services/firebase'
-import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, cancelDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushSlayerDie, clearSlayerDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, pushHunterToken, pushAllHunterTokens, clearHunterTokens, pushHunterTokenConfirm, clearHunterTokenConfirms, pushAbilityUsed, clearAbilityUsed, pushTokenSwapRequest, clearTokenSwapRequest, pushUseSignal, clearUseSignals, pushHuntLogEntry, claimHuntLogUndo, clearHuntLog, setRoomHost, pushDialogDice, clearDialogDice, pushDiceResult, clearDiceResults, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds, setHunterDown, clearHunterDowns, pushMonsterTarget, setHunterLoadout, setAttackChoice, clearAttackChoices, pushShuffleSignal, pushActivationCount, pushOutcomeSignal, pushManualOutcome, pushRewardDiceModifiers, pushHqVote, clearHqVotes, pushHqCurrent, pushHqDoneList, pushHqReady, clearHqState, pushHunterPalico, pushPalicoOffer, pushPalicoHire, clearPalicoOffer, claimPalicoSlot, releasePalicoSlot, clearPalicoClaims, pushPalicoDraft, pushPalicoDraftPick, clearPalicoDraft, updateHunterProfile, publishLobby, updateLobby, removeLobby, listenLobbies, setRoomPassword, getRoomPassword } from '@/services/roomService'
+import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, cancelDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushSlayerDie, clearSlayerDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, pushHunterToken, pushAllHunterTokens, clearHunterTokens, pushHunterTokenConfirm, clearHunterTokenConfirms, pushAbilityUsed, clearAbilityUsed, pushTokenSwapRequest, clearTokenSwapRequest, pushUseSignal, clearUseSignals, setCounterClaim, pushCounterSignal, clearCounterState, pushEffectSignal, clearEffectSignals, pushHuntLogEntry, claimHuntLogUndo, clearHuntLog, setRoomHost, pushDialogDice, clearDialogDice, pushDiceResult, clearDiceResults, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds, setHunterDown, clearHunterDowns, pushMonsterTarget, setHunterLoadout, setAttackChoice, clearAttackChoices, pushShuffleSignal, pushActivationCount, pushOutcomeSignal, pushManualOutcome, pushRewardDiceModifiers, pushHqVote, clearHqVotes, pushHqCurrent, pushHqDoneList, pushHqReady, clearHqState, pushHunterPalico, pushPalicoOffer, pushPalicoHire, clearPalicoOffer, claimPalicoSlot, releasePalicoSlot, clearPalicoClaims, pushPalicoDraft, pushPalicoDraftPick, clearPalicoDraft, updateHunterProfile, publishLobby, updateLobby, removeLobby, listenLobbies, setRoomPassword, getRoomPassword } from '@/services/roomService'
 
 export const useRoomStore = defineStore('room', () => {
   const roomCode = ref(null)
@@ -75,6 +75,15 @@ export const useRoomStore = defineStore('room', () => {
       .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
       .map(([id, v]) => ({ id, ...v })),
   )
+  // ผลที่ระบบทำให้ Hunter — เรียงตาม push id เหมือน useSignals ทุกเครื่องได้ลำดับเดียวกัน
+  const effectSignals = computed(() =>
+    Object.entries(roomData.value?.effectSignals ?? {})
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([id, v]) => ({ id, ...v })),
+  )
+  // ใครกำลังสวนกลับ + ผลที่ประกาศให้ทุกเครื่องเล่นแอนิเมชัน
+  const counterClaim = computed(() => roomData.value?.counterClaim ?? null)
+  const counterSignal = computed(() => roomData.value?.counterSignal ?? null)
   // บันทึกการล่า — Firebase เก็บเป็น object ตาม push id ซึ่งเรียงตามเวลาอยู่แล้ว (ปรับตามนาฬิกา server)
   // เรียงด้วย id ไม่ใช่ at เพราะ at มาจากนาฬิกาเครื่องแต่ละคนที่อาจเพี้ยนกัน
   const huntLog = computed(() =>
@@ -474,6 +483,31 @@ export const useRoomStore = defineStore('room', () => {
     return clearAttackChoices(roomCode.value)
   }
 
+  const claimCounter = (claim) => {
+    if (!roomCode.value) return
+    return setCounterClaim(roomCode.value, claim)
+  }
+  const releaseCounter = () => {
+    if (!roomCode.value) return
+    return setCounterClaim(roomCode.value, null)
+  }
+  const triggerCounterSignal = (payload) => {
+    if (!roomCode.value) return
+    return pushCounterSignal(roomCode.value, payload)
+  }
+  const clearCounterAll = () => {
+    if (!roomCode.value) return
+    return clearCounterState(roomCode.value)
+  }
+  const triggerEffectSignal = (payload) => {
+    if (!roomCode.value) return
+    return pushEffectSignal(roomCode.value, payload)
+  }
+  const clearEffectSignalsAll = () => {
+    if (!roomCode.value) return
+    return clearEffectSignals(roomCode.value)
+  }
+
   const syncTrackTokens = (pool, tokens) => {
     if (!roomCode.value) return
     return pushTrackTokens(roomCode.value, pool, tokens)
@@ -799,9 +833,9 @@ export const useRoomStore = defineStore('room', () => {
     proceedVotes, allProceeded, myProceedVoted,
     syncedPendingActionId,
     huntState, behaviorDeckState, hostConnected, partyDice, slayerDice, partyRewards, tradePool, myDialogCounts, dialogDice, hunterTokens, myHunterToken, hunterTokenConfirms, myHunterTokenConfirmed, allHunterTokensConfirmed, hunterTokensHaveDuplicate, abilityUsed, myAbilityUsed, tokenSwapRequest, useSignals, huntLog, lobbies, lobbyList, lobbyPosted,
-    trackTokenState, timeCardState, tcTurnEnds, downHunters, monsterTarget, attackChoices,
+    trackTokenState, timeCardState, tcTurnEnds, downHunters, monsterTarget, attackChoices, counterClaim, counterSignal, effectSignals,
     setHunterDownState, clearHunterDownsAll, setMonsterTarget,
-    setMyLoadout, setAttackChoiceFor, clearAttackChoicesAll,
+    setMyLoadout, setAttackChoiceFor, clearAttackChoicesAll, claimCounter, releaseCounter, triggerCounterSignal, clearCounterAll, triggerEffectSignal, clearEffectSignalsAll,
     rerollRequest, myRerollApproval, rerollAllApproved,
     syncedPhase,
     actionVotes, myActionVote, actionVoteCount, isActionComplete,
