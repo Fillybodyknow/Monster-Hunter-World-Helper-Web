@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { isFirebaseConnected } from '@/services/firebase'
-import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, cancelDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushSlayerDie, clearSlayerDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, pushHunterToken, pushAllHunterTokens, clearHunterTokens, pushHunterTokenConfirm, clearHunterTokenConfirms, pushAbilityUsed, clearAbilityUsed, pushTokenSwapRequest, clearTokenSwapRequest, pushUseSignal, clearUseSignals, setCounterClaim, pushCounterSignal, clearCounterState, pushEffectSignal, clearEffectSignals, pushHuntLogEntry, claimHuntLogUndo, clearHuntLog, setRoomHost, pushDialogDice, clearDialogDice, pushDiceResult, clearDiceResults, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds, setHunterDown, clearHunterDowns, pushMonsterTarget, setHunterLoadout, setAttackChoice, clearAttackChoices, pushShuffleSignal, pushActivationCount, pushOutcomeSignal, pushManualOutcome, pushRewardDiceModifiers, pushHqVote, clearHqVotes, pushHqCurrent, pushHqDoneList, pushHqReady, clearHqState, pushHunterPalico, pushPalicoOffer, pushPalicoHire, clearPalicoOffer, claimPalicoSlot, releasePalicoSlot, clearPalicoClaims, pushPalicoDraft, pushPalicoDraftPick, clearPalicoDraft, updateHunterProfile, publishLobby, updateLobby, removeLobby, listenLobbies, setRoomPassword, getRoomPassword } from '@/services/roomService'
+import { createRoom, joinRoom, leaveRoom, listenRoom, registerDisconnect, cancelDisconnect, setHunterReady, pushQuestStart, pushQuestInfo, pushDialogVote, clearDialogVotes, pushCurrentDialog, pushProceedVote, clearProceedVotes, pushPendingAction, clearPendingAction, pushHuntState, pushOutcomeVote, clearOutcomeVotes, removeOutcomeVote, setConnected, kickHunter, pushPartyDice, clearPartyDice, pushSlayerDie, clearSlayerDice, pushActionVote, clearActionVotes, pushPartyRewards, clearPartyRewards, addTradeItem, removeTradeItem, clearTradePool, pushDialogCounts, clearAllDialogCounts, pushHunterToken, pushAllHunterTokens, clearHunterTokens, pushHunterTokenConfirm, clearHunterTokenConfirms, pushAbilityUsed, clearAbilityUsed, pushUseSignal, clearUseSignals, setCounterClaim, pushCounterSignal, clearCounterState, pushEffectSignal, clearEffectSignals, pushHuntLogEntry, claimHuntLogUndo, clearHuntLog, setRoomHost, pushDialogDice, clearDialogDice, pushDiceResult, clearDiceResults, setHostConnected, pushRerollRequest, setRerollApproval, clearRerollRequest, pushGamePhase, pushTrackTokens, pushBehaviorDeck, pushTimeCards, pushTcPending, pushTcDrawn, clearTcTurnEnds, setHunterDown, clearHunterDowns, pushMonsterTarget, setHunterLoadout, setAttackChoice, clearAttackChoices, pushShuffleSignal, pushActivationCount, pushOutcomeSignal, pushManualOutcome, pushRewardDiceModifiers, pushHqVote, clearHqVotes, pushHqCurrent, pushHqDoneList, pushHqReady, clearHqState, pushHunterPalico, pushPalicoOffer, pushPalicoHire, clearPalicoOffer, claimPalicoSlot, releasePalicoSlot, clearPalicoClaims, pushPalicoDraft, pushPalicoDraftPick, clearPalicoDraft, updateHunterProfile, publishLobby, updateLobby, removeLobby, listenLobbies, setRoomPassword, getRoomPassword } from '@/services/roomService'
 
 export const useRoomStore = defineStore('room', () => {
   const roomCode = ref(null)
@@ -68,7 +68,6 @@ export const useRoomStore = defineStore('room', () => {
   const hunterTokenConfirms = computed(() => roomData.value?.hunterTokenConfirms ?? {})
   const abilityUsed = computed(() => roomData.value?.abilityUsed ?? {})
   const myAbilityUsed = computed(() => abilityUsed.value[myHunterId.value] ?? {})
-  const tokenSwapRequest = computed(() => roomData.value?.tokenSwapRequest ?? null)
   // เรียงตาม push id (เรียงตามเวลาอยู่แล้ว) — ทุกเครื่องได้ลำดับเดียวกัน
   const useSignals = computed(() =>
     Object.entries(roomData.value?.useSignals ?? {})
@@ -689,16 +688,6 @@ export const useRoomStore = defineStore('room', () => {
     return clearHuntLog(roomCode.value)
   }
 
-  const requestTokenSwap = (req) => {
-    if (!roomCode.value) return
-    return pushTokenSwapRequest(roomCode.value, req)
-  }
-
-  const clearTokenSwapRequestAll = () => {
-    if (!roomCode.value) return
-    return clearTokenSwapRequest(roomCode.value)
-  }
-
   const clearDialogCounts = () => {
     if (!roomCode.value) return
     return clearAllDialogCounts(roomCode.value)
@@ -832,7 +821,7 @@ export const useRoomStore = defineStore('room', () => {
     dialogVotes, votesByAction, myVote, syncedDialogId,
     proceedVotes, allProceeded, myProceedVoted,
     syncedPendingActionId,
-    huntState, behaviorDeckState, hostConnected, partyDice, slayerDice, partyRewards, tradePool, myDialogCounts, dialogDice, hunterTokens, myHunterToken, hunterTokenConfirms, myHunterTokenConfirmed, allHunterTokensConfirmed, hunterTokensHaveDuplicate, abilityUsed, myAbilityUsed, tokenSwapRequest, useSignals, huntLog, lobbies, lobbyList, lobbyPosted,
+    huntState, behaviorDeckState, hostConnected, partyDice, slayerDice, partyRewards, tradePool, myDialogCounts, dialogDice, hunterTokens, myHunterToken, hunterTokenConfirms, myHunterTokenConfirmed, allHunterTokensConfirmed, hunterTokensHaveDuplicate, abilityUsed, myAbilityUsed, useSignals, huntLog, lobbies, lobbyList, lobbyPosted,
     trackTokenState, timeCardState, tcTurnEnds, downHunters, monsterTarget, attackChoices, counterClaim, counterSignal, effectSignals,
     setHunterDownState, clearHunterDownsAll, setMonsterTarget,
     setMyLoadout, setAttackChoiceFor, clearAttackChoicesAll, claimCounter, releaseCounter, triggerCounterSignal, clearCounterAll, triggerEffectSignal, clearEffectSignalsAll,
@@ -866,7 +855,7 @@ export const useRoomStore = defineStore('room', () => {
     clearSlayerDiceAll: () => (roomCode.value ? clearSlayerDice(roomCode.value) : undefined),
     pushMyRewards, clearAllPartyRewards,
     addToTradePool, removeFromTradePool, clearTrade,
-    setMyDialogCounts, clearDialogCounts, setMyHunterToken, setAllHunterTokens, clearHunterTokensAll, setMyHunterTokenConfirm, clearHunterTokenConfirmsAll, markAbilityUsed, clearAbilityUsedAll, addHuntLog, claimUndo, clearHuntLogAll, requestTokenSwap, clearTokenSwapRequestAll,
+    setMyDialogCounts, clearDialogCounts, setMyHunterToken, setAllHunterTokens, clearHunterTokensAll, setMyHunterTokenConfirm, clearHunterTokenConfirmsAll, markAbilityUsed, clearAbilityUsedAll, addHuntLog, claimUndo, clearHuntLogAll,
     triggerUseSignal: (payload) => (roomCode.value ? pushUseSignal(roomCode.value, payload) : undefined),
     clearUseSignalsAll: () => (roomCode.value ? clearUseSignals(roomCode.value) : undefined), setDialogDice, clearDialogDiceAll,
     diceResults, setMyDiceResult, clearDiceResultsAll,

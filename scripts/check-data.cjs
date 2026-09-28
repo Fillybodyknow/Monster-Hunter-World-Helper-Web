@@ -232,7 +232,28 @@ for (const book of books) {
     }
   }
 
-  const checkRule = (who, text, mods) => {
+  /* กฎบางข้อพูดถึงค่าบนการ์ดของ "Hunter" ไม่ใช่การ์ดของมอน (เช่น Kushala ลดระยะการ์ดในมือผู้เล่น)
+     ถ้ากฎข้อนั้นไม่มี modifier อื่นเลยก็ยกเว้นทั้งข้อด้วย modifiers: [] ได้อยู่แล้ว
+     แต่ข้อที่แก้ค่าการ์ดมอนด้วย (เช่น +1{atk}) ต้องบอกเป็นรายค่าแทน ผ่าน hunter_stats
+     จะได้ไม่ต้องปิดการตรวจทั้งข้อ แล้วเผลอลืม modifier ที่ควรมีจริง ๆ */
+  const checkHunterStats = (who, text, hunterStats, covered) => {
+    if (hunterStats === undefined) return new Set()
+    if (!Array.isArray(hunterStats) || !hunterStats.length) {
+      fail('monster_info', `${who} hunter_stats ต้องเป็น array ที่มีชื่อค่าอย่างน้อยหนึ่งตัว`)
+      return new Set()
+    }
+    const out = new Set()
+    for (const stat of hunterStats) {
+      const token = TOKEN_OF[stat]
+      if (!token) { fail('monster_info', `${who} hunter_stats มี "${stat}" ที่ไม่ใช่ค่าที่รองรับ`); continue }
+      if (!text.includes(`{${token}}`)) fail('monster_info', `${who} hunter_stats บอก ${stat} แต่ข้อความไม่มี {${token}}`)
+      if (covered.has(token)) fail('monster_info', `${who} ${stat} เป็นทั้ง hunter_stats และมี modifier แก้ค่า เลือกอย่างใดอย่างหนึ่ง`)
+      out.add(token)
+    }
+    return out
+  }
+
+  const checkRule = (who, text, mods, hunterStats) => {
     if (!hasStatToken(text)) {
       if (mods !== undefined) fail('monster_info', `${who} มี modifiers ทั้งที่ข้อความไม่ได้พูดถึงค่าไหนเลย`)
       return
@@ -256,8 +277,11 @@ for (const book of books) {
         covered.add(TOKEN_OF[key])
       }
     })
+    const onHunterCards = checkHunterStats(who, text, hunterStats, covered)
     for (const t of STAT_TOKENS) {
-      if (text.includes(`{${t}}`) && !covered.has(t)) fail('monster_info', `${who} ข้อความมี {${t}} แต่ไม่มี modifier ไหนแก้ค่านั้น`)
+      if (text.includes(`{${t}}`) && !covered.has(t) && !onHunterCards.has(t)) {
+        fail('monster_info', `${who} ข้อความมี {${t}} แต่ไม่มี modifier ไหนแก้ค่านั้น (ถ้าเป็นค่าบนการ์ดของ Hunter ให้ใส่ใน hunter_stats)`)
+      }
     }
   }
 
@@ -265,11 +289,16 @@ for (const book of books) {
     for (const diff of info.difficulty ?? []) {
       const who = `${info.monster_name} ความยาก ${diff.difficulty_id}`
       if (diff.special_rule?.description) {
-        checkRule(`${who} special_rule`, diff.special_rule.description, diff.special_rule.modifiers)
+        checkRule(
+          `${who} special_rule`,
+          diff.special_rule.description,
+          diff.special_rule.modifiers,
+          diff.special_rule.hunter_stats,
+        )
       }
       for (const [pos, part] of Object.entries(diff.monster_parts ?? {})) {
         if (!part?.part_break_rule) continue
-        checkRule(`${who} ชิ้นส่วน ${pos}`, part.part_break_rule, part.part_break_modifiers)
+        checkRule(`${who} ชิ้นส่วน ${pos}`, part.part_break_rule, part.part_break_modifiers, part.part_break_hunter_stats)
       }
     }
   }

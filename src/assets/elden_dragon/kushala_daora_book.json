@@ -97,6 +97,178 @@
           "item_id": 16
         }
       ]
+    },
+    {
+      "quest_id": 2,
+      "quest_type": "Investigation Quest",
+      "difficulty_level": 2,
+      "time_limit": 40,
+      "scoutfly_level": [
+        3,
+        6
+      ],
+      "starting_point": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "dialog_resources": [
+        {
+          "resource_type_id": 3,
+          "item_id": 65
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 21
+        },
+        {
+          "resource_type_id": 2,
+          "item_id": 18
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 22
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 16
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 61
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 66
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 52
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 58
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 64
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 67
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 60
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 62
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 53
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 50
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 59
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 63
+        }
+      ]
+    },
+    {
+      "quest_id": 3,
+      "quest_type": "Tempered Investigation Quest",
+      "difficulty_level": 5,
+      "time_limit": 45,
+      "scoutfly_level": [
+        4,
+        7
+      ],
+      "starting_point": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "dialog_resources": [
+        {
+          "resource_type_id": 3,
+          "item_id": 65
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 21
+        },
+        {
+          "resource_type_id": 2,
+          "item_id": 18
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 22
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 16
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 61
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 66
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 52
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 58
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 64
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 67
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 60
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 62
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 53
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 50
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 59
+        },
+        {
+          "resource_type_id": 3,
+          "item_id": 63
+        }
+      ]
     }
   ],
   "quest_dialogs": [
