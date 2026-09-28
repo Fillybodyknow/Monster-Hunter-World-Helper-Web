@@ -156,8 +156,10 @@ export const buildHuntHighlights = (log, members) => {
 
   for (const e of live) {
     if (TURN_KINDS.has(e.kind)) {
-      ensure(keyOf(e), e.whoName, e.whoClass)
-      pool.push(e)
+      const owner = ensure(keyOf(e), e.whoName, e.whoClass)
+      // สวนกลับเกิดในเทิร์นมอน ไม่ใช่เทิร์นใคร — Break ที่ใส่ตอนนั้นยกให้คนที่สวนทันที
+      if (e.via === 'counter') settle(owner, [e])
+      else pool.push(e)
       continue
     }
     const p = ensure(keyOf(e), e.whoName, e.whoClass)

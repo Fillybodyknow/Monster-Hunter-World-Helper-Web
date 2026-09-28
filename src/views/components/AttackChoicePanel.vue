@@ -245,9 +245,9 @@ watch(() => props.stage, () => { asking.value = null })
 .ac-counter {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   margin-bottom: 8px;
-  padding: 9px 11px;
+  padding: 7px 10px;
   border: 1px solid #5a3d1f;
   border-radius: 9px;
   background: rgba(255, 255, 255, 0.04);
@@ -256,7 +256,7 @@ watch(() => props.stage, () => { asking.value = null })
 .ac-counter-on { border-color: #c89b3c; background: rgba(200, 155, 60, 0.16); }
 .ac-counter-box { width: 22px; height: 22px; flex-shrink: 0; accent-color: #c89b3c; }
 .ac-counter-text { display: flex; flex-direction: column; font-size: 0.86rem; font-weight: 700; color: #f0d9a0; }
-.ac-counter-text small { font-weight: 400; font-size: 0.72rem; color: #a8946c; }
+.ac-counter-text small { font-weight: 400; font-size: 0.7rem; line-height: 1.25; color: #a8946c; }
 
 /* แอปไม่มี reset ทั้งแอป — ไม่ใส่แล้ว width 100% + padding ล้นกรอบ */
 .ac-panel, .ac-panel * { box-sizing: border-box; }

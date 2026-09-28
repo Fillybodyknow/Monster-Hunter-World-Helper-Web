@@ -27,6 +27,7 @@ import HQPhase from './HQPhase.vue'
 import { getPalico, drawPalicos } from '@/composables/usePalico'
 import { openCraftLookup } from '@/composables/useCraftLookup'
 import { useSfx, preloadSfx, preloadMedia, playMedia, cancelPendingMedia, onUserGesture } from '@/composables/useSfx'
+import { createAnnounceLane } from '@/composables/useAnnounceLane'
 import { preloadImages } from '@/services/assetPreload'
 import RuleText from './RuleText.vue'
 import CardStatStrip from './CardStatStrip.vue'
@@ -1595,9 +1596,8 @@ watch(() => room.joinSignal, () => {
   showCounter.value = false
   _counterAfterReveal = false
   myCounterReady.value = false
-  counterAnim.value = null
   // ประกาศที่ค้างอยู่ในห้องเป็นของก่อนหลุด — ไม่ต้องเล่นย้อนหลัง
-  effectQueue.value = []
+  lane.clear()
   for (const e of room.effectSignals ?? []) _seenEffectIds.add(e.id)
   _releaseMyCounterClaim()
   // Allow reactive watchers to restore Host state from Firebase during reconnect window
@@ -1893,6 +1893,13 @@ const behaviorDeck = ref([])       // cards in draw pile
 const behaviorDiscard = ref([])    // cards already used
 const behaviorBanished = ref([])   // cards removed from game
 const currentBehaviorCard = ref(null)  // card currently showing
+/* ประกาศที่เด้งเอง (ใช้ยา/ล้ม/Palico · สวนกลับ · ระบบหัก HP หรือใส่สถานะ) ใช้ช่องทางเดียวกัน
+   เล่นทีละใบ และหยุดรอเมื่อมีหน้าต่างที่ต้องกดค้างอยู่ — ดูกติกาใน useAnnounceLane.js */
+const lane = createAnnounceLane({ max: 6 })
+const laneOf = (kind) => (lane.current.value?.kind === kind ? lane.current.value.payload : null)
+const announceQueued = computed(() => lane.pending.value)
+const skipAnnounce = () => lane.skip()
+
 const showMonsterAttack = ref(false)   // animation overlay
 const monsterAttackCard = ref(null)    // card being drawn
 const monsterAttackStatuses = ref([])  // resolved status effects shown in Monster Attack overlay
@@ -2028,18 +2035,13 @@ const drawBehaviorCard = () => {
     if (behaviorDeck.value.length === 0) return
   }
 
-  // Snapshot statuses before clearing (for resolve overlay)
+  /* สถานะที่ติดบนมอนมีผล "ตลอดเทิร์นนี้" แล้วค่อยเคลียร์ตอนจบเทิร์น (ตามข้อความในคู่มือ)
+       Poison — มอนเสีย 2 HP เมื่อจบเทิร์นครั้งถัดไปของมอน
+       Blastblight — เกราะทุกส่วน −1 จนกว่าจบเทิร์นครั้งถัดไปของมอน
+       Stun / Sleep / Paralysis — มีผลกับการ์ดใบที่เพิ่งเปิดนี้
+     ตรงนี้จึงแค่จดไว้ว่าเทิร์นนี้มีอะไรค้าง ผลจริงไปทำใน _resolveMonsterStatusesAtTurnEnd()
+     (เดิมทำผลและล้างโทเคนตั้งแต่ตอนเปิดการ์ด — พิษเข้าเร็วไปหนึ่งเทิร์น และ Blastblight หลุดก่อนเวลา) */
   const resolvedStatuses = [...appliedStatuses.value]
-
-  // Apply and clear all status effects at start of new monster turn
-  if (appliedStatuses.value.length > 0) {
-    // Poison: -2 HP
-    if (appliedStatuses.value.includes(2)) {
-      adjustHpWithFlash(-2)
-    }
-    appliedStatuses.value = []
-    _pushHuntState()
-  }
 
   const card = behaviorDeck.value[0]
   behaviorDeck.value = behaviorDeck.value.slice(1)
@@ -3490,28 +3492,11 @@ const _hasIceResist = () => (myArmor.value.elements?.[TC_ICE] ?? 0) > 0 || Numbe
    เดิมรู้แค่คนที่โดน (ข้อความเล็ก ๆ มุมจอ) เพื่อนไม่รู้ว่าเกิดอะไรขึ้นบนโต๊ะ
    ตอนนี้ยิงขึ้นห้องให้ทุกเครื่องเล่นแอนิเมชันเดียวกัน — โดนพร้อมกันหลายคนก็ต่อคิวทีละรายการ
    ดาเมจจากการ์ดโจมตีมอนไม่ยิงซ้ำ เพราะหน้าเฉลยผลบอกของทุกคนอยู่แล้ว */
-const effectQueue = ref([])
-const currentEffect = computed(() => effectQueue.value[0] ?? null)
-let _effectTimer = null
 const EFFECT_ANIM_MS = 2100
+const currentEffect = computed(() => laneOf('effect'))
 const _seenEffectIds = new Set()
 
-const _playNextEffect = () => {
-  clearTimeout(_effectTimer)
-  if (!effectQueue.value.length) return
-  _effectTimer = setTimeout(() => {
-    effectQueue.value = effectQueue.value.slice(1)
-    _playNextEffect()
-  }, EFFECT_ANIM_MS)
-}
-const _enqueueEffect = (e) => {
-  effectQueue.value = [...effectQueue.value, e]
-  if (effectQueue.value.length === 1) _playNextEffect()
-}
-const skipEffect = () => {
-  effectQueue.value = effectQueue.value.slice(1)
-  _playNextEffect()
-}
+const _enqueueEffect = (e) => lane.push({ kind: 'effect', payload: e, ms: EFFECT_ANIM_MS })
 const effectClassThumb = computed(() =>
   currentEffect.value ? (getHunterClass(currentEffect.value.classId)?.thumbnail ?? null) : null,
 )
@@ -3649,6 +3634,8 @@ const _drawTcCard = (hunterName, hunterId = null) => {
 const endTurn = () => {
   if (myTurnEnded.value) return
   if (!currentBehaviorCard.value) return
+  // เทิร์นมอนยังไม่จบ (ยังมีคนต้องตอบสนอง/สวนกลับ) — กดจบเทิร์นไม่ได้
+  if (monsterTurnResolving.value) return
   if (activationLimit.value > 0 && monsterTurnReady.value) return
 
   // จุดแบ่งเทิร์นในบันทึก — สรุปการล่าใช้ยกดาเมจที่กดมาก่อนหน้านี้ให้เจ้าของเทิร์น
@@ -4115,7 +4102,7 @@ const _flushAfterReveal = () => {
   if (_faintAfterReveal) {
     _faintAfterReveal = false
     // ล้มแล้วไม่ต้องถามเรื่องสวนกลับ — ฟื้นก่อนค่อยว่ากัน
-    if (myHp.value === 0) { _counterAfterReveal = false; _askFaint(); return }
+    if (myHp.value === 0) { _counterAfterReveal = false; _markMyCounterDone(); _askFaint(); return }
   }
   if (_counterAfterReveal) {
     _counterAfterReveal = false
@@ -4138,8 +4125,7 @@ let _counterAfterReveal = false
 // ติ๊กเองในหน้าคิดดาเมจว่า "การ์ดที่เล่นรอบนี้สวนกลับได้" — ไม่ติ๊กก็ไม่มีหน้าต่างมาขึ้น
 const myCounterReady = ref(false)
 // คำประกาศผลสวนกลับที่เล่นแอนิเมชันอยู่ { hunterName, classId, partName, dmg, breakAdd }
-const counterAnim = ref(null)
-let _counterAnimTimer = null
+const counterAnim = computed(() => laneOf('counter'))
 const COUNTER_ANIM_MS = 2600
 // คำจองที่ค้างเกินนี้ถือว่าเจ้าตัวหลุดไปแล้ว — คนอื่นไม่ต้องรอค้าง
 const COUNTER_CLAIM_TTL = 90000
@@ -4201,10 +4187,15 @@ const _releaseMyCounterClaim = () => {
 }
 
 const _showCounterAnim = (sig) => {
-  clearTimeout(_counterAnimTimer)
-  counterAnim.value = sig
-  _counterAnimTimer = setTimeout(() => { counterAnim.value = null }, COUNTER_ANIM_MS)
-  if (!_suppressAnimations) sfx.playRandom(`${SFX_COMBAT}/monster_hit`, 3, { gain: 0.9, key: 'counter' })
+  lane.push({
+    kind: 'counter',
+    payload: sig,
+    ms: COUNTER_ANIM_MS,
+    onStart: () => {
+      // เสียงเล่นตอนการ์ดขึ้นจริง ไม่ใช่ตอนเข้าคิว
+      if (!_suppressAnimations) sfx.playRandom(`${SFX_COMBAT}/monster_hit`, 3, { gain: 0.9, key: 'counter' })
+    },
+  })
 }
 
 // เล่นแอนิเมชันพร้อมกันทุกเครื่องจากสัญญาณของห้อง — ของเก่าตอน reconnect ไม่ต้องเล่นซ้ำ
@@ -4217,6 +4208,7 @@ watch(_counterSignalAt, (at, prev) => {
 
 const applyCounterAttack = ({ position, raw, dealt, breakAdd }) => {
   showCounter.value = false
+  _markMyCounterDone()
   if (dealt > 0) {
     const prev = huntingHp.value
     adjustHp(-dealt)
@@ -4227,7 +4219,8 @@ const applyCounterAttack = ({ position, raw, dealt, breakAdd }) => {
     const prev = partDamage.value[position] ?? 0
     adjustPartDamage(position, breakAdd)
     const diff = (partDamage.value[position] ?? 0) - prev
-    if (diff) _addHuntLog({ kind: 'part', pos: position, delta: diff })
+    // via: 'counter' — Break ที่ใส่ตอนสวนกลับเป็นผลงานของคนที่สวน ไม่ใช่ของเจ้าของเทิร์นที่กดจบทีหลัง
+    if (diff) _addHuntLog({ kind: 'part', pos: position, delta: diff, via: 'counter' })
   }
   const sig = {
     hunterName: (room.inRoom ? room.myHunter?.hunter_name : hunter.value?.hunter_name) ?? 'Hunter',
@@ -4245,6 +4238,7 @@ const applyCounterAttack = ({ position, raw, dealt, breakAdd }) => {
 }
 const skipCounterAttack = () => {
   showCounter.value = false
+  _markMyCounterDone()
   _releaseMyCounterClaim()
 }
 
@@ -4289,10 +4283,13 @@ const _writeAttackChoice = (hunterId, entry) => {
   }
 }
 
-const _buildChoiceEntry = (h, choiceId, { shield = 0, confirmed = false } = {}) => ({
+const _buildChoiceEntry = (h, choiceId, { shield = 0, confirmed = false, counter = false, counterDone = false } = {}) => ({
   choice: choiceId,
   targeted: isTargeted(h),
   card: monsterAttackCard.value?.behavior_name ?? '',
+  // ติ๊ก "สวนกลับได้" ไว้ = ยังตอบสนองไม่จบ เทิร์นมอนจะยังไม่จบจนกว่าจะสวนหรือข้าม
+  counter: choiceId === 'hit' ? counter : false,
+  counterDone: choiceId === 'hit' ? counterDone : true,
   // หลบ/นอกระยะ ไม่ต้องคิดเลข จบขั้นตอนทันที · รับความเสียหายต้องไปหน้าคำนวณก่อน
   confirmed: choiceId === 'hit' ? confirmed : true,
   ...(choiceId === 'hit'
@@ -4314,7 +4311,25 @@ const confirmMyDamage = () => {
   const h = myDefender.value
   if (!h || myAttackChoice.value?.choice !== 'hit') return
   _sfxConfirm()
-  _writeAttackChoice(h.hunter_id, _buildChoiceEntry(h, 'hit', { shield: myShieldDraft.value, confirmed: true }))
+  _writeAttackChoice(h.hunter_id, _buildChoiceEntry(h, 'hit', {
+    shield: myShieldDraft.value,
+    confirmed: true,
+    counter: canCounterAttack.value && myCounterReady.value,
+  }))
+}
+
+// ตอบสนองของตัวเองครบแล้ว (สวนกลับเสร็จ / ข้าม / ล้มจนสวนไม่ได้)
+const _markMyCounterDone = () => {
+  const h = myDefender.value
+  const c = myAttackChoice.value
+  if (!h || !c || c.counterDone) return
+  _writeAttackChoice(h.hunter_id, { ...c, counterDone: true })
+}
+// ใครก็กดปลดให้คนที่ค้างได้ เผื่อเจ้าตัวหลุดไปกลางทาง
+const _forceCounterDone = (hunterId) => {
+  const c = attackChoicesAll.value?.[hunterId]
+  if (!c || c.counterDone) return
+  _writeAttackChoice(hunterId, { ...c, counterDone: true })
 }
 
 const myDefenderId = computed(() => (room.inRoom ? room.myHunterId : hunter.value?.hunter_id) ?? null)
@@ -4504,6 +4519,61 @@ const _restoreAttackFlow = () => {
   showMonsterAttack.value = true
 }
 
+/* เทิร์นมอนจบเมื่อ "ทุกคน" ตอบสนองครบ — เลือกรับ/หลบ/นอกระยะ เฉลยผล และใครที่จะสวนกลับต้องสวนเสร็จก่อน
+   ระหว่างนี้ Hunter ยังกดจบเทิร์นของตัวเองไม่ได้ ไม่งั้นเทิร์นจะคาบเกี่ยวกัน */
+/* อิงตัวเลือกที่ sync กันในห้อง ไม่ใช่สถานะในเครื่อง — คนที่หลุดแล้วกลับเข้ามาจะได้เห็นตรงกับเพื่อน
+   ว่ายังมีคนต้องตอบสนองอยู่ ไม่ใช่กดจบเทิร์นแซงไปคนเดียว */
+const pendingCounterHunters = computed(() =>
+  defenders.value.filter((h) => {
+    const c = choiceOf(h)
+    return c?.counter && !c?.counterDone
+  }),
+)
+const monsterTurnResolving = computed(() => {
+  if (!currentBehaviorCard.value) return false
+  // มีคนเล่นเทิร์นไปแล้ว = การโจมตีของการ์ดใบนี้จบไปแล้ว (ขั้นตอนโจมตีเกิดก่อนเทิร์นแรกเสมอ)
+  if (activationRoundsCompleted.value > 0) return false
+  if (pendingCounterHunters.value.length > 0) return true
+  // ยังเลือกรับ/หลบ/นอกระยะ หรือยังคิดดาเมจไม่ครบทุกคน
+  return defenders.value.length > 0 && !attackAllConfirmed.value
+})
+// คนอื่นที่ยังสวนกลับไม่เสร็จ — ของตัวเองไม่ต้องรอ เพราะมีหน้าต่างให้ทำอยู่แล้ว
+const waitingCounterOthers = computed(() =>
+  pendingCounterHunters.value.filter((h) => String(h.hunter_id) !== String(myDefenderId.value)),
+)
+/* หน้าจอรอ: ถ้าเจ้าตัวเปิดหน้าต่างสวนกลับแล้วใช้ข้อมูลจากคำจอง (รู้คลาส/ชื่อแน่นอน)
+   ถ้ายังไม่เปิด (เพิ่งเฉลยจบ) ก็บอกไว้ก่อนว่ารอใครอยู่ จะได้ไม่มีใครเผลอกดจบเทิร์น */
+const counterWaitView = computed(() => {
+  if (counterWaiting.value) return counterWaiting.value
+  const h = waitingCounterOthers.value[0]
+  return h ? { hunterId: h.hunter_id, hunterName: h.hunter_name, classId: h.hunter_class_id } : null
+})
+// เจ้าตัวหลุดหรือช้าเกินไป — ใครก็ปลดให้ได้ เทิร์นจะได้เดินต่อ
+const skipCounterWait = () => {
+  const target = counterWaitView.value
+  if (!target) return
+  room.releaseCounter?.()
+  _forceCounterDone(target.hunterId)
+}
+
+/* จบเทิร์นมอนจริง (ทุกคนตอบสนองครบ) = เวลาที่สถานะบนมอนแสดงผลแล้วหมดอายุ
+   ทำที่เครื่องเดียว (Host หรือตอนเล่นคนเดียว) แล้ว sync ให้ทุกคน ไม่งั้นพิษจะหักซ้ำเท่าจำนวนเครื่อง
+   สถานะที่เพิ่งลงระหว่างเทิร์น Hunter ไม่โดนล้างด้วย เพราะล้างเฉพาะชุดที่จดไว้ตอนเปิดการ์ด */
+const _resolveMonsterStatusesAtTurnEnd = () => {
+  if (room.inRoom && !room.isHost) return
+  const expiring = monsterAttackStatuses.value
+  if (!expiring.length) return
+  if (expiring.includes(STATUS_POISON)) adjustHpWithFlash(-2)
+  appliedStatuses.value = appliedStatuses.value.filter((id) => !expiring.includes(id))
+  monsterAttackStatuses.value = []
+  _pushHuntState({ force: true })
+  _pushDeckState()
+}
+// ขอบของเทิร์น: true → false คือเพิ่งตอบสนองครบ
+watch(monsterTurnResolving, (now, before) => {
+  if (before && !now) _resolveMonsterStatusesAtTurnEnd()
+})
+
 // ระหว่างขั้นตอนโจมตี ห้ามแตะปิด Modal — ต้องเดินให้ครบแล้วระบบปิดให้เอง
 const attackFlowLocked = computed(
   () => attackTargetStage.value || attackChoiceVisible.value || !!attackReveal.value,
@@ -4592,8 +4662,7 @@ watch(phase, () => { stripPage.value = 0 })
 const pendingUse = ref(null)      // null | 'potion' | 'faint'
 // แผง HP / สถานะของตัวเอง — เปิดจากปุ่มบนแถบลอยซ้าย (use-strip)
 const showHpStatusModal = ref(false)
-const useAnim = ref(null)         // { kind, classId, hunterName }
-let _useAnimTimer = null
+const useAnim = computed(() => laneOf('use'))   // { kind, classId, hunterName }
 
 const canUsePotion = computed(() => potionCount.value > 0)
 const canFaint = computed(() => faintCount.value < 3)
@@ -4636,13 +4705,17 @@ const _applyUse = (kind) => {
 }
 
 const _showUseAnim = (sig) => {
-  clearTimeout(_useAnimTimer)
-  useAnim.value = sig
-  _useAnimTimer = setTimeout(() => { useAnim.value = null }, USE_ANIM_MS)
-  // ยา/ล้มมีเสียงผูกกับตัวนับอยู่แล้ว (watch potionCount / faintCount) — Palico ไม่มีตัวนับกลาง เลยเล่นตรงนี้
-  if (sig.kind === 'palico' && !_suppressAnimations) {
-    sfx.playRandom(`${SFX_COMBAT}/palico_use`, PALICO_SFX_TAKES, { gain: 0.9, key: 'palico' })
-  }
+  lane.push({
+    kind: 'use',
+    payload: sig,
+    ms: USE_ANIM_MS,
+    onStart: () => {
+      // ยา/ล้มมีเสียงผูกกับตัวนับอยู่แล้ว (watch potionCount / faintCount) — Palico ไม่มีตัวนับกลาง เลยเล่นตรงนี้
+      if (sig.kind === 'palico' && !_suppressAnimations) {
+        sfx.playRandom(`${SFX_COMBAT}/palico_use`, PALICO_SFX_TAKES, { gain: 0.9, key: 'palico' })
+      }
+    },
+  })
 }
 
 const confirmUse = () => {
@@ -4747,7 +4820,7 @@ const initHuntingData = () => {
   palicoUsesSolo.value = 0
   // บันทึกการล่าเริ่มใหม่ทุกเควส (Co-op Host ล้างของห้อง) — เวลาเริ่ม sync ไปกับ huntState
   _clearHuntLog()
-  effectQueue.value = []
+  lane.clear()
   if (room.inRoom && room.isHost) room.clearEffectSignalsAll?.()
   huntStartedAt.value = Date.now()
   // potionCount ไม่ reset เพราะยาที่ได้จาก Dialog Phase ควรพกมาด้วย
@@ -5170,11 +5243,37 @@ watch(
 const huntRecap = ref(null)
 const showHuntRecap = ref(false)
 
+
+
 // ── ฉายาตอนสรุป (Hunter Highlights) ─────────────────────
 // คิดตอนเปิด ไม่ใช่ตอนประกาศผล — ผ่านแอนิเมชันผลเควสมาหลายวินาทีแล้ว บันทึกจากเครื่องอื่นเข้ามาครบ
 // ทุกเครื่องคิดเองจากบันทึกชุดเดียวกัน (huntTitles.js ตัดสินคะแนนเสมอด้วย id) จึงเห็นฉายาตรงกัน
 const huntHighlights = ref(null)
 const showHuntHighlights = ref(false)
+
+/* หน้าต่างที่ "ต้องกด" หรือแอนิเมชันที่ต้องดูให้จบ — ระหว่างนี้ประกาศต้องหยุดรอ
+   ไม่งั้นการ์ดจะเด้งทับปุ่มจนกดไม่ถูก หรือผู้เล่นดูไม่ทันว่าเกิดอะไรขึ้น */
+const announceBlocked = computed(() =>
+  showMonsterAttack.value ||
+  !!attackReveal.value ||
+  showTcReveal.value ||
+  !!statusNotice.value ||
+  !!pendingUse.value ||
+  showCounter.value ||
+  !!counterWaiting.value ||
+  needHunterTokenPick.value ||
+  showResultAnim.value ||
+  waitingCounterOthers.value.length > 0 ||
+  showHuntHighlights.value ||
+  showHuntRecap.value ||
+  !!nitrotoadStep.value ||
+  !!paratoadStep.value ||
+  !!poisoncupStep.value ||
+  !!sleeptoadStep.value ||
+  !!roarStep.value ||
+  !!boulderStep.value,
+)
+watch(announceBlocked, (v) => lane.setBlocked(v), { immediate: true })
 
 const _openHuntHighlights = () => {
   const recap = huntRecap.value
@@ -10408,10 +10507,23 @@ onDeactivated(() => {
           <button
             class="float-end-btn"
             :class="{ 'float-ended': myTurnEnded }"
-            :disabled="myTurnEnded || !currentBehaviorCard || monsterTurnReady"
+            :disabled="myTurnEnded || !currentBehaviorCard || monsterTurnReady || monsterTurnResolving"
             @click="showConfirmTurn = true"
           >
-            <span v-if="!currentBehaviorCard || monsterTurnReady">⚔️ รอ Monster Turn</span>
+            <span v-if="monsterTurnResolving" class="float-wait">
+              ⏳ รอตอบสนองการโจมตีให้ครบ
+              <span v-if="waitingCounterOthers.length" class="float-wait-who">
+                <img
+                  v-for="h in waitingCounterOthers"
+                  :key="h.hunter_id"
+                  :src="getImg(getHunterClass(h.hunter_class_id)?.thumbnail)"
+                  class="float-wait-icon"
+                  :title="h.hunter_name"
+                  alt=""
+                />
+              </span>
+            </span>
+            <span v-else-if="!currentBehaviorCard || monsterTurnReady">⚔️ รอ Monster Turn</span>
             <span v-else-if="!myTurnEnded">🃏 จบเทิร์น</span>
             <span v-else class="float-wait">
               ✓ รอคนอื่น
@@ -11054,7 +11166,7 @@ onDeactivated(() => {
           <span v-for="n in 10" :key="`streak${n}`" class="ma-streak" :style="{ '--a': `${n * 36}deg`, '--i': n }"></span>
           <span class="ma-vignette"></span>
 
-          <div class="ma-content">
+          <div class="ma-content" :class="{ 'ma-has-panel': attackChoiceVisible }">
             <p class="ma-label">⚔️ Monster Attack!</p>
             <div v-if="monsterAttackStatuses.length" class="ma-status-list">
               <div v-for="sid in monsterAttackStatuses" :key="sid" class="ma-status-item">
@@ -11062,8 +11174,8 @@ onDeactivated(() => {
                 <div class="ma-status-info">
                   <span class="ma-status-name">{{ getStatusEffect(sid)?.effect_name }}</span>
                   <span class="ma-status-result">
-                    <template v-if="sid === 2">Monster สูญเสีย <strong>-2 HP</strong></template>
-                    <template v-else-if="sid === 5">ลบล้างสถานะ Blastblight บนตัว Monster</template>
+                    <template v-if="sid === 2">จบเทิร์นนี้ Monster เสีย <strong>-2 HP</strong></template>
+                    <template v-else-if="sid === 5">เกราะทุกส่วน <strong>-1</strong> จนจบเทิร์นนี้</template>
                     <template v-else-if="sid === 1">การ์ดพฤติกรรมนี้จะใช้ค่า (หลบหลีก) เพียงแค่ <strong>1</strong> หน่วย และไม่เพิ่มหรือลดได้ด้วยเอฟเฟกต์อื่นใด</template>
                     <template v-else-if="sid === 3">การ์ดพฤติกรรมนี้จะข้ามไปแสดงผล Hunter Turn ได้ทันที</template>
                     <template v-else-if="sid === 4">การ์ดพฤติกรรมนี้จะทำให้ (การเคลื่อนที่) ของ Monster กลายเป็น <strong>0</strong></template>
@@ -11209,8 +11321,8 @@ onDeactivated(() => {
         <HunterEffectOverlay
           :effect="currentEffect"
           :class-thumb="effectClassThumb"
-          :queued="Math.max(0, effectQueue.length - 1)"
-          @skip="skipEffect"
+          :queued="announceQueued"
+          @skip="skipAnnounce"
         />
       </Transition>
     </teleport>
@@ -11219,20 +11331,20 @@ onDeactivated(() => {
     <!-- กันกดทับกัน และบอกว่าไม่ได้ค้าง — ถ้าเจ้าตัวหลุด คำจองหมดอายุเองใน 90 วิ กดข้ามได้ด้วย -->
     <teleport to="body">
       <Transition name="slain-fade">
-        <div v-if="counterWaiting && !showCounter" class="cw-overlay">
+        <div v-if="counterWaitView && !showCounter" class="cw-overlay">
           <div class="cw-box">
             <div class="cw-ring">
               <img
-                v-if="getHunterClass(counterWaiting.classId)?.thumbnail"
-                :src="getImg(getHunterClass(counterWaiting.classId).thumbnail)"
+                v-if="getHunterClass(counterWaitView.classId)?.thumbnail"
+                :src="getImg(getHunterClass(counterWaitView.classId).thumbnail)"
                 class="cw-icon"
                 alt=""
               />
               <span class="cw-spark" v-for="n in 3" :key="n" :style="{ '--i': n }"></span>
             </div>
-            <p class="cw-title">{{ counterWaiting.hunterName }} กำลังสวนกลับ</p>
-            <p class="cw-sub">รอสักครู่ เดี๋ยวได้เห็นว่าเข้ากี่ดาเมจ</p>
-            <button class="cw-skip" @click="room.releaseCounter?.()">ข้ามการรอ</button>
+            <p class="cw-title">{{ counterWaitView.hunterName }} กำลังสวนกลับ</p>
+            <p class="cw-sub">เทิร์นมอนจะจบเมื่อทุกคนตอบสนองครบ</p>
+            <button class="cw-skip" @click="skipCounterWait">ข้ามการรอ</button>
           </div>
         </div>
       </Transition>
@@ -11241,7 +11353,7 @@ onDeactivated(() => {
     <!-- ═══════════ COUNTER: ประกาศผล ═══════════ -->
     <teleport to="body">
       <Transition name="slain-fade">
-        <div v-if="counterAnim" class="cf-overlay" @click="counterAnim = null">
+        <div v-if="counterAnim" class="cf-overlay" @click="skipAnnounce">
           <div class="cf-burst"></div>
           <div class="cf-content">
             <img
@@ -17244,9 +17356,45 @@ onDeactivated(() => {
   font-weight: bold;
   text-shadow: 0 0 10px rgba(200,155,60,0.6), 0 0 4px #000;
 }
+/* มีแผงเลือกรับ/หลบอยู่ด้วย พื้นที่แนวตั้งจึงหาร 2 — ย่อการ์ดลงนิดให้เห็นปุ่มยืนยันโดยไม่ต้องเลื่อนมาก
+   (ยังใหญ่กว่าตอนที่มันถูกบีบเพราะ flex เยอะ) */
+.ma-has-panel .ma-card-flip { height: min(260px, 60vw, 32vh); }
+.ma-has-panel { gap: 10px; }
+
+/* จอกว้าง (แท็บเล็ต/คอม) วางการ์ดกับแผงคู่กันซ้าย-ขวา ไม่ต้องเลื่อนเลย */
+@media (min-width: 860px) and (min-height: 520px) {
+  .ma-content.ma-has-panel {
+    display: grid;
+    grid-template-columns: auto minmax(340px, 440px);
+    grid-template-areas:
+      'label panel'
+      'card  panel'
+      'name  panel'
+      'hint  panel';
+    align-items: center;
+    justify-content: center;
+    column-gap: 28px;
+    row-gap: 8px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  /* คอลัมน์ซ้าย (ป้าย/การ์ด/ชื่อ) จัดกลางให้ตรงกับการ์ด */
+  .ma-content.ma-has-panel > * { justify-self: center; }
+  .ma-content.ma-has-panel .ma-label { grid-area: label; }
+  .ma-content.ma-has-panel .ma-card-flip { grid-area: card; height: min(300px, 34vw, 44vh); }
+  .ma-content.ma-has-panel .ma-card-name { grid-area: name; }
+  .ma-content.ma-has-panel .ma-choices { grid-area: panel; margin: 0; }
+  .ma-content.ma-has-panel .ma-hint { grid-area: hint; }
+  .ma-content.ma-has-panel .ma-status-list { grid-area: label; align-self: end; }
+}
+
 .ma-card-flip {
   width: min(450px, 92vw);
-  height: min(300px, 70vw);
+  /* การ์ดเป็นสมาชิก flex ใน .ma-content ที่เลื่อนได้ — ถ้าไม่ล็อก มันจะยอมหดจนอ่านการ์ดไม่ออก
+     เวลาแผงเลือกรับ/หลบด้านล่างสูงขึ้น (เช่นมีช่องติ๊กสวนกลับ) ให้เลื่อนแทนการบีบการ์ด
+     40vh กันไม่ให้การ์ดกินจอทั้งหมดบนเครื่องจอเตี้ย */
+  height: min(300px, 70vw, 40vh);
+  flex: none;
   perspective: 1000px;
 }
 .ma-card-inner {
