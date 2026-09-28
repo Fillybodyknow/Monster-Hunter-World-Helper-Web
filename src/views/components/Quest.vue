@@ -14331,10 +14331,23 @@ onDeactivated(() => {
 .mt-card-name { font-size: 11px; color: #a88040; margin: 0; text-align: center; }
 /* แถบค่าการ์ด — ในแผงเทิร์นมอนวางใต้การ์ด ส่วนใน Modal โจมตีให้กว้างเท่าชื่อการ์ด */
 .mt-stats { margin: 10px auto 0; max-width: 340px; }
-.ma-stats { margin: 10px auto 0; max-width: 360px; }
+/* flex: none ด้วยเหตุผลเดียวกับ .ma-tokens — ปล่อยให้กล่องเลื่อน ดีกว่าบีบแถบค่าจนอ่านไม่ออก */
+.ma-stats { margin: 10px auto 0; max-width: 360px; flex: none; }
 /* แผงเลือกรับ/หลบ — กว้างกว่าแถบค่าเพราะมีชื่อคนกับปุ่มสามอัน */
 .mt-choices { margin: 10px auto 0; max-width: 420px; }
-.ma-choices { margin: 12px auto 0; max-width: 440px; }
+/* เกาะขอบล่างของพื้นที่เลื่อน — การ์ดกับกฎยาวแค่ไหนก็ยังเห็นปุ่มเลือกเสมอ
+   (เลื่อนดูกฎอยู่แล้วปุ่มหายไปจากจอ = ไม่มีใครรู้ว่าต้องเลื่อนกลับลงมากด) */
+.ma-choices {
+  margin: 12px auto 0;
+  max-width: 440px;
+  width: 100%;
+  flex: none;
+  position: sticky;
+  bottom: 0;
+  /* ทึบจริง — ถ้าโปร่งแม้แต่นิดเดียว ข้อความกฎที่เลื่อนอยู่ข้างหลังจะทะลุขึ้นมาอ่านปนกัน */
+  background: #0a0703;
+  padding-bottom: 6px;
+}
 /* ระหว่างขั้นตอนโจมตี แตะพื้นหลังแล้วต้องไม่ปิด — เปลี่ยนเคอร์เซอร์ให้รู้ว่ากดไม่ได้ */
 .ma-locked { cursor: default; }
 
@@ -15883,15 +15896,22 @@ onDeactivated(() => {
 }
 .use-strip-lifted { bottom: 110px; }
 
-/* แผงเล็งเป้าหมายในโมดัลการ์ดโจมตี — จอแคบต้องยังเห็นการ์ดด้วย เลยจำกัดความสูงและเลื่อนในตัวเอง */
+/* แผงเล็งเป้าหมายในโมดัลการ์ดโจมตี — จอแคบต้องยังเห็นการ์ดด้วย เลยจำกัดความสูงและเลื่อนในตัวเอง
+   flex: none สำคัญ — เป็นสมาชิก flex ในกล่องที่สูงจำกัด ถ้าไม่ล็อกไว้ พอกฎยาว ๆ ดันความสูง
+   มันจะถูกบีบจนเหลือแถบบาง ๆ แทนที่กล่องจะเลื่อน (เจอกับ Kushala ระดับ 5 ไอคอนนักล่าโดนตัดหมด)
+   sticky ให้เกาะขอบล่างไว้ เลื่อนอ่านกฎอยู่ก็ยังกดเลือกเป้าหมายได้ */
 .ma-tokens {
   width: min(440px, 92vw);
   max-height: 30vh;
   overflow-y: auto;
   margin-top: 10px;
-  background: rgba(20, 12, 5, 0.85);
   cursor: default;
+  flex: none;
+  position: sticky;
+  bottom: 0;
 }
+/* ทับพื้นหลังโปร่งของ .mt-tokens ที่ประกาศไว้ทีหลัง — ต้องทึบ ไม่งั้นกฎที่เลื่อนอยู่ข้างหลังทะลุขึ้นมา */
+.mt-tokens.ma-tokens { background: #140c05; }
 
 /* ── Hunter Token ช่วงเทิร์น Monster ── */
 .mt-tokens {
@@ -17110,7 +17130,8 @@ onDeactivated(() => {
   .ma-content.ma-has-panel .ma-label { grid-area: label; }
   .ma-content.ma-has-panel .ma-card-flip { grid-area: card; height: min(300px, 34vw, 44vh); }
   .ma-content.ma-has-panel .ma-card-name { grid-area: name; }
-  .ma-content.ma-has-panel .ma-choices { grid-area: panel; margin: 0; }
+  /* จอกว้างวางแผงไว้คอลัมน์ขวาอยู่แล้ว ไม่ต้องเกาะขอบล่าง */
+  .ma-content.ma-has-panel .ma-choices { grid-area: panel; margin: 0; position: static; background: none; padding-bottom: 0; }
   .ma-content.ma-has-panel .ma-hint { grid-area: hint; }
   .ma-content.ma-has-panel .ma-status-list { grid-area: label; align-self: end; }
 }

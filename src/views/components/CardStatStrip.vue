@@ -130,7 +130,18 @@ const changeText = (change) =>
 }
 .cs-why-btn:hover { color: #e8c46a; }
 
-.cs-why { margin-top: 5px; display: flex; flex-direction: column; gap: 6px; }
+/* กฎของ Elder Dragon ยาวเป็นหน้า ๆ — ปล่อยให้ยืดเต็มที่แล้วปุ่มที่อยู่ใต้แถบนี้จะถูกดันตกจอ
+   (เจอตอน Kushala ระดับ 5: แผงเลือกรับ/หลบใน Modal โจมตีหลุดออกนอกจอ)
+   ให้ข้อความเลื่อนอยู่ในกรอบตัวเองแทน ความสูงที่เหลือจึงคาดเดาได้ */
+.cs-why {
+  margin-top: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 30vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 .cs-rule {
   padding: 6px 8px; border-radius: 6px;
   background: rgba(0, 0, 0, 0.3); border-left: 2px solid #c89b3c;
