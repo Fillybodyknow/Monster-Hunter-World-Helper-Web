@@ -1,5 +1,18 @@
 [
     {
+        "id": "2026-09-28-tempered-star-color",
+        "date": "2026-09-28",
+        "title": "ดาว Tempered ของ Elder Dragon เป็นสีม่วงแล้ว",
+        "sections": [
+            {
+                "type": "fix",
+                "items": [
+                    "Tempered Investigation Quest ของ Kushala Daora เป็นความยาก 5 ดาว ซึ่งเดิมขึ้นดาวสีแดงเหมือน Investigation ตอนนี้เป็นสีม่วงแล้ว เหมือน Tempered 4 ดาวของกล่องปกติ"
+                ]
+            }
+        ]
+    },
+    {
         "id": "2026-09-28-kushala-ready",
         "date": "2026-09-28",
         "title": "Kushala Daora ไม่ใช่ตัวทดลองแล้ว",
