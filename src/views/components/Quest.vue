@@ -3258,124 +3258,12 @@ watch(
   },
 )
 
-// ── Weakness Exploit (Rathalos Mail) ──────────────────────
-// "เควสละครั้ง, สลับโทเค็นนักล่าของตนกับผู้เล่นคนอื่นได้"
-// ทิศทางการหันหน้าของโทเค็นจัดการบนโต๊ะเหมือน Threat Shift — ในแอปสลับแค่ตัวเลข
-const ABILITY_WEAKNESS_EXPLOIT = 11
-
+// ability ของเกราะที่ใส่อยู่ — Palico Rally ใช้ดูว่ามีสิทธิ์ใช้ Palico ได้สองครั้งไหม
 const myArmorAbilityIds = computed(() => armorAbilityIds(hunter.value))
-
-const weaknessExploitUsed = computed(
-  () => !!room.myAbilityUsed?.[ABILITY_WEAKNESS_EXPLOIT],
-)
-
-// ต้องมีคนอื่นให้สลับด้วย — เล่นคนเดียวความสามารถนี้ไม่มีความหมาย
-const weaknessExploitTargets = computed(() =>
-  room.hunters.filter(
-    (h) => h.hunter_id !== room.myHunterId && room.hunterTokens?.[h.hunter_id] != null,
-  ),
-)
-
-// คำขอที่ค้างอยู่ — ทั้งสองฝั่งอ่าน node เดียวกัน
-const swapReq = computed(() => room.tokenSwapRequest)
-const incomingSwap = computed(() =>
-  swapReq.value?.status === 'pending' && swapReq.value.toId === room.myHunterId
-    ? swapReq.value
-    : null,
-)
-const outgoingSwap = computed(() =>
-  swapReq.value?.status === 'pending' && swapReq.value.fromId === room.myHunterId
-    ? swapReq.value
-    : null,
-)
-
-const canUseWeaknessExploit = computed(
-  () =>
-    phase.value === 'huntingPanel' &&
-    room.inRoom &&
-    myArmorAbilityIds.value.includes(ABILITY_WEAKNESS_EXPLOIT) &&
-    !weaknessExploitUsed.value &&
-    room.myHunterToken != null &&
-    weaknessExploitTargets.value.length > 0 &&
-    !swapReq.value,
-)
-
-// แตะที่ tile ของนักล่าอีกคนในแถบตี้ได้เลย — ไม่ต้องมีปุ่มกินที่บนจอมือถือ
-const canSwapWith = (h) =>
-  canUseWeaknessExploit.value &&
-  h.hunter_id !== room.myHunterId &&
-  room.hunterTokens?.[h.hunter_id] != null
-
-// ปุ่มหายไปแล้ว ต้องมีอะไรบอกว่าใช้ได้ ไม่งั้นไม่มีใครรู้ว่าแตะ tile ได้
-watch(canUseWeaknessExploit, (can, was) => {
-  if (!can || was) return
-  addNotif?.('🎯 Weakness Exploit พร้อมใช้ — แตะที่นักล่าในแถบตี้เพื่อขอสลับ Hunter Token', 'info')
-})
-
-// แตะ tile แล้วถามยืนยันก่อน — tile เล็กและอยู่ติดกัน แตะพลาดง่ายบนมือถือ
-const pendingSwapTarget = ref(null)
-
-const askSwapWith = (h) => {
-  pendingSwapTarget.value = { id: h.hunter_id, token: room.hunterTokens[h.hunter_id] }
-}
 
 // ชื่อนักล่ายาวไม่เท่ากันทำให้กล่องเบี้ยว — ใช้ไอคอนคลาสแทน สั้นและดูออกทันที
 const hunterClassImg = (hunterId) =>
   getHunterClass(room.hunters.find((h) => h.hunter_id === hunterId)?.hunter_class_id)?.thumbnail ?? null
-
-const confirmSwapRequest = () => {
-  const t = pendingSwapTarget.value
-  pendingSwapTarget.value = null
-  if (t) requestWeaknessExploit(t.id)
-}
-
-// ส่งคำขอเฉย ๆ ยังไม่สลับและยังไม่ตัดสิทธิ์ — รอปลายทางกดยินยอมก่อน
-const requestWeaknessExploit = (targetId) => {
-  const mine = room.myHunterToken
-  const theirs = room.hunterTokens?.[targetId]
-  if (mine == null || theirs == null) return
-  room.requestTokenSwap?.({
-    status: 'pending',
-    fromId: room.myHunterId,
-    fromName: room.myHunter?.hunter_name ?? 'Hunter',
-    fromToken: mine,
-    toId: targetId,
-    toName: room.hunters.find((h) => h.hunter_id === targetId)?.hunter_name ?? 'Hunter',
-    toToken: theirs,
-  })
-  sfx.playRandom(`${SFX_UI}/action_confirm`, 3, { key: 'action' })
-}
-
-// ฝั่งที่ยินยอมเป็นคนลงมือทั้งหมดในจังหวะเดียว — สลับ ตัดสิทธิ์ผู้ขอ แล้วปิดคำขอ
-// ถ้าให้ผู้ขอเป็นคนทำหลังเห็นคำตอบ จะมีช่วงที่ค้างถ้าผู้ขอหลุดพอดี
-const acceptTokenSwap = () => {
-  const req = incomingSwap.value
-  if (!req) return
-  room.setAllHunterTokens?.({
-    ...(room.hunterTokens ?? {}),
-    [req.fromId]: req.toToken,
-    [req.toId]: req.fromToken,
-  })
-  room.markAbilityUsed?.(ABILITY_WEAKNESS_EXPLOIT, req.fromId)
-  room.clearTokenSwapRequestAll?.()
-  sfx.playRandom(`${SFX_UI}/action_confirm`, 3, { key: 'action' })
-}
-
-// ปฏิเสธไม่ตัดสิทธิ์ผู้ขอ — ยังไปขอคนอื่นได้ในเควสเดียวกัน
-const declineTokenSwap = () => {
-  const req = incomingSwap.value
-  if (!req) return
-  room.requestTokenSwap?.({ ...req, status: 'declined' })
-}
-
-const cancelTokenSwap = () => room.clearTokenSwapRequestAll?.()
-
-// ผู้ขอเป็นคนเก็บกวาดคำขอที่ถูกปฏิเสธ ปลายทางปิดหน้าต่างไปแล้ว
-watch(swapReq, (req) => {
-  if (req?.status !== 'declined' || req.fromId !== room.myHunterId) return
-  addNotif?.(`✕ ${req.toName} ไม่ยินยอมสลับ Hunter Token`, 'warn')
-  room.clearTokenSwapRequestAll?.()
-})
 
 const _shiftHunterTokens = () => {
   const ids = room.hunters.map((h) => String(h.hunter_id))
@@ -4850,8 +4738,6 @@ const initHuntingData = () => {
     room.clearHunterTokenConfirmsAll?.()
     // สิทธิ์ "เควสละครั้ง" คืนให้ทุกคนตอนเริ่มล่าใหม่
     room.clearAbilityUsedAll?.()
-    // คำขอที่ค้างจากเควสก่อนต้องไม่เด้งขึ้นมากลางเควสใหม่
-    room.clearTokenSwapRequestAll?.()
   }
 }
 
@@ -10914,10 +10800,7 @@ onDeactivated(() => {
               'party-pending': !!room.tcTurnEnds?.[h.hunter_id]?.pending,
               'party-me':      h.hunter_id === room.myHunterId,
               'party-down':    isHunterDown(h),
-              'party-swappable': canSwapWith(h)
             }"
-            :title="canSwapWith(h) ? `Weakness Exploit — ขอสลับ Hunter Token กับ ${h.hunter_name}` : null"
-            @click="canSwapWith(h) && askSwapWith(h)"
           >
             <!-- วงแหวนรอบไอคอน = HP ที่เหลือ เต็มเป็นเขียว ลดลงค่อย ๆ แดง — ไม่เพิ่มความสูงแถบตอนเล่น 4 คน -->
             <div
@@ -10948,99 +10831,6 @@ onDeactivated(() => {
                   alt=""
                 />
               </span>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </teleport>
-
-    <!-- ผู้ขอ — ยืนยันก่อนส่งคำขอ -->
-    <teleport to="body">
-      <Transition name="slain-fade">
-        <div
-          v-if="pendingSwapTarget"
-          class="we-overlay"
-          @click.self="pendingSwapTarget = null"
-        >
-          <div class="we-modal">
-            <p class="we-title">🎯 Weakness Exploit</p>
-            <p class="we-sub">
-              ส่งคำขอสลับ Hunter Token ไปหานักล่าคนนี้ไหม?
-              <br />ใช้ได้เควสละครั้ง และจะตัดสิทธิ์ก็ต่อเมื่ออีกฝ่ายยินยอม
-            </p>
-            <div class="we-swap-row">
-              <div class="we-swap-side">
-                <img v-if="hunterClassImg(room.myHunterId)" :src="getImg(hunterClassImg(room.myHunterId))" class="we-swap-icon" />
-                <span class="we-swap-role">คุณ</span>
-                <span class="we-swap-token">{{ room.myHunterToken }}</span>
-              </div>
-              <span class="we-swap-arrow">⇄</span>
-              <div class="we-swap-side">
-                <img v-if="hunterClassImg(pendingSwapTarget.id)" :src="getImg(hunterClassImg(pendingSwapTarget.id))" class="we-swap-icon" />
-                <span class="we-swap-role">เป้าหมาย</span>
-                <span class="we-swap-token">{{ pendingSwapTarget.token }}</span>
-              </div>
-            </div>
-            <div class="we-answer">
-              <button class="we-decline" @click="pendingSwapTarget = null">ยกเลิก</button>
-              <button class="we-accept" @click="confirmSwapRequest">✓ ส่งคำขอ</button>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </teleport>
-
-    <!-- ผู้ขอ — รออีกฝ่ายตอบ -->
-    <teleport to="body">
-      <Transition name="slain-fade">
-        <div v-if="outgoingSwap" class="we-overlay">
-          <div class="we-modal">
-            <p class="we-title">🎯 รอคำตอบ</p>
-            <p class="we-sub">ส่งคำขอสลับ Hunter Token แล้ว รอให้อีกฝ่ายกดยินยอม</p>
-            <div class="we-swap-row">
-              <div class="we-swap-side">
-                <img v-if="hunterClassImg(outgoingSwap.fromId)" :src="getImg(hunterClassImg(outgoingSwap.fromId))" class="we-swap-icon" />
-                <span class="we-swap-role">คุณ</span>
-                <span class="we-swap-token">{{ outgoingSwap.fromToken }}</span>
-              </div>
-              <span class="we-swap-arrow">⇄</span>
-              <div class="we-swap-side">
-                <img v-if="hunterClassImg(outgoingSwap.toId)" :src="getImg(hunterClassImg(outgoingSwap.toId))" class="we-swap-icon" />
-                <span class="we-swap-role">เป้าหมาย</span>
-                <span class="we-swap-token">{{ outgoingSwap.toToken }}</span>
-              </div>
-            </div>
-            <div class="we-waiting-dots"><span>·</span><span>·</span><span>·</span></div>
-            <button class="we-cancel" @click="cancelTokenSwap">ยกเลิกคำขอ</button>
-          </div>
-        </div>
-      </Transition>
-    </teleport>
-
-    <!-- ปลายทาง — ขอความยินยอม -->
-    <teleport to="body">
-      <Transition name="slain-fade">
-        <div v-if="incomingSwap" class="we-overlay">
-          <div class="we-modal">
-            <p class="we-title">🎯 ขอสลับ Hunter Token</p>
-            <p class="we-sub">นักล่าคนนี้ใช้ Weakness Exploit ขอสลับ Hunter Token กับคุณ</p>
-            <div class="we-swap-row">
-              <div class="we-swap-side">
-                <img v-if="hunterClassImg(incomingSwap.toId)" :src="getImg(hunterClassImg(incomingSwap.toId))" class="we-swap-icon" />
-                <span class="we-swap-role">คุณ</span>
-                <span class="we-swap-token">{{ incomingSwap.toToken }}</span>
-              </div>
-              <span class="we-swap-arrow">⇄</span>
-              <div class="we-swap-side">
-                <img v-if="hunterClassImg(incomingSwap.fromId)" :src="getImg(hunterClassImg(incomingSwap.fromId))" class="we-swap-icon" />
-                <span class="we-swap-role">ผู้ขอ</span>
-                <span class="we-swap-token">{{ incomingSwap.fromToken }}</span>
-              </div>
-            </div>
-            <p class="we-note">ทิศทางการหันหน้าของโทเค็นให้จัดบนโต๊ะตามของเดิมของแต่ละคน</p>
-            <div class="we-answer">
-              <button class="we-decline" @click="declineTokenSwap">✕ ไม่ยินยอม</button>
-              <button class="we-accept" @click="acceptTokenSwap">✓ ยินยอม</button>
             </div>
           </div>
         </div>
@@ -16885,71 +16675,6 @@ onDeactivated(() => {
 .party-strip-tab {
   bottom: 50px;
 }
-/* tile ที่แตะขอสลับโทเค็นได้ — เรืองแสงแดงเพื่อไม่ให้ปนกับสถานะจบเทิร์น (เขียว/เหลือง) */
-/* ไม่มีไอคอนกำกับแล้ว (บังเลขโทเค็นที่มุมบนซ้าย) — วงแสงเป็นตัวบอกอย่างเดียว เลยต้องชัดพอ
-   ใช้ outline ไม่ใช่ border เพราะ border จะดันขนาด tile ทำให้แถวขยับตอนความสามารถพร้อมใช้ */
-.party-swappable {
-  cursor: pointer;
-  border-radius: 10px;
-  outline: 1px solid rgba(255,120,90,0.5);
-  outline-offset: 1px;
-  animation: weGlow 1.8s ease-in-out infinite;
-}
-@keyframes weGlow {
-  0%, 100% { box-shadow: 0 0 6px rgba(204,68,68,0.35); }
-  50%      { box-shadow: 0 0 15px rgba(255,120,90,0.75); }
-}
-
-.we-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 10000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background: rgba(4, 3, 1, 0.82);
-  backdrop-filter: blur(4px);
-}
-.we-modal {
-  width: min(360px, 100%);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 18px 16px;
-  border-radius: 12px;
-  text-align: center;
-  background: linear-gradient(160deg, rgba(28,18,10,0.98), rgba(12,8,4,0.99));
-  border: 1px solid rgba(204,68,68,0.45);
-  box-shadow: 0 10px 40px rgba(0,0,0,0.85), inset 0 0 20px rgba(204,68,68,0.08);
-}
-.we-title { margin: 0; font-size: 15px; font-weight: bold; color: #ffb0a0; letter-spacing: 1px; }
-.we-sub { margin: 0; font-size: 11px; color: #a88040; line-height: 1.6; }
-
-.we-note { margin: 0; font-size: 10px; color: #7c5a2b; line-height: 1.6; }
-.we-cancel { padding: 8px; border-radius: 8px; font-size: 12px; color: #a88040; cursor: pointer; background: rgba(0,0,0,0.4); border: 1px solid rgba(124,90,43,0.35); }
-
-.we-swap-row { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.4); border: 1px solid rgba(200,155,60,0.25); }
-.we-swap-side { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 70px; }
-.we-swap-icon { width: 34px; height: 34px; object-fit: contain; }
-.we-swap-role { font-size: 10px; color: #a88040; letter-spacing: 1px; }
-.we-swap-token { font-size: 22px; font-weight: bold; color: #ffd27a; }
-.we-swap-arrow { font-size: 18px; color: #cc4444; }
-
-.we-waiting-dots { display: flex; justify-content: center; gap: 6px; font-size: 24px; color: #c89b3c; line-height: 0.6; }
-.we-waiting-dots span { animation: weDot 1.2s ease-in-out infinite; }
-.we-waiting-dots span:nth-child(2) { animation-delay: 0.2s; }
-.we-waiting-dots span:nth-child(3) { animation-delay: 0.4s; }
-@keyframes weDot {
-  0%, 100% { opacity: 0.25; }
-  50%      { opacity: 1; }
-}
-
-.we-answer { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.we-decline, .we-accept { padding: 10px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; }
-.we-decline { color: #c8a27a; background: rgba(0,0,0,0.45); border: 1px solid rgba(124,90,43,0.4); }
-.we-accept { color: #0f0b05; background: linear-gradient(to bottom, #ffd27a, #c89b3c); border: 1px solid #ffd27a; }
-
 .party-member {
   display: flex;
   flex-direction: column;

@@ -439,13 +439,6 @@ export const pushAbilityUsed = (code, hunterId, abilityId) =>
 
 export const clearAbilityUsed = (code) => remove(ref(db, `rooms/${code}/abilityUsed`))
 
-// คำขอสลับ Hunter Token — ปลายทางต้องกดยินยอมก่อนถึงจะสลับจริง
-// มีได้ทีละคำขอ ทั้งห้องเห็น node เดียวกัน ไม่ต้องแยกรายคน
-export const pushTokenSwapRequest = (code, req) =>
-  set(ref(db, `rooms/${code}/tokenSwapRequest`), req)
-
-export const clearTokenSwapRequest = (code) => remove(ref(db, `rooms/${code}/tokenSwapRequest`))
-
 // ใช้ยา / ล้ม — ทุกคนยิงสัญญาณนี้ได้เอง แต่คนที่แก้ huntState จริงคือ Host เท่านั้น
 // (huntState ถูกเขียนทั้งก้อน ถ้าปล่อยให้ guest เขียนจะทับ HP/ชิ้นส่วนที่ Host ถืออยู่)
 // ใช้ยา / ล้ม / Palico — push ต่อท้ายทีละรายการ ไม่เขียนทับช่องเดียวกัน
