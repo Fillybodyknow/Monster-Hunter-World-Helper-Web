@@ -137,11 +137,11 @@
     {
         "ability_id": 28,
         "ability_name": "Handicraft",
-        "ability": "เควสละครั้ง, หากคุณเล่น Attack Card แล้ว Damage Deck มีไม่เพียงพอ, ให้ทำการสับกอง Damage Deck ใหม่แล้วดำเนินการต่อได้เลย"
+        "ability": "เควสละครั้ง, หากคุณเล่น Attack Card แล้ว Damage Deck มีไม่เพียงพอ, สามารถทำการ ลับคมดาบ(Sharpen) แล้วดำเนินการต่อได้เลย"
     },
     {
         "ability_id": 29,
         "ability_name": "Kushala Daora Flight",
-        "ability": ""
+        "ability": "เมื่อคุณเล่น Attack Card ตั้งแต่ 1 ใบขึ้นไปเพื่อ หลบหลีกการโจมตี(Dodge) หรือ วิ่ง(Sprint), ให้เพิ่มค่า Agility +1"
     }
 ]

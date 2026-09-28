@@ -590,7 +590,7 @@
             {
                 "equip_set_id": 15,
                 "equip_set": "Kushala Daora",
-                "thumbnail": "assets/img/Kushala_Daora_Icon.webp",
+                "thumbnail": "assets/img/equiments/sets/kushala_daora.webp",
                 "rarity": 5,
                 "set_ability_bonus": 29,
                 "equips": [

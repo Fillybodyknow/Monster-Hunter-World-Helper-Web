@@ -1,5 +1,20 @@
 [
     {
+        "id": "2026-09-28-r5-art",
+        "date": "2026-09-28",
+        "title": "ของระดับ R5 มีรูปของตัวเองแล้ว",
+        "sections": [
+            {
+                "type": "improve",
+                "items": [
+                    "ช่องอุปกรณ์ระดับ R5 มีรูปของตัวเองแล้ว ทั้งเกราะสามชิ้นและอาวุธ Great Sword, Bow, Dual Blades, Hammer, Charge Blade, Lance, Gunlance, Insect Glaive, Light Bowgun — ส่วน Sword & Shield, Longsword, Hunting Horn, Switch Axe และ Heavy Bowgun ยังยืมรูป R4 ไปก่อน",
+                    "ใส่คำอธิบายความสามารถ Handicraft และ Kushala Daora Flight ครบแล้ว จากเดิมที่ขึ้นแต่ชื่อ",
+                    "บีบอัดรูปในแอปใหม่ทั้งชุด ภาพชิ้นส่วนมอนสเตอร์และการ์ด Time Card เล็กลงกว่า 90% หน้าจอขึ้นรูปไวขึ้นและกินเน็ตน้อยลง โดยเฉพาะบนมือถือ"
+                ]
+            }
+        ]
+    },
+    {
         "id": "2026-09-28-anim-queue",
         "date": "2026-09-28",
         "title": "การ์ดแจ้งเตือนไม่ซ้อนกันแล้ว",
