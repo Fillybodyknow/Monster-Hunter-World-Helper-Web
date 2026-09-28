@@ -2307,8 +2307,10 @@ const goBack = () => {
   map[phase.value]?.()
 }
 
+// ดาวบอกระดับความยาก — ขาว = Assigned, แดง = Investigation
+// ม่วง = Tempered ซึ่งเป็นระดับ 4 ในกล่องปกติ และระดับ 5 ในกล่อง Elder Dragon
 const starColor = (difficulty) => {
-  if (difficulty === 4) return '#cc77ff'
+  if (difficulty >= 4) return '#cc77ff'
   if (difficulty > 1) return '#ff4444'
   return '#ffffff'
 }
