@@ -5,7 +5,7 @@ import armorsData from '@/assets/files/armors.json'
 import { hunter, loadHunter, saveHunter } from '@/stores/hunter'
 import craftingData from '@/assets/files/crafting_item.json'
 import resourceData from '@/assets/files/resource.json'
-import rarityData from '@/assets/files/equiment_rarity.json'
+import { rarityGroupOf } from '@/services/equipService'
 import elementalData from '@/assets/files/elemental.json'
 import bonusAbilityData from '@/assets/files/bonus_ability.json'
 import {
@@ -280,7 +280,7 @@ const getRarityIcon = (rarity) => {
   if (!hunter.value) return ''
   const weaponTypeId = hunter.value.hunter_class_id
 
-  const rarityGroup = rarityData[1].rarity_list.find((r) => r.equipment_rarity === rarity)
+  const rarityGroup = rarityGroupOf(2, rarity)
 
   if (!rarityGroup) return ''
 
@@ -409,7 +409,7 @@ const hasFullSet = (equip_set_id) => {
 }
 
 const getArmorRarityIcon = (rarity, armor_part_id) => {
-  const rarityGroup = rarityData[0].rarity_list.find((r) => r.equipment_rarity === rarity)
+  const rarityGroup = rarityGroupOf(1, rarity)
   if (!rarityGroup) return ''
   const item = rarityGroup.list.find((i) => i.id === armor_part_id)
   return item ? `${import.meta.env.BASE_URL}${item.thumbnail}` : ''

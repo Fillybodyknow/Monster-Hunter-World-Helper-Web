@@ -24,8 +24,12 @@ const props = defineProps({
   hpMax: { type: Number, default: 8 },
   // ติด Sleep — หลบหลีกไม่ได้จนกว่าจะจบเทิร์นถัดไปของตัวเอง
   asleep: { type: Boolean, default: false },
+  // อาชีพนี้มี Attack Card ที่สวนกลับได้หรือเปล่า (ตอนนี้มีแค่ Lance) — ใช้ตัดสินว่าจะโชว์ช่องติ๊กไหม
+  canCounter: { type: Boolean, default: false },
+  // ติ๊กไว้ = การ์ดที่เล่นรอบนี้สวนกลับได้ พอเฉลยจบจะเปิดหน้าต่างสวนกลับให้
+  counter: { type: Boolean, default: false },
 })
-const emit = defineEmits(['choose', 'reset', 'confirm', 'update:shield'])
+const emit = defineEmits(['choose', 'reset', 'confirm', 'update:shield', 'update:counter'])
 
 const img = (path) => `${import.meta.env.BASE_URL}${path}`
 const ICON = {
@@ -194,6 +198,20 @@ watch(() => props.stage, () => { asking.value = null })
         </div>
       </div>
 
+      <!-- การ์ดสวนกลับอยู่บนมือ แอปไม่เห็น — ติ๊กเองว่ารอบนี้สวนได้ ไม่ติ๊กก็ไม่มีหน้าต่างมากวน -->
+      <label v-if="canCounter" class="ac-counter" :class="{ 'ac-counter-on': counter }">
+        <input
+          type="checkbox"
+          class="ac-counter-box"
+          :checked="counter"
+          @change="emit('update:counter', $event.target.checked)"
+        />
+        <span class="ac-counter-text">
+          สวนกลับได้
+          <small>เล่นการ์ดที่สวนกลับ — เฉลยเสร็จจะให้เลือกส่วนที่ตี</small>
+        </span>
+      </label>
+
       <div class="ac-btn-row">
         <button class="ac-btn ac-btn-back" @click="emit('reset')">ย้อนกลับ</button>
         <button class="ac-btn ac-btn-confirm" @click="emit('confirm')">
@@ -224,6 +242,22 @@ watch(() => props.stage, () => { asking.value = null })
 </template>
 
 <style scoped>
+.ac-counter {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 8px;
+  padding: 7px 10px;
+  border: 1px solid #5a3d1f;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+}
+.ac-counter-on { border-color: #c89b3c; background: rgba(200, 155, 60, 0.16); }
+.ac-counter-box { width: 22px; height: 22px; flex-shrink: 0; accent-color: #c89b3c; }
+.ac-counter-text { display: flex; flex-direction: column; font-size: 0.86rem; font-weight: 700; color: #f0d9a0; }
+.ac-counter-text small { font-weight: 400; font-size: 0.7rem; line-height: 1.25; color: #a8946c; }
+
 /* แอปไม่มี reset ทั้งแอป — ไม่ใส่แล้ว width 100% + padding ล้นกรอบ */
 .ac-panel, .ac-panel * { box-sizing: border-box; }
 .ac-panel {

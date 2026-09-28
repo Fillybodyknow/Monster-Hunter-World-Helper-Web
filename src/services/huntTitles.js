@@ -102,7 +102,7 @@ const keyOf = (e) => String(e.whoId ?? e.whoName ?? '?')
 const emptyStats = () => ({
   dmg: 0, bestTurn: 0, partDmg: 0, ailments: 0, elements: 0, ailmentKinds: 0, elementKinds: 0, marks: 0,
   palico: 0, faints: 0, potions: 0, turns: 0, finisher: 0,
-  defends: 0, hitsTaken: 0, dmgTaken: 0, bigHitTaken: 0, dodges: 0, outranges: 0, targeted: 0, shieldUsed: 0,
+  defends: 0, hitsTaken: 0, dmgTaken: 0, bigHitTaken: 0, dodges: 0, outranges: 0, targeted: 0, shieldUsed: 0, counters: 0,
 })
 const statOf = (p, stat) => p.stats[stat] ?? 0
 
@@ -156,8 +156,10 @@ export const buildHuntHighlights = (log, members) => {
 
   for (const e of live) {
     if (TURN_KINDS.has(e.kind)) {
-      ensure(keyOf(e), e.whoName, e.whoClass)
-      pool.push(e)
+      const owner = ensure(keyOf(e), e.whoName, e.whoClass)
+      // สวนกลับเกิดในเทิร์นมอน ไม่ใช่เทิร์นใคร — Break ที่ใส่ตอนนั้นยกให้คนที่สวนทันที
+      if (e.via === 'counter') settle(owner, [e])
+      else pool.push(e)
       continue
     }
     const p = ensure(keyOf(e), e.whoName, e.whoClass)
@@ -165,6 +167,11 @@ export const buildHuntHighlights = (log, members) => {
       p.stats.turns++
       settle(p, pool)
       pool = []
+    } else if (e.kind === 'counter') {
+      // สวนกลับเกิดในเทิร์นมอน ไม่ใช่เทิร์นใคร — ยกให้คนที่สวนตรง ๆ ไม่เข้ากองของเจ้าของเทิร์น
+      p.stats.dmg += -e.delta
+      p.stats.counters++
+      ownerOf.set(e, { owner: p, turnDmg: -e.delta })
     } else if (e.kind === 'potion') p.stats.potions++
     else if (e.kind === 'faint') p.stats.faints++
     else if (e.kind === 'palico') p.stats.palico++
@@ -194,7 +201,7 @@ export const buildHuntHighlights = (log, members) => {
 
   // ดาบปิดฉาก = เจ้าของเทิร์นที่มีการตีครั้งสุดท้าย (ดาเมจจากเต๋า / Time Card ไม่อยู่ในบันทึก)
   // ค่าที่โชว์คือดาเมจทั้งเทิร์นนั้น ไม่ใช่แค่ปุ่มสุดท้าย — กด −5 −3 −1 ในเทิร์นปิดฉาก = 9 ไม่ใช่ 1
-  const lastHit = [...live].reverse().find((e) => e.kind === 'hp' && e.delta < 0)
+  const lastHit = [...live].reverse().find((e) => (e.kind === 'hp' || e.kind === 'counter') && e.delta < 0)
   const finish = lastHit && ownerOf.get(lastHit)
   if (finish) finish.owner.stats.finisher = Math.max(finish.turnDmg, -lastHit.delta)
 

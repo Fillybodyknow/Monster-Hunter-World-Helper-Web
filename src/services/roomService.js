@@ -456,6 +456,28 @@ export const pushUseSignal = (code, payload) =>
 
 export const clearUseSignals = (code) => remove(ref(db, `rooms/${code}/useSignals`))
 
+// ── สวนกลับ ─────────────────────────────────────────────
+// counterClaim: ใครกำลังเปิดหน้าต่างสวนกลับอยู่ — คนอื่นเห็นหน้าจอรอ จะได้ไม่กดทับกัน
+//   มีได้ทีละคน (ห้องหนึ่งมี Lance ได้คนเดียวอยู่แล้ว) ล้างเมื่อสวนเสร็จ ยกเลิก หรือขึ้นการ์ดใบใหม่
+// counterSignal: ประกาศผลให้ทุกเครื่องเล่นแอนิเมชันเดียวกัน
+export const setCounterClaim = (code, claim) =>
+  claim == null
+    ? remove(ref(db, `rooms/${code}/counterClaim`))
+    : set(ref(db, `rooms/${code}/counterClaim`), { at: Date.now(), ...claim })
+
+export const pushCounterSignal = (code, payload) =>
+  set(ref(db, `rooms/${code}/counterSignal`), { at: Date.now(), ...payload })
+
+// ── ผลที่ระบบทำให้ Hunter (เสีย HP / ติดสถานะ) ──────────
+// push ต่อท้ายทีละรายการ — สองคนโดนพร้อมกัน (เช่นพิษเข้าตอนจบเทิร์น) ต้องไม่ทับกัน
+export const pushEffectSignal = (code, payload) =>
+  push(ref(db, `rooms/${code}/effectSignals`), { at: Date.now(), ...payload })
+
+export const clearEffectSignals = (code) => remove(ref(db, `rooms/${code}/effectSignals`))
+
+export const clearCounterState = (code) =>
+  update(ref(db, `rooms/${code}`), { counterClaim: null, counterSignal: null })
+
 // ── บันทึกการล่า — ใครกดอะไรไปบ้าง + ย้อนได้ ─────────────
 // push ต่อท้ายทีละรายการ ไม่เขียนทับทั้งก้อน สองคนกดพร้อมกันก็ไม่หายสักรายการ
 export const pushHuntLogEntry = (code, entry) =>

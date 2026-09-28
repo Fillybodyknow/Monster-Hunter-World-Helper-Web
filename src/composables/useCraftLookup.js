@@ -3,7 +3,7 @@ import craftingData from '@/assets/files/crafting_item.json'
 import armorsData from '@/assets/files/armors.json'
 import weaponsData from '@/assets/files/weapons.json'
 import elementalData from '@/assets/files/elemental.json'
-import rarityData from '@/assets/files/equiment_rarity.json'
+import { rarityGroupOf } from '@/services/equipService'
 import { hunter } from '@/stores/hunter'
 
 // Global modal state (shared across all components)
@@ -34,7 +34,7 @@ const getCraftableWith = (resource_type_id, item_id) => {
     const armor = armorSet?.equips.find((e) => e.equip_id === craft.equip_id)
     if (armor) {
       // Get piece thumbnail from equiment_rarity
-      const rarityGroup = rarityData[0]?.rarity_list?.find((r) => r.equipment_rarity === armorSet.rarity)
+      const rarityGroup = rarityGroupOf(1, armorSet.rarity)
       const armorPieceThumbnail = rarityGroup?.list?.find((l) => l.id === armor.armor_part_id)?.thumbnail
       const elemental = armor.elemental_armor?.elemental_id
         ? elementalData.find((e) => e.elemental_id === armor.elemental_armor.elemental_id)
@@ -70,9 +70,7 @@ const getCraftableWith = (resource_type_id, item_id) => {
       if (weapon) {
         // ไอคอนอาวุธจริงตาม rarity ไม่ใช่ไอคอนสายอาวุธ — ให้เห็นว่าคราฟแล้วได้ของหน้าตายังไง
         // ใช้ find(type_id) แทน index เพราะลำดับใน equiment_rarity.json ไม่ได้การันตีอะไรไว้
-        const weaponRarity = rarityData
-          .find((t) => t.type_id === 2)
-          ?.rarity_list?.find((r) => r.equipment_rarity === weapon.rarity)
+        const weaponRarity = rarityGroupOf(2, weapon.rarity)
         const weaponThumbnail = weaponRarity?.list?.find(
           (w) => w.id === classEntry.hunter_class_id,
         )?.thumbnail

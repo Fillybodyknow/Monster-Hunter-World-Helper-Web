@@ -101,6 +101,34 @@ const titleOf = (cards, id) => cards.find((c) => c.key === String(id))?.title.id
   expect(new Set(ids).size === ids.length, 'id ฉายาในตารางต้องไม่ซ้ำ')
 }
 
+// ── 8.5 สวนกลับ: ดาเมจกับ Break เป็นของคนที่สวน ไม่ใช่เจ้าของเทิร์น ──
+// สวนกลับเกิดในเทิร์นมอนสเตอร์ ถ้าเอาไปกองรวมแล้วยกให้คนกดจบเทิร์น ฉายาดาเมจจะไปผิดคน
+{
+  const counter = (id, n, extra = {}) => ({ kind: 'counter', delta: -n, pos: 'front', ...who(id), ...extra })
+  const part = (id, n, extra = {}) => ({ kind: 'part', delta: n, pos: 'front', ...who(id), ...extra })
+  const log = [
+    counter(2, 9), part(2, 2, { via: 'counter' }),   // H2 สวนกลับระหว่างเทิร์นมอน
+    hit(1, 4), end(1),                                // แล้ว H1 ค่อยเล่นเทิร์นของตัวเองและกดจบเทิร์น
+  ]
+  const cards = buildHuntHighlights(log, members(1, 2))
+  const cardOf = (id) => cards.find((c) => c.key === String(id))
+  expect(titleOf(cards, 2) === 'topDamage' && cardOf(2).value === 9, `ดาเมจสวนกลับ 9 ต้องเป็นของคนที่สวน (ได้ ${titleOf(cards, 2)} ${cardOf(2)?.value})`)
+  expect(titleOf(cards, 1) !== 'topDamage', 'เจ้าของเทิร์นต้องไม่ได้ฉายาดาเมจรวมจากการสวนกลับของคนอื่น')
+
+  // Break จากการสวนกลับ — แยกเคสให้เห็นชัด (คนสวนตีน้อย แต่ใส่ Break เยอะ)
+  // ลำดับเหมือนของจริง: มอนโจมตี → สวนกลับ → แล้วคนอื่นค่อยเล่นเทิร์นและกดจบเทิร์น
+  const breakLog = [counter(2, 1), part(2, 3, { via: 'counter' }), hit(1, 10), end(1)]
+  const bc = buildHuntHighlights(breakLog, members(1, 2))
+  const breaker = bc.find((c) => c.title.id === 'partBreaker' || c.title.id === 'partHelper')
+  expect(breaker?.key === '2' && breaker.value === 3, `Break ที่ใส่ตอนสวนกลับต้องเป็นของคนที่สวน (ได้ ${breaker?.key} ${breaker?.value})`)
+
+  // ดาบปิดฉาก: สวนกลับเป็นไม้สุดท้ายได้เหมือนกัน
+  const finishLog = [hit(1, 10), end(1), counter(2, 6)]
+  const fin = buildHuntHighlights(finishLog, members(1, 2))
+  const f2 = fin.find((c) => c.key === '2')
+  expect(f2?.title.id === 'finisher' && f2.value === 6, `สวนกลับที่เป็นไม้สุดท้ายต้องนับเป็นดาบปิดฉากของคนสวน (ได้ ${f2?.title.id} ${f2?.value})`)
+}
+
 // ── 9. ฉายาทีม ──
 {
   const t = (o) => buildTeamTitle(o).name
