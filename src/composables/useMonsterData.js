@@ -32,8 +32,6 @@ export const BOOKS = [
     name: 'Kushala Daora',
     data: [kushalaBook],
     img: 'assets/img/kushala_daora_box.webp',
-    // ป้ายคาดมุมกล่อง — ตอนนี้มีแค่ Assigned Quest ยังไม่ครบทั้งกล่อง
-    badge: 'Demo',
     // เหล็กกล้าเย็นเฉียบ — Kushala คือมังกรเกล็ดเหล็กแห่งพายุหิมะ
     color: '#26323d',
     accent: '#8fb6cc',
