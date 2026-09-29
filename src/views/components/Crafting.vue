@@ -6,6 +6,7 @@ import { hunter, loadHunter, saveHunter } from '@/stores/hunter'
 import craftingData from '@/assets/files/crafting_item.json'
 import resourceData from '@/assets/files/resource.json'
 import { rarityGroupOf } from '@/services/equipService'
+import { cardLines } from '@/services/cardLines'
 import elementalData from '@/assets/files/elemental.json'
 import bonusAbilityData from '@/assets/files/bonus_ability.json'
 import {
@@ -256,18 +257,6 @@ const getResource = (typeId, itemId) => {
   return group?.resources.find((r) => r.item_id === itemId)
 }
 
-/* บรรทัดใน add / remove เขียนเป็น "3 Long Thrust" หรือ "Any 2 Cards"
-   แยกเลขนำหน้าออกมาทำเป็นป้ายจำนวน ที่เหลือเป็นชื่อการ์ด — อ่านง่ายกว่าข้อความยาวบรรทัดเดียว */
-const parseCardLine = (text) => {
-  const m = String(text).trim().match(/^(\d+)\s+(.+)$/)
-  return m ? { count: Number(m[1]), name: m[2] } : { count: null, name: String(text).trim() }
-}
-const cardLines = (text) =>
-  String(text ?? '')
-    .split('\n')
-    .map((t) => t.trim())
-    .filter(Boolean)
-    .map(parseCardLine)
 
 const getCrafting = (node) => {
   if (!hunter.value) return []
