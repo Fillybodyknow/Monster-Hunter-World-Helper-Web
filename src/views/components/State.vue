@@ -7,6 +7,7 @@ import { rankOf } from '@/services/hunterRank'
 import { getHunterClassById } from '@/services/hunterService'
 import { getArmors, getWeapons } from '@/services/equipService'
 import { previewClassSwitch, switchHunterClass, weaponCountOfClass } from '@/services/classSwitch'
+import { cardLines } from '@/services/cardLines'
 import { loadHunter } from '@/stores/hunter'
 import { questInProgress } from '@/stores/questSession'
 import { useRoomStore } from '@/stores/room'
@@ -89,6 +90,66 @@ const bonusAbilities = computed(() => {
 
 const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
 
+// ── ของที่หน้านี้ต้องวาดซ้ำ ๆ — รวมเป็นรายการเดียวแทนการก๊อปบล็อกละช่อง ──
+// การ์ดดาเมจของอาวุธ: โชว์ครบสี่แบบเสมอ ช่องที่ไม่มีการ์ดให้จางไว้
+// (เลข 0 คือข้อมูล ไม่ใช่ช่องว่าง — ต้องรู้ว่าอาวุธนี้ไม่มีการ์ดหน้านั้นเลย)
+const damageCards = computed(() =>
+  Object.entries(hunter.value?.weapon?.damage_cards ?? {})
+    .map(([key, count]) => ({ face: key.replace('damage_', ''), count }))
+    // เอาเฉพาะหน้าที่อาวุธมีการ์ดจริง — ช่องเปล่าไม่ได้บอกอะไรตอนหยิบการ์ดมาตั้งกอง
+    .filter((d) => d.count > 0),
+)
+
+// สี่ช่องอุปกรณ์ในรูปแบบเดียวกัน — ค่าที่ชิ้นนั้นให้จะได้อ่านตรงช่องเลย ไม่ต้องไปไล่หาในแผงรวม
+const gearSlots = computed(() => {
+  const h = hunter.value
+  if (!h) return []
+  const armorSlot = (key, label) => {
+    const a = h.armors[key]
+    const el = a.elemental_armor?.elemental_id > 0 ? a.elemental_armor : null
+    return {
+      key,
+      label,
+      name: a.equip,
+      setImg: a.set_thumbnail,
+      itemImg: a.thumbnail,
+      dmg: [],
+      armor: a.physical_armor || 0,
+      element: el ? { value: el.protection, thumbnail: getElementalById(el.elemental_id)?.thumbnail } : null,
+      ability: a.ability_id > 0 ? (getAbilityById(a.ability_id)?.ability_name ?? null) : null,
+    }
+  }
+  const w = h.weapon
+  return [
+    {
+      key: 'weapon',
+      label: 'อาวุธ',
+      name: w.item,
+      setImg: w.set_thumbnail,
+      itemImg: w.thumbnail,
+      dmg: damageCards.value.filter((d) => d.count > 0),
+      armor: w.defense || 0,
+      element: null,
+      ability: null,
+    },
+    armorSlot('helm', 'หมวก'),
+    armorSlot('mail', 'เสื้อเกราะ'),
+    armorSlot('greaves', 'สนับขา'),
+  ]
+})
+
+// ความสามารถแต่ละอันมาจากชิ้นไหน — เดิมขึ้นแต่ชื่อ ถอดชิ้นไหนถึงจะหายก็ไม่มีทางรู้
+const SLOT_LABEL = { helm: 'หมวก', mail: 'เสื้อเกราะ', greaves: 'สนับขา' }
+const abilitySource = (abilityId) => {
+  const h = hunter.value
+  if (!h) return ''
+  const from = Object.entries(SLOT_LABEL)
+    .filter(([slot]) => h.armors[slot]?.ability_id === abilityId)
+    .map(([, label]) => label)
+  if (h.armor_set_ability === abilityId) from.push('ครบเซ็ต')
+  return from.join(' · ')
+}
+
 const loadState = async () => {
   const HunterID = parseInt(localStorage.getItem('hunterId'))
   const Hunter = getHunterById(HunterID)
@@ -133,10 +194,8 @@ const showSwapModal = ref(false)
 const modalItems   = ref([])
 const loadingModal = ref(false)
 
-const equippedOrNull = (arr) => Array.isArray(arr) ? arr.find((i) => i?.is_equip) || null : null
-
 const slotTitle = (key) =>
-  ({ weapon: 'Weapon', helm: 'Helm', mail: 'Mail', greaves: 'Greaves' }[key] ?? '')
+  ({ weapon: 'อาวุธ', helm: 'หมวก', mail: 'เสื้อเกราะ', greaves: 'สนับขา' }[key] ?? '')
 
 const equipArrayByType = (type) => {
   if (!rawHunter.value?.equipments) return []
@@ -156,10 +215,10 @@ const openSwapModal = async (type) => {
         if (!it) return null
         if (type === 'weapon') {
           const d = await getWeapons(rawHunter.value.hunter_class_id, it.weapon_type_id, it.item_id)
-          return { id: `${it.weapon_type_id}-${it.item_id}`, thumbnail: d?.thumbnail ?? null, label: d?.item || d?.weapon_type || `Weapon ${it.item_id}`, data: d, raw: it }
+          return { id: `${it.weapon_type_id}-${it.item_id}`, thumbnail: d?.thumbnail ?? null, label: d?.item || d?.weapon_type || `Weapon ${it.item_id}`, data: d, raw: it, worn: !!it.is_equip }
         }
         const d = await getArmors(it.equip_set_id, it.equip_id)
-        return { id: `${it.equip_set_id}-${it.equip_id}`, thumbnail: d?.thumbnail ?? null, label: d?.equip || d?.set_name || `Armor ${it.equip_id}`, data: d, raw: it }
+        return { id: `${it.equip_set_id}-${it.equip_id}`, thumbnail: d?.thumbnail ?? null, label: d?.equip || d?.set_name || `Armor ${it.equip_id}`, data: d, raw: it, worn: !!it.is_equip }
       })
     )
     modalItems.value = results.filter(Boolean)
@@ -242,12 +301,21 @@ const confirmClassSwitch = async () => {
   <div class="state-page">
   <template v-if="hunter">
 
-    <!-- ══════════ DOSSIER HEADER ══════════ -->
-    <div class="dossier-header">
-      <div class="dh-ornament">✦</div>
-      <div class="dh-title-block">
-        <h2 class="dh-title">{{ hunter.name }}</h2>
-        <p class="dh-class">{{ hunter.class.hunter_class }}</p>
+    <!-- ══════════ HERO — ใครกำลังล่าอยู่ ══════════ -->
+    <section data-tour="state-profile" class="hero">
+      <div class="hero-emblem">
+        <img :src="getImg(hunter.class.thumbnail)" class="hero-emblem-img" alt="" />
+      </div>
+      <div class="hero-main">
+        <h2 class="hero-name">{{ hunter.name }}</h2>
+        <p class="hero-class">{{ hunter.class.hunter_class }}</p>
+        <div class="hero-chips">
+          <span class="hero-chip hero-chip-hr"><em>HR</em>{{ hunter.hunter_rank }}</span>
+          <span class="hero-chip hero-chip-day">Day {{ hunter.campaign_day }}</span>
+          <span class="hero-chip">🐾 {{ hunter.palico }}</span>
+        </div>
+      </div>
+      <div class="hero-side">
         <button
           data-tour="state-class-switch"
           class="dh-class-btn"
@@ -259,202 +327,155 @@ const confirmClassSwitch = async () => {
         </button>
         <p v-if="switchBlockedReason" class="dh-class-note">{{ switchBlockedReason }}</p>
       </div>
-      <div class="dh-ornament">✦</div>
-    </div>
+    </section>
 
-    <div class="state-grid">
+    <div class="state-layout">
 
-      <!-- ══════════ LEFT PANEL — PROFILE ══════════ -->
-      <div data-tour="state-profile" class="panel">
-        <div class="panel-header">
-          <span class="ph-label">Hunter Profile</span>
-        </div>
+      <!-- ══════════ ค่าที่ใช้ตั้งกระดาน — ของที่ต้องหยิบใช้บ่อยสุด อยู่บนสุด ══════════ -->
+      <section data-tour="state-combat" class="card board-card">
+        <header class="card-head">
+          <span class="card-title">ค่าสำหรับตั้งกระดาน</span>
+          <span class="card-sub">ชุดตัวเลขที่ใช้ตอนเซ็ตของบนโต๊ะ</span>
+        </header>
 
-        <div class="profile-center">
-          <div class="hunter-portrait">
-            <img :src="getImg(hunter.class.thumbnail)" class="class-img" />
-          </div>
-
-          <div class="profile-tags">
-            <div class="ptag">
-              <span class="ptag-l">Palico</span>
-              <span class="ptag-v">{{ hunter.palico }}</span>
-            </div>
-            <div class="ptag">
-              <span class="ptag-l">Campaign Day</span>
-              <span class="ptag-v day-badge">Day {{ hunter.campaign_day }}</span>
-            </div>
-            <div class="ptag">
-              <span class="ptag-l">Hunter Rank</span>
-              <span class="ptag-v hr-badge">HR {{ hunter.hunter_rank }}</span>
+        <div class="bs-group">
+          <p class="bs-label">การ์ดดาเมจของอาวุธ</p>
+          <div class="bs-dmg-row">
+            <div v-for="d in damageCards" :key="d.face" class="bs-dmg">
+              <span class="bs-dmg-card" :style="{ backgroundImage: `url(${getImg('assets/img/take_damage.webp')})` }">
+                {{ d.face }}
+              </span>
+              <span class="bs-dmg-count">×{{ d.count }}</span>
             </div>
           </div>
         </div>
+
+        <div class="bs-group">
+          <p class="bs-label">ค่าป้องกัน</p>
+          <div class="bs-def-row">
+            <div class="bs-def">
+              <span class="bs-def-coin" :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.webp')})` }">
+                <span class="bs-def-num">{{ totalArmor }}</span>
+              </span>
+              <span class="bs-def-tag">กายภาพ</span>
+            </div>
+            <div v-for="el in elementArmor" :key="el.elemental_id" class="bs-def">
+              <span class="bs-def-coin" :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.webp')})` }">
+                <img :src="getImg(el.thumbnail)" class="bs-def-elem" alt="" />
+                <span class="bs-def-num bs-def-num-elem">{{ el.value }}</span>
+              </span>
+              <span class="bs-def-tag">{{ getElementalById(Number(el.elemental_id))?.elemental ?? 'ธาตุ' }}</span>
+            </div>
+          </div>
+          <p class="bs-hint">ค่ากายภาพรวมค่าป้องกันติดตัวของอาวุธไว้แล้ว</p>
+        </div>
+
+        <!-- หน้าตาเดียวกับการ์ดอาวุธในหน้า Crafting — คนที่เพิ่งตีอาวุธมาจะได้เห็นของชุดเดิม -->
+        <div v-if="hunter.weapon.remove || hunter.weapon.add" class="bs-group">
+          <p class="bs-label">ปรับกองการ์ดโจมตี</p>
+
+          <div v-if="hunter.weapon.remove" class="cardmod cardmod-remove">
+            <div class="cardmod-head">
+              <span class="cardmod-sign">🗑️</span>
+              <span class="cardmod-title">นำการ์ดออก</span>
+              <span class="cardmod-sign">🗑️</span>
+            </div>
+            <div v-for="(line, li) in cardLines(hunter.weapon.remove)" :key="'r' + li" class="cardmod-row">
+              <span v-if="line.count" class="cardmod-count">{{ line.count }}</span>
+              <span class="cardmod-name">{{ line.name }}</span>
+            </div>
+          </div>
+
+          <div v-if="hunter.weapon.add" class="cardmod cardmod-add">
+            <div class="cardmod-head">
+              <span class="cardmod-sign">📥</span>
+              <span class="cardmod-title">ใส่การ์ดเข้าแทน</span>
+              <span class="cardmod-sign">📥</span>
+            </div>
+            <div v-for="(line, li) in cardLines(hunter.weapon.add)" :key="'a' + li" class="cardmod-row">
+              <span v-if="line.count" class="cardmod-count">{{ line.count }}</span>
+              <span class="cardmod-name">{{ line.name }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="state-col">
+
+        <!-- ══════════ อุปกรณ์ ══════════ -->
+        <section class="card gear-card">
+          <header class="card-head">
+            <span class="card-title">อุปกรณ์ที่สวมอยู่</span>
+            <span class="card-sub">แตะช่องเพื่อเปลี่ยนเป็นชิ้นที่คราฟไว้</span>
+          </header>
+
+          <div data-tour="state-equipment" class="gear-grid">
+            <button v-for="slot in gearSlots" :key="slot.key" class="gear-slot" @click="openSwapModal(slot.key)">
+              <span class="gear-top">
+                <span class="gear-label">{{ slot.label }}</span>
+                <span class="gear-swap">เปลี่ยน ›</span>
+              </span>
+              <span class="gear-body">
+                <span class="gear-art">
+                  <img :src="getImg(slot.setImg)" class="gear-art-set" alt="" />
+                  <img :src="getImg(slot.itemImg)" class="gear-art-item" alt="" />
+                </span>
+                <span class="gear-info">
+                  <span class="gear-name">{{ slot.name }}</span>
+                  <span class="gear-stats">
+                    <span v-for="d in slot.dmg" :key="d.face" class="gear-dmg">
+                      <span
+                        class="gear-dmg-card"
+                        :style="{ backgroundImage: `url(${getImg('assets/img/take_damage.webp')})` }"
+                      >{{ d.face }}</span>
+                      <em class="gear-dmg-count">×{{ d.count }}</em>
+                    </span>
+                    <span
+                      v-if="slot.armor > 0"
+                      class="gear-pill gear-pill-armor"
+                      :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.webp')})` }"
+                    >
+                      {{ slot.armor }}
+                    </span>
+                    <span
+                      v-if="slot.element"
+                      class="gear-pill gear-pill-armor gear-pill-elem"
+                      :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.webp')})` }"
+                    >
+                      <img :src="getImg(slot.element.thumbnail)" class="gear-elem-icon" alt="" />
+                      <span class="gear-elem-num">{{ slot.element.value }}</span>
+                    </span>
+                    <span v-if="slot.ability" class="gear-pill gear-pill-skill">{{ slot.ability }}</span>
+                    <span v-if="!slot.dmg.length && !slot.armor && !slot.element && !slot.ability" class="gear-pill gear-pill-none">
+                      ไม่มีค่าเพิ่ม
+                    </span>
+                  </span>
+                </span>
+              </span>
+            </button>
+          </div>
+        </section>
+
+        <!-- ══════════ ความสามารถ ══════════ -->
+        <section data-tour="state-abilities" class="card skill-card">
+          <header class="card-head">
+            <span class="card-title">ความสามารถที่ได้อยู่</span>
+            <span class="card-sub">{{ bonusAbilities.length }} อย่าง</span>
+          </header>
+
+          <div v-if="bonusAbilities.length" class="skill-list">
+            <article v-for="ab in bonusAbilities" :key="ab.ability_id" class="skill-item">
+              <p class="skill-head">
+                <span class="skill-name">{{ ab.ability_name }}</span>
+                <span v-if="abilitySource(ab.ability_id)" class="skill-from">{{ abilitySource(ab.ability_id) }}</span>
+              </p>
+              <p class="skill-text"><RuleText :text="ab.ability" /></p>
+            </article>
+          </div>
+          <p v-else class="skill-empty">เกราะที่ใส่อยู่ยังไม่มีความสามารถพิเศษ</p>
+        </section>
+
       </div>
-
-      <!-- ══════════ CENTER PANEL — EQUIPMENT ══════════ -->
-      <div class="panel">
-        <div class="panel-header">
-          <span class="ph-label">Equipment</span>
-        </div>
-
-        <div data-tour="state-equipment" class="equip-grid">
-          <!-- WEAPON -->
-          <div class="equip-card" @click="openSwapModal('weapon')">
-            <span class="equip-slot-badge">Weapon</span>
-            <div class="equip-imgs">
-              <img :src="getImg(hunter.weapon.set_thumbnail)" class="equip-set-img" />
-              <img :src="getImg(hunter.weapon.thumbnail)" class="equip-item-img" />
-            </div>
-            <p class="equip-name">{{ hunter.weapon.item }}</p>
-            <div class="equip-details">
-              <div v-for="(cnt, key) in hunter.weapon.damage_cards" :key="key" v-show="cnt > 0" class="mini-dmg-wrap">
-                <div class="mini-dmg-frame">
-                  <div class="mini-dmg-card" :style="{ backgroundImage: `url(${getImg('assets/img/take_damage.webp')})` }">
-                    <span class="mini-dmg-val">{{ key.replace('damage_', '') }}</span>
-                  </div>
-                  <span class="mini-dmg-count">×{{ cnt }}</span>
-                </div>
-              </div>
-              <div v-if="hunter.weapon.defense > 0"
-                class="mini-armor-card"
-                :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.webp')})` }">
-                <span>{{ hunter.weapon.defense }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- HELM -->
-          <div class="equip-card" @click="openSwapModal('helm')">
-            <span class="equip-slot-badge">Helm</span>
-            <div class="equip-imgs">
-              <img :src="getImg(hunter.armors.helm.set_thumbnail)" class="equip-set-img" />
-              <img :src="getImg(hunter.armors.helm.thumbnail)" class="equip-item-img" />
-            </div>
-            <p class="equip-name">{{ hunter.armors.helm.equip }}</p>
-            <div class="equip-details">
-              <div v-if="hunter.armors.helm.physical_armor > 0"
-                class="mini-armor-card"
-                :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.webp')})` }">
-                <span>{{ hunter.armors.helm.physical_armor }}</span>
-              </div>
-              <div v-if="hunter.armors.helm.elemental_armor?.elemental_id > 0"
-                class="mini-armor-card"
-                :style="{ backgroundImage: `url(${getImg(getElementalById(hunter.armors.helm.elemental_armor.elemental_id)?.thumbnail)}), url(${getImg('assets/img/bonus_armor.webp')})` }">
-                <span class="mini-elem-val">{{ hunter.armors.helm.elemental_armor.protection }}</span>
-              </div>
-              <span v-if="hunter.armors.helm.ability_id > 0" class="equip-ability-chip">{{ getAbilityById(hunter.armors.helm.ability_id)?.ability_name }}</span>
-            </div>
-          </div>
-
-          <!-- MAIL -->
-          <div class="equip-card" @click="openSwapModal('mail')">
-            <span class="equip-slot-badge">Mail</span>
-            <div class="equip-imgs">
-              <img :src="getImg(hunter.armors.mail.set_thumbnail)" class="equip-set-img" />
-              <img :src="getImg(hunter.armors.mail.thumbnail)" class="equip-item-img" />
-            </div>
-            <p class="equip-name">{{ hunter.armors.mail.equip }}</p>
-            <div class="equip-details">
-              <div v-if="hunter.armors.mail.physical_armor > 0"
-                class="mini-armor-card"
-                :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.webp')})` }">
-                <span>{{ hunter.armors.mail.physical_armor }}</span>
-              </div>
-              <div v-if="hunter.armors.mail.elemental_armor?.elemental_id > 0"
-                class="mini-armor-card"
-                :style="{ backgroundImage: `url(${getImg(getElementalById(hunter.armors.mail.elemental_armor.elemental_id)?.thumbnail)}), url(${getImg('assets/img/bonus_armor.webp')})` }">
-                <span class="mini-elem-val">{{ hunter.armors.mail.elemental_armor.protection }}</span>
-              </div>
-              <span v-if="hunter.armors.mail.ability_id > 0" class="equip-ability-chip">{{ getAbilityById(hunter.armors.mail.ability_id)?.ability_name }}</span>
-            </div>
-          </div>
-
-          <!-- GREAVES -->
-          <div class="equip-card" @click="openSwapModal('greaves')">
-            <span class="equip-slot-badge">Greaves</span>
-            <div class="equip-imgs">
-              <img :src="getImg(hunter.armors.greaves.set_thumbnail)" class="equip-set-img" />
-              <img :src="getImg(hunter.armors.greaves.thumbnail)" class="equip-item-img" />
-            </div>
-            <p class="equip-name">{{ hunter.armors.greaves.equip }}</p>
-            <div class="equip-details">
-              <div v-if="hunter.armors.greaves.physical_armor > 0"
-                class="mini-armor-card"
-                :style="{ backgroundImage: `url(${getImg('assets/img/bonus_armor.webp')})` }">
-                <span>{{ hunter.armors.greaves.physical_armor }}</span>
-              </div>
-              <div v-if="hunter.armors.greaves.elemental_armor?.elemental_id > 0"
-                class="mini-armor-card"
-                :style="{ backgroundImage: `url(${getImg(getElementalById(hunter.armors.greaves.elemental_armor.elemental_id)?.thumbnail)}), url(${getImg('assets/img/bonus_armor.webp')})` }">
-                <span class="mini-elem-val">{{ hunter.armors.greaves.elemental_armor.protection }}</span>
-              </div>
-              <span v-if="hunter.armors.greaves.ability_id > 0" class="equip-ability-chip">{{ getAbilityById(hunter.armors.greaves.ability_id)?.ability_name }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- BONUS ABILITY -->
-        <div data-tour="state-abilities" class="panel-section-header">Bonus Abilities</div>
-
-        <div v-if="bonusAbilities.length > 0" class="ability-list">
-          <div v-for="ab in bonusAbilities" :key="ab.ability_id" class="ability-card">
-            <p class="ability-name">{{ ab.ability_name }}</p>
-            <p class="ability-desc"><RuleText :text="ab.ability" /></p>
-          </div>
-        </div>
-        <p v-else class="no-ability">No abilities active</p>
-      </div>
-
-      <!-- ══════════ RIGHT PANEL — STATS ══════════ -->
-      <div data-tour="state-combat" class="panel">
-        <div class="panel-header">
-          <span class="ph-label">Combat Stats</span>
-        </div>
-
-        <!-- DAMAGE CARDS -->
-        <div class="panel-section-header">Damage Cards</div>
-        <div class="damage-row">
-          <div v-for="(val, key) in hunter.weapon.damage_cards" :key="key" class="damage-wrapper">
-            <div class="damage-frame">
-              <div class="damage-card">
-                <img :src="getImg('assets/img/take_damage.webp')" />
-                <span class="dmg-value">{{ key.split('_')[1] }}</span>
-              </div>
-              <p class="dmg-count">x{{ val }}</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- ARMOR STATS -->
-        <div class="panel-section-header">Defense</div>
-        <div class="armor-stats-row">
-          <div class="armor-card element-card">
-            <img :src="getImg('assets/img/bonus_armor.webp')" />
-            <span>{{ totalArmor }}</span>
-          </div>
-
-          <div v-for="el in elementArmor" :key="el.elemental_id" class="armor-card element-card">
-            <img :src="getImg('assets/img/bonus_armor.webp')" class="armor-base" />
-            <img :src="getImg(el.thumbnail)" class="element-icon" />
-            <span class="element-value">{{ el.value }}</span>
-          </div>
-        </div>
-
-        <!-- DECK MODS -->
-        <div class="panel-section-header">Deck Modification</div>
-        <div class="deck-mod-row">
-          <div class="deck-chip remove-chip">
-            <span class="dc-label">Remove</span>
-            <span class="dc-val">{{ hunter.weapon.remove || '—' }}</span>
-          </div>
-          <div class="deck-chip add-chip">
-            <span class="dc-label">Add</span>
-            <span class="dc-val">{{ hunter.weapon.add || '—' }}</span>
-          </div>
-        </div>
-      </div>
-
     </div>
   </template>
 
@@ -465,7 +486,7 @@ const confirmClassSwitch = async () => {
         <div class="swap-modal-top">
           <div class="swap-title-row">
             <span class="swap-ornament">◆</span>
-            <h3 class="swap-title">Choose {{ slotTitle(equipType) }}</h3>
+            <h3 class="swap-title">เลือก{{ slotTitle(equipType) }}</h3>
             <span class="swap-ornament">◆</span>
           </div>
           <button class="btn-swap-close" @click="showSwapModal = false">✕</button>
@@ -479,6 +500,7 @@ const confirmClassSwitch = async () => {
               v-for="it in modalItems"
               :key="it.id"
               class="swap-modal-card"
+              :class="{ 'smc-worn': it.worn }"
               @click="setEquip(it)"
             >
               <div class="smc-img-wrap">
@@ -486,6 +508,7 @@ const confirmClassSwitch = async () => {
                 <div v-else class="smc-empty">?</div>
               </div>
               <p class="smc-label">{{ it.label }}</p>
+              <span v-if="it.worn" class="smc-worn-tag">ใส่อยู่</span>
 
               <!-- Weapon details -->
               <template v-if="equipType === 'weapon' && it.data">
@@ -638,1001 +661,381 @@ const confirmClassSwitch = async () => {
 }
 
 /* ══════════════════════════════════════════
-   DOSSIER HEADER
+   HERO — ชื่อ คลาส และสถานะแคมเปญในแถบเดียว
+   เดิมแยกเป็นป้ายชื่อ + แผง Hunter Profile เต็มความสูง กินที่ก่อนถึงของจริงเกือบ 550px
 ══════════════════════════════════════════ */
-/* ป้ายทองเหลืองสลักชื่อ ตอกหมุดสองข้าง */
-.dossier-header {
+.hero {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 12px 18px;
-  border-radius: 2px;
-  border: 1px solid #0f0b08;
-  background:
-    var(--grain),
-    radial-gradient(circle at 12px 50%, rgba(226,196,142,0.3) 0 1.8px, transparent 2.4px),
-    radial-gradient(circle at calc(100% - 12px) 50%, rgba(226,196,142,0.3) 0 1.8px, transparent 2.4px),
-    linear-gradient(170deg, #3d342b 0%, #2c251e 50%, #1e1813 100%);
-  box-shadow: inset 0 1px 0 rgba(240,220,180,0.13), 0 3px 10px rgba(0,0,0,0.55);
-}
-
-.dh-ornament {
-  color: #a8802e;
-  font-size: 14px;
-}
-
-.dh-title-block {
-  text-align: center;
-}
-
-.dh-title {
-  margin: 0;
-  font-size: 22px;
-  color: #ffd27a;
-  letter-spacing: 2px;
-  text-shadow: 0 0 15px rgba(255, 200, 80, 0.4), 0 2px 4px rgba(0,0,0,0.8);
-}
-
-.dh-class {
-  margin: 2px 0 0;
-  font-size: 11px;
-  color: #a88040;
-  letter-spacing: 4px;
-  text-transform: uppercase;
-}
-
-/* ══════════════════════════════════════════
-   MAIN GRID
-══════════════════════════════════════════ */
-.state-grid {
-  display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
   gap: 14px;
-  align-items: start;
-}
-
-/* ══════════════════════════════════════════
-   PANEL
-══════════════════════════════════════════ */
-/* แผงหนังหุ้ม สันทองเหลืองด้านซ้าย */
-.panel {
-  padding: 14px;
-  border-radius: 4px;
-  border: 1px solid rgba(124, 90, 43, 0.5);
+  padding: 12px 14px;
+  border: 1px solid rgba(124, 90, 43, 0.55);
   border-left: 3px solid #7c5a2b;
+  border-radius: 4px 3px 5px 3px;
   background: var(--grain), var(--leather);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 220, 160, 0.07),
-    0 3px 10px rgba(0, 0, 0, 0.5);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255, 220, 160, 0.07), 0 3px 12px rgba(0, 0, 0, 0.45);
 }
-
-/* PANEL HEADER — แถบทองเหลืองเต็มความกว้าง เจาะออกนอก padding ของแผง */
-.panel-header {
-  margin: -14px -14px 2px;
-  padding: 9px 14px;
-  background: linear-gradient(to bottom, rgba(200, 155, 60, 0.2), rgba(110, 80, 25, 0.26));
-  border-bottom: 1px solid rgba(60, 42, 10, 0.5);
+.hero-emblem {
+  flex: none;
+  width: 62px;
+  height: 62px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid #6b4f1c;
+  background: radial-gradient(circle at 38% 32%, #3a2a16, #1a1206 72%);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.7), 0 0 14px rgba(200, 155, 60, 0.18);
 }
+.hero-emblem-img { width: 42px; height: 42px; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.85)); }
 
-.ph-label {
-  font-size: 10px;
+.hero-main { flex: 1; min-width: 0; }
+.hero-name {
+  margin: 0;
+  font-size: 21px;
   font-weight: bold;
+  line-height: 1.15;
+  color: #ffd27a;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  overflow-wrap: anywhere;
+}
+.hero-class {
+  margin: 1px 0 0;
+  font-size: 10px;
   letter-spacing: 3px;
   text-transform: uppercase;
-  color: #f0d9a0;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
-}
-
-/* SECTION HEADER */
-.panel-section-header {
-  font-size: 10px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
   color: #a88040;
-  border-bottom: 1px solid rgba(124, 90, 43, 0.3);
-  padding-bottom: 4px;
-  margin-top: 2px;
 }
+.hero-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.hero-chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  background: rgba(0, 0, 0, 0.35);
+  font-size: 11px;
+  color: #c9b895;
+}
+.hero-chip em { font-style: normal; margin-right: 4px; font-size: 9px; letter-spacing: 1px; color: #a88040; }
+/* เหรียญเงินให้ HR, เหรียญทองให้วันในแคมเปญ — สองค่านี้คือค่าที่เปลี่ยนไปเรื่อย ๆ */
+.hero-chip-hr { border-color: rgba(200, 210, 220, 0.45); color: #e6edf3; background: linear-gradient(to bottom, rgba(150, 165, 180, 0.28), rgba(0, 0, 0, 0.4)); }
+.hero-chip-day { border-color: rgba(200, 155, 60, 0.6); color: #ffd27a; background: linear-gradient(to bottom, rgba(200, 155, 60, 0.26), rgba(0, 0, 0, 0.4)); }
+
+.hero-side { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; max-width: 42%; }
 
 /* ══════════════════════════════════════════
-   PROFILE (LEFT PANEL)
+   LAYOUT
 ══════════════════════════════════════════ */
-.profile-center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
+.state-layout { display: flex; flex-direction: column; gap: 14px; }
+.state-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+/* จอกว้าง: ค่าตั้งกระดานค้างไว้ซ้ายมือ อ่านไปเปลี่ยนของไปได้โดยไม่ต้องเลื่อนสลับ */
+@media (min-width: 900px) {
+  .state-layout {
+    display: grid;
+    grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+    align-items: start;
+    gap: 16px;
+  }
+  .board-card { position: sticky; top: 12px; }
 }
 
-/* ตราประจำตัวในวงแหวนทองเหลือง */
-.hunter-portrait {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px;
-  border-radius: 50%;
-  border: 2px solid rgba(200, 155, 60, 0.4);
-  background: radial-gradient(circle at 50% 40%, rgba(90, 60, 20, 0.55) 0%, rgba(0, 0, 0, 0.45) 72%);
-  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.7), 0 2px 8px rgba(0, 0, 0, 0.5);
+/* แผ่นหนังหุ้ม สันทองเหลืองด้านซ้าย — ใช้ร่วมกันทุกกล่องในหน้านี้ */
+.card {
+  padding: 12px 14px 14px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  border-left: 3px solid #7c5a2b;
+  border-radius: 4px 3px 5px 3px;
+  background: var(--grain), var(--leather);
+  box-shadow: inset 0 1px 0 rgba(255, 220, 160, 0.06), 0 3px 12px rgba(0, 0, 0, 0.4);
 }
-
-.class-img {
-  width: 90px;
-  height: 90px;
-  object-fit: contain;
-  filter: drop-shadow(0 0 10px rgba(255, 200, 100, 0.4));
-}
-
-.profile-tags {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.ptag {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 9px;
-  border-radius: 2px;
-  background: rgba(0, 0, 0, 0.32);
-  border: 1px solid rgba(0, 0, 0, 0.45);
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5), inset 0 -1px 0 rgba(232, 198, 152, 0.06);
-}
-
-.ptag-l {
-  font-size: 10px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: #7c5a2b;
-}
-
-.ptag-v {
-  font-size: 12px;
-  color: #f0ddb0;
-  text-align: right;
-}
-
-/* HR ใช้เหรียญเงิน ไม่ให้ไปแย่งสายตากับเหรียญทองของเลขวัน */
-.hr-badge {
-  color: #1d2733;
-  font-weight: bold;
-  padding: 2px 9px;
-  border-radius: 999px;
-  background: radial-gradient(circle at 35% 30%, #e6eef5, #a8b9c9 60%, #6d7e8f);
-  border: 1px solid rgba(30, 45, 60, 0.55);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
-}
-
-.day-badge {
-  color: #2a1d06;
-  font-weight: bold;
-  padding: 2px 9px;
-  border-radius: 999px;
-  background: radial-gradient(circle at 35% 30%, #f0d9a0, #c9a227 60%, #8a6a18);
-  border: 1px solid rgba(60, 42, 10, 0.55);
-  text-shadow: 0 1px 0 rgba(255, 230, 180, 0.4);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
-}
-
-/* ══════════════════════════════════════════
-   EQUIPMENT (CENTER PANEL)
-══════════════════════════════════════════ */
-.equip-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-}
-
-/* แผ่นป้ายไม้แขวนของแต่ละช่อง */
-.equip-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  padding: 10px 8px;
-  border-radius: 3px 2px 3px 2px;
-  border: 2px solid #221a10;
-  background:
-    var(--grain),
-    var(--wood-grain),
-    linear-gradient(172deg, #513720 0%, #3f2a16 55%, #2e1f11 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(232, 198, 152, 0.08),
-    inset 0 -6px 14px rgba(0, 0, 0, 0.4),
-    0 2px 8px rgba(0, 0, 0, 0.45);
-  position: relative;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.equip-card:hover {
-  border-color: #3d2c19;
-  transform: translateY(-2px);
-  box-shadow:
-    inset 0 1px 0 rgba(232, 198, 152, 0.14),
-    inset 0 -6px 14px rgba(0, 0, 0, 0.32),
-    0 6px 16px rgba(0, 0, 0, 0.55);
-}
-
-.equip-slot-badge {
-  font-size: 8px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: #c9ac7e;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-}
-
-.equip-imgs {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
-.equip-set-img {
-  width: 30px;
-  height: 30px;
-  object-fit: contain;
-  opacity: 0.7;
-  filter: drop-shadow(0 0 3px rgba(255, 200, 100, 0.3));
-}
-
-.equip-item-img {
-  width: 44px;
-  height: 44px;
-  object-fit: contain;
-  filter: drop-shadow(0 0 5px rgba(255, 200, 100, 0.4));
-}
-
-.equip-name {
-  margin: 0;
-  font-size: 10px;
-  color: #f0dcb4;
-  text-align: center;
-  line-height: 1.3;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
-}
-
-.equip-details {
+.card-head {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  justify-content: center;
-  align-items: flex-end;
-  margin-top: 4px;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(124, 90, 43, 0.35);
 }
-
-/* ── Mini Damage Card (ย่อจาก .damage-frame) ── */
-.mini-dmg-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.mini-dmg-frame {
-  padding: 5px 4px 2px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  border-radius: 8px;
-  background: linear-gradient(to bottom, rgba(60, 45, 25, 0.9), rgba(20, 15, 10, 0.9));
-  border: 1px solid #7c5a2b;
-  box-shadow: inset 0 0 6px rgba(255, 200, 100, 0.1);
-}
-
-.mini-dmg-card {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.mini-dmg-val {
-  font-size: 12px;
-  font-weight: bold;
-  color: #fff;
-  text-shadow: 0 0 4px #000;
-  line-height: 1;
-}
-
-.mini-dmg-count {
-  font-size: 11px;
-  color: #c89b3c;
-  font-weight: bold;
-  margin-top: 1px;
-}
-
-/* ── Mini Armor Card (ย่อจาก .armor-card) ── */
-.mini-armor-card {
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-  background-size: contain, contain;
-  background-repeat: no-repeat, no-repeat;
-  background-position: center, center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.mini-armor-card > span,
-.mini-elem-val {
-  font-size: 13px;
-  font-weight: bold;
-  color: #fff;
-  text-shadow: 0 0 5px #000;
-  line-height: 1;
-}
-
-/* ── Ability chip ── */
-.equip-ability-chip {
-  font-size: 9px;
-  color: #ffd27a;
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(200, 155, 60, 0.4);
-  border-radius: 2px;
-  padding: 2px 5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-  align-self: center;
-}
-
-/* ABILITY LIST */
-.ability-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-/* บันทึกกระดาษเสียบไว้ในแฟ้ม */
-.ability-card {
-  padding: 9px 11px;
-  border-radius: 2px 3px 1px 3px;
-  color: #3a2c18;
-  background: linear-gradient(172deg, #ece1c4, #ddd0ae);
-  border: 1px solid #ab9564;
-  border-left: 3px solid #9c4a15;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), inset 0 0 16px rgba(130, 100, 55, 0.16);
-}
-
-.ability-name {
-  margin: 0;
-  font-size: 12px;
-  color: #2f2312;
-  font-weight: bold;
-}
-
-.ability-desc {
-  margin: 3px 0 0;
-  font-size: 11px;
-  color: #4a3a22;
-  line-height: 1.5;
-}
-
-.no-ability {
-  text-align: center;
-  font-size: 12px;
-  color: #7d6f57;
-  font-style: italic;
-}
+.card-title { font-size: 13px; font-weight: bold; letter-spacing: 2px; color: #ffd27a; }
+.card-sub { font-size: 10px; color: #a88040; }
 
 /* ══════════════════════════════════════════
-   STATS (RIGHT PANEL)
+   ค่าสำหรับตั้งกระดาน
 ══════════════════════════════════════════ */
+.bs-group + .bs-group { margin-top: 14px; padding-top: 12px; border-top: 1px dashed rgba(124, 90, 43, 0.3); }
+.bs-label { margin: 0 0 8px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #a88040; }
 
-/* DAMAGE */
-.damage-row {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-}
-
-.damage-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.damage-frame {
-  padding: 10px 6px 4px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  border-radius: 12px;
-  background: linear-gradient(to bottom, rgba(60, 45, 25, 0.9), rgba(20, 15, 10, 0.9));
-  border: 1px solid #7c5a2b;
-  box-shadow: inset 0 0 8px rgba(255, 200, 100, 0.1);
-  transition: 0.2s;
-}
-
-.damage-frame:hover {
-  box-shadow: 0 0 10px rgba(255, 200, 100, 0.3), inset 0 0 8px rgba(255, 200, 100, 0.1);
-}
-
-.damage-card {
-  position: relative;
+.bs-dmg-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.bs-dmg { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+/* รูปดาวในไฟล์เป็นสี่เหลี่ยมจัตุรัส — กรอบต้องจัตุรัสและใช้ contain
+   (เคยใช้กรอบแนวตั้ง + cover แล้วปลายดาวซ้ายขวาโดนตัด ดูเหมือนวางไม่ตรงกลาง) */
+.bs-dmg-card {
   width: 54px;
   height: 54px;
+  display: grid;
+  place-items: center;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  font-size: 22px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 2px 3px rgba(0, 0, 0, 0.9);
 }
+.bs-dmg-count { font-size: 13px; font-weight: bold; color: #e8c698; }
 
-.damage-card img {
-  width: 100%;
-  height: 100%;
+.bs-def-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; }
+/* ป้ายอยู่ใต้เหรียญ ไม่ทับบนรูป — เคยวางทับแล้วอ่านไม่ออกทั้งสองอย่าง */
+.bs-def { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+/* ตัวเลขอยู่กลางเหรียญเสมอ ส่วนรูปธาตุเป็นตราเล็กที่มุม
+   (เคยวางรูปธาตุเต็มเหรียญแล้วเลขจมหายไปกับลายของรูป อ่านไม่ออกทั้งคู่) */
+.bs-def-coin {
+  position: relative;
+  width: 60px;
+  height: 62px;
+  display: grid;
+  place-items: center;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}
+/* ซ้อนสามชั้นกึ่งกลางเดียวกัน: เหรียญ → รูปธาตุ → ตัวเลข
+   เลขใช้ขาวตัดขอบดำแบบเดียวกับหน้า Crafting จึงอ่านออกแม้ทับบนรูปธาตุ */
+.bs-def-elem {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 48px;
+  height: 48px;
   object-fit: contain;
 }
+/* ขาวตัดขอบดำทุกเหรียญ — อ่านออกทั้งบนเหรียญเปล่าและบนรูปธาตุ (สูตรเดียวกับหน้า Crafting) */
+.bs-def-num {
+  position: relative;
+  z-index: 3;
+  font-size: 26px;
+  font-weight: bold;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 0 4px #000;
+  -webkit-text-stroke: 0.6px #000;
+}
+.bs-def-tag { display: inline-flex; align-items: center; font-size: 10px; letter-spacing: 1px; color: #a88040; }
+.bs-hint { margin: 8px 0 0; font-size: 10px; color: #7d6a4c; }
 
-.dmg-value {
+/* กล่องการ์ดที่ต้องสลับ — ใช้หน้าตาชุดเดียวกับการ์ดอาวุธในหน้า Crafting
+   คนที่เพิ่งตีอาวุธเสร็จแล้วมาเปิดหน้านี้จะได้เห็นของหน้าตาเดิม ไม่ต้องอ่านใหม่ */
+.cardmod {
+  margin-top: 7px;
+  padding: 7px 9px 8px;
+  border-radius: 3px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  border-left-width: 3px;
+  background: linear-gradient(170deg, rgba(28, 19, 10, 0.6), rgba(16, 11, 6, 0.6));
+  text-align: center;
+}
+.cardmod-remove { border-left-color: #b4503a; }
+.cardmod-add { border-left-color: #4f9d5d; }
+
+.cardmod-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+.cardmod-sign {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1;
+}
+.cardmod-remove .cardmod-sign { background: rgba(180, 80, 58, 0.24); color: #ff9a80; }
+.cardmod-add .cardmod-sign { background: rgba(79, 157, 93, 0.24); color: #8ee7a1; }
+.cardmod-title { font-size: 11px; letter-spacing: 0.5px; color: #a8946c; }
+
+.cardmod-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 4px 0;
+}
+.cardmod-row + .cardmod-row { border-top: 1px dashed rgba(124, 90, 43, 0.3); }
+.cardmod-count {
+  flex-shrink: 0;
+  min-width: 24px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: bold;
+  text-align: center;
+}
+.cardmod-remove .cardmod-count { background: rgba(180, 80, 58, 0.26); color: #ffb3a0; }
+.cardmod-add .cardmod-count { background: rgba(79, 157, 93, 0.26); color: #a6efb6; }
+.cardmod-name { font-size: 13px; line-height: 1.35; color: #e6d5ab; }
+
+/* ══════════════════════════════════════════
+   อุปกรณ์
+══════════════════════════════════════════ */
+.gear-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 520px) { .gear-grid { grid-template-columns: 1fr 1fr; } }
+
+/* แถวเดียวจบ: ชื่อช่อง รูป ชื่อของ และค่าที่ชิ้นนั้นให้ — กวาดตาทีเดียวรู้ว่าใส่อะไรได้อะไร */
+.gear-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 10px;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: 1px solid rgba(124, 90, 43, 0.45);
+  border-radius: 4px 3px 5px 3px;
+  background: var(--grain), linear-gradient(168deg, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.2));
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.gear-slot:hover {
+  border-color: rgba(200, 155, 60, 0.75);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 12px rgba(200, 155, 60, 0.2);
+  transform: translateY(-1px);
+}
+.gear-slot:active { transform: translateY(0); }
+.gear-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.gear-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #a88040; }
+.gear-swap { font-size: 10px; color: #6b5a3c; }
+.gear-slot:hover .gear-swap { color: #c89b3c; }
+
+.gear-body { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.gear-art { flex: none; position: relative; width: 54px; height: 54px; }
+.gear-art-set {
   position: absolute;
   inset: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 17px;
-  font-weight: bold;
-  color: #fff;
-  text-shadow: 0 0 6px #000;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0.35;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
 }
-
-.dmg-count {
-  margin-top: 2px;
+.gear-art-item {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.9));
+}
+.gear-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.gear-name {
   font-size: 13px;
-  color: #c89b3c;
   font-weight: bold;
+  line-height: 1.25;
+  color: #e8c698;
+  overflow-wrap: anywhere;
 }
+.gear-stats { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
 
-/* ARMOR STATS */
-.armor-stats-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
+.gear-pill {
+  display: inline-flex;
   align-items: center;
-}
-
-.armor-card {
-  position: relative;
-  width: 64px;
-  height: 64px;
-}
-
-.armor-card img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.armor-card > span {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 18px;
-  font-weight: bold;
-  color: #fff;
-  text-shadow: 0 0 8px #000;
-}
-
-.element-card { position: relative; }
-
-.armor-base {
-  width: 100%;
-  height: 100%;
-}
-
-.element-icon {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 52px !important;
-  height: 52px !important;
-  object-fit: contain;
-  z-index: 2;
-}
-
-.element-value {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  justify-content: center;
+  gap: 2px;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 4px;
   font-size: 13px;
   font-weight: bold;
   color: #fff;
-  text-shadow: 0 0 6px black;
-  z-index: 3;
+  background-size: contain, contain;
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
+  text-shadow: 0 0 4px #000;
+  -webkit-text-stroke: 0.5px #000;
 }
-
-/* DECK MODS */
-.deck-mod-row {
-  display: flex;
-  gap: 8px;
+.gear-pill em { font-style: normal; font-size: 10px; }
+/* เกราะธาตุในช่องอุปกรณ์ — ซ้อนสามชั้นแบบเดียวกับเหรียญในแผงค่าตั้งกระดาน */
+.gear-pill-elem { position: relative; }
+.gear-elem-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
 }
+.gear-elem-num { position: relative; z-index: 3; }
 
-.deck-chip {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 8px 10px;
-  border-radius: 2px;
-  background: rgba(0, 0, 0, 0.32);
-  border: 1px solid rgba(0, 0, 0, 0.45);
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
-  text-align: center;
-}
-
-.dc-label {
-  font-size: 8px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: #a88040;
-}
-
-.dc-val {
-  font-size: 12px;
-  color: #f0ddb0;
-}
-
-.remove-chip { border-left: 3px solid #8c2f22; }
-.add-chip { border-left: 3px solid #2f7d4f; }
-
-/* ══════════════════════════════════════════
-   RESPONSIVE — iPad (≤768px)
-══════════════════════════════════════════ */
-@media (max-width: 768px) {
-  .state-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-
-  .panel:last-child {
-    grid-column: 1 / -1;
-  }
-
-  .dh-title { font-size: 18px; }
-  .class-img { width: 72px; height: 72px; }
-}
-
-/* ══════════════════════════════════════════
-   RESPONSIVE — Phone (≤480px)
-══════════════════════════════════════════ */
-@media (max-width: 480px) {
-  .state-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .panel:last-child {
-    grid-column: auto;
-  }
-
-  .dossier-header { gap: 10px; }
-  .dh-title { font-size: 16px; letter-spacing: 1px; }
-
-  .equip-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
-
-  .damage-row { justify-content: flex-start; }
-  .armor-stats-row { justify-content: flex-start; }
-
-  .armor-card { width: 56px; height: 56px; }
-}
-
-/* ══════════════════════════════════════════
-   LEGACY (kept for existing classes)
-══════════════════════════════════════════ */
-.ability-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.ability-card {
-  padding: 10px;
-  border-radius: 10px;
-
-  background: rgba(30, 20, 10, 0.85);
-  border: 1px solid #7c5a2b;
-
-  box-shadow: inset 0 0 8px rgba(255, 200, 100, 0.1);
-}
-
-.ability-card h4 {
-  margin: 0;
-  font-size: 14px;
-  color: gold;
-}
-
-.ability-card p {
-  margin: 5px 0 0;
-  font-size: 12px;
-  color: #f5d7a1;
-}
-
-.no-ability {
-  text-align: center;
-  opacity: 0.6;
-}
-
-.element-grid {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-}
-
-.state-container {
+/* การ์ดดาเมจของอาวุธ: เลขหน้าการ์ดอยู่บนรูป ส่วนจำนวนใบอยู่ข้าง ๆ
+   (เคยยัดไว้ในรูปเดียวกันแล้วเลขสองตัวทับกันจนอ่านไม่ออก) */
+.gear-dmg { display: inline-flex; align-items: center; gap: 2px; }
+.gear-dmg-card {
+  width: 26px;
+  height: 26px;
   display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
-  gap: 15px;
-  color: #f5d7a1;
-}
-
-/* PANEL */
-/* (กฎ .panel ที่เคยซ้ำตรงนี้ถูกยุบไปรวมกับตัวหลักด้านบนแล้ว) */
-
-/* LEFT */
-.class-img {
-  width: 100px;
-  display: block;
-  margin: auto;
-}
-
-.class-name {
-  text-align: center;
-  color: gold;
-}
-
-/* CENTER */
-.equip-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-}
-
-.equip-card {
-  text-align: center;
-  padding: 10px;
-  border-radius: 10px;
-
-  background: rgba(30, 20, 10, 0.8);
-  border: 1px solid #7c5a2b;
-}
-
-.equip-card img {
-  width: 60px;
-}
-
-.set-box {
-  margin-top: 10px;
-  text-align: center;
-}
-
-/* RIGHT */
-.damage-box,
-.armor-stats,
-.card-mod {
-  margin-top: 20px;
-}
-
-.armor-stats {
-  display: flex;
-  gap: 10px;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-}
-
-.damage-row {
-  display: flex;
-  justify-content: space-between;
-}
-
-.state-page {
-  color: #f5d7a1;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-/* ===== TOP ===== */
-.top-section {
-  display: flex;
-  gap: 20px;
-}
-
-/* LEFT */
-.character-panel {
-  width: 40%;
-  text-align: center;
-
-  background: rgba(20, 15, 10, 0.9);
-  border: 2px solid #7c5a2b;
-  border-radius: 12px;
-  padding: 15px;
-}
-
-.hunter-img {
-  width: 120px;
-  height: 120px;
-  object-fit: contain;
-}
-
-.class-box {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-
-  margin-top: 10px;
-}
-
-.class-box img {
-  width: 40px;
-}
-
-/* RIGHT */
-.stat-panel {
-  width: 60%;
-
-  background: rgba(20, 15, 10, 0.9);
-  border: 2px solid #7c5a2b;
-  border-radius: 12px;
-  padding: 15px;
-
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.stat-row {
-  display: flex;
-  justify-content: space-between;
-}
-
-/* DAMAGE */
-.damage-box {
-  margin-top: 10px;
-}
-
-.damage-grid {
-  display: flex;
-  gap: 10px;
-}
-
-/* WRAPPER */
-.damage-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-/* CARD */
-.damage-card {
-  position: relative;
-  width: 60px;
-  height: 60px;
-}
-
-.damage-card img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-/* 🔥 ค่า DAMAGE (ซ้อนบนรูป) */
-.dmg-value {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-
-  font-size: 18px;
+  place-items: center;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  font-size: 13px;
   font-weight: bold;
   color: #fff;
-
-  text-shadow: 0 0 6px #000;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+.gear-dmg-count { font-style: normal; font-size: 11px; font-weight: bold; color: #c9b895; margin-right: 4px; }
+.gear-pill-skill {
+  min-width: 0;
+  height: auto;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(200, 155, 60, 0.45);
+  background: rgba(200, 155, 60, 0.14);
+  color: #ffd27a;
+  font-size: 10px;
+  font-weight: normal;
+  text-shadow: none;
+  -webkit-text-stroke: 0;
+}
+.gear-pill-none {
+  min-width: 0;
+  height: auto;
+  padding: 2px 0;
+  background: none;
+  color: #6b5a3c;
+  font-size: 10px;
+  font-weight: normal;
+  text-shadow: none;
+  -webkit-text-stroke: 0;
 }
 
-/* 🔥 จำนวนการ์ด (แยกออกมา) */
-.dmg-count {
-  margin-top: 4px;
-  font-size: 16px;
-  color: #f5d7a1;
+/* ══════════════════════════════════════════
+   ความสามารถ
+══════════════════════════════════════════ */
+.skill-list { display: flex; flex-direction: column; gap: 10px; }
+.skill-item {
+  padding: 9px 11px;
+  border-radius: 4px;
+  border-left: 3px solid #c89b3c;
+  background: rgba(0, 0, 0, 0.3);
 }
-/* ===== FRAME (เหมือนการ์ด) ===== */
-.damage-frame {
-  /* margin-top: 10px; */
-  padding: 12px 6px 0px 6px;
+.skill-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 0 0 4px; }
+.skill-name { font-size: 13px; font-weight: bold; color: #ffd27a; }
+/* บอกว่ามาจากชิ้นไหน — ถอดชิ้นไหนความสามารถนี้ถึงจะหาย */
+.skill-from { font-size: 10px; color: #a88040; }
+.skill-text { margin: 0; font-size: 12px; line-height: 1.7; color: #d8c9a8; }
+.skill-empty { margin: 0; font-size: 12px; color: #7d6a4c; font-style: italic; }
 
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-
-  border-radius: 14px;
-
-  background: linear-gradient(to bottom, rgba(60, 45, 25, 0.9), rgba(20, 15, 10, 0.9));
-
-  border: 2px solid #7c5a2b;
-
-  box-shadow:
-    0 0 10px rgba(0, 0, 0, 0.8),
-    inset 0 0 10px rgba(255, 200, 100, 0.15);
-}
-
-/* ===== ROW ===== */
-.damage-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-/* ===== OPTIONAL HOVER EFFECT ===== */
-.damage-frame:hover {
-  box-shadow:
-    0 0 15px rgba(255, 200, 100, 0.6),
-    inset 0 0 10px rgba(255, 200, 100, 0.2);
-}
-
-/* BONUS */
-.bonus-box ul {
-  padding-left: 15px;
-}
-
-/* ===== EQUIPMENT ===== */
-.equip-section {
-  display: flex;
-  justify-content: space-around;
-
-  background: rgba(20, 15, 10, 0.9);
-  border: 2px solid #7c5a2b;
-  border-radius: 12px;
-
-  padding: 15px;
-}
-
-.equip-slot {
-  text-align: center;
-}
-
-.equip-slot img {
-  width: 60px;
-  height: 60px;
-  object-fit: contain;
-
-  filter: drop-shadow(0 0 5px rgba(255, 200, 100, 0.5));
-}
-
-/* ===== DAMAGE ===== */
-.damage-row {
-  display: flex;
-  gap: 10px;
-  justify-content: space-between;
-}
-
-.damage-card {
-  position: relative;
-  width: 60px;
-  height: 60px;
-}
-
-.damage-card img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.damage-card span {
-  position: absolute;
-  bottom: 2px;
-  left: 50%;
-  transform: translateX(-50%);
-
-  font-size: 24px;
-  font-weight: bold;
-  color: #fff;
-
-  text-shadow: 0 0 5px #000;
-}
-
-.dmg-value {
-  position: absolute;
-  inset: 0; /* 🔥 ทำให้กินเต็มกล่อง */
-
-  display: flex;
-  justify-content: center;
-  align-items: center;
-
-  font-size: 18px;
-  font-weight: bold;
-  color: #fff;
-
-  text-shadow: 0 0 6px #000;
-}
-
-/* ===== ARMOR ===== */
-.armor-card {
-  position: relative;
-  width: 70px;
-  height: 70px;
-  /* margin: auto; */
-}
-
-.armor-card img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.armor-card span {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-
-  font-size: 40px;
-  font-weight: bold;
-  color: rgb(255, 255, 255);
-
-  text-shadow: 0 0 8px #000;
-}
-
-/* 🔥 ELEMENT ICON */
-.element-card {
-  position: relative;
-}
-
-/* พื้นหลัง armor */
-.armor-base {
-  width: 100%;
-  height: 100%;
-}
-
-/* 🔥 ไอคอนธาตุ */
-.element-icon {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-
-  width: 60px !important; /* 👈 ปรับตรงนี้ */
-  height: 60px !important;
-
-  object-fit: contain;
-  z-index: 2;
-}
-
-/* 🔥 ค่าป้องกัน */
-.element-value {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%); /* 👈 สำคัญมาก */
-
-  font-size: 14px;
-  font-weight: bold;
-  color: #fff;
-
-  text-shadow: 0 0 6px black;
-  z-index: 3;
-}
-
-/* ── Swap Modal ── */
 .swap-overlay {
   position: fixed;
   inset: 0;
@@ -1871,6 +1274,14 @@ const confirmClassSwitch = async () => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ชิ้นที่ใส่อยู่ — ในกองที่มีหลายชิ้นต้องรู้ว่ากำลังใส่อันไหน */
+.smc-worn { border-color: rgba(200, 155, 60, 0.7); box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 10px rgba(200, 155, 60, 0.22); }
+.smc-worn-tag {
+  padding: 1px 8px; border-radius: 999px;
+  background: rgba(200, 155, 60, 0.2); border: 1px solid rgba(200, 155, 60, 0.5);
+  font-size: 9px; letter-spacing: 1px; color: #ffd27a;
 }
 
 .swap-no-items {
