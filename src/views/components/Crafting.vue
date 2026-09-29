@@ -256,6 +256,19 @@ const getResource = (typeId, itemId) => {
   return group?.resources.find((r) => r.item_id === itemId)
 }
 
+/* บรรทัดใน add / remove เขียนเป็น "3 Long Thrust" หรือ "Any 2 Cards"
+   แยกเลขนำหน้าออกมาทำเป็นป้ายจำนวน ที่เหลือเป็นชื่อการ์ด — อ่านง่ายกว่าข้อความยาวบรรทัดเดียว */
+const parseCardLine = (text) => {
+  const m = String(text).trim().match(/^(\d+)\s+(.+)$/)
+  return m ? { count: Number(m[1]), name: m[2] } : { count: null, name: String(text).trim() }
+}
+const cardLines = (text) =>
+  String(text ?? '')
+    .split('\n')
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .map(parseCardLine)
+
 const getCrafting = (node) => {
   if (!hunter.value) return []
 
@@ -896,18 +909,29 @@ watch(forgeState, async (state, prev) => {
                 </div>
               </div>
 
-              <fieldset class="crafting-box" v-if="node.add != ''">
-                <label for="name">➕</label>
-                <span class="mat-name" v-for="text in node.add.split('\n')" :key="text">{{
-                  text
-                }}</span>
-              </fieldset>
+              <!-- การ์ดที่ต้องเอาออก / ใส่เพิ่มในสำรับ เมื่อตีอาวุธขั้นนี้ -->
+              <div class="cardmod cardmod-remove" v-if="node.remove != ''">
+                <div class="cardmod-head">
+                  <span class="cardmod-sign">🗑️</span>
+                  <span class="cardmod-title">นำการ์ดออก</span>
+                  <span class="cardmod-sign">🗑️</span>
+                </div>
+                <div class="cardmod-row" v-for="(line, li) in cardLines(node.remove)" :key="'r' + li">
+                  <span class="cardmod-count" v-if="line.count">{{ line.count }}</span>
+                  <span class="cardmod-name">{{ line.name }}</span>
+                </div>
+              </div>
 
-              <div class="crafting-box" v-if="node.remove != ''">
-                <label for="name">🗑️</label>
-                <span class="mat-name" v-for="text in node.remove.split('\n')" :key="text">{{
-                  text
-                }}</span>
+              <div class="cardmod cardmod-add" v-if="node.add != ''">
+                <div class="cardmod-head">
+                  <span class="cardmod-sign">📥</span>
+                  <span class="cardmod-title">ใส่การ์ดเข้าแทน</span>
+                  <span class="cardmod-sign">📥</span>
+                </div>
+                <div class="cardmod-row" v-for="(line, li) in cardLines(node.add)" :key="'a' + li">
+                  <span class="cardmod-count" v-if="line.count">{{ line.count }}</span>
+                  <span class="cardmod-name">{{ line.name }}</span>
+                </div>
               </div>
 
             </div>
@@ -2099,13 +2123,16 @@ watch(forgeState, async (state, prev) => {
 
 /* CONNECTING LINE — เส้นเหล็กเชื่อมขั้นการตี */
 .line {
-  width: 40px;
-  height: 2px;
-  background: linear-gradient(to right, #8a7a5f, rgba(90, 78, 58, 0.4));
-  margin: 0 4px;
+  width: 54px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, #c89b3c, #8a7a5f 55%, rgba(90, 78, 58, 0.35));
+  box-shadow: 0 0 6px rgba(200, 155, 60, 0.25);
+  margin: 0 5px;
   flex-shrink: 0;
   align-self: center;
-  margin-top: 50px;
+  /* การ์ดแต่ละขั้นสูงไม่เท่ากัน (วัตถุดิบคนละจำนวน) — ให้เส้นอยู่กลางแถว จะได้ดูเชื่อมกันทุกคู่ */
+  margin-top: 0;
 }
 
 /* ══════════════════════════════════════════
@@ -2300,6 +2327,65 @@ watch(forgeState, async (state, prev) => {
 .crafting-box label { color: #7a6238; font-size: 12px; }
 
 /* ══════════════════════════════════════════
+   CARD MOD — การ์ดที่ต้องเอาออก / ใส่เพิ่มตอนตีอาวุธ
+   เดิมใช้กล่องหน้าตาเดียวกับวัตถุดิบ + อิโมจินำหน้า เลยแยกไม่ออกว่าอันไหนคืออะไร
+══════════════════════════════════════════ */
+.cardmod {
+  margin-top: 7px;
+  padding: 7px 9px 8px;
+  border-radius: 3px;
+  border: 1px solid rgba(124, 90, 43, 0.5);
+  border-left-width: 3px;
+  background: linear-gradient(170deg, rgba(28, 19, 10, 0.6), rgba(16, 11, 6, 0.6));
+  text-align: center;
+}
+.cardmod-remove { border-left-color: #b4503a; }
+.cardmod-add { border-left-color: #4f9d5d; }
+
+.cardmod-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+.cardmod-sign {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1;
+}
+.cardmod-remove .cardmod-sign { background: rgba(180, 80, 58, 0.24); color: #ff9a80; }
+.cardmod-add .cardmod-sign { background: rgba(79, 157, 93, 0.24); color: #8ee7a1; }
+.cardmod-title { font-size: 11px; letter-spacing: 0.5px; color: #a8946c; }
+
+.cardmod-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 4px 0;
+}
+.cardmod-row + .cardmod-row { border-top: 1px dashed rgba(124, 90, 43, 0.3); }
+.cardmod-count {
+  flex-shrink: 0;
+  min-width: 24px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: bold;
+  text-align: center;
+}
+.cardmod-remove .cardmod-count { background: rgba(180, 80, 58, 0.26); color: #ffb3a0; }
+.cardmod-add .cardmod-count { background: rgba(79, 157, 93, 0.26); color: #a6efb6; }
+.cardmod-name { font-size: 13px; line-height: 1.35; color: #e6d5ab; }
+
+/* ══════════════════════════════════════════
    PIECE ABILITY
 ══════════════════════════════════════════ */
 .ability-tag {
@@ -2376,8 +2462,8 @@ watch(forgeState, async (state, prev) => {
   .node-card { width: min(340px, 100%); }
 
   .line {
-    width: 2px;
-    height: 24px;
+    width: 4px;
+    height: 30px;
     background: linear-gradient(to bottom, #c89b3c, rgba(124, 90, 43, 0.4));
     margin: 0;
     margin-top: 0;
