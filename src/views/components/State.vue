@@ -15,6 +15,7 @@ import bonusAbilityData from '@/assets/files/bonus_ability.json'
 import classHunterData from '@/assets/files/class_hunter.json'
 import weaponsData from '@/assets/files/weapons.json'
 import armorsData from '@/assets/files/armors.json'
+import RuleText from './RuleText.vue'
 
 const hunter    = ref(null)
 const rawHunter = ref(null)
@@ -399,7 +400,7 @@ const confirmClassSwitch = async () => {
         <div v-if="bonusAbilities.length > 0" class="ability-list">
           <div v-for="ab in bonusAbilities" :key="ab.ability_id" class="ability-card">
             <p class="ability-name">{{ ab.ability_name }}</p>
-            <p class="ability-desc">{{ ab.ability }}</p>
+            <p class="ability-desc"><RuleText :text="ab.ability" /></p>
           </div>
         </div>
         <p v-else class="no-ability">No abilities active</p>

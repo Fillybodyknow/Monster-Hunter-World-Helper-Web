@@ -17,6 +17,7 @@ import {
 } from '@/stores/craftingWhitelist'
 import { useSfx } from '@/composables/useSfx'
 import { requestTour, cancelTourRequest } from '@/composables/useTour'
+import RuleText from './RuleText.vue'
 
 const sfx = useSfx()
 const SFX_DIR = 'assets/sounds/crafting'
@@ -935,7 +936,7 @@ watch(forgeState, async (state, prev) => {
               </span>
             </div>
             <span class="set-bonus-name">{{ getAbility(selectedType.set.set_ability_bonus).ability_name }}</span>
-            <span class="set-bonus-desc">{{ getAbility(selectedType.set.set_ability_bonus).ability }}</span>
+            <span class="set-bonus-desc"><RuleText :text="getAbility(selectedType.set.set_ability_bonus).ability" /></span>
           </div>
         </div>
 
@@ -1014,7 +1015,7 @@ watch(forgeState, async (state, prev) => {
               <!-- PIECE ABILITY -->
               <div v-if="equip.ability_id !== 0 && getAbility(equip.ability_id)" class="ability-tag">
                 <span class="ability-name">{{ getAbility(equip.ability_id).ability_name }}</span>
-                <span class="ability-desc">{{ getAbility(equip.ability_id).ability }}</span>
+                <span class="ability-desc"><RuleText :text="getAbility(equip.ability_id).ability" /></span>
               </div>
 
             </div>
@@ -1991,8 +1992,8 @@ watch(forgeState, async (state, prev) => {
 
 /* NODE CARD — แผ่นเหล็กตีขึ้นรูป ตอกหมุดสี่มุม */
 .node-card {
-  width: 200px;
-  padding: 12px 10px;
+  width: 248px;
+  padding: 14px 12px;
   /* มุมไม่เท่ากัน — ของตีมือไม่มีทางเนี้ยบเท่ากันทั้งสี่มุม */
   border-radius: 3px 2px 4px 2px;
   border: 2px solid #0f0b08;
@@ -2083,16 +2084,16 @@ watch(forgeState, async (state, prev) => {
 
 /* RARITY ICON */
 .rarity-icon {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   object-fit: contain;
 }
 
 /* WEAPON NAME */
 .weapon-name {
-  font-size: 11px;
+  font-size: 14px;
   color: #f0ddb0;
-  margin: 4px 0 6px;
+  margin: 5px 0 7px;
   line-height: 1.3;
 }
 
@@ -2181,8 +2182,8 @@ watch(forgeState, async (state, prev) => {
 ══════════════════════════════════════════ */
 .armor-element-card {
   position: relative;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
 }
 
 .armor-element-card .armor-base {
@@ -2196,8 +2197,8 @@ watch(forgeState, async (state, prev) => {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 28px !important;
-  height: 28px !important;
+  width: 34px !important;
+  height: 34px !important;
   object-fit: contain;
   z-index: 2;
 }
@@ -2207,7 +2208,7 @@ watch(forgeState, async (state, prev) => {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 15px;
+  font-size: 18px;
   font-weight: bold;
   color: #fff;
   text-shadow: 0 0 4px black;
@@ -2234,11 +2235,11 @@ watch(forgeState, async (state, prev) => {
 ══════════════════════════════════════════ */
 /* ใบสูตร — กระดาษเปื้อนเขม่า ขอบเหลืองจากความร้อน */
 .crafting-box {
-  margin-top: 6px;
-  padding: 8px;
+  margin-top: 7px;
+  padding: 9px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
   border-radius: 2px 3px 1px 3px;
   border: 1px solid #ab9564;
   color: #3a2c18;
@@ -2258,15 +2259,15 @@ watch(forgeState, async (state, prev) => {
 .material {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 3px 6px;
+  gap: 9px;
+  padding: 5px 8px;
   border-radius: 2px;
   background: rgba(150, 120, 70, 0.12);
 }
 
 .material img {
-  width: 20px;
-  height: 20px;
+  width: 26px;
+  height: 26px;
   object-fit: contain;
   flex-shrink: 0;
 }
@@ -2280,12 +2281,13 @@ watch(forgeState, async (state, prev) => {
 }
 
 .mat-name {
-  font-size: 10px;
+  font-size: 13px;
+  line-height: 1.35;
   color: #4a3a22;
 }
 
 .mat-count {
-  font-size: 10px;
+  font-size: 13px;
   font-weight: bold;
   color: #7a6238;
   flex-shrink: 0;
@@ -2295,14 +2297,14 @@ watch(forgeState, async (state, prev) => {
 .mat-count.enough { color: #1f6b45; }
 
 /* label ของกล่อง ➕ / 🗑️ ก็อยู่บนกระดาษเหมือนกัน */
-.crafting-box label { color: #7a6238; font-size: 11px; }
+.crafting-box label { color: #7a6238; font-size: 12px; }
 
 /* ══════════════════════════════════════════
    PIECE ABILITY
 ══════════════════════════════════════════ */
 .ability-tag {
-  margin-top: 7px;
-  padding: 6px 8px;
+  margin-top: 8px;
+  padding: 8px 10px;
   border-radius: 3px;
   background: linear-gradient(170deg, #2c1b38, #211530);
   border: 1px solid rgba(160, 80, 220, 0.35);
@@ -2315,15 +2317,15 @@ watch(forgeState, async (state, prev) => {
 }
 
 .ability-name {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: bold;
   color: #c9a0ff;
 }
 
 .ability-desc {
-  font-size: 10px;
+  font-size: 12px;
   color: #b8a0d8;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 /* ══════════════════════════════════════════
@@ -2366,9 +2368,12 @@ watch(forgeState, async (state, prev) => {
   .node-wrapper {
     flex-direction: column;
     align-items: center;
+    /* เรียงแนวตั้งแล้วกล่องห่อจะหดตามเนื้อหา ทำให้การ์ดกว้างไม่เต็มแถว
+       บังคับให้เต็มแถวไปเลย การ์ดจะได้ใช้พื้นที่บนมือถือคุ้มที่สุด */
+    width: 100%;
   }
 
-  .node-card { width: min(280px, 100%); }
+  .node-card { width: min(340px, 100%); }
 
   .line {
     width: 2px;
@@ -2392,7 +2397,11 @@ watch(forgeState, async (state, prev) => {
 
   .tree-line { padding: 10px; }
 
-  .node-card { width: min(240px, 100%); }
+  /* มือถือ: ใช้ความกว้างที่เหลือให้หมด เหลือขอบพอไม่ให้ชนขอบจอ */
+  .node-card { width: min(340px, 100%); padding: 13px 11px; }
+  .mat-name { font-size: 12.5px; }
+  .mat-count { font-size: 12.5px; }
+  .ability-desc { font-size: 11.5px; }
 
   .rack-slots { gap: 6px; }
   .rack-slot { width: 82px; }

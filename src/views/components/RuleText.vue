@@ -1,18 +1,26 @@
 <script setup>
 import { computed } from 'vue'
 
-// ข้อความกฎใน monster_info.json ฝัง {token} ไว้ตรงจุดที่ควรมีสัญลักษณ์กำกับ
-// เติมด้วย scripts/annotate-rule-symbols.mjs — แก้ที่นั่นถ้าจะเพิ่ม/ย้าย token
+// ข้อความกฎใน monster_info.json และคำอธิบายความสามารถใน bonus_ability.json
+// ฝัง {token} ไว้ตรงจุดที่ควรมีสัญลักษณ์กำกับ
+// ของมอนเติมด้วย scripts/annotate-rule-symbols.mjs — แก้ที่นั่นถ้าจะเพิ่ม/ย้าย token
+// ของความสามารถพิมพ์เองในไฟล์ JSON · token ที่ไม่มีในตารางนี้ check-data จะฟ้อง
 const props = defineProps({
   text: { type: String, default: '' },
 })
 
 const SYMBOL = {
   atk: 'UI/symbol/monster_attack_symbol',
+  // Damage Card ของ Hunter — คนละอันกับ {atk} ที่เป็นค่าโจมตีของมอน
+  damage: 'UI/symbol/damage_card_symbol',
+  damage_card: 'UI/symbol/damage_card_symbol',   // ชื่อเรียกอีกแบบของอันเดียวกัน
+  // สัญลักษณ์ Combos บน Attack Card
+  combo: 'UI/symbol/combos_symbol',
   agility: 'UI/symbol/agility_symbol',
   range: 'UI/symbol/range_symbol',
   move: 'UI/symbol/monster_movement_symbol',
   break: 'UI/symbol/break_symbol',
+  break_part: 'UI/symbol/break_symbol',
   armor: 'bonus_armor',
   track: 'UI/symbol/track_token_symbol',
   hturn: 'UI/symbol/hunter_turn_symbol',
@@ -41,8 +49,8 @@ const SYMBOL = {
 }
 
 const LABEL = {
-  atk: 'ความเสียหาย', agility: 'ระยะโจมตี/หลบหลีก', range: 'ระยะโจมตี',
-  move: 'การเคลื่อนที่', break: 'Break Token', track: 'Track Token', armor: 'เกราะ',
+  atk: 'ความเสียหาย', agility: 'ระยะโจมตี/หลบหลีก', range: 'ระยะโจมตี', damage: 'Damage Card', damage_card: 'Damage Card', combo: 'Combos',
+  move: 'การเคลื่อนที่', break: 'Break Token', break_part: 'Break Token', track: 'Track Token', armor: 'เกราะ',
   hturn: 'เทิร์น Hunter', hcard: 'Attack Card',
   closest: 'เป้าหมายใกล้สุด', furthest: 'เป้าหมายไกลสุด',
   wind_token: 'Wind Token', tornado_token: 'Tornado Token',

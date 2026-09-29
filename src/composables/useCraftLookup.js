@@ -3,6 +3,7 @@ import craftingData from '@/assets/files/crafting_item.json'
 import armorsData from '@/assets/files/armors.json'
 import weaponsData from '@/assets/files/weapons.json'
 import elementalData from '@/assets/files/elemental.json'
+import bonusAbilityData from '@/assets/files/bonus_ability.json'
 import { rarityGroupOf } from '@/services/equipService'
 import { hunter } from '@/stores/hunter'
 
@@ -47,6 +48,8 @@ const getCraftableWith = (resource_type_id, item_id) => {
         physical_armor: armor.physical_armor,
         elemental_armor: armor.elemental_armor,
         elemental_thumbnail: elemental?.thumbnail ?? null,
+        // ความสามารถของชิ้นนั้น (ability_id 0 = ไม่มี) — คนเปิดหน้านี้จะได้ตัดสินใจได้ว่าคุ้มคราฟไหม
+        ability: bonusAbilityData.find((a) => a.ability_id === armor.ability_id) ?? null,
         materials: craft.crafting_table,
       })
     }

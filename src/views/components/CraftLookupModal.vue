@@ -2,6 +2,7 @@
 import { craftLookupItem, craftLookupResults, closeCraftLookup } from '@/composables/useCraftLookup'
 import resourceData from '@/assets/files/resource.json'
 import hunterClassData from '@/assets/files/class_hunter.json'
+import RuleText from './RuleText.vue'
 import { hunter } from '@/stores/hunter'
 
 const getImg = (path) => `${import.meta.env.BASE_URL}${path}`
@@ -56,6 +57,12 @@ const getHunterClass = (id) => hunterClassData.find((c) => c.hunter_class_id ===
                       <p class="cl-dmg-count">x{{ val }}</p>
                     </div>
                   </template>
+                </div>
+
+                <!-- ความสามารถของชิ้นเกราะ (ถ้ามี) — ป้ายเดียวกับหน้า Crafting แต่ย่อให้พอดีหน้าต่าง -->
+                <div v-if="r.type === 'armor' && r.ability" class="cl-ability">
+                  <span class="cl-ability-name">✦ {{ r.ability.ability_name }}</span>
+                  <span v-if="r.ability.ability" class="cl-ability-desc"><RuleText :text="r.ability.ability" /></span>
                 </div>
 
                 <!-- Armor stats (same as Crafting page) -->
@@ -208,6 +215,22 @@ const getHunterClass = (id) => hunterClassData.find((c) => c.hunter_class_id ===
 .cl-dmg-count { margin: 0; font-size: 11px; font-weight: bold; color: #c89b3c; }
 
 /* Armor stats — same pattern as Crafting.vue */
+/* ป้ายความสามารถของชิ้นเกราะ — โทนม่วงเดียวกับป้ายในหน้า Crafting จะได้จำได้ว่าเป็นของชนิดเดียวกัน */
+.cl-ability {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 5px 0 2px;
+  padding: 5px 7px;
+  border-radius: 3px;
+  border: 1px solid rgba(160, 80, 220, 0.35);
+  border-left: 3px solid #a855f7;
+  background: linear-gradient(170deg, #2c1b38, #211530);
+  text-align: left;
+}
+.cl-ability-name { font-size: 11px; font-weight: bold; color: #c9a0ff; }
+.cl-ability-desc { font-size: 10px; line-height: 1.4; color: #b8a0d8; }
+
 .cl-defense-row { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0; }
 .cl-armor-element-card { position: relative; width: 36px; height: 36px; }
 .cl-armor-base { width: 100%; height: 100%; object-fit: contain; }
