@@ -383,6 +383,40 @@ for (const f of fs.readdirSync(ELDER).filter((f) => f.endsWith('.json'))) {
 }
 for (const m of missingImages) fail('รูปหาย', m)
 
+/* ── 7.5 สัญลักษณ์ในข้อความ: ทุก {token} ต้องมีรูปจริง ─────────
+   ข้อความกฎและคำอธิบายความสามารถฝัง {token} ไว้ให้ RuleText แปลงเป็นไอคอน
+   พิมพ์ชื่อ token ผิด (เช่น {dmg} แทน {damage}) จะไม่มีรูปขึ้น เหลือเป็นข้อความดิบให้ผู้เล่นงง */
+{
+  const ruleText = fs.readFileSync(path.join(ROOT, 'src/views/components/RuleText.vue'), 'utf8')
+  const symbolBlock = ruleText.slice(ruleText.indexOf('const SYMBOL = {'), ruleText.indexOf('const LABEL = {'))
+  const known = new Set([...symbolBlock.matchAll(/^\s{2}([a-z_]+):/gm)].map((m) => m[1]))
+  const seen = new Map() // token → ที่แรกที่เจอ
+  const scanText = (node, source) => {
+    if (Array.isArray(node)) return node.forEach((n) => scanText(n, source))
+    if (!node || typeof node !== 'object') return
+    for (const value of Object.values(node)) {
+      if (typeof value === 'string') {
+        for (const m of value.matchAll(/\{([a-z_]+)\}/g)) {
+          if (!seen.has(m[1])) seen.set(m[1], source)
+        }
+      } else scanText(value, source)
+    }
+  }
+  for (const f of fs.readdirSync(FILES).filter((f) => f.endsWith('.json') && f !== 'asset-manifest.json')) {
+    scanText(read(path.join(FILES, f)), f)
+  }
+  for (const f of fs.readdirSync(ELDER).filter((f) => f.endsWith('.json'))) {
+    scanText(read(path.join(ELDER, f)), f)
+  }
+  for (const [token, source] of seen) {
+    if (!known.has(token)) fail('สัญลักษณ์', `${source} ใช้ {${token}} ที่ไม่มีใน RuleText.vue — จะขึ้นเป็นข้อความดิบ`)
+  }
+  // และรูปของ token ที่ประกาศไว้ต้องมีอยู่จริง
+  for (const [, token, file] of symbolBlock.matchAll(/^\s{2}([a-z_]+): '([^']+)'/gm)) {
+    if (!existsExact(`assets/img/${file}.webp`)) fail('สัญลักษณ์', `RuleText.vue: {${token}} ชี้ไป assets/img/${file}.webp ที่ไม่มีไฟล์`)
+  }
+}
+
 // ── 8. ทัวร์สอนใช้งาน: ทุก target ต้องมี data-tour อยู่จริงในไฟล์ .vue ────
 // ทัวร์ชี้ปุ่มด้วย data-tour ไม่ใช่ชื่อคลาส — เปลี่ยนชื่อหรือลบ data-tour แล้วลืมแก้ tours.js
 // ขั้นนั้นจะหาไม่เจอ (ไม่ optional = ทัวร์จบกลางคัน, optional = ถูกข้ามเงียบ ๆ ไม่มีใครรู้)
