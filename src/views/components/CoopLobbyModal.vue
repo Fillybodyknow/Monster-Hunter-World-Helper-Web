@@ -758,6 +758,7 @@ const starColor = computed(() => {
 .cl-notice .cl-rar-2 { color: #2f7d4f; }
 .cl-notice .cl-rar-3 { color: #2c5f9e; }
 .cl-notice .cl-rar-4 { color: #7b3fa0; }
+.cl-notice .cl-rar-5 { color: #ab4f17; }
 .cl-notice .cl-weapon-none { color: rgba(90,70,40,0.65); }
 .cl-notice .cl-ready.is-ready {
   background: rgba(60,140,85,0.22);
@@ -982,6 +983,7 @@ const starColor = computed(() => {
 .cl-rar-2 { color: #7fd99a; }
 .cl-rar-3 { color: #7ab3ff; }
 .cl-rar-4 { color: #cc77ff; }
+.cl-rar-5 { color: #ff8f47; }
 .cl-weapon-none {
   font-size: 9px;
   color: rgba(124,90,43,0.6);

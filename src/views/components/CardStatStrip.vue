@@ -55,7 +55,11 @@ const partName = (position) => {
 
 const anyChanged = computed(() => chips.value.some((c) => c.changed))
 const hasWhy = computed(() => (props.stats?.applied?.length ?? 0) + (props.stats?.notes?.length ?? 0) > 0)
-const sourceLabel = (rule) => (rule.kind === 'special' ? rule.title || 'กฎพิเศษ' : `${partName(rule.position)} แตก`)
+const sourceLabel = (rule) => {
+  if (rule.kind === 'status') return rule.title || 'สถานะผิดปกติ'
+  if (rule.kind === 'special') return rule.title || 'กฎพิเศษ'
+  return `${partName(rule.position)} แตก`
+}
 const changeText = (change) =>
   ROWS.filter((r) => change?.[r.key]).map((r) => `${r.label} ${change[r.key] > 0 ? '+' : ''}${change[r.key]}`).join(' · ')
 </script>
