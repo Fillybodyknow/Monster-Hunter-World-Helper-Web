@@ -2587,7 +2587,13 @@ const useStripVisible = computed(() =>
 const nextBehaviorCard = computed(() => behaviorDeck.value[0] ?? null)
 
 // ค่าจริงของการ์ด = ค่าบนการ์ด + กฎของระดับความยาก + กฎของชิ้นส่วนที่พังแล้ว (src/services/cardStats.js)
-const huntRuleCtx = computed(() => ({ difficulty: monsterHuntingData.value, brokenParts: brokenParts.value }))
+/* statuses = สถานะที่ติดบนตัวมอนและมีผลกับการ์ดพฤติกรรมใบที่เปิดอยู่ (เช่น Stun ล็อกค่าหลบหลีกเป็น 1)
+   monsterAttackStatuses ถูกล้างตอนจบเทิร์นมอน ค่าจึงมีผลแค่การ์ดใบนั้นใบเดียวตามกฎ */
+const huntRuleCtx = computed(() => ({
+  difficulty: monsterHuntingData.value,
+  brokenParts: brokenParts.value,
+  statuses: monsterAttackStatuses.value,
+}))
 const currentCardStats = computed(() =>
   currentBehaviorCard.value ? resolveCardStats(currentBehaviorCard.value, huntRuleCtx.value) : null,
 )

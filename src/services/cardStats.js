@@ -12,6 +12,13 @@ export const PART_POSITIONS = ['front', 'back', 'left', 'right']
 // ค่าบนการ์ดที่กฎแก้ได้ — ต้องตรงกับ TOKEN_OF ใน check-data.cjs
 export const CARD_STATS = ['damage', 'range', 'agility', 'activations', 'attack_cards', 'move']
 
+/* สถานะผิดปกติที่ติดบนตัวมอนแล้วมีผลกับ "การ์ดพฤติกรรมใบถัดไป" โดยตรง
+   Stun: ค่าหลบหลีกของการ์ดใบนั้นกลายเป็น 1 และเอฟเฟกต์อื่นเพิ่มลดไม่ได้ (status_effect.json id 1)
+   เป็นการ "ตั้งค่าทับ" ไม่ใช่บวกลบ จึงทำแยกจาก modifiers ของกฎพิเศษ/ชิ้นส่วนแตก */
+export const STATUS_STUN_ID = 1
+export const STUN_AGILITY = 1
+const STUN_RULE_TEXT = 'Monster ติด Stun — ค่าหลบหลีกของการ์ดใบนี้เป็น 1 และเอฟเฟกต์อื่นเพิ่มหรือลดไม่ได้'
+
 // 'yes' = เข้าเงื่อนไข · 'no' = ไม่เข้า · 'manual' = แอปตัดสินเองไม่ได้ ต้องให้คนดู
 // 'n/a' = เงื่อนไขผูกกับตัวการ์ด แต่กำลังคิดค่าที่ไม่เกี่ยวกับการ์ด (เช่น เกราะของชิ้นส่วน)
 const evaluate = (when, card, ctx) => {
@@ -71,12 +78,13 @@ export function resolvePoisonHpLoss({ difficulty, brokenParts } = {}) {
 /**
  * ค่าจริงของการ์ดพฤติกรรม 1 ใบ
  * @param card การ์ดจาก behavior_deck / behavior_special_card (ต้องมี attack, part_id, move)
- * @param ctx  { difficulty, brokenParts } — brokenParts คือ { front: true, ... } แบบเดียวกับใน Quest.vue
+ * @param ctx  { difficulty, brokenParts, statuses } — brokenParts คือ { front: true, ... } แบบเดียวกับใน Quest.vue
+ *             statuses = สถานะที่ติดบนตัวมอนและมีผลกับการ์ดใบนี้ (monsterAttackStatuses ใน Quest.vue)
  * @returns { base, value, applied, notes }
  *          base = ตัวเลขบนการ์ด · value = ตัวเลขที่ใช้จริง
  *          applied = กฎที่บวกให้แล้ว · notes = กฎที่ต้องให้คนตัดสินเอง (เงื่อนไข manual)
  */
-export function resolveCardStats(card, { difficulty, brokenParts } = {}) {
+export function resolveCardStats(card, { difficulty, brokenParts, statuses } = {}) {
   const base = {
     damage: card?.attack?.damage ?? 0,
     range: card?.attack?.range ?? 0,
@@ -91,6 +99,7 @@ export function resolveCardStats(card, { difficulty, brokenParts } = {}) {
   if (!card) return { base, value, applied, notes }
 
   const ctx = { anyPartBroken: PART_POSITIONS.some((p) => brokenParts?.[p]) }
+  const stunned = !!statuses?.includes(STATUS_STUN_ID)
 
   // รวมส่วนต่างให้ครบก่อนแล้วค่อยตัดที่ 0 — ลำดับการบวกจะได้ไม่เปลี่ยนผลลัพธ์
   for (const rule of activeRules(difficulty, brokenParts)) {
@@ -100,6 +109,8 @@ export function resolveCardStats(card, { difficulty, brokenParts } = {}) {
 
       const change = {}
       for (const stat of CARD_STATS) {
+        // ติด Stun แล้วค่าหลบหลีกถูกล็อกไว้ที่ 1 กฎอื่นมาบวกลบไม่ได้ จึงไม่นับและไม่เอาไปโชว์ว่าบวกให้
+        if (stat === 'agility' && stunned) continue
         if (mod.change?.[stat]) change[stat] = mod.change[stat]
       }
       if (!Object.keys(change).length) continue // กฎที่แก้เฉพาะเกราะ ไม่เกี่ยวกับการ์ด
@@ -113,6 +124,18 @@ export function resolveCardStats(card, { difficulty, brokenParts } = {}) {
     }
   }
   for (const stat of CARD_STATS) value[stat] = Math.max(0, value[stat])
+
+  if (stunned) {
+    value.agility = STUN_AGILITY
+    applied.push({
+      kind: 'status',
+      position: null,
+      status_id: STATUS_STUN_ID,
+      title: 'Stun',
+      text: STUN_RULE_TEXT,
+      change: { agility: STUN_AGILITY - base.agility },
+    })
+  }
 
   return { base, value, applied, notes }
 }

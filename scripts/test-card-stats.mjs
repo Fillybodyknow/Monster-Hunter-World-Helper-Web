@@ -4,7 +4,7 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { resolveCardStats, resolvePartArmor, resolveHunterDamage, resolvePoisonHpLoss, POISON_HP_LOSS, GUARD_ABILITY_ID, CARD_STATS } from '../src/services/cardStats.js'
+import { resolveCardStats, resolvePartArmor, resolveHunterDamage, resolvePoisonHpLoss, POISON_HP_LOSS, GUARD_ABILITY_ID, CARD_STATS, STATUS_STUN_ID, STUN_AGILITY } from '../src/services/cardStats.js'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const read = (p) => JSON.parse(fs.readFileSync(path.join(ROOT, p), 'utf8'))
@@ -298,6 +298,60 @@ const brief = (r) => CARD_STATS.filter((k) => r.base[k] !== r.value[k]).map((k) 
   expect(bad.length === 0, `มอนตัวอื่นไม่มีกฎ Poison ต้องเสีย 2: ${bad.join(', ')}`)
   expect(resolvePoisonHpLoss().value === POISON_HP_LOSS, 'ไม่ส่งอะไรมาต้องได้ค่าปกติ')
 }
+
+// ── 8. Stun บนตัวมอน: ค่าหลบหลีกของการ์ดใบนั้นเป็น 1 ตายตัว กฎอื่นเพิ่มลดไม่ได้ ──
+
+{
+
+  const { monster, difficulty } = find('Rathalos', 4) // King of the Skies: ทุกใบ {atk}+1 {agility}+1
+
+  for (const c of cardsOf(monster)) {
+
+    const normal = resolveCardStats(c, { difficulty, brokenParts: {} })
+
+    const r = resolveCardStats(c, { difficulty, brokenParts: {}, statuses: [STATUS_STUN_ID] })
+
+    expect(r.value.agility === STUN_AGILITY, `${c.behavior_name} ติด Stun ค่าหลบหลีกต้องเป็น 1 (ได้ ${r.value.agility})`)
+
+    expect(normal.value.agility !== STUN_AGILITY, `${c.behavior_name} เคสทดสอบต้องต่างจากค่าปกติ (${normal.value.agility})`)
+
+    // Stun แตะแค่ค่าหลบหลีก ค่าอื่นยังบวกตามกฎพิเศษเหมือนเดิม
+
+    expect(r.value.damage === normal.value.damage, `${c.behavior_name} Stun ต้องไม่ยุ่งกับความเสียหาย`)
+
+    expect(r.value.move === normal.value.move, `${c.behavior_name} Stun ต้องไม่ยุ่งกับการเคลื่อนที่`)
+
+    expect(r.base.agility === c.attack.agility, `${c.behavior_name} base ต้องยังเป็นเลขที่พิมพ์บนการ์ด`)
+
+    // ไม่ควรเหลือกฎอื่นที่อ้างว่าแก้ค่าหลบหลีก เพราะแก้ไม่ได้แล้ว
+
+    expect(!r.applied.some((a) => a.kind !== 'status' && a.change?.agility),
+
+      `${c.behavior_name} ติด Stun แล้วไม่ควรมีกฎอื่นอ้างว่าแก้ค่าหลบหลีก`)
+
+    const tag = r.applied.find((a) => a.kind === 'status')
+
+    expect(tag && tag.status_id === STATUS_STUN_ID && !!tag.text, `${c.behavior_name} ควรบอกที่มาว่ามาจาก Stun`)
+
+  }
+
+  // สถานะอื่นที่ติดพร้อมกันต้องไม่ไปล็อกค่าหลบหลีก
+
+  const one = cardsOf(monster)[0]
+
+  const plain = resolveCardStats(one, { difficulty, brokenParts: {} })
+
+  const other = resolveCardStats(one, { difficulty, brokenParts: {}, statuses: [2, 5] })
+
+  expect(other.value.agility === plain.value.agility, 'Poison / Blastblight ต้องไม่ยุ่งกับค่าหลบหลีก')
+
+  const both = resolveCardStats(one, { difficulty, brokenParts: {}, statuses: [2, STATUS_STUN_ID] })
+
+  expect(both.value.agility === STUN_AGILITY, 'ติดหลายสถานะพร้อมกัน Stun ก็ยังล็อกค่าหลบหลีกเป็น 1')
+
+}
+
+
 
 console.log(failures ? `\n✗ ไม่ผ่าน ${failures} จาก ${checks} ข้อ` : `✓ ผ่านทั้งหมด ${checks} ข้อ`)
 process.exit(failures ? 1 : 0)
