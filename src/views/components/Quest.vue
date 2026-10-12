@@ -2688,7 +2688,7 @@ const _showDiscardFlash = (cards) => {
 }
 
 // Nitrotoad state
-const nitrotoadStep = ref(null) // null | 'roll' | 'part-select' | 'blastblight'
+const nitrotoadStep = ref(null) // null | 'roll' | 'rolling' | 'rolled' | 'part-select' | 'no-target' | 'blastblight'
 const nitrotoadRoll = ref(null)
 const nitrotoadDrawerId = ref(null)
 const nitrotoadDie = ref({ value: 1, rolling: false })
@@ -2713,8 +2713,18 @@ const rollNitrotoad = () => {
   }, 700)
 }
 
+/* Part ที่ยังวาง Break Token ได้ — ทุบแตกครบทั้งตัวแล้วจะเหลือศูนย์
+   ถ้าปล่อยให้เข้าหน้าเลือก Part ทั้งที่ไม่มีให้เลือก หน้าต่างจะไม่มีปุ่มไหนกดออกได้เลย
+   และ step ถูก sync ขึ้นห้อง ทุกคนในตี้ก็ค้างตามไปด้วย */
+const nitrotoadPlaceable = computed(() =>
+  Object.keys(activeParts.value).filter((pos) => !brokenParts.value[pos]),
+)
+
 const confirmNitrotoad = () => {
-  nitrotoadStep.value = nitrotoadRoll.value <= 3 ? 'part-select' : 'blastblight'
+  nitrotoadStep.value =
+    nitrotoadRoll.value <= 3
+      ? (nitrotoadPlaceable.value.length ? 'part-select' : 'no-target')
+      : 'blastblight'
   // ปุ่มนี้มีแต่ในเครื่องคนจั่ว — คนจั่วคือคนโดน
   if (nitrotoadStep.value === 'blastblight') inflictMyStatus(STATUS_BLAST, { source: 'Nitrotoad' })
   _pushTimeCardState()
@@ -2734,6 +2744,15 @@ watch(() => room.timeCardState?.nitrotoadStep, (step) => {
     clearInterval(_ntGuestInterval)
     nitrotoadDie.value = { value: room.timeCardState?.nitrotoadRoll ?? 1, rolling: false }
   }
+})
+
+/* ใน Co-op คนอื่นอาจทุบ Part ชิ้นสุดท้ายแตกระหว่างที่หน้าเลือก Part เปิดค้างอยู่
+   คนจั่วเป็นคนเปลี่ยน step ให้ (คนอื่นรับผ่าน sync) จะได้ไม่มีสองเครื่องเขียนทับกัน */
+watch(nitrotoadPlaceable, (list) => {
+  if (!isNitrotoadDrawer.value) return
+  if (nitrotoadStep.value !== 'part-select' || list.length) return
+  nitrotoadStep.value = 'no-target'
+  _pushTimeCardState()
 })
 
 const applyNitrotoadBreak = (pos) => {
@@ -9741,6 +9760,14 @@ onDeactivated(() => {
               <p v-else class="nt-waiting">รอ <ClassMedal :hunter-id="nitrotoadDrawerId" /> เลือก Part...</p>
             </template>
 
+            <!-- Step: ไม่มี Part ให้วาง (ทุบแตกครบแล้ว) -->
+            <template v-else-if="nitrotoadStep === 'no-target'">
+              <p class="nt-roll-result">ได้ <strong>{{ nitrotoadRoll }}</strong></p>
+              <p class="nt-rule nt-rule-good">✓ เพิ่ม Break Token บน Part ที่เลือก</p>
+              <p class="nt-no-target">Part ของมอนสเตอร์แตกครบทุกชิ้นแล้ว ไม่มีที่ให้วาง Break Token — การ์ดใบนี้ไม่มีผล</p>
+              <button class="nt-close-btn" @click="dismissNitrotoad">รับทราบ</button>
+            </template>
+
             <!-- Step: Blastblight (4-6) -->
             <template v-else-if="nitrotoadStep === 'blastblight'">
               <p class="nt-roll-result">ได้ <strong>{{ nitrotoadRoll }}</strong></p>
@@ -14562,6 +14589,14 @@ onDeactivated(() => {
   max-width: 360px; max-height: 340px; overflow-y: auto;
 }
 
+
+.nt-no-target {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #c7b48a;
+  max-width: 300px;
+}
 
 /* ── Nitrotoad: ตาราง Part แบบรูปอย่างเดียว ── */
 .nt-icon-grid {
